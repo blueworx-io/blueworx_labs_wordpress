@@ -2,7 +2,7 @@
 
 BlueWorx Enhancements is a single-file WordPress plugin.
 
-## Build ZIP locally (recommended)
+## Option 1: Build ZIP locally (recommended)
 
 This repository does **not** commit the ZIP artifact (to avoid binary-file PR issues).
 
@@ -16,13 +16,22 @@ This creates:
 
 - `dist/blueworx-enhancements.zip`
 
-## Install (WordPress Admin)
+Then install from WordPress:
 
-1. Run `./scripts/build-zip.sh`.
-2. In WordPress, go to **Plugins → Add New → Upload Plugin**.
-3. Upload `dist/blueworx-enhancements.zip` and click **Install Now**.
-4. Activate the plugin.
-5. Open **Settings → BlueWorx** to confirm it is active.
+1. In WordPress, go to **Plugins → Add New → Upload Plugin**.
+2. Upload `dist/blueworx-enhancements.zip` and click **Install Now**.
+3. Activate the plugin.
+4. Open **Settings → BlueWorx** to confirm it is active.
+
+## Option 2: Direct file download
+
+You can also download `blueworx-enhancements.php` directly from the repository and package it manually:
+
+1. Create a folder named `blueworx-enhancements`.
+2. Put `blueworx-enhancements.php` in that folder.
+3. Zip the folder.
+4. In WordPress go to **Plugins → Add New → Upload Plugin**.
+5. Upload the zip and activate.
 
 ## What it does
 
