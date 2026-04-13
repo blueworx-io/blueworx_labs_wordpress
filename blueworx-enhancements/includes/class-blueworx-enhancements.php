@@ -39,7 +39,6 @@ final class BlueWorx_Enhancements {
 	 */
 	private function __construct() {
 		$this->hooks();
-		$this->register_update_checker();
 	}
 
 	/**
@@ -47,29 +46,6 @@ final class BlueWorx_Enhancements {
 	 */
 	private function hooks() {
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
-	}
-
-	/**
-	 * Configure GitHub update checker when dependency is present.
-	 *
-	 * @return void
-	 */
-	private function register_update_checker() {
-		if ( ! class_exists( '\YahnisElsts\PluginUpdateChecker\v5\PucFactory' ) ) {
-			return;
-		}
-
-		$update_checker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-			BLUEWORX_ENHANCEMENTS_GITHUB_REPOSITORY,
-			BLUEWORX_ENHANCEMENTS_FILE,
-			'blueworx-enhancements'
-		);
-
-		$update_checker->setBranch( BLUEWORX_ENHANCEMENTS_GITHUB_BRANCH );
-
-		if ( defined( 'BLUEWORX_ENHANCEMENTS_GITHUB_TOKEN' ) && BLUEWORX_ENHANCEMENTS_GITHUB_TOKEN ) {
-			$update_checker->setAuthentication( BLUEWORX_ENHANCEMENTS_GITHUB_TOKEN );
-		}
 	}
 
 	/**

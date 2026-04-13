@@ -22,13 +22,6 @@ define( 'BLUEWORX_ENHANCEMENTS_VERSION', '0.1.0' );
 define( 'BLUEWORX_ENHANCEMENTS_FILE', __FILE__ );
 define( 'BLUEWORX_ENHANCEMENTS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BLUEWORX_ENHANCEMENTS_URL', plugin_dir_url( __FILE__ ) );
-define( 'BLUEWORX_ENHANCEMENTS_GITHUB_REPOSITORY', 'https://github.com/babybluedigital/blueworx_enhancements' );
-define( 'BLUEWORX_ENHANCEMENTS_GITHUB_BRANCH', 'Main' );
-
-$blueworx_autoload_path = BLUEWORX_ENHANCEMENTS_PATH . 'vendor/autoload.php';
-if ( file_exists( $blueworx_autoload_path ) ) {
-	require_once $blueworx_autoload_path;
-}
 
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/class-blueworx-enhancements.php';
 
