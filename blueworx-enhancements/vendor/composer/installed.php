@@ -3,7 +3,7 @@
         'name' => 'blueworx/blueworx-enhancements',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '356cbf435035965229cee527140746228d01462e',
+        'reference' => '234291668e0454ebb32cd23da8c5722ddff1026c',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'blueworx/blueworx-enhancements' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '356cbf435035965229cee527140746228d01462e',
+            'reference' => '234291668e0454ebb32cd23da8c5722ddff1026c',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

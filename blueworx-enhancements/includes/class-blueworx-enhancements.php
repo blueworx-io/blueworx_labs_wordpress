@@ -39,18 +39,7 @@ final class BlueWorx_Enhancements {
 	 */
 	private function __construct() {
 		$this->hooks();
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
 		$this->register_update_checker();
->>>>>>> theirs
-=======
-		$this->register_update_checker();
->>>>>>> theirs
-=======
-		$this->register_update_checker();
->>>>>>> theirs
 	}
 
 	/**
@@ -61,20 +50,12 @@ final class BlueWorx_Enhancements {
 	}
 
 	/**
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
 	 * Configure GitHub update checker when dependency is present.
 	 *
 	 * @return void
 	 */
 	private function register_update_checker() {
-		if ( ! class_exists( '\YahnisElsts\PluginUpdateChecker\v5\PucFactory' ) ) {
+		if ( ! class_exists( '\\YahnisElsts\\PluginUpdateChecker\\v5\\PucFactory' ) ) {
 			return;
 		}
 
@@ -92,13 +73,6 @@ final class BlueWorx_Enhancements {
 	}
 
 	/**
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
 	 * Load translations.
 	 */
 	public function load_textdomain() {
