@@ -41,6 +41,10 @@ final class BlueWorx_Enhancements {
 		$this->hooks();
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+=======
+		$this->register_update_checker();
+>>>>>>> theirs
 =======
 		$this->register_update_checker();
 >>>>>>> theirs
@@ -59,7 +63,10 @@ final class BlueWorx_Enhancements {
 	/**
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
 =======
+=======
+>>>>>>> theirs
 =======
 >>>>>>> theirs
 	 * Configure GitHub update checker when dependency is present.
@@ -86,6 +93,9 @@ final class BlueWorx_Enhancements {
 
 	/**
 <<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs

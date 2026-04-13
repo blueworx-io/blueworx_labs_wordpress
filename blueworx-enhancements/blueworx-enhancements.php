@@ -24,17 +24,25 @@ define( 'BLUEWORX_ENHANCEMENTS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BLUEWORX_ENHANCEMENTS_URL', plugin_dir_url( __FILE__ ) );
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
 =======
 =======
 >>>>>>> theirs
 define( 'BLUEWORX_ENHANCEMENTS_GITHUB_REPOSITORY', 'https://github.com/babybluedigital/blueworx_enhancements' );
 define( 'BLUEWORX_ENHANCEMENTS_GITHUB_BRANCH', 'Main' );
+=======
+define( 'BLUEWORX_ENHANCEMENTS_GITHUB_REPOSITORY', 'https://github.com/babybluedigital/blueworx_enhancements' );
+define( 'BLUEWORX_ENHANCEMENTS_GITHUB_BRANCH', 'main' );
+>>>>>>> theirs
 
 $blueworx_autoload_path = BLUEWORX_ENHANCEMENTS_PATH . 'vendor/autoload.php';
 if ( file_exists( $blueworx_autoload_path ) ) {
 	require_once $blueworx_autoload_path;
 }
 <<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs

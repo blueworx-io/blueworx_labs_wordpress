@@ -18,9 +18,12 @@ BlueWorx Enhancements is a baseline WordPress plugin scaffold used to add projec
 
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
 1. Upload the `blueworx-enhancements` folder to `/wp-content/plugins/`.
 2. Activate the plugin through the `Plugins` screen in WordPress.
 =======
+=======
+>>>>>>> theirs
 =======
 >>>>>>> theirs
 1. Run `composer install` in the plugin directory to install dependencies.
@@ -33,6 +36,9 @@ BlueWorx Enhancements is a baseline WordPress plugin scaffold used to add projec
 2. Keep `BLUEWORX_ENHANCEMENTS_GITHUB_BRANCH` aligned with your release branch.
 3. For private repositories, set `BLUEWORX_ENHANCEMENTS_GITHUB_TOKEN` in `wp-config.php`.
 <<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs
@@ -43,6 +49,10 @@ BlueWorx Enhancements is a baseline WordPress plugin scaffold used to add projec
 * Initial plugin scaffold.
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+=======
+* Added GitHub update-checker integration.
+>>>>>>> theirs
 =======
 * Added GitHub update-checker integration.
 >>>>>>> theirs
