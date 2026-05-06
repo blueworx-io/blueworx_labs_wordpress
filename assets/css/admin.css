@@ -1,0 +1,13 @@
+.blueworx-readonly-url {
+	background: #f0f0f1;
+	color: #3c434a;
+	cursor: default;
+}
+
+.user-syntax-highlighting-wrap,
+.user-admin-color-wrap,
+.user-comment-shortcuts-wrap,
+.show-admin-bar,
+.user-language-wrap {
+	display: none !important;
+}
