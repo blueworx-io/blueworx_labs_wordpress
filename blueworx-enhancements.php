@@ -145,20 +145,7 @@ function blueworx_intercept_requests() {
 	);
 
 	if ( $is_login_php ) {
-		$action  = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$allowed = array( 'logout', 'lostpassword', 'rp', 'resetpass', 'confirmaction', 'postpass' );
-
-		// Allow form POSTs that originated from the custom login page.
-		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] ) {
-			$referer = isset( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
-			if ( false !== strpos( $referer, BLUEWORX_CUSTOM_LOGIN_SLUG ) ) {
-				return;
-			}
-		}
-
-		if ( ! in_array( $action, $allowed, true ) ) {
-			blueworx_redirect_home();
-		}
+		blueworx_redirect_home();
 	}
 
 	// ── 2c. Block unauthenticated access to /wp-admin ───────────────────────
@@ -185,7 +172,7 @@ function blueworx_custom_login_url( $login_url, $redirect, $force_reauth ) {
 	$custom = home_url( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG . '/' );
 
 	if ( $redirect ) {
-		$custom = add_query_arg( 'redirect_to', rawurlencode( $redirect ), $custom );
+		$custom = add_query_arg( 'redirect_to', $redirect, $custom );
 	}
 	if ( $force_reauth ) {
 		$custom = add_query_arg( 'reauth', '1', $custom );
@@ -194,6 +181,35 @@ function blueworx_custom_login_url( $login_url, $redirect, $force_reauth ) {
 	return $custom;
 }
 add_filter( 'login_url', 'blueworx_custom_login_url', 10, 3 );
+
+/**
+ * Replaces generated wp-login.php URLs with the custom login slug.
+ *
+ * This keeps login, logout, password reset, and form POST actions on /admin_login/.
+ *
+ * @param string $url  The generated URL.
+ * @param string $path The requested path.
+ * @return string The filtered URL.
+ */
+function blueworx_replace_generated_login_url( $url, $path ) {
+	$url  = (string) $url;
+	$path = (string) $path;
+
+	if ( false === strpos( $path, 'wp-login.php' ) && false === strpos( $url, 'wp-login.php' ) ) {
+		return $url;
+	}
+
+	$query  = wp_parse_url( $url, PHP_URL_QUERY );
+	$custom = home_url( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG . '/' );
+
+	if ( $query ) {
+		$custom .= '?' . $query;
+	}
+
+	return $custom;
+}
+add_filter( 'site_url', 'blueworx_replace_generated_login_url', 10, 2 );
+add_filter( 'network_site_url', 'blueworx_replace_generated_login_url', 10, 2 );
 
 // ============================================================================
 // 4. SECONDARY GUARD — template_redirect catches any wp-login.php requests
@@ -210,20 +226,6 @@ function blueworx_template_redirect_guard() {
 
 	if ( 'wp-login.php' !== $pagenow ) {
 		return;
-	}
-
-	$action  = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-	$allowed = array( 'logout', 'lostpassword', 'rp', 'resetpass', 'confirmaction', 'postpass' );
-
-	if ( in_array( $action, $allowed, true ) ) {
-		return;
-	}
-
-	if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] ) {
-		$referer = isset( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
-		if ( false !== strpos( $referer, BLUEWORX_CUSTOM_LOGIN_SLUG ) ) {
-			return;
-		}
 	}
 
 	blueworx_redirect_home();
