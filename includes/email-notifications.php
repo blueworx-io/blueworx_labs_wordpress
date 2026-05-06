@@ -32,18 +32,6 @@ function blueworx_disable_theme_update_emails( $value ) {
 }
 add_filter( 'auto_theme_update_send_email', 'blueworx_disable_theme_update_emails' );
 
-/**
- * Suppresses the new user registration notification email sent to the admin.
- *
- * @param string $to      The recipient email address.
- * @param int    $user_id The new user ID.
- * @param string $notify  Who to notify: 'admin', 'user', or 'both'.
- * @return void
- */
-function blueworx_disable_new_user_notification( $to, $user_id, $notify ) {
-	// Intentionally suppressed.
-}
-
 remove_action( 'register_new_user', 'wp_send_new_user_notifications' );
 remove_action( 'edit_user_created_user', 'wp_send_new_user_notifications' );
 add_action( 'register_new_user', 'blueworx_suppress_new_user_admin_email' );

@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function blueworx_enqueue_admin_assets( $hook_suffix ) {
 	$allowed_screens = array(
 		'settings_page_blueworx-enhancements',
+		'settings_page_blueworx-edit-menu',
 		'profile.php',
 		'user-edit.php',
 	);
@@ -32,6 +33,18 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		BLUEWORX_ENHANCEMENTS_URL . 'assets/css/admin.css',
 		array(),
 		BLUEWORX_ENHANCEMENTS_VERSION
+	);
+
+	if ( 'settings_page_blueworx-edit-menu' !== $hook_suffix ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'blueworx-enhancements-admin-menu-order',
+		BLUEWORX_ENHANCEMENTS_URL . 'assets/js/admin-menu-order.js',
+		array( 'jquery', 'jquery-ui-sortable' ),
+		BLUEWORX_ENHANCEMENTS_VERSION,
+		true
 	);
 }
 add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_assets' );

@@ -43,8 +43,8 @@ function blueworx_handle_manual_cache_refresh() {
 	}
 
 	check_admin_referer( 'blueworx_clear_cache_now' );
-	blueworx_refresh_full_cache();
-	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested.', 'blueworx-enhancements' ), 30 );
+	blueworx_refresh_manual_cache();
+	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Breeze full-cache clearing is used when available; otherwise the homepage and WordPress object cache are refreshed.', 'blueworx-enhancements' ), 30 );
 	wp_safe_redirect( admin_url( 'options-general.php?page=blueworx-enhancements' ) );
 	exit;
 }
@@ -130,11 +130,11 @@ function blueworx_refresh_cache_for_post( $post_id ) {
 }
 
 /**
- * Runs a full cache refresh for manual admin use.
+ * Runs the best available manual cache refresh for admin use.
  *
  * @return void
  */
-function blueworx_refresh_full_cache() {
+function blueworx_refresh_manual_cache() {
 	blueworx_refresh_elementor_cache();
 	wp_cache_flush();
 

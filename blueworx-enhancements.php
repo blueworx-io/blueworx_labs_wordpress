@@ -39,6 +39,7 @@ if ( ! defined( 'BLUEWORX_CUSTOM_LOGIN_SLUG' ) ) {
 
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/helpers.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/admin-assets.php';
+require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/admin-menu-order.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/login-security.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/admin-settings.php';

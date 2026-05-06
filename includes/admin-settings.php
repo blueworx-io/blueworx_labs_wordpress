@@ -23,8 +23,39 @@ function blueworx_register_settings_page() {
 		'blueworx-enhancements',
 		'blueworx_render_settings_page'
 	);
+
+	add_options_page(
+		esc_html__( 'Edit Menu', 'blueworx-enhancements' ),
+		esc_html__( 'Edit Menu', 'blueworx-enhancements' ),
+		'manage_options',
+		'blueworx-edit-menu',
+		'blueworx_render_edit_menu_page'
+	);
 }
 add_action( 'admin_menu', 'blueworx_register_settings_page' );
+
+/**
+ * Saves the admin menu order from Settings > Edit Menu.
+ *
+ * @return void
+ */
+function blueworx_save_edit_menu_page() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-enhancements' ) );
+	}
+
+	check_admin_referer( 'blueworx_save_admin_menu_order' );
+
+	$raw_order = isset( $_POST['blueworx_admin_menu_order'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_order'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$order     = array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_order ) ) ) );
+
+	update_option( 'blueworx_admin_menu_order', $order );
+	set_transient( 'blueworx_admin_menu_order_notice', __( 'Menu order saved.', 'blueworx-enhancements' ), 30 );
+
+	wp_safe_redirect( admin_url( 'options-general.php?page=blueworx-edit-menu' ) );
+	exit;
+}
+add_action( 'admin_post_blueworx_save_admin_menu_order', 'blueworx_save_edit_menu_page' );
 
 /**
  * Renders the BlueWorx settings page content.
@@ -112,11 +143,71 @@ function blueworx_render_settings_page() {
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="blueworx_clear_cache_now" />
 						<?php wp_nonce_field( 'blueworx_clear_cache_now' ); ?>
-						<?php submit_button( esc_html__( 'Clear Cache Now', 'blueworx-enhancements' ), 'secondary', 'submit', false ); ?>
+						<?php submit_button( esc_html__( 'Refresh Cache Now', 'blueworx-enhancements' ), 'secondary', 'submit', false ); ?>
 					</form>
 				</td>
 			</tr>
 		</table>
+	</div>
+	<?php
+}
+
+/**
+ * Renders the Edit Menu settings page.
+ *
+ * @return void
+ */
+function blueworx_render_edit_menu_page() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-enhancements' ) );
+	}
+
+	$menu_items  = blueworx_get_editable_admin_menu_items();
+	$saved_order = blueworx_get_saved_admin_menu_order();
+	$notice      = get_transient( 'blueworx_admin_menu_order_notice' );
+	$ordered     = array();
+
+	if ( $notice ) {
+		delete_transient( 'blueworx_admin_menu_order_notice' );
+	}
+
+	foreach ( $saved_order as $slug ) {
+		if ( isset( $menu_items[ $slug ] ) ) {
+			$ordered[ $slug ] = $menu_items[ $slug ];
+		}
+	}
+
+	foreach ( $menu_items as $slug => $label ) {
+		if ( ! isset( $ordered[ $slug ] ) ) {
+			$ordered[ $slug ] = $label;
+		}
+	}
+	?>
+	<div class="wrap">
+		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+		<?php if ( $notice ) : ?>
+			<div class="notice notice-success is-dismissible">
+				<p><?php echo esc_html( $notice ); ?></p>
+			</div>
+		<?php endif; ?>
+		<p><?php esc_html_e( 'Drag the menu items into the order you want, then save.', 'blueworx-enhancements' ); ?></p>
+
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="blueworx_save_admin_menu_order" />
+			<?php wp_nonce_field( 'blueworx_save_admin_menu_order' ); ?>
+
+			<ul class="blueworx-menu-order-list">
+				<?php foreach ( $ordered as $slug => $label ) : ?>
+					<li class="blueworx-menu-order-item">
+						<span class="blueworx-menu-order-handle" aria-hidden="true">::</span>
+						<span class="blueworx-menu-order-label"><?php echo esc_html( $label ); ?></span>
+						<input type="hidden" name="blueworx_admin_menu_order[]" value="<?php echo esc_attr( $slug ); ?>" />
+					</li>
+				<?php endforeach; ?>
+			</ul>
+
+			<?php submit_button( esc_html__( 'Save Menu Order', 'blueworx-enhancements' ) ); ?>
+		</form>
 	</div>
 	<?php
 }

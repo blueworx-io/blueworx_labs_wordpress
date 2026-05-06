@@ -11,3 +11,36 @@
 .user-language-wrap {
 	display: none !important;
 }
+
+.blueworx-menu-order-list {
+	max-width: 420px;
+	margin: 18px 0;
+}
+
+.blueworx-menu-order-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 8px;
+	padding: 10px 12px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	cursor: move;
+}
+
+.blueworx-menu-order-handle {
+	color: #646970;
+	font-weight: 700;
+	letter-spacing: 1px;
+}
+
+.blueworx-menu-order-label {
+	font-weight: 600;
+}
+
+.blueworx-menu-order-placeholder {
+	height: 40px;
+	margin: 0 0 8px;
+	border: 1px dashed #2271b1;
+	background: #f0f6fc;
+}
