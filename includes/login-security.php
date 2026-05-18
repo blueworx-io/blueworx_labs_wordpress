@@ -29,19 +29,12 @@ function blueworx_intercept_requests() {
 	$path        = strtolower( wp_parse_url( sanitize_text_field( $request_uri ), PHP_URL_PATH ) );
 	$path        = '/' . trim( $path, '/' );
 
-	if ( $path === '/' . BLUEWORX_CUSTOM_LOGIN_SLUG ) {
-		$action          = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$allowed_actions = array( 'logout', 'lostpassword', 'rp', 'resetpass', 'confirmaction', 'postpass' );
-		$is_post         = ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] );
-		$is_allowed      = $is_post || in_array( $action, $allowed_actions, true ) || '' === $action;
-
-		if ( $is_allowed ) {
-			$_SERVER['SCRIPT_FILENAME'] = ABSPATH . 'wp-login.php';
-			$_SERVER['PHP_SELF']        = '/wp-login.php';
-			$_SERVER['SCRIPT_NAME']     = '/wp-login.php';
-			require_once ABSPATH . 'wp-login.php'; // phpcs:ignore WPThemeReview.CoreFunctionality.FileInclude.FileIncludeFound
-			exit;
-		}
+	if ( blueworx_is_custom_login_request_path( $path ) ) {
+		$_SERVER['SCRIPT_FILENAME'] = ABSPATH . 'wp-login.php';
+		$_SERVER['PHP_SELF']        = '/wp-login.php';
+		$_SERVER['SCRIPT_NAME']     = '/wp-login.php';
+		require_once ABSPATH . 'wp-login.php'; // phpcs:ignore WPThemeReview.CoreFunctionality.FileInclude.FileIncludeFound
+		exit;
 	}
 
 	$script_name  = isset( $_SERVER['SCRIPT_NAME'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SCRIPT_NAME'] ) ) : '';
@@ -59,6 +52,34 @@ function blueworx_intercept_requests() {
 	}
 }
 add_action( 'init', 'blueworx_intercept_requests', 1 );
+
+/**
+ * Checks whether the current path is one of the plugin's custom login paths.
+ *
+ * @param string $path Normalized request path.
+ * @return bool True when this is the custom login URL.
+ */
+function blueworx_is_custom_login_request_path( $path ) {
+	$path      = '/' . trim( strtolower( (string) $path ), '/' );
+	$home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+	$home_path = '/' . trim( strtolower( (string) $home_path ), '/' );
+	$bases     = array( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG );
+
+	if ( '/' !== $home_path ) {
+		$bases[] = $home_path . '/' . BLUEWORX_CUSTOM_LOGIN_SLUG;
+		$bases[] = $home_path . '/index.php/' . BLUEWORX_CUSTOM_LOGIN_SLUG;
+	}
+
+	foreach ( array_unique( $bases ) as $base ) {
+		$base = '/' . trim( $base, '/' );
+
+		if ( $path === $base || $path === $base . '/wp-login.php' ) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /**
  * Replaces the default wp-login.php login URL with the custom slug URL.

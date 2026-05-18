@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Hardens WordPress security, disables comments, suppresses admin email notifications, cleans up the user profile screen, and refreshes Cloudways cache after content changes.
- * Version:           1.4.2
+ * Version:           1.4.26
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_ENHANCEMENTS_VERSION' ) ) {
-	define( 'BLUEWORX_ENHANCEMENTS_VERSION', '1.4.2' );
+	define( 'BLUEWORX_ENHANCEMENTS_VERSION', '1.4.26' );
 }
 
 if ( ! defined( 'BLUEWORX_ENHANCEMENTS_PATH' ) ) {
@@ -39,9 +39,12 @@ if ( ! defined( 'BLUEWORX_CUSTOM_LOGIN_SLUG' ) ) {
 
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/helpers.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/admin-assets.php';
+require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/admin-menu-order.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/login-security.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/admin-settings.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/disable-comments.php';
 require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/email-notifications.php';
+require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/page-excerpts.php';
+require_once BLUEWORX_ENHANCEMENTS_PATH . 'includes/profile-cleanup.php';
