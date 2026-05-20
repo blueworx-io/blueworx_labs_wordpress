@@ -181,6 +181,81 @@ function blueworx_save_application_passwords_setting() {
 add_action( 'admin_post_blueworx_save_application_passwords_setting', 'blueworx_save_application_passwords_setting' );
 
 /**
+ * Gets all roles that can be selected for site protection.
+ *
+ * @return array Role labels keyed by role slug.
+ */
+function blueworx_get_site_protection_role_choices() {
+	$choices  = array();
+	$wp_roles = wp_roles();
+
+	foreach ( $wp_roles->roles as $role_slug => $role ) {
+		$choices[ $role_slug ] = translate_user_role( $role['name'] );
+	}
+
+	natcasesort( $choices );
+
+	return $choices;
+}
+
+/**
+ * Gets a saved site protection toggle.
+ *
+ * @param string $area Protected area.
+ * @return bool True when enabled.
+ */
+function blueworx_site_protection_enabled( $area ) {
+	return '1' === get_option( 'blueworx_' . $area . '_protection_enabled', '0' );
+}
+
+/**
+ * Gets saved site protection roles.
+ *
+ * @param string $area Protected area.
+ * @return array Role slugs.
+ */
+function blueworx_get_site_protection_roles( $area ) {
+	$roles   = get_option( 'blueworx_' . $area . '_protection_roles', array() );
+	$choices = blueworx_get_site_protection_role_choices();
+
+	if ( ! is_array( $roles ) ) {
+		return array();
+	}
+
+	return array_values( array_intersect( array_unique( array_map( 'sanitize_key', $roles ) ), array_keys( $choices ) ) );
+}
+
+/**
+ * Saves frontend and backend site protection settings.
+ *
+ * @return void
+ */
+function blueworx_save_site_protection_settings() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-enhancements' ) );
+	}
+
+	check_admin_referer( 'blueworx_save_site_protection_settings' );
+
+	$choices = blueworx_get_site_protection_role_choices();
+
+	foreach ( array( 'frontend', 'backend' ) as $area ) {
+		$enabled = isset( $_POST[ 'blueworx_' . $area . '_protection_enabled' ] ) ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$roles   = isset( $_POST[ 'blueworx_' . $area . '_protection_roles' ] ) ? (array) wp_unslash( $_POST[ 'blueworx_' . $area . '_protection_roles' ] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$roles   = array_values( array_intersect( array_unique( array_map( 'sanitize_key', $roles ) ), array_keys( $choices ) ) );
+
+		update_option( 'blueworx_' . $area . '_protection_enabled', $enabled );
+		update_option( 'blueworx_' . $area . '_protection_roles', $roles, false );
+	}
+
+	set_transient( 'blueworx_enhancements_notice', __( 'Site Protection settings saved.', 'blueworx-enhancements' ), 30 );
+
+	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-enhancements' ) );
+	exit;
+}
+add_action( 'admin_post_blueworx_save_site_protection_settings', 'blueworx_save_site_protection_settings' );
+
+/**
  * Gets the active plugin features shown on the Enhancements page.
  *
  * @return array Feature list.
@@ -216,6 +291,11 @@ function blueworx_get_active_features() {
 			'title'       => __( 'Application Passwords', 'blueworx-enhancements' ),
 			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-enhancements' ),
 			'action'      => 'application_passwords',
+		),
+		array(
+			'title'       => __( 'Site Protection', 'blueworx-enhancements' ),
+			'description' => __( 'Only lets logged-in users with selected roles view the frontend or backend.', 'blueworx-enhancements' ),
+			'action'      => 'site_protection',
 		),
 		array(
 			'title'       => __( 'Automatic cache refresh', 'blueworx-enhancements' ),
@@ -258,6 +338,7 @@ function blueworx_render_enhancements_page() {
 	$custom_login_url = home_url( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG . '/' );
 	$features         = blueworx_get_active_features();
 	$notice           = get_transient( 'blueworx_enhancements_notice' );
+	$role_choices     = blueworx_get_site_protection_role_choices();
 
 	if ( $notice ) {
 		delete_transient( 'blueworx_enhancements_notice' );
@@ -317,6 +398,40 @@ function blueworx_render_enhancements_page() {
 									/>
 									<?php esc_html_e( 'Show for admins', 'blueworx-enhancements' ); ?>
 								</label>
+							</form>
+						<?php elseif ( 'site_protection' === $feature['action'] ) : ?>
+							<form class="blueworx-protection-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+								<input type="hidden" name="action" value="blueworx_save_site_protection_settings" />
+								<?php wp_nonce_field( 'blueworx_save_site_protection_settings' ); ?>
+								<?php foreach ( array( 'frontend' => __( 'Frontend protection', 'blueworx-enhancements' ), 'backend' => __( 'Backend protection', 'blueworx-enhancements' ) ) as $area => $label ) : ?>
+									<?php $selected_roles = blueworx_get_site_protection_roles( $area ); ?>
+									<div class="blueworx-protection-row">
+										<label class="blueworx-protection-toggle">
+											<input
+												type="checkbox"
+												name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_enabled' ); ?>"
+												value="1"
+												<?php checked( blueworx_site_protection_enabled( $area ) ); ?>
+											/>
+											<?php echo esc_html( $label ); ?>
+										</label>
+										<select
+											name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_roles[]' ); ?>"
+											multiple
+											size="4"
+											aria-label="<?php echo esc_attr( $label ); ?>"
+										>
+											<?php foreach ( $role_choices as $role_slug => $role_label ) : ?>
+												<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $selected_roles, true ) ); ?>>
+													<?php echo esc_html( $role_label ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+									</div>
+								<?php endforeach; ?>
+								<button type="submit" class="button button-primary">
+									<?php esc_html_e( 'Save', 'blueworx-enhancements' ); ?>
+								</button>
 							</form>
 						<?php endif; ?>
 					</div>

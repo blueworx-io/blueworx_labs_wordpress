@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Hardens WordPress security, disables comments, suppresses admin email notifications, cleans up the user profile screen, and refreshes Cloudways cache after content changes.
- * Version:           1.4.26
+ * Version:           1.4.27
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_ENHANCEMENTS_VERSION' ) ) {
-	define( 'BLUEWORX_ENHANCEMENTS_VERSION', '1.4.26' );
+	define( 'BLUEWORX_ENHANCEMENTS_VERSION', '1.4.27' );
 }
 
 if ( ! defined( 'BLUEWORX_ENHANCEMENTS_PATH' ) ) {

@@ -85,6 +85,27 @@
 	gap: 8px;
 }
 
+.blueworx-protection-form {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+	text-align: left;
+}
+
+.blueworx-protection-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.blueworx-protection-toggle {
+	font-weight: 600;
+}
+
+.blueworx-protection-row select {
+	min-width: 190px;
+}
+
 .blueworx-export-form {
 	margin: 12px 0 18px;
 }
@@ -319,5 +340,10 @@
 		justify-content: flex-start;
 		margin-top: 12px;
 		text-align: left;
+	}
+
+	.blueworx-protection-form {
+		align-items: flex-start;
+		flex-direction: column;
 	}
 }

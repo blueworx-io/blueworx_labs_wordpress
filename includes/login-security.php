@@ -47,11 +47,85 @@ function blueworx_intercept_requests() {
 		blueworx_redirect_home();
 	}
 
-	if ( 0 === strpos( $path, '/wp-admin' ) && ! is_user_logged_in() ) {
-		blueworx_redirect_home();
+	if ( 0 === strpos( $path, '/wp-admin' ) ) {
+		if ( ! is_user_logged_in() ) {
+			if ( blueworx_site_protection_is_enabled( 'backend' ) ) {
+				blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-enhancements' ) );
+			}
+
+			blueworx_redirect_home();
+		}
+
+		if ( blueworx_site_protection_is_enabled( 'backend' ) && ! blueworx_current_user_has_site_protection_role( 'backend' ) ) {
+			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-enhancements' ) );
+		}
+
+		return;
+	}
+
+	if ( blueworx_site_protection_is_enabled( 'frontend' ) ) {
+		if ( ! is_user_logged_in() ) {
+			blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-enhancements' ) );
+		}
+
+		if ( ! blueworx_current_user_has_site_protection_role( 'frontend' ) ) {
+			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-enhancements' ) );
+		}
 	}
 }
 add_action( 'init', 'blueworx_intercept_requests', 1 );
+
+/**
+ * Checks whether site protection is enabled for an area.
+ *
+ * @param string $area Protected area.
+ * @return bool True when enabled.
+ */
+function blueworx_site_protection_is_enabled( $area ) {
+	return '1' === get_option( 'blueworx_' . $area . '_protection_enabled', '0' );
+}
+
+/**
+ * Gets selected roles for a protected area.
+ *
+ * @param string $area Protected area.
+ * @return array Role slugs.
+ */
+function blueworx_get_site_protection_allowed_roles( $area ) {
+	$roles = get_option( 'blueworx_' . $area . '_protection_roles', array() );
+
+	if ( ! is_array( $roles ) ) {
+		return array();
+	}
+
+	return array_values( array_unique( array_filter( array_map( 'sanitize_key', $roles ) ) ) );
+}
+
+/**
+ * Checks whether the current user has one of the selected roles.
+ *
+ * @param string $area Protected area.
+ * @return bool True when allowed.
+ */
+function blueworx_current_user_has_site_protection_role( $area ) {
+	$user = wp_get_current_user();
+
+	if ( ! $user || empty( $user->roles ) ) {
+		return false;
+	}
+
+	return (bool) array_intersect( blueworx_get_site_protection_allowed_roles( $area ), (array) $user->roles );
+}
+
+/**
+ * Shows a plain browser message for blocked users.
+ *
+ * @param string $message Message to show.
+ * @return void
+ */
+function blueworx_site_protection_die( $message ) {
+	wp_die( esc_html( $message ), esc_html__( 'Site Protection', 'blueworx-enhancements' ), array( 'response' => 403 ) );
+}
 
 /**
  * Checks whether the current path is one of the plugin's custom login paths.

@@ -4,7 +4,7 @@ Tags:              login, security, custom login url, hardening, cache
 Requires at least: 5.0
 Tested up to:      6.9
 Requires PHP:      7.4
-Stable tag:        1.4.26
+Stable tag:        1.4.27
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ The plugin is split into focused files for easier updates:
 * `assets/css/admin.css` contains admin styling.
 
 == Changelog ==
+
+= 1.4.27 =
+* Added: Site Protection settings for frontend and backend role-based access.
 
 = 1.4.26 =
 * Changed: Role editor sections now start collapsed.
