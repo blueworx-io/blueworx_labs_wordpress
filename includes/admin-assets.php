@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin styles and asset loading.
+ * Admin asset loading.
  *
  * @package BlueWorxEnhancements
  */
@@ -27,7 +27,7 @@ function blueworx_get_admin_asset_version( $relative_path ) {
 }
 
 /**
- * Loads admin CSS only on screens touched by this plugin.
+ * Loads admin scripts only on screens touched by this plugin.
  *
  * @param string $hook_suffix Current admin screen hook.
  * @return void
@@ -46,21 +46,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		return;
 	}
 
-	wp_enqueue_style(
-		'blueworx-enhancements-admin',
-		BLUEWORX_ENHANCEMENTS_URL . 'assets/css/admin.css',
-		array(),
-		blueworx_get_admin_asset_version( 'assets/css/admin.css' )
-	);
-
 	if ( in_array( $hook_suffix, array( 'profile.php', 'user-edit.php' ), true ) ) {
-		if ( blueworx_should_hide_application_passwords_section() ) {
-			wp_add_inline_style(
-				'blueworx-enhancements-admin',
-				'.application-passwords{display:none!important;}'
-			);
-		}
-
 		wp_enqueue_script(
 			'blueworx-enhancements-profile-cleanup',
 			BLUEWORX_ENHANCEMENTS_URL . 'assets/js/profile-cleanup.js',
@@ -68,6 +54,14 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 			blueworx_get_admin_asset_version( 'assets/js/profile-cleanup.js' ),
 			true
 		);
+
+		if ( blueworx_should_hide_application_passwords_section() ) {
+			wp_add_inline_script(
+				'blueworx-enhancements-profile-cleanup',
+				'window.blueworxHideApplicationPasswords = true;',
+				'before'
+			);
+		}
 	}
 
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {

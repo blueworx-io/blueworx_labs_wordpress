@@ -37,7 +37,7 @@
 			forcePlaceholderSize: true,
 			handle: '.blueworx-menu-order-handle',
 			items: '> .blueworx-menu-order-item',
-			placeholder: 'blueworx-menu-order-placeholder',
+			placeholder: 'ui-state-highlight',
 			tolerance: 'pointer',
 			update: refreshInputs,
 			receive: refreshInputs

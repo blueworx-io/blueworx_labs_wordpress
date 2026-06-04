@@ -2,6 +2,7 @@
 	$( function () {
 		$( '.blueworx-role-card' ).each( function () {
 			var $card = $( this );
+			var $body = $card.find( '.blueworx-role-card-body' ).first();
 			var role = $card.data( 'blueworx-role' );
 
 			$card.find( '.blueworx-role-toggle' ).on( 'click', function () {
@@ -9,7 +10,8 @@
 				var expanded = 'true' === $button.attr( 'aria-expanded' );
 
 				$button.attr( 'aria-expanded', expanded ? 'false' : 'true' );
-				$card.toggleClass( 'blueworx-role-card-collapsed', expanded );
+				$card.toggleClass( 'closed', expanded );
+				$body.prop( 'hidden', expanded );
 			} );
 
 			$card.find( '.blueworx-role-panel' ).each( function ( panelIndex ) {
@@ -138,7 +140,7 @@
 						forcePlaceholderSize: true,
 						handle: '.blueworx-role-group-handle',
 						items: '> .blueworx-role-group',
-						placeholder: 'blueworx-menu-order-placeholder',
+						placeholder: 'ui-state-highlight',
 						tolerance: 'pointer',
 						start: prepareDropTargets,
 						stop: refreshInputs,
@@ -159,7 +161,7 @@
 							forcePlaceholderSize: true,
 							handle: '.blueworx-role-item-handle',
 							items: '> .blueworx-role-item',
-							placeholder: 'blueworx-menu-order-placeholder',
+							placeholder: 'ui-state-highlight',
 							tolerance: 'pointer',
 							start: prepareDropTargets,
 							stop: refreshInputs,

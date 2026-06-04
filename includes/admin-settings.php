@@ -353,91 +353,104 @@ function blueworx_render_enhancements_page() {
 		<?php endif; ?>
 		<p><?php esc_html_e( 'This plugin is active and managing the features listed below.', 'blueworx-enhancements' ); ?></p>
 
-		<div class="blueworx-feature-list">
-			<?php foreach ( $features as $feature ) : ?>
-				<div class="blueworx-feature-card">
-					<div>
-						<h2><?php echo esc_html( $feature['title'] ); ?></h2>
-						<p><?php echo esc_html( $feature['description'] ); ?></p>
-					</div>
-					<div class="blueworx-feature-action">
-						<?php if ( 'login_url' === $feature['action'] ) : ?>
-							<input
-								type="text"
-								value="<?php echo esc_url( $custom_login_url ); ?>"
-								readonly
-								disabled
-								class="regular-text blueworx-readonly-url"
-							/>
-							<a class="button" href="<?php echo esc_url( $custom_login_url ); ?>" target="_blank" rel="noopener noreferrer">
-								<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
-							</a>
-						<?php elseif ( 'cache' === $feature['action'] ) : ?>
-							<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-cache' ) ); ?>">
-								<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
-							</a>
-						<?php elseif ( 'edit_menu' === $feature['action'] ) : ?>
-							<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-menu' ) ); ?>">
-								<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
-							</a>
-						<?php elseif ( 'edit_role' === $feature['action'] ) : ?>
-							<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-role' ) ); ?>">
-								<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
-							</a>
-						<?php elseif ( 'application_passwords' === $feature['action'] ) : ?>
-							<form class="blueworx-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-								<input type="hidden" name="action" value="blueworx_save_application_passwords_setting" />
-								<?php wp_nonce_field( 'blueworx_save_application_passwords_setting' ); ?>
-								<label>
-									<input
-										type="checkbox"
-										name="blueworx_show_application_passwords"
-										value="1"
-										<?php checked( blueworx_show_application_passwords_for_admins() ); ?>
-										onchange="this.form.submit();"
-									/>
-									<?php esc_html_e( 'Show for admins', 'blueworx-enhancements' ); ?>
-								</label>
-							</form>
-						<?php elseif ( 'site_protection' === $feature['action'] ) : ?>
-							<form class="blueworx-protection-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-								<input type="hidden" name="action" value="blueworx_save_site_protection_settings" />
-								<?php wp_nonce_field( 'blueworx_save_site_protection_settings' ); ?>
-								<?php foreach ( array( 'frontend' => __( 'Frontend protection', 'blueworx-enhancements' ), 'backend' => __( 'Backend protection', 'blueworx-enhancements' ) ) as $area => $label ) : ?>
-									<?php $selected_roles = blueworx_get_site_protection_roles( $area ); ?>
-									<div class="blueworx-protection-row">
-										<label class="blueworx-protection-toggle">
-											<input
-												type="checkbox"
-												name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_enabled' ); ?>"
-												value="1"
-												<?php checked( blueworx_site_protection_enabled( $area ) ); ?>
-											/>
-											<?php echo esc_html( $label ); ?>
-										</label>
-										<select
-											name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_roles[]' ); ?>"
-											multiple
-											size="4"
-											aria-label="<?php echo esc_attr( $label ); ?>"
-										>
-											<?php foreach ( $role_choices as $role_slug => $role_label ) : ?>
-												<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $selected_roles, true ) ); ?>>
-													<?php echo esc_html( $role_label ); ?>
-												</option>
-											<?php endforeach; ?>
-										</select>
-									</div>
-								<?php endforeach; ?>
-								<button type="submit" class="button button-primary">
-									<?php esc_html_e( 'Save', 'blueworx-enhancements' ); ?>
-								</button>
-							</form>
-						<?php endif; ?>
-					</div>
-				</div>
-			<?php endforeach; ?>
-		</div>
+		<table class="widefat striped">
+			<thead>
+				<tr>
+					<th scope="col"><?php esc_html_e( 'Feature', 'blueworx-enhancements' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Details', 'blueworx-enhancements' ); ?></th>
+					<th scope="col"><?php esc_html_e( 'Settings', 'blueworx-enhancements' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $features as $feature ) : ?>
+					<tr>
+						<th scope="row"><?php echo esc_html( $feature['title'] ); ?></th>
+						<td><?php echo esc_html( $feature['description'] ); ?></td>
+						<td>
+							<?php if ( 'login_url' === $feature['action'] ) : ?>
+								<input
+									type="text"
+									value="<?php echo esc_url( $custom_login_url ); ?>"
+									readonly
+									disabled
+									class="regular-text"
+								/>
+								<a class="button" href="<?php echo esc_url( $custom_login_url ); ?>" target="_blank" rel="noopener noreferrer">
+									<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
+								</a>
+							<?php elseif ( 'cache' === $feature['action'] ) : ?>
+								<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-cache' ) ); ?>">
+									<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
+								</a>
+							<?php elseif ( 'edit_menu' === $feature['action'] ) : ?>
+								<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-menu' ) ); ?>">
+									<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
+								</a>
+							<?php elseif ( 'edit_role' === $feature['action'] ) : ?>
+								<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-role' ) ); ?>">
+									<?php esc_html_e( 'Open', 'blueworx-enhancements' ); ?>
+								</a>
+							<?php elseif ( 'application_passwords' === $feature['action'] ) : ?>
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+									<input type="hidden" name="action" value="blueworx_save_application_passwords_setting" />
+									<?php wp_nonce_field( 'blueworx_save_application_passwords_setting' ); ?>
+									<label>
+										<input
+											type="checkbox"
+											name="blueworx_show_application_passwords"
+											value="1"
+											<?php checked( blueworx_show_application_passwords_for_admins() ); ?>
+											onchange="this.form.submit();"
+										/>
+										<?php esc_html_e( 'Show for admins', 'blueworx-enhancements' ); ?>
+									</label>
+								</form>
+							<?php elseif ( 'site_protection' === $feature['action'] ) : ?>
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+									<input type="hidden" name="action" value="blueworx_save_site_protection_settings" />
+									<?php wp_nonce_field( 'blueworx_save_site_protection_settings' ); ?>
+									<?php foreach ( array( 'frontend' => __( 'Frontend protection', 'blueworx-enhancements' ), 'backend' => __( 'Backend protection', 'blueworx-enhancements' ) ) as $area => $label ) : ?>
+										<?php $selected_roles = blueworx_get_site_protection_roles( $area ); ?>
+										<p>
+											<label>
+												<input
+													type="checkbox"
+													name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_enabled' ); ?>"
+													value="1"
+													<?php checked( blueworx_site_protection_enabled( $area ) ); ?>
+												/>
+												<?php echo esc_html( $label ); ?>
+											</label>
+										</p>
+										<p>
+											<select
+												name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_roles[]' ); ?>"
+												multiple
+												size="4"
+												aria-label="<?php echo esc_attr( $label ); ?>"
+											>
+												<?php foreach ( $role_choices as $role_slug => $role_label ) : ?>
+													<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $selected_roles, true ) ); ?>>
+														<?php echo esc_html( $role_label ); ?>
+													</option>
+												<?php endforeach; ?>
+											</select>
+										</p>
+									<?php endforeach; ?>
+									<p>
+										<button type="submit" class="button button-primary">
+											<?php esc_html_e( 'Save', 'blueworx-enhancements' ); ?>
+										</button>
+									</p>
+								</form>
+							<?php else : ?>
+								&mdash;
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
 	</div>
 	<?php
 }
@@ -471,7 +484,7 @@ function blueworx_render_edit_role_page() {
 			</div>
 		<?php endif; ?>
 		<p><?php esc_html_e( 'Drag one item or a whole group between columns. Backend pages can be Available, Allowed, or View Only.', 'blueworx-enhancements' ); ?></p>
-		<form class="blueworx-export-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="blueworx_export_role_settings" />
 			<?php wp_nonce_field( 'blueworx_export_role_settings' ); ?>
 			<?php submit_button( esc_html__( 'Export Settings', 'blueworx-enhancements' ), 'secondary', 'submit', false ); ?>
@@ -481,7 +494,7 @@ function blueworx_render_edit_role_page() {
 			<input type="hidden" name="action" value="blueworx_save_role_capabilities" />
 			<?php wp_nonce_field( 'blueworx_save_role_capabilities' ); ?>
 
-			<div class="blueworx-role-editor">
+			<div>
 				<?php foreach ( $roles as $role_slug => $role_label ) : ?>
 					<?php blueworx_render_role_editor_card( $role_slug, $role_label, $capabilities, $backend_pages ); ?>
 				<?php endforeach; ?>
@@ -506,12 +519,15 @@ function blueworx_render_role_editor_card( $role_slug, $role_label, $capabilitie
 	$capability_groups = blueworx_get_role_capability_groups_by_state( $role_slug, $capabilities );
 	$page_groups       = blueworx_get_role_backend_page_groups_by_state( $role_slug, $backend_pages );
 	?>
-	<div class="blueworx-role-card blueworx-role-card-collapsed" data-blueworx-role="<?php echo esc_attr( $role_slug ); ?>">
-		<button type="button" class="blueworx-role-toggle" aria-expanded="false">
-			<span><?php echo esc_html( $role_label ); ?></span>
-			<span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span>
-		</button>
-		<div class="blueworx-role-card-body">
+	<div class="postbox closed blueworx-role-card" data-blueworx-role="<?php echo esc_attr( $role_slug ); ?>">
+		<div class="postbox-header">
+			<h2 class="hndle"><?php echo esc_html( $role_label ); ?></h2>
+			<button type="button" class="handlediv blueworx-role-toggle" aria-expanded="false">
+				<span class="screen-reader-text"><?php esc_html_e( 'Toggle panel', 'blueworx-enhancements' ); ?></span>
+				<span class="toggle-indicator" aria-hidden="true"></span>
+			</button>
+		</div>
+		<div class="inside blueworx-role-card-body" hidden>
 		<?php
 		blueworx_render_role_grouped_panel(
 			__( 'Permission Functions', 'blueworx-enhancements' ),
@@ -557,24 +573,32 @@ function blueworx_render_role_editor_card( $role_slug, $role_label, $capabilitie
 function blueworx_render_role_grouped_panel( $title, $description, $role_slug, $panel_type, $states, $groups ) {
 	$all_groups = blueworx_collect_role_editor_groups( $groups );
 	?>
-	<div class="blueworx-role-panel blueworx-role-panel-<?php echo esc_attr( $panel_type ); ?>" data-blueworx-role-panel="<?php echo esc_attr( $panel_type ); ?>">
-		<div class="blueworx-role-panel-header">
-			<h3><?php echo esc_html( $title ); ?></h3>
-			<p><?php echo esc_html( $description ); ?></p>
-		</div>
-		<div class="blueworx-role-columns blueworx-role-columns-<?php echo esc_attr( count( $states ) ); ?>">
-			<?php foreach ( $states as $state => $state_label ) : ?>
-				<div class="blueworx-role-column" data-blueworx-role-state="<?php echo esc_attr( $state ); ?>">
-					<h4><?php echo esc_html( $state_label ); ?></h4>
-					<ul class="blueworx-role-group-list">
-						<?php foreach ( $all_groups as $group_key => $group_label ) : ?>
-							<?php $items = isset( $groups[ $state ][ $group_key ]['items'] ) ? $groups[ $state ][ $group_key ]['items'] : array(); ?>
-							<?php blueworx_render_role_editor_group( $role_slug, $panel_type, $state, $group_key, $group_label, $items ); ?>
-						<?php endforeach; ?>
-					</ul>
-				</div>
-			<?php endforeach; ?>
-		</div>
+	<div class="blueworx-role-panel" data-blueworx-role-panel="<?php echo esc_attr( $panel_type ); ?>">
+		<h3><?php echo esc_html( $title ); ?></h3>
+		<p><?php echo esc_html( $description ); ?></p>
+		<table class="widefat fixed striped">
+			<thead>
+				<tr>
+					<?php foreach ( $states as $state_label ) : ?>
+						<th scope="col"><?php echo esc_html( $state_label ); ?></th>
+					<?php endforeach; ?>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<?php foreach ( $states as $state => $state_label ) : ?>
+						<td class="blueworx-role-column" data-blueworx-role-state="<?php echo esc_attr( $state ); ?>">
+							<ul class="categorychecklist form-no-clear blueworx-role-group-list">
+								<?php foreach ( $all_groups as $group_key => $group_label ) : ?>
+									<?php $items = isset( $groups[ $state ][ $group_key ]['items'] ) ? $groups[ $state ][ $group_key ]['items'] : array(); ?>
+									<?php blueworx_render_role_editor_group( $role_slug, $panel_type, $state, $group_key, $group_label, $items ); ?>
+								<?php endforeach; ?>
+							</ul>
+						</td>
+					<?php endforeach; ?>
+				</tr>
+			</tbody>
+		</table>
 		<?php if ( 'capabilities' === $panel_type ) : ?>
 			<input type="hidden" name="blueworx_role_caps[<?php echo esc_attr( $role_slug ); ?>][]" value="read" />
 		<?php endif; ?>
@@ -616,11 +640,11 @@ function blueworx_collect_role_editor_groups( $groups ) {
 function blueworx_render_role_editor_group( $role_slug, $panel_type, $state, $group_key, $group_label, $items ) {
 	?>
 	<li class="blueworx-role-group" data-blueworx-group="<?php echo esc_attr( $group_key ); ?>" data-blueworx-group-label="<?php echo esc_attr( $group_label ); ?>">
-		<div class="blueworx-role-group-header">
+		<p>
 			<span class="blueworx-role-group-handle" aria-hidden="true">::</span>
-			<span><?php echo esc_html( $group_label ); ?></span>
-		</div>
-		<ul class="blueworx-role-item-list" data-blueworx-group="<?php echo esc_attr( $group_key ); ?>">
+			<strong><?php echo esc_html( $group_label ); ?></strong>
+		</p>
+		<ul class="categorychecklist form-no-clear blueworx-role-item-list" data-blueworx-group="<?php echo esc_attr( $group_key ); ?>">
 			<?php foreach ( $items as $item_key => $item ) : ?>
 				<?php blueworx_render_role_editor_item( $role_slug, $panel_type, $state, $item_key, $item ); ?>
 			<?php endforeach; ?>
@@ -647,10 +671,8 @@ function blueworx_render_role_editor_item( $role_slug, $panel_type, $state, $ite
 		data-blueworx-item-label="<?php echo esc_attr( $item['label'] ); ?>"
 	>
 		<span class="blueworx-role-item-handle" aria-hidden="true">::</span>
-		<span class="blueworx-role-item-label">
-			<?php echo esc_html( $item['label'] ); ?>
-			<span class="blueworx-role-cap-description"><?php echo esc_html( $item['description'] ); ?></span>
-		</span>
+		<?php echo esc_html( $item['label'] ); ?>
+		<p class="description"><?php echo esc_html( $item['description'] ); ?></p>
 		<input type="hidden" class="blueworx-role-item-input" value="<?php echo esc_attr( $item_key ); ?>" />
 	</li>
 	<?php
@@ -778,13 +800,24 @@ function blueworx_render_edit_menu_page() {
 			<input type="hidden" name="action" value="blueworx_save_admin_menu_order" />
 			<?php wp_nonce_field( 'blueworx_save_admin_menu_order' ); ?>
 
-			<div class="blueworx-menu-editor">
-				<?php
-				blueworx_render_menu_editor_section( __( 'Main Menu', 'blueworx-enhancements' ), 'main', $main_items, $locked );
-				blueworx_render_menu_editor_section( __( 'More Menu', 'blueworx-enhancements' ), 'toggle', $toggle_items, $locked );
-				blueworx_render_menu_editor_section( __( 'Hidden', 'blueworx-enhancements' ), 'hidden', $hidden_items, $locked );
-				?>
-			</div>
+			<table class="widefat fixed striped">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e( 'Main Menu', 'blueworx-enhancements' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'More Menu', 'blueworx-enhancements' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Hidden', 'blueworx-enhancements' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<?php
+						blueworx_render_menu_editor_section( 'main', $main_items, $locked );
+						blueworx_render_menu_editor_section( 'toggle', $toggle_items, $locked );
+						blueworx_render_menu_editor_section( 'hidden', $hidden_items, $locked );
+						?>
+					</tr>
+				</tbody>
+			</table>
 
 			<?php submit_button( esc_html__( 'Save Menu Settings', 'blueworx-enhancements' ) ); ?>
 		</form>
@@ -795,22 +828,20 @@ function blueworx_render_edit_menu_page() {
 /**
  * Renders one menu editor section.
  *
- * @param string $title  Section title.
  * @param string $state  Section state.
  * @param array  $items  Menu items.
  * @param array  $locked Locked slugs.
  * @return void
  */
-function blueworx_render_menu_editor_section( $title, $state, $items, $locked ) {
+function blueworx_render_menu_editor_section( $state, $items, $locked ) {
 	?>
-	<div class="blueworx-menu-editor-section">
-		<h2><?php echo esc_html( $title ); ?></h2>
-		<ul class="blueworx-menu-order-list" data-blueworx-menu-section="<?php echo esc_attr( $state ); ?>">
+	<td>
+		<ul class="categorychecklist form-no-clear blueworx-menu-order-list" data-blueworx-menu-section="<?php echo esc_attr( $state ); ?>">
 			<?php foreach ( $items as $slug => $label ) : ?>
 				<?php $is_locked = in_array( $slug, $locked, true ); ?>
 				<li class="blueworx-menu-order-item" data-blueworx-menu-item="<?php echo esc_attr( $slug ); ?>">
 					<span class="blueworx-menu-order-handle" aria-hidden="true">::</span>
-					<span class="blueworx-menu-order-label"><?php echo esc_html( $label ); ?></span>
+					<?php echo esc_html( $label ); ?>
 					<button
 						type="button"
 						class="button-link blueworx-menu-visibility-toggle"
@@ -824,6 +855,6 @@ function blueworx_render_menu_editor_section( $title, $state, $items, $locked ) 
 				</li>
 			<?php endforeach; ?>
 		</ul>
-	</div>
+	</td>
 	<?php
 }
