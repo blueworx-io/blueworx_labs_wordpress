@@ -2,7 +2,7 @@
 /**
  * BlueWorx user roles.
  *
- * @package BlueWorxEnhancements
+ * @package BlueWorxLabs
  */
 
 // Prevent direct file access.
@@ -17,9 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function blueworx_get_managed_roles() {
 	return array(
-		'blueworx_business_owner' => __( 'Business Owner', 'blueworx-enhancements' ),
-		'blueworx_external_admin' => __( 'External Admin', 'blueworx-enhancements' ),
-		'blueworx_content_editor' => __( 'Content Editor', 'blueworx-enhancements' ),
+		'blueworx_business_owner' => __( 'Business Owner', 'blueworx-project-wordpress-labs' ),
+		'blueworx_external_admin' => __( 'External Admin', 'blueworx-project-wordpress-labs' ),
+		'blueworx_content_editor' => __( 'Content Editor', 'blueworx-project-wordpress-labs' ),
 	);
 }
 
@@ -44,7 +44,7 @@ function blueworx_ensure_managed_roles() {
 	}
 }
 add_action( 'init', 'blueworx_ensure_managed_roles' );
-register_activation_hook( BLUEWORX_ENHANCEMENTS_PATH . 'blueworx-enhancements.php', 'blueworx_activate_managed_roles' );
+register_activation_hook( BLUEWORX_LABS_PATH . 'blueworx-project-wordpress-labs.php', 'blueworx_activate_managed_roles' );
 
 /**
  * Creates BlueWorx roles on plugin activation.
@@ -177,7 +177,7 @@ function blueworx_get_capability_details( $capability ) {
 		'label'       => $label,
 		'description' => sprintf(
 			/* translators: %s: Capability label. */
-			__( 'Allows this role to use the %s permission.', 'blueworx-enhancements' ),
+			__( 'Allows this role to use the %s permission.', 'blueworx-project-wordpress-labs' ),
 			$label
 		),
 	);
@@ -190,65 +190,65 @@ function blueworx_get_capability_details( $capability ) {
  */
 function blueworx_get_known_capability_details() {
 	return array(
-		'activate_plugins'                  => blueworx_capability_details( __( 'Activate plugins', 'blueworx-enhancements' ), __( 'Allows turning installed plugins on or off.', 'blueworx-enhancements' ) ),
-		'blueworx_edit_elementor_templates' => blueworx_capability_details( __( 'Edit Elementor templates', 'blueworx-enhancements' ), __( 'Allows editing Elementor templates such as headers, footers, popups, and theme layouts.', 'blueworx-enhancements' ) ),
-		'create_users'                      => blueworx_capability_details( __( 'Create users', 'blueworx-enhancements' ), __( 'Allows adding new users to the site.', 'blueworx-enhancements' ) ),
-		'delete_elementor_library'          => blueworx_capability_details( __( 'Delete Elementor templates', 'blueworx-enhancements' ), __( 'Allows deleting Elementor template items.', 'blueworx-enhancements' ) ),
-		'delete_others_elementor_library'   => blueworx_capability_details( __( 'Delete other Elementor templates', 'blueworx-enhancements' ), __( 'Allows deleting Elementor templates made by other users.', 'blueworx-enhancements' ) ),
-		'delete_others_pages'               => blueworx_capability_details( __( 'Delete other users pages', 'blueworx-enhancements' ), __( 'Allows deleting pages created by other users.', 'blueworx-enhancements' ) ),
-		'delete_others_posts'               => blueworx_capability_details( __( 'Delete other users posts', 'blueworx-enhancements' ), __( 'Allows deleting posts created by other users.', 'blueworx-enhancements' ) ),
-		'delete_pages'                      => blueworx_capability_details( __( 'Delete pages', 'blueworx-enhancements' ), __( 'Allows deleting pages.', 'blueworx-enhancements' ) ),
-		'delete_plugins'                    => blueworx_capability_details( __( 'Delete plugins', 'blueworx-enhancements' ), __( 'Allows removing plugins from the site.', 'blueworx-enhancements' ) ),
-		'delete_posts'                      => blueworx_capability_details( __( 'Delete posts', 'blueworx-enhancements' ), __( 'Allows deleting posts.', 'blueworx-enhancements' ) ),
-		'delete_private_elementor_library'  => blueworx_capability_details( __( 'Delete private Elementor templates', 'blueworx-enhancements' ), __( 'Allows deleting private Elementor templates.', 'blueworx-enhancements' ) ),
-		'delete_private_pages'              => blueworx_capability_details( __( 'Delete private pages', 'blueworx-enhancements' ), __( 'Allows deleting private pages.', 'blueworx-enhancements' ) ),
-		'delete_private_posts'              => blueworx_capability_details( __( 'Delete private posts', 'blueworx-enhancements' ), __( 'Allows deleting private posts.', 'blueworx-enhancements' ) ),
-		'delete_published_elementor_library' => blueworx_capability_details( __( 'Delete published Elementor templates', 'blueworx-enhancements' ), __( 'Allows deleting live Elementor templates.', 'blueworx-enhancements' ) ),
-		'delete_published_pages'            => blueworx_capability_details( __( 'Delete published pages', 'blueworx-enhancements' ), __( 'Allows deleting live pages.', 'blueworx-enhancements' ) ),
-		'delete_published_posts'            => blueworx_capability_details( __( 'Delete published posts', 'blueworx-enhancements' ), __( 'Allows deleting live posts.', 'blueworx-enhancements' ) ),
-		'delete_themes'                     => blueworx_capability_details( __( 'Delete themes', 'blueworx-enhancements' ), __( 'Allows removing themes from the site.', 'blueworx-enhancements' ) ),
-		'delete_users'                      => blueworx_capability_details( __( 'Delete users', 'blueworx-enhancements' ), __( 'Allows permanently deleting users.', 'blueworx-enhancements' ) ),
-		'edit_dashboard'                    => blueworx_capability_details( __( 'Edit dashboard', 'blueworx-enhancements' ), __( 'Allows changing dashboard widgets and dashboard content.', 'blueworx-enhancements' ) ),
-		'edit_elementor_library'            => blueworx_capability_details( __( 'Edit Elementor templates', 'blueworx-enhancements' ), __( 'Allows editing Elementor template items.', 'blueworx-enhancements' ) ),
-		'edit_files'                        => blueworx_capability_details( __( 'Edit files', 'blueworx-enhancements' ), __( 'Allows editing theme and plugin files from WordPress.', 'blueworx-enhancements' ) ),
-		'edit_others_elementor_library'     => blueworx_capability_details( __( 'Edit other Elementor templates', 'blueworx-enhancements' ), __( 'Allows editing Elementor templates made by other users.', 'blueworx-enhancements' ) ),
-		'edit_others_pages'                 => blueworx_capability_details( __( 'Edit other users pages', 'blueworx-enhancements' ), __( 'Allows editing pages created by other users.', 'blueworx-enhancements' ) ),
-		'edit_others_posts'                 => blueworx_capability_details( __( 'Edit other users posts', 'blueworx-enhancements' ), __( 'Allows editing posts created by other users.', 'blueworx-enhancements' ) ),
-		'edit_pages'                        => blueworx_capability_details( __( 'Edit pages', 'blueworx-enhancements' ), __( 'Allows updating page content.', 'blueworx-enhancements' ) ),
-		'edit_plugins'                      => blueworx_capability_details( __( 'Edit plugins', 'blueworx-enhancements' ), __( 'Allows editing plugin files from WordPress.', 'blueworx-enhancements' ) ),
-		'edit_posts'                        => blueworx_capability_details( __( 'Edit posts', 'blueworx-enhancements' ), __( 'Allows updating post content.', 'blueworx-enhancements' ) ),
-		'edit_private_elementor_library'    => blueworx_capability_details( __( 'Edit private Elementor templates', 'blueworx-enhancements' ), __( 'Allows editing private Elementor templates.', 'blueworx-enhancements' ) ),
-		'edit_private_pages'                => blueworx_capability_details( __( 'Edit private pages', 'blueworx-enhancements' ), __( 'Allows editing private pages.', 'blueworx-enhancements' ) ),
-		'edit_private_posts'                => blueworx_capability_details( __( 'Edit private posts', 'blueworx-enhancements' ), __( 'Allows editing private posts.', 'blueworx-enhancements' ) ),
-		'edit_published_elementor_library'  => blueworx_capability_details( __( 'Edit published Elementor templates', 'blueworx-enhancements' ), __( 'Allows editing live Elementor templates.', 'blueworx-enhancements' ) ),
-		'edit_published_pages'              => blueworx_capability_details( __( 'Edit published pages', 'blueworx-enhancements' ), __( 'Allows updating live pages.', 'blueworx-enhancements' ) ),
-		'edit_published_posts'              => blueworx_capability_details( __( 'Edit published posts', 'blueworx-enhancements' ), __( 'Allows updating live posts.', 'blueworx-enhancements' ) ),
-		'edit_theme_options'                => blueworx_capability_details( __( 'Edit theme options', 'blueworx-enhancements' ), __( 'Allows changing theme settings, menus, widgets, and some builder settings.', 'blueworx-enhancements' ) ),
-		'edit_themes'                       => blueworx_capability_details( __( 'Edit themes', 'blueworx-enhancements' ), __( 'Allows editing theme files from WordPress.', 'blueworx-enhancements' ) ),
-		'edit_users'                        => blueworx_capability_details( __( 'Edit users', 'blueworx-enhancements' ), __( 'Allows changing user accounts.', 'blueworx-enhancements' ) ),
-		'export'                            => blueworx_capability_details( __( 'Export content', 'blueworx-enhancements' ), __( 'Allows downloading site content exports.', 'blueworx-enhancements' ) ),
-		'import'                            => blueworx_capability_details( __( 'Import content', 'blueworx-enhancements' ), __( 'Allows importing content into the site.', 'blueworx-enhancements' ) ),
-		'install_plugins'                   => blueworx_capability_details( __( 'Install plugins', 'blueworx-enhancements' ), __( 'Allows adding new plugins.', 'blueworx-enhancements' ) ),
-		'install_themes'                    => blueworx_capability_details( __( 'Install themes', 'blueworx-enhancements' ), __( 'Allows adding new themes.', 'blueworx-enhancements' ) ),
-		'list_users'                        => blueworx_capability_details( __( 'List users', 'blueworx-enhancements' ), __( 'Allows seeing the user list.', 'blueworx-enhancements' ) ),
-		'manage_categories'                 => blueworx_capability_details( __( 'Manage categories', 'blueworx-enhancements' ), __( 'Allows adding and changing categories and tags.', 'blueworx-enhancements' ) ),
-		'manage_links'                      => blueworx_capability_details( __( 'Manage links', 'blueworx-enhancements' ), __( 'Allows managing old WordPress link items.', 'blueworx-enhancements' ) ),
-		'manage_options'                    => blueworx_capability_details( __( 'Manage site settings', 'blueworx-enhancements' ), __( 'Allows changing important WordPress settings.', 'blueworx-enhancements' ) ),
-		'moderate_comments'                 => blueworx_capability_details( __( 'Moderate comments', 'blueworx-enhancements' ), __( 'Allows approving, editing, and deleting comments.', 'blueworx-enhancements' ) ),
-		'promote_users'                     => blueworx_capability_details( __( 'Promote users', 'blueworx-enhancements' ), __( 'Allows changing user roles.', 'blueworx-enhancements' ) ),
-		'publish_elementor_library'         => blueworx_capability_details( __( 'Publish Elementor templates', 'blueworx-enhancements' ), __( 'Allows publishing Elementor templates.', 'blueworx-enhancements' ) ),
-		'publish_pages'                     => blueworx_capability_details( __( 'Publish pages', 'blueworx-enhancements' ), __( 'Allows making pages live.', 'blueworx-enhancements' ) ),
-		'publish_posts'                     => blueworx_capability_details( __( 'Publish posts', 'blueworx-enhancements' ), __( 'Allows making posts live.', 'blueworx-enhancements' ) ),
-		'read'                              => blueworx_capability_details( __( 'Read', 'blueworx-enhancements' ), __( 'Allows logging in and viewing the WordPress dashboard.', 'blueworx-enhancements' ) ),
-		'read_private_elementor_library'    => blueworx_capability_details( __( 'Read private Elementor templates', 'blueworx-enhancements' ), __( 'Allows viewing private Elementor templates.', 'blueworx-enhancements' ) ),
-		'read_private_pages'                => blueworx_capability_details( __( 'Read private pages', 'blueworx-enhancements' ), __( 'Allows viewing private pages.', 'blueworx-enhancements' ) ),
-		'read_private_posts'                => blueworx_capability_details( __( 'Read private posts', 'blueworx-enhancements' ), __( 'Allows viewing private posts.', 'blueworx-enhancements' ) ),
-		'remove_users'                      => blueworx_capability_details( __( 'Remove users', 'blueworx-enhancements' ), __( 'Allows removing users from the site.', 'blueworx-enhancements' ) ),
-		'switch_themes'                     => blueworx_capability_details( __( 'Switch themes', 'blueworx-enhancements' ), __( 'Allows changing the active theme.', 'blueworx-enhancements' ) ),
-		'update_core'                       => blueworx_capability_details( __( 'Update WordPress', 'blueworx-enhancements' ), __( 'Allows updating WordPress itself.', 'blueworx-enhancements' ) ),
-		'update_plugins'                    => blueworx_capability_details( __( 'Update plugins', 'blueworx-enhancements' ), __( 'Allows updating installed plugins.', 'blueworx-enhancements' ) ),
-		'update_themes'                     => blueworx_capability_details( __( 'Update themes', 'blueworx-enhancements' ), __( 'Allows updating installed themes.', 'blueworx-enhancements' ) ),
-		'upload_files'                      => blueworx_capability_details( __( 'Upload files', 'blueworx-enhancements' ), __( 'Allows uploading images, PDFs, and other media.', 'blueworx-enhancements' ) ),
+		'activate_plugins'                  => blueworx_capability_details( __( 'Activate plugins', 'blueworx-project-wordpress-labs' ), __( 'Allows turning installed plugins on or off.', 'blueworx-project-wordpress-labs' ) ),
+		'blueworx_edit_elementor_templates' => blueworx_capability_details( __( 'Edit Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows editing Elementor templates such as headers, footers, popups, and theme layouts.', 'blueworx-project-wordpress-labs' ) ),
+		'create_users'                      => blueworx_capability_details( __( 'Create users', 'blueworx-project-wordpress-labs' ), __( 'Allows adding new users to the site.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_elementor_library'          => blueworx_capability_details( __( 'Delete Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting Elementor template items.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_others_elementor_library'   => blueworx_capability_details( __( 'Delete other Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting Elementor templates made by other users.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_others_pages'               => blueworx_capability_details( __( 'Delete other users pages', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting pages created by other users.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_others_posts'               => blueworx_capability_details( __( 'Delete other users posts', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting posts created by other users.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_pages'                      => blueworx_capability_details( __( 'Delete pages', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting pages.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_plugins'                    => blueworx_capability_details( __( 'Delete plugins', 'blueworx-project-wordpress-labs' ), __( 'Allows removing plugins from the site.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_posts'                      => blueworx_capability_details( __( 'Delete posts', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting posts.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_private_elementor_library'  => blueworx_capability_details( __( 'Delete private Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting private Elementor templates.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_private_pages'              => blueworx_capability_details( __( 'Delete private pages', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting private pages.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_private_posts'              => blueworx_capability_details( __( 'Delete private posts', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting private posts.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_published_elementor_library' => blueworx_capability_details( __( 'Delete published Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting live Elementor templates.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_published_pages'            => blueworx_capability_details( __( 'Delete published pages', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting live pages.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_published_posts'            => blueworx_capability_details( __( 'Delete published posts', 'blueworx-project-wordpress-labs' ), __( 'Allows deleting live posts.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_themes'                     => blueworx_capability_details( __( 'Delete themes', 'blueworx-project-wordpress-labs' ), __( 'Allows removing themes from the site.', 'blueworx-project-wordpress-labs' ) ),
+		'delete_users'                      => blueworx_capability_details( __( 'Delete users', 'blueworx-project-wordpress-labs' ), __( 'Allows permanently deleting users.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_dashboard'                    => blueworx_capability_details( __( 'Edit dashboard', 'blueworx-project-wordpress-labs' ), __( 'Allows changing dashboard widgets and dashboard content.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_elementor_library'            => blueworx_capability_details( __( 'Edit Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows editing Elementor template items.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_files'                        => blueworx_capability_details( __( 'Edit files', 'blueworx-project-wordpress-labs' ), __( 'Allows editing theme and plugin files from WordPress.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_others_elementor_library'     => blueworx_capability_details( __( 'Edit other Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows editing Elementor templates made by other users.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_others_pages'                 => blueworx_capability_details( __( 'Edit other users pages', 'blueworx-project-wordpress-labs' ), __( 'Allows editing pages created by other users.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_others_posts'                 => blueworx_capability_details( __( 'Edit other users posts', 'blueworx-project-wordpress-labs' ), __( 'Allows editing posts created by other users.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_pages'                        => blueworx_capability_details( __( 'Edit pages', 'blueworx-project-wordpress-labs' ), __( 'Allows updating page content.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_plugins'                      => blueworx_capability_details( __( 'Edit plugins', 'blueworx-project-wordpress-labs' ), __( 'Allows editing plugin files from WordPress.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_posts'                        => blueworx_capability_details( __( 'Edit posts', 'blueworx-project-wordpress-labs' ), __( 'Allows updating post content.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_private_elementor_library'    => blueworx_capability_details( __( 'Edit private Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows editing private Elementor templates.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_private_pages'                => blueworx_capability_details( __( 'Edit private pages', 'blueworx-project-wordpress-labs' ), __( 'Allows editing private pages.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_private_posts'                => blueworx_capability_details( __( 'Edit private posts', 'blueworx-project-wordpress-labs' ), __( 'Allows editing private posts.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_published_elementor_library'  => blueworx_capability_details( __( 'Edit published Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows editing live Elementor templates.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_published_pages'              => blueworx_capability_details( __( 'Edit published pages', 'blueworx-project-wordpress-labs' ), __( 'Allows updating live pages.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_published_posts'              => blueworx_capability_details( __( 'Edit published posts', 'blueworx-project-wordpress-labs' ), __( 'Allows updating live posts.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_theme_options'                => blueworx_capability_details( __( 'Edit theme options', 'blueworx-project-wordpress-labs' ), __( 'Allows changing theme settings, menus, widgets, and some builder settings.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_themes'                       => blueworx_capability_details( __( 'Edit themes', 'blueworx-project-wordpress-labs' ), __( 'Allows editing theme files from WordPress.', 'blueworx-project-wordpress-labs' ) ),
+		'edit_users'                        => blueworx_capability_details( __( 'Edit users', 'blueworx-project-wordpress-labs' ), __( 'Allows changing user accounts.', 'blueworx-project-wordpress-labs' ) ),
+		'export'                            => blueworx_capability_details( __( 'Export content', 'blueworx-project-wordpress-labs' ), __( 'Allows downloading site content exports.', 'blueworx-project-wordpress-labs' ) ),
+		'import'                            => blueworx_capability_details( __( 'Import content', 'blueworx-project-wordpress-labs' ), __( 'Allows importing content into the site.', 'blueworx-project-wordpress-labs' ) ),
+		'install_plugins'                   => blueworx_capability_details( __( 'Install plugins', 'blueworx-project-wordpress-labs' ), __( 'Allows adding new plugins.', 'blueworx-project-wordpress-labs' ) ),
+		'install_themes'                    => blueworx_capability_details( __( 'Install themes', 'blueworx-project-wordpress-labs' ), __( 'Allows adding new themes.', 'blueworx-project-wordpress-labs' ) ),
+		'list_users'                        => blueworx_capability_details( __( 'List users', 'blueworx-project-wordpress-labs' ), __( 'Allows seeing the user list.', 'blueworx-project-wordpress-labs' ) ),
+		'manage_categories'                 => blueworx_capability_details( __( 'Manage categories', 'blueworx-project-wordpress-labs' ), __( 'Allows adding and changing categories and tags.', 'blueworx-project-wordpress-labs' ) ),
+		'manage_links'                      => blueworx_capability_details( __( 'Manage links', 'blueworx-project-wordpress-labs' ), __( 'Allows managing old WordPress link items.', 'blueworx-project-wordpress-labs' ) ),
+		'manage_options'                    => blueworx_capability_details( __( 'Manage site settings', 'blueworx-project-wordpress-labs' ), __( 'Allows changing important WordPress settings.', 'blueworx-project-wordpress-labs' ) ),
+		'moderate_comments'                 => blueworx_capability_details( __( 'Moderate comments', 'blueworx-project-wordpress-labs' ), __( 'Allows approving, editing, and deleting comments.', 'blueworx-project-wordpress-labs' ) ),
+		'promote_users'                     => blueworx_capability_details( __( 'Promote users', 'blueworx-project-wordpress-labs' ), __( 'Allows changing user roles.', 'blueworx-project-wordpress-labs' ) ),
+		'publish_elementor_library'         => blueworx_capability_details( __( 'Publish Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows publishing Elementor templates.', 'blueworx-project-wordpress-labs' ) ),
+		'publish_pages'                     => blueworx_capability_details( __( 'Publish pages', 'blueworx-project-wordpress-labs' ), __( 'Allows making pages live.', 'blueworx-project-wordpress-labs' ) ),
+		'publish_posts'                     => blueworx_capability_details( __( 'Publish posts', 'blueworx-project-wordpress-labs' ), __( 'Allows making posts live.', 'blueworx-project-wordpress-labs' ) ),
+		'read'                              => blueworx_capability_details( __( 'Read', 'blueworx-project-wordpress-labs' ), __( 'Allows logging in and viewing the WordPress dashboard.', 'blueworx-project-wordpress-labs' ) ),
+		'read_private_elementor_library'    => blueworx_capability_details( __( 'Read private Elementor templates', 'blueworx-project-wordpress-labs' ), __( 'Allows viewing private Elementor templates.', 'blueworx-project-wordpress-labs' ) ),
+		'read_private_pages'                => blueworx_capability_details( __( 'Read private pages', 'blueworx-project-wordpress-labs' ), __( 'Allows viewing private pages.', 'blueworx-project-wordpress-labs' ) ),
+		'read_private_posts'                => blueworx_capability_details( __( 'Read private posts', 'blueworx-project-wordpress-labs' ), __( 'Allows viewing private posts.', 'blueworx-project-wordpress-labs' ) ),
+		'remove_users'                      => blueworx_capability_details( __( 'Remove users', 'blueworx-project-wordpress-labs' ), __( 'Allows removing users from the site.', 'blueworx-project-wordpress-labs' ) ),
+		'switch_themes'                     => blueworx_capability_details( __( 'Switch themes', 'blueworx-project-wordpress-labs' ), __( 'Allows changing the active theme.', 'blueworx-project-wordpress-labs' ) ),
+		'update_core'                       => blueworx_capability_details( __( 'Update WordPress', 'blueworx-project-wordpress-labs' ), __( 'Allows updating WordPress itself.', 'blueworx-project-wordpress-labs' ) ),
+		'update_plugins'                    => blueworx_capability_details( __( 'Update plugins', 'blueworx-project-wordpress-labs' ), __( 'Allows updating installed plugins.', 'blueworx-project-wordpress-labs' ) ),
+		'update_themes'                     => blueworx_capability_details( __( 'Update themes', 'blueworx-project-wordpress-labs' ), __( 'Allows updating installed themes.', 'blueworx-project-wordpress-labs' ) ),
+		'upload_files'                      => blueworx_capability_details( __( 'Upload files', 'blueworx-project-wordpress-labs' ), __( 'Allows uploading images, PDFs, and other media.', 'blueworx-project-wordpress-labs' ) ),
 	);
 }
 
@@ -447,7 +447,7 @@ function blueworx_get_backend_page_groups() {
  */
 function blueworx_get_role_backend_locked_pages() {
 	return array(
-		'blueworx-enhancements',
+		'blueworx-project-wordpress-labs',
 		'blueworx-edit-role',
 		'blueworx-cache',
 		'blueworx-menu-toggle',
@@ -467,7 +467,7 @@ function blueworx_backend_page_details( $label, $capability, $group ) {
 		'label'       => $label,
 		'description' => sprintf(
 			/* translators: %s: Admin section name. */
-			__( 'Backend page in %s.', 'blueworx-enhancements' ),
+			__( 'Backend page in %s.', 'blueworx-project-wordpress-labs' ),
 			$group
 		),
 		'capability'  => $capability,
@@ -652,8 +652,8 @@ function blueworx_get_role_settings_export_data() {
 	}
 
 	return array(
-		'plugin'             => 'blueworx-enhancements',
-		'version'            => BLUEWORX_ENHANCEMENTS_VERSION,
+		'plugin'             => 'blueworx-project-wordpress-labs',
+		'version'            => BLUEWORX_LABS_VERSION,
 		'exported_at'        => current_time( 'mysql' ),
 		'roles'              => $export_roles,
 		'available_features' => array(
@@ -671,42 +671,42 @@ function blueworx_get_role_settings_export_data() {
  */
 function blueworx_get_capability_group_label( $capability ) {
 	if ( false !== strpos( $capability, 'elementor' ) ) {
-		return __( 'Elementor', 'blueworx-enhancements' );
+		return __( 'Elementor', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'page' ) ) {
-		return __( 'Pages', 'blueworx-enhancements' );
+		return __( 'Pages', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'post' ) ) {
-		return __( 'Posts', 'blueworx-enhancements' );
+		return __( 'Posts', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'user' ) ) {
-		return __( 'Users', 'blueworx-enhancements' );
+		return __( 'Users', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'plugin' ) ) {
-		return __( 'Plugins', 'blueworx-enhancements' );
+		return __( 'Plugins', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'theme' ) ) {
-		return __( 'Themes', 'blueworx-enhancements' );
+		return __( 'Themes', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'file' ) || 'upload_files' === $capability ) {
-		return __( 'Media', 'blueworx-enhancements' );
+		return __( 'Media', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( false !== strpos( $capability, 'comment' ) ) {
-		return __( 'Comments', 'blueworx-enhancements' );
+		return __( 'Comments', 'blueworx-project-wordpress-labs' );
 	}
 
 	if ( in_array( $capability, array( 'manage_options', 'edit_dashboard', 'update_core', 'import', 'export' ), true ) ) {
-		return __( 'Settings and Tools', 'blueworx-enhancements' );
+		return __( 'Settings and Tools', 'blueworx-project-wordpress-labs' );
 	}
 
-	return __( 'General', 'blueworx-enhancements' );
+	return __( 'General', 'blueworx-project-wordpress-labs' );
 }
 
 /**
@@ -1024,22 +1024,22 @@ function blueworx_block_restricted_backend_page_requests() {
 
 	if ( $is_action_endpoint && blueworx_is_backend_change_request() ) {
 		if ( 'view_only' === $referrer_state ) {
-			wp_die( esc_html__( 'This backend page is view only for your role. Changes are not allowed.', 'blueworx-enhancements' ) );
+			wp_die( esc_html__( 'This backend page is view only for your role. Changes are not allowed.', 'blueworx-project-wordpress-labs' ) );
 		}
 
 		if ( 'available' === $referrer_state ) {
-			wp_die( esc_html__( 'You do not have access to this backend page.', 'blueworx-enhancements' ) );
+			wp_die( esc_html__( 'You do not have access to this backend page.', 'blueworx-project-wordpress-labs' ) );
 		}
 
 		return;
 	}
 
 	if ( ! $is_action_endpoint && 'available' === $current_state && ! empty( $current_candidates ) ) {
-		wp_die( esc_html__( 'You do not have access to this backend page.', 'blueworx-enhancements' ) );
+		wp_die( esc_html__( 'You do not have access to this backend page.', 'blueworx-project-wordpress-labs' ) );
 	}
 
 	if ( blueworx_is_backend_change_request() && ( 'view_only' === $current_state || 'view_only' === $referrer_state ) ) {
-		wp_die( esc_html__( 'This backend page is view only for your role. Changes are not allowed.', 'blueworx-enhancements' ) );
+		wp_die( esc_html__( 'This backend page is view only for your role. Changes are not allowed.', 'blueworx-project-wordpress-labs' ) );
 	}
 }
 add_action( 'admin_init', 'blueworx_block_restricted_backend_page_requests', 1 );
@@ -1059,7 +1059,7 @@ function blueworx_show_view_only_backend_page_notice() {
 	}
 	?>
 	<div class="notice notice-warning">
-		<p><?php esc_html_e( 'This page is view only for your role. You can look, but changes will be blocked.', 'blueworx-enhancements' ); ?></p>
+		<p><?php esc_html_e( 'This page is view only for your role. You can look, but changes will be blocked.', 'blueworx-project-wordpress-labs' ); ?></p>
 	</div>
 	<?php
 }

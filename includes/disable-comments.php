@@ -2,7 +2,7 @@
 /**
  * Comment disabling behavior.
  *
- * @package BlueWorxEnhancements
+ * @package BlueWorxLabs
  */
 
 // Prevent direct file access.

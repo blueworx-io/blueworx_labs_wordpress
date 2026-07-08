@@ -2,7 +2,7 @@
 /**
  * Admin email notification suppression.
  *
- * @package BlueWorxEnhancements
+ * @package BlueWorxLabs
  */
 
 // Prevent direct file access.

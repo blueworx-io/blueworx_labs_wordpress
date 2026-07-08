@@ -2,7 +2,7 @@
 /**
  * User profile cleanup behavior.
  *
- * @package BlueWorxEnhancements
+ * @package BlueWorxLabs
  */
 
 // Prevent direct file access.

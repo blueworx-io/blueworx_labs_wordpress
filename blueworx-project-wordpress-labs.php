@@ -1,0 +1,51 @@
+<?php
+/**
+ * Plugin Name:       BlueWorx Labs | WordPress Enhancements
+ * Plugin URI:        https://blueworx.io/
+ * Description:       Site hardening, cache refresh, admin/profile enhancements, and the headless REST layer that powers BlueWorx headless WordPress sites.
+ * Version:           1.5.0
+ * Requires at least: 5.0
+ * Requires PHP:      7.4
+ * Author:            BlueWorx
+ * Author URI:        https://profiles.wordpress.org/blueworx/
+ * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       blueworx-project-wordpress-labs
+ * Domain Path:       /languages
+ *
+ * @package BlueWorxLabs
+ */
+
+// Prevent direct file access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
+	define( 'BLUEWORX_LABS_VERSION', '1.5.0' );
+}
+
+if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
+	define( 'BLUEWORX_LABS_PATH', plugin_dir_path( __FILE__ ) );
+}
+
+if ( ! defined( 'BLUEWORX_LABS_URL' ) ) {
+	define( 'BLUEWORX_LABS_URL', plugin_dir_url( __FILE__ ) );
+}
+
+if ( ! defined( 'BLUEWORX_CUSTOM_LOGIN_SLUG' ) ) {
+	define( 'BLUEWORX_CUSTOM_LOGIN_SLUG', 'admin_login' );
+}
+
+require_once BLUEWORX_LABS_PATH . 'includes/helpers.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-assets.php';
+require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
+require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
+require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
+require_once BLUEWORX_LABS_PATH . 'includes/elementor-surecart-pricing-table.php';
+require_once BLUEWORX_LABS_PATH . 'includes/disable-comments.php';
+require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
+require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
+require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';

@@ -2,7 +2,7 @@
 /**
  * Page excerpt support.
  *
- * @package BlueWorxEnhancements
+ * @package BlueWorxLabs
  */
 
 // Prevent direct file access.

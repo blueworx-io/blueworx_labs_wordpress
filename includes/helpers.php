@@ -2,7 +2,7 @@
 /**
  * Shared helper functions.
  *
- * @package BlueWorxEnhancements
+ * @package BlueWorxLabs
  */
 
 // Prevent direct file access.
