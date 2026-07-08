@@ -22,13 +22,13 @@ function blueworx_get_labs_db_version() {
 }
 
 /**
- * Gets the admin menu options that may contain a stored menu slug.
+ * Gets the admin menu options that store the menu slug as flat array VALUES.
  *
  * Each of these options is a flat, indexed array of slug strings.
  *
  * @return array Option names.
  */
-function blueworx_get_admin_menu_slug_options() {
+function blueworx_get_admin_menu_slug_value_options() {
 	return array(
 		'blueworx_admin_menu_order',
 		'blueworx_hidden_admin_menu_items',
@@ -37,14 +37,14 @@ function blueworx_get_admin_menu_slug_options() {
 }
 
 /**
- * Remaps a slug value within a flat, indexed array of slug strings.
+ * Remaps a slug that appears as a VALUE within a flat, indexed array.
  *
  * @param array  $slugs    Indexed array of slug strings.
  * @param string $old_slug Slug to replace.
  * @param string $new_slug Replacement slug.
  * @return array Remapped, de-duplicated, re-indexed array.
  */
-function blueworx_remap_admin_menu_slug_option( $slugs, $old_slug, $new_slug ) {
+function blueworx_remap_admin_menu_slug_value_option( $slugs, $old_slug, $new_slug ) {
 	if ( ! is_array( $slugs ) ) {
 		return $slugs;
 	}
@@ -60,9 +60,54 @@ function blueworx_remap_admin_menu_slug_option( $slugs, $old_slug, $new_slug ) {
 }
 
 /**
+ * Remaps a slug that appears as an array KEY, preserving its value.
+ *
+ * If the new key does not already exist, the old key is renamed to the new
+ * key while keeping its value (and the surrounding key order). If the new key
+ * already exists (both old and new present), the existing new-key entry is
+ * preferred and the stale old-key entry is dropped, since the new key reflects
+ * the live menu slug.
+ *
+ * @param array  $items    Associative array keyed by slug.
+ * @param string $old_slug Key to replace.
+ * @param string $new_slug Replacement key.
+ * @return array Remapped array.
+ */
+function blueworx_remap_admin_menu_slug_key_option( $items, $old_slug, $new_slug ) {
+	if ( ! is_array( $items ) || ! array_key_exists( $old_slug, $items ) ) {
+		return $items;
+	}
+
+	if ( array_key_exists( $new_slug, $items ) ) {
+		unset( $items[ $old_slug ] );
+
+		return $items;
+	}
+
+	$remapped = array();
+
+	foreach ( $items as $key => $value ) {
+		$remapped[ $old_slug === $key ? $new_slug : $key ] = $value;
+	}
+
+	return $remapped;
+}
+
+/**
  * Migrates the old plugin slug to the new plugin slug inside saved admin
- * menu settings, so admins' menu customizations survive the plugin rename
- * from "blueworx-enhancements" to "blueworx-project-wordpress-labs".
+ * settings, so admins' menu customizations survive the plugin rename from
+ * "blueworx-enhancements" to "blueworx-project-wordpress-labs".
+ *
+ * Covers every stored option that can hold the renamed menu slug:
+ *  - blueworx_admin_menu_order         (slug as array value)
+ *  - blueworx_hidden_admin_menu_items  (slug as array value)
+ *  - blueworx_toggled_admin_menu_items (slug as array value)
+ *  - blueworx_admin_menu_item_labels   (slug as array KEY, value = label)
+ *
+ * The role-editor options (blueworx_role_backend_page_rules,
+ * blueworx_backend_page_map) cannot contain the renamed slug: the BlueWorx
+ * top-level page is a locked backend page and locked pages are excluded from
+ * the role editor, so the slug can never be stored there. See task-10 report.
  *
  * @return void
  */
@@ -70,17 +115,29 @@ function blueworx_migrate_admin_menu_slug_rename() {
 	$old_slug = 'blueworx-enhancements';
 	$new_slug = 'blueworx-project-wordpress-labs';
 
-	foreach ( blueworx_get_admin_menu_slug_options() as $option_name ) {
+	// Options that store the slug as flat array VALUES.
+	foreach ( blueworx_get_admin_menu_slug_value_options() as $option_name ) {
 		$value = get_option( $option_name, null );
 
 		if ( ! is_array( $value ) || ! in_array( $old_slug, $value, true ) ) {
 			continue;
 		}
 
-		$remapped = blueworx_remap_admin_menu_slug_option( $value, $old_slug, $new_slug );
+		$remapped = blueworx_remap_admin_menu_slug_value_option( $value, $old_slug, $new_slug );
 
 		if ( $remapped !== $value ) {
 			update_option( $option_name, $remapped );
+		}
+	}
+
+	// Option that stores the slug as an array KEY (slug => label).
+	$labels = get_option( 'blueworx_admin_menu_item_labels', null );
+
+	if ( is_array( $labels ) && array_key_exists( $old_slug, $labels ) ) {
+		$remapped = blueworx_remap_admin_menu_slug_key_option( $labels, $old_slug, $new_slug );
+
+		if ( $remapped !== $labels ) {
+			update_option( 'blueworx_admin_menu_item_labels', $remapped );
 		}
 	}
 }
