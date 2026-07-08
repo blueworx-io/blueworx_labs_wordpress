@@ -3,7 +3,13 @@
 import { readFileSync } from 'node:fs';
 
 const SLUG = 'blueworx-project-wordpress-labs';
-const header = readFileSync(`${SLUG}.php`, 'utf8');
+let header;
+try {
+  header = readFileSync(`${SLUG}.php`, 'utf8');
+} catch (err) {
+  console.error(`version:check FAILED — cannot read plugin main file ${SLUG}.php: ${err.message}`);
+  process.exit(1);
+}
 const headerMatch = header.match(/^\s*\*?\s*Version:\s*(.+)$/im);
 const headerVersion = headerMatch ? headerMatch[1].trim() : null;
 const pkgVersion = JSON.parse(readFileSync('package.json', 'utf8')).version;

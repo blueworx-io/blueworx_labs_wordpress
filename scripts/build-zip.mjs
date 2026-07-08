@@ -9,7 +9,9 @@ const SLUG = 'blueworx-project-wordpress-labs';
 const DIST = 'dist';
 
 // Runtime files/dirs that ship inside the plugin folder.
-const INCLUDE = ['blueworx-project-wordpress-labs.php', 'readme.txt', 'includes', 'assets', 'languages'];
+const REQUIRED = ['blueworx-project-wordpress-labs.php', 'readme.txt', 'includes', 'assets'];
+const OPTIONAL = ['languages'];
+const INCLUDE = [...REQUIRED, ...OPTIONAL];
 
 mkdirSync(DIST, { recursive: true });
 for (const f of readdirSync(DIST)) {
@@ -27,7 +29,12 @@ archive.on('error', (err) => { throw err; });
 
 archive.pipe(output);
 for (const entry of INCLUDE) {
-  if (!existsSync(entry)) continue; // languages/ is optional
+  if (!existsSync(entry)) {
+    if (REQUIRED.includes(entry)) {
+      throw new Error(`Required plugin entry missing from build: ${entry}`);
+    }
+    continue; // OPTIONAL entries skip silently
+  }
   archive.glob(entry.includes('.') ? entry : `${entry}/**/*`, { dot: false }, { prefix: `${SLUG}/` });
 }
 await archive.finalize();
