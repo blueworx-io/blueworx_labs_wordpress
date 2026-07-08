@@ -58,7 +58,7 @@ add_action( 'admin_post_blueworx_clear_cache_now', 'blueworx_handle_manual_cache
  * @param bool    $update  Whether this is an update.
  * @return void
  */
-function blueworx_refresh_cache_on_save( $post_id, $post, $update ) {
+function blueworx_refresh_cache_on_save( $post_id, $post, $update ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- $update is required by the WordPress "save_post" action's callback signature (registered with 3 args); it is unused here since the cache refresh applies on every save.
 	if ( ! blueworx_should_refresh_post_cache( $post_id, $post ) ) {
 		return;
 	}

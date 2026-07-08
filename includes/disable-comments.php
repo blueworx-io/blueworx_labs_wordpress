@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @param bool $open Whether comments are open.
  * @return bool Always false.
  */
-function blueworx_disable_comments_status( $open ) {
+function blueworx_disable_comments_status( $open ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $open is required by the "comments_open"/"pings_open" filter callback signature; this implementation always returns false regardless of the incoming value.
 	return false;
 }
 add_filter( 'comments_open', 'blueworx_disable_comments_status', 20 );

@@ -148,7 +148,7 @@ add_filter( 'custom_menu_order', 'blueworx_enable_admin_menu_order' );
  * @param array $menu_order Existing menu order.
  * @return array Preferred menu order.
  */
-function blueworx_admin_menu_order( $menu_order ) {
+function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $menu_order is required by the WordPress "menu_order" filter's callback signature; this implementation builds its own order from stored settings instead of the incoming value.
 	$order = array_values( array_diff( blueworx_get_saved_admin_menu_order(), array( 'separator-blueworx-toggle', 'blueworx-menu-toggle' ) ) );
 
 	if ( ! in_array( 'blueworx-project-wordpress-labs', $order, true ) ) {
@@ -192,7 +192,7 @@ function blueworx_apply_admin_menu_visibility() {
 			continue;
 		}
 
-		$labels[ $slug ] = $label;
+		$labels[ $slug ]     = $label;
 		$menu_items[ $slug ] = array(
 			'label'      => $label,
 			'capability' => $capability,
@@ -215,7 +215,7 @@ function blueworx_apply_admin_menu_visibility() {
 	}
 
 	if ( ! empty( $toggled_items ) ) {
-		$menu[998] = array( '', 'read', 'separator-blueworx-toggle', '', 'wp-menu-separator blueworx-toggle-separator' );
+		$menu[998] = array( '', 'read', 'separator-blueworx-toggle', '', 'wp-menu-separator blueworx-toggle-separator' ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $menu global (inside the "admin_menu" action, via the `global $menu, $submenu;` above) is the standard, documented way to insert admin menu rows; WordPress provides no dedicated API for this.
 
 		add_menu_page(
 			esc_html__( 'More', 'blueworx-project-wordpress-labs' ),
@@ -228,7 +228,7 @@ function blueworx_apply_admin_menu_visibility() {
 		);
 
 		foreach ( $toggled_items as $slug => $item ) {
-			$submenu['blueworx-menu-toggle'][] = array(
+			$submenu['blueworx-menu-toggle'][] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $submenu global (inside the "admin_menu" action) is the standard, documented way to add submenu rows; WordPress provides no dedicated API for this.
 				$item['label'],
 				$item['capability'],
 				$item['url'],

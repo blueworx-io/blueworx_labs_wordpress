@@ -326,7 +326,7 @@ function blueworx_get_active_features() {
 }
 
 /**
- * Renders the BlueWorx Enhancements page.
+ * Renders the BlueWorx Labs page.
  *
  * @return void
  */
@@ -409,7 +409,12 @@ function blueworx_render_enhancements_page() {
 								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 									<input type="hidden" name="action" value="blueworx_save_site_protection_settings" />
 									<?php wp_nonce_field( 'blueworx_save_site_protection_settings' ); ?>
-									<?php foreach ( array( 'frontend' => __( 'Frontend protection', 'blueworx-project-wordpress-labs' ), 'backend' => __( 'Backend protection', 'blueworx-project-wordpress-labs' ) ) as $area => $label ) : ?>
+									<?php
+									foreach ( array(
+										'frontend' => __( 'Frontend protection', 'blueworx-project-wordpress-labs' ),
+										'backend'  => __( 'Backend protection', 'blueworx-project-wordpress-labs' ),
+									) as $area => $label ) :
+										?>
 										<?php $selected_roles = blueworx_get_site_protection_roles( $area ); ?>
 										<p>
 											<label>
@@ -750,13 +755,13 @@ function blueworx_render_edit_menu_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-project-wordpress-labs' ) );
 	}
 
-	$menu_items  = blueworx_get_editable_admin_menu_items();
-	$saved_order = blueworx_get_saved_admin_menu_order();
-	$hidden      = blueworx_get_hidden_admin_menu_items();
-	$toggled     = blueworx_get_toggled_admin_menu_items();
-	$locked      = blueworx_get_locked_admin_menu_items();
-	$notice      = get_transient( 'blueworx_admin_menu_order_notice' );
-	$ordered     = array();
+	$menu_items   = blueworx_get_editable_admin_menu_items();
+	$saved_order  = blueworx_get_saved_admin_menu_order();
+	$hidden       = blueworx_get_hidden_admin_menu_items();
+	$toggled      = blueworx_get_toggled_admin_menu_items();
+	$locked       = blueworx_get_locked_admin_menu_items();
+	$notice       = get_transient( 'blueworx_admin_menu_order_notice' );
+	$ordered      = array();
 	$main_items   = array();
 	$toggle_items = array();
 	$hidden_items = array();

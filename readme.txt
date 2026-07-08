@@ -12,7 +12,7 @@ Hardens WordPress security and refreshes Cloudways cache when pages or posts cha
 
 == Description ==
 
-BlueWorx Enhancements improves your WordPress site by:
+BlueWorx Labs improves your WordPress site by:
 
 * Replacing the default `/wp-login.php` login URL with a custom `/admin_login` URL.
 * Blocking all direct access to `/wp-login.php` - visitors are redirected to the homepage.
