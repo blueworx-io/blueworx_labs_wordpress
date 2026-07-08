@@ -38,6 +38,7 @@ if ( ! defined( 'BLUEWORX_CUSTOM_LOGIN_SLUG' ) ) {
 }
 
 require_once BLUEWORX_LABS_PATH . 'includes/helpers.php';
+require_once BLUEWORX_LABS_PATH . 'includes/upgrade.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-assets.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
