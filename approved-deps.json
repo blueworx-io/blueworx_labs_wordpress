@@ -1,0 +1,10 @@
+{
+  "dependencies": {},
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@playwright/test": "^1.48.0",
+    "archiver": "^7.0.1",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0"
+  }
+}
