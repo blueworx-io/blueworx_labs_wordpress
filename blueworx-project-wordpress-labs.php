@@ -44,7 +44,6 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
-require_once BLUEWORX_LABS_PATH . 'includes/elementor-surecart-pricing-table.php';
 require_once BLUEWORX_LABS_PATH . 'includes/disable-comments.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
 require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
