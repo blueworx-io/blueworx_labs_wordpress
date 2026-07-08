@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<ruleset name="BlueWorx Labs WordPress Enhancements">
+	<description>WordPress Coding Standards for the BlueWorx Labs plugin.</description>
+
+	<file>.</file>
+
+	<exclude-pattern>/vendor/</exclude-pattern>
+	<exclude-pattern>/node_modules/</exclude-pattern>
+	<exclude-pattern>/dist/</exclude-pattern>
+	<exclude-pattern>/.foundation/</exclude-pattern>
+	<exclude-pattern>*/assets/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<rule ref="WordPress"/>
+	<rule ref="PHPCompatibilityWP"/>
+	<config name="testVersion" value="7.4-"/>
+	<config name="minimum_wp_version" value="5.0"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="blueworx-project-wordpress-labs"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="blueworx"/>
+				<element value="BLUEWORX"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>
