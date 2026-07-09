@@ -1007,6 +1007,35 @@ function blueworx_is_backend_action_endpoint( $candidates ) {
 }
 
 /**
+ * Returns the request referer only when it is same-origin with this site.
+ *
+ * The backend page gate derives a request's originating page from the referer.
+ * The referer header is client-suppliable, so an off-site value must never be
+ * trusted for an access decision — this returns '' in that case, which the gate
+ * treats as "no trusted origin" and fails closed. (A same-site referer can
+ * still be crafted by an authenticated managed-role user; a full redesign of
+ * this gate that does not rely on the referer is tracked separately.)
+ *
+ * @return string Trusted same-site referer, or '' when absent/off-site.
+ */
+function blueworx_get_same_site_referer() {
+	$referer = wp_get_referer();
+
+	if ( ! $referer ) {
+		return '';
+	}
+
+	$referer_host = wp_parse_url( $referer, PHP_URL_HOST );
+	$home_host    = wp_parse_url( home_url(), PHP_URL_HOST );
+
+	if ( ! $referer_host || strtolower( $referer_host ) !== strtolower( (string) $home_host ) ) {
+		return '';
+	}
+
+	return $referer;
+}
+
+/**
  * Blocks unavailable and view-only backend page changes.
  *
  * @return void
@@ -1018,7 +1047,7 @@ function blueworx_block_restricted_backend_page_requests() {
 
 	$current_candidates = blueworx_get_current_backend_page_candidates();
 	$current_state      = blueworx_get_user_backend_page_state( get_current_user_id(), $current_candidates );
-	$referrer           = wp_get_referer();
+	$referrer           = blueworx_get_same_site_referer();
 	$referrer_state     = $referrer ? blueworx_get_user_backend_page_state( get_current_user_id(), blueworx_get_current_backend_page_candidates( $referrer ) ) : 'available';
 	$is_action_endpoint = blueworx_is_backend_action_endpoint( $current_candidates );
 

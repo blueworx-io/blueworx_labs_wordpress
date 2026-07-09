@@ -3,9 +3,9 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, cache refresh, admin/profile enhancements, and the headless REST layer that powers BlueWorx headless WordPress sites.
- * Version:           1.5.1
+ * Version:           1.6.0
  * Requires at least: 5.0
- * Requires PHP:      7.4
+ * Requires PHP:      8.0
  * Author:            BlueWorx
  * Author URI:        https://profiles.wordpress.org/blueworx/
  * License:           GPL-2.0-or-later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.5.1' );
+	define( 'BLUEWORX_LABS_VERSION', '1.6.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -49,3 +49,9 @@ require_once BLUEWORX_LABS_PATH . 'includes/disable-comments.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
 require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
+
+// Headless REST layer (auth, accounts, content, CORS, revalidation, proxies).
+require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
+
+register_activation_hook( __FILE__, 'blueworx_headless_install' );
+register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );

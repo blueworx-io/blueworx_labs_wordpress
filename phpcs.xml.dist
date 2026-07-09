@@ -9,6 +9,8 @@
 	<exclude-pattern>/dist/</exclude-pattern>
 	<exclude-pattern>/.foundation/</exclude-pattern>
 	<exclude-pattern>*/assets/*</exclude-pattern>
+	<!-- Bundled third-party library (firebase/php-jwt); not our code to lint. -->
+	<exclude-pattern>*/includes/rest/lib/*</exclude-pattern>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>
@@ -16,7 +18,7 @@
 
 	<rule ref="WordPress"/>
 	<rule ref="PHPCompatibilityWP"/>
-	<config name="testVersion" value="7.4-"/>
+	<config name="testVersion" value="8.0-"/>
 	<config name="minimum_wp_version" value="5.0"/>
 
 	<rule ref="WordPress.WP.I18n">

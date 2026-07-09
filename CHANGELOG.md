@@ -4,6 +4,44 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.6.0] - 2026-07-09
+
+### Added
+- **Headless REST layer** under `/wp-json/blueworx/v1/` implementing
+  IMPLEMENTATION_PLAN.md Phases 1–6:
+  - **Auth core:** JWT access tokens (bundled `firebase/php-jwt` v7, HS256,
+    secret from `wp-config`), a `determine_current_user` filter, and rotating
+    refresh-token families with reuse-detection and `token_version` global
+    revocation. Endpoints: `/auth/login`, `/refresh`, `/logout`, `/logout-all`,
+    `/me`.
+  - **Accounts:** `/account/register` (open/invite/closed modes, default
+    closed), `/verify`, `/resend-verification`, `/password/forgot|reset|change`,
+    `PATCH /account`, and `DELETE /account` (re-auth required). Reset/register
+    responses are non-enumerating.
+  - **Public content:** `/menus/{location}`, `/site`, `/resolve`,
+    `/acf-options`, an ACF-to-core-REST bridge, and a settings-driven CPT
+    registrar.
+  - **CORS + revalidation:** credentialed CORS (exact-origin echo, never `*`)
+    and an outbound on-demand revalidation webhook (default OFF; never triggers
+    a Netlify build).
+  - **SureCart proxy:** public catalogue plus ownership-scoped `/me/*` and write
+    endpoints; ownership fails closed. Disabled by default.
+- New **Headless** admin settings tab for all non-secret configuration; secrets
+  are read only from `wp-config.php` constants.
+- Transient-based rate limiting and lockout on auth endpoints.
+- Custom tables for refresh-token families and invites (installed on
+  activation / schema-version upgrade); daily token garbage-collection cron.
+
+### Changed
+- Raised the minimum PHP version to **8.0** (required by `firebase/php-jwt` v7,
+  which carries the fix for the v6 advisory CVE-2025-45769). PHP 7.4 is EOL.
+- Hardened the managed-role backend page gate to ignore off-site referers
+  (fail closed) rather than trusting any `wp_get_referer()` value.
+
+### Dependencies
+- Added `firebase/php-jwt` ^7.0 (Composer, PHP). Its HS256 subset is bundled in
+  `includes/rest/lib/firebase-jwt/` so the shipped plugin is self-contained.
+
 ## [1.5.1] - 2026-07-09
 
 ### Added
