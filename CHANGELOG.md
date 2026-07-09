@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.5.1] - 2026-07-09
+
+### Added
+- Authored `IMPLEMENTATION_PLAN.md` — the authoritative build contract for the
+  headless REST layer (§1–§16), including the concrete §13 endpoint map and §14
+  phase order. Settles the JWT library (`firebase/php-jwt`), refresh-token
+  revocation storage, rate-limit mechanism, registration modes, and the
+  settings-vs-`wp-config` split; defers the LatePoint proxy to Phase 7 (no
+  official LatePoint REST API). Unblocks Phases 1–6. Documentation only — no
+  runtime code changed.
+
 ## [1.5.0] - 2026-07-08
 
 ### Changed
