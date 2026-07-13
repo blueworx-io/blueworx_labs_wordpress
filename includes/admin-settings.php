@@ -90,28 +90,6 @@ function blueworx_save_edit_menu_page() {
 add_action( 'admin_post_blueworx_save_admin_menu_order', 'blueworx_save_edit_menu_page' );
 
 /**
- * Saves the Application Passwords visibility option.
- *
- * @return void
- */
-function blueworx_save_application_passwords_setting() {
-	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
-	}
-
-	check_admin_referer( 'blueworx_save_application_passwords_setting' );
-
-	$show_application_passwords = isset( $_POST['blueworx_show_application_passwords'] ) ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
-	update_option( 'blueworx_show_application_passwords', $show_application_passwords );
-	set_transient( 'blueworx_labs_notice', __( 'Application Passwords setting saved.', 'blueworx-labs-wordpress' ), 30 );
-
-	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
-	exit;
-}
-add_action( 'admin_post_blueworx_save_application_passwords_setting', 'blueworx_save_application_passwords_setting' );
-
-/**
  * Gets all roles that can be selected for site protection.
  *
  * @return array Role labels keyed by role slug.
@@ -157,21 +135,31 @@ function blueworx_get_site_protection_roles( $area ) {
 }
 
 /**
- * Saves frontend and backend site protection settings.
+ * Saves all feature toggles and their detail settings from the settings page.
  *
  * @return void
  */
-function blueworx_save_site_protection_settings() {
+function blueworx_save_feature_settings() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
 
-	check_admin_referer( 'blueworx_save_site_protection_settings' );
+	check_admin_referer( 'blueworx_save_feature_settings' );
 
+	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
+		update_option( 'blueworx_feature_' . $key, isset( $posted[ $key ] ) ? '1' : '0' );
+	}
+
+	// Login detail: editable slug.
+	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
+	update_option( 'blueworx_login_slug', blueworx_sanitize_login_slug( $raw_slug ) );
+
+	// Site Protection detail: per-area enable + roles.
 	$choices = blueworx_get_site_protection_role_choices();
-
 	foreach ( array( 'frontend', 'backend' ) as $area ) {
-		$enabled = isset( $_POST[ 'blueworx_' . $area . '_protection_enabled' ] ) ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$enabled = isset( $_POST[ 'blueworx_' . $area . '_protection_enabled' ] ) ? '1' : '0';
 		$roles   = isset( $_POST[ 'blueworx_' . $area . '_protection_roles' ] ) ? (array) wp_unslash( $_POST[ 'blueworx_' . $area . '_protection_roles' ] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$roles   = array_values( array_intersect( array_unique( array_map( 'sanitize_key', $roles ) ), array_keys( $choices ) ) );
 
@@ -179,12 +167,15 @@ function blueworx_save_site_protection_settings() {
 		update_option( 'blueworx_' . $area . '_protection_roles', $roles, false );
 	}
 
-	set_transient( 'blueworx_labs_notice', __( 'Site Protection settings saved.', 'blueworx-labs-wordpress' ), 30 );
+	// Application Passwords detail.
+	update_option( 'blueworx_show_application_passwords', isset( $_POST['blueworx_show_application_passwords'] ) ? '1' : '0' );
+
+	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
 	exit;
 }
-add_action( 'admin_post_blueworx_save_site_protection_settings', 'blueworx_save_site_protection_settings' );
+add_action( 'admin_post_blueworx_save_feature_settings', 'blueworx_save_feature_settings' );
 
 /**
  * Renders the BlueWorx feature settings page.
