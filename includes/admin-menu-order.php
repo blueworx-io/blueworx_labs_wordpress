@@ -43,6 +43,167 @@ function blueworx_get_locked_admin_menu_items() {
 }
 
 /**
+ * Checks whether an admin has saved a custom menu arrangement.
+ *
+ * Until the Edit Menu page is saved once, the plugin serves a computed default
+ * arrangement instead of the stored options.
+ *
+ * @return bool True when a custom arrangement has been saved.
+ */
+function blueworx_admin_menu_is_customized() {
+	return '1' === get_option( 'blueworx_admin_menu_customized', '0' );
+}
+
+/**
+ * Gets the canonical top-level slugs registered by WordPress core.
+ *
+ * Used to tell core menu items (moved to More by default) apart from
+ * plugin-added items (kept visible below the defaults).
+ *
+ * @return array Core top-level menu slugs.
+ */
+function blueworx_get_core_admin_menu_slugs() {
+	return array(
+		'index.php',
+		'edit.php',
+		'upload.php',
+		'edit.php?post_type=page',
+		'edit-comments.php',
+		'themes.php',
+		'plugins.php',
+		'users.php',
+		'tools.php',
+		'options-general.php',
+		'profile.php',
+		'link-manager.php',
+	);
+}
+
+/**
+ * Gets the top-level slugs shown in the main menu by default.
+ *
+ * @return array Keep-visible menu slugs.
+ */
+function blueworx_get_default_visible_admin_menu_slugs() {
+	return array(
+		'index.php',
+		'blueworx-labs-wordpress',
+		'edit.php',
+		'upload.php',
+		'edit.php?post_type=page',
+		'users.php',
+	);
+}
+
+/**
+ * Computes the default admin menu arrangement from the live menu.
+ *
+ * Dashboard is pinned first and BlueWorx second; the remaining keep-visible
+ * items follow (sorted by title length, then alphabetically), then plugin
+ * items (same sort), then the core items moved into More (same sort). Nothing
+ * is hidden by default. Falls back to the static default order when the menu
+ * global is not yet populated.
+ *
+ * @return array {
+ *     @type array $order   Ordered top-level slugs.
+ *     @type array $toggled Slugs moved into More.
+ *     @type array $hidden  Slugs hidden (always empty by default).
+ * }
+ */
+function blueworx_compute_default_admin_menu_arrangement() {
+	static $cache = null;
+
+	if ( null !== $cache ) {
+		return $cache;
+	}
+
+	global $menu;
+
+	$locked = blueworx_get_locked_admin_menu_items();
+	$labels = array();
+
+	foreach ( (array) $menu as $menu_item ) {
+		$slug  = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
+		$label = isset( $menu_item[0] ) ? trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $menu_item[0] ) ) ) : '';
+
+		if ( '' === $slug || 0 === strpos( $slug, 'separator' ) || in_array( $slug, $locked, true ) ) {
+			continue;
+		}
+
+		$labels[ $slug ] = $label;
+	}
+
+	if ( empty( $labels ) ) {
+		$cache = array(
+			'order'   => blueworx_get_default_admin_menu_order(),
+			'toggled' => array(),
+			'hidden'  => array(),
+		);
+
+		return $cache;
+	}
+
+	$present = array_keys( $labels );
+	$keep    = blueworx_get_default_visible_admin_menu_slugs();
+	$core    = blueworx_get_core_admin_menu_slugs();
+
+	$pinned_top = array();
+	foreach ( array( 'index.php', 'blueworx-labs-wordpress' ) as $pinned_slug ) {
+		if ( in_array( $pinned_slug, $present, true ) ) {
+			$pinned_top[] = $pinned_slug;
+		}
+	}
+
+	$keep_rest = array();
+	$plugins   = array();
+	$toggled   = array();
+
+	foreach ( $present as $slug ) {
+		if ( in_array( $slug, $pinned_top, true ) ) {
+			continue;
+		}
+
+		if ( in_array( $slug, $keep, true ) ) {
+			$keep_rest[] = $slug;
+		} elseif ( in_array( $slug, $core, true ) ) {
+			$toggled[] = $slug;
+		} else {
+			$plugins[] = $slug;
+		}
+	}
+
+	$sort = function ( $slugs ) use ( $labels ) {
+		usort(
+			$slugs,
+			function ( $a, $b ) use ( $labels ) {
+				$len_a = mb_strlen( $labels[ $a ] );
+				$len_b = mb_strlen( $labels[ $b ] );
+
+				if ( $len_a !== $len_b ) {
+					return $len_a - $len_b;
+				}
+
+				return strcasecmp( $labels[ $a ], $labels[ $b ] );
+			}
+		);
+
+		return $slugs;
+	};
+
+	$keep_rest = $sort( $keep_rest );
+	$plugins   = $sort( $plugins );
+	$toggled   = $sort( $toggled );
+
+	$cache = array(
+		'order'   => array_values( array_merge( $pinned_top, $keep_rest, $plugins, $toggled ) ),
+		'toggled' => array_values( $toggled ),
+		'hidden'  => array(),
+	);
+
+	return $cache;
+}
+
+/**
  * Gets menu items hidden from the admin menu.
  *
  * @return array Hidden menu slugs.
