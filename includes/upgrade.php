@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 1;
+	return 2;
 }
 
 /**
@@ -143,6 +143,49 @@ function blueworx_migrate_admin_menu_slug_rename() {
 }
 
 /**
+ * Migrates the plugin slug again after the repo rename, so admins' menu
+ * customizations survive the second rename from "blueworx-project-wordpress-labs"
+ * to "blueworx-labs-wordpress" (aligning the slug with the renamed repo).
+ *
+ * Runs after blueworx_migrate_admin_menu_slug_rename(), so sites upgrading from
+ * the "blueworx-enhancements" era are remapped in two steps
+ * (enhancements -> project-wordpress-labs -> labs-wordpress). Covers the same
+ * stored options as that migration.
+ *
+ * @return void
+ */
+function blueworx_migrate_admin_menu_slug_labs_wordpress() {
+	$old_slug = 'blueworx-project-wordpress-labs';
+	$new_slug = 'blueworx-labs-wordpress';
+
+	// Options that store the slug as flat array VALUES.
+	foreach ( blueworx_get_admin_menu_slug_value_options() as $option_name ) {
+		$value = get_option( $option_name, null );
+
+		if ( ! is_array( $value ) || ! in_array( $old_slug, $value, true ) ) {
+			continue;
+		}
+
+		$remapped = blueworx_remap_admin_menu_slug_value_option( $value, $old_slug, $new_slug );
+
+		if ( $remapped !== $value ) {
+			update_option( $option_name, $remapped );
+		}
+	}
+
+	// Option that stores the slug as an array KEY (slug => label).
+	$labels = get_option( 'blueworx_admin_menu_item_labels', null );
+
+	if ( is_array( $labels ) && array_key_exists( $old_slug, $labels ) ) {
+		$remapped = blueworx_remap_admin_menu_slug_key_option( $labels, $old_slug, $new_slug );
+
+		if ( $remapped !== $labels ) {
+			update_option( 'blueworx_admin_menu_item_labels', $remapped );
+		}
+	}
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -159,6 +202,10 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 1 ) {
 		blueworx_migrate_admin_menu_slug_rename();
+	}
+
+	if ( $stored_version < 2 ) {
+		blueworx_migrate_admin_menu_slug_labs_wordpress();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

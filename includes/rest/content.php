@@ -111,13 +111,13 @@ function blueworx_headless_route_menu( WP_REST_Request $request ) {
 	$locations = get_nav_menu_locations();
 
 	if ( empty( $locations[ $location ] ) ) {
-		return blueworx_headless_error( 'blueworx_menu_not_found', __( 'No menu is assigned to that location.', 'blueworx-project-wordpress-labs' ), 404 );
+		return blueworx_headless_error( 'blueworx_menu_not_found', __( 'No menu is assigned to that location.', 'blueworx-labs-wordpress' ), 404 );
 	}
 
 	$items = wp_get_nav_menu_items( $locations[ $location ] );
 
 	if ( false === $items ) {
-		return blueworx_headless_error( 'blueworx_menu_not_found', __( 'No menu is assigned to that location.', 'blueworx-project-wordpress-labs' ), 404 );
+		return blueworx_headless_error( 'blueworx_menu_not_found', __( 'No menu is assigned to that location.', 'blueworx-labs-wordpress' ), 404 );
 	}
 
 	return new WP_REST_Response(

@@ -50,14 +50,14 @@ function blueworx_intercept_requests() {
 	if ( 0 === strpos( $path, '/wp-admin' ) ) {
 		if ( ! is_user_logged_in() ) {
 			if ( blueworx_site_protection_is_enabled( 'backend' ) ) {
-				blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-project-wordpress-labs' ) );
+				blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-labs-wordpress' ) );
 			}
 
 			blueworx_redirect_home();
 		}
 
 		if ( blueworx_site_protection_is_enabled( 'backend' ) && ! blueworx_current_user_has_site_protection_role( 'backend' ) ) {
-			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-project-wordpress-labs' ) );
+			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-labs-wordpress' ) );
 		}
 
 		return;
@@ -65,11 +65,11 @@ function blueworx_intercept_requests() {
 
 	if ( blueworx_site_protection_is_enabled( 'frontend' ) ) {
 		if ( ! is_user_logged_in() ) {
-			blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-project-wordpress-labs' ) );
+			blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-labs-wordpress' ) );
 		}
 
 		if ( ! blueworx_current_user_has_site_protection_role( 'frontend' ) ) {
-			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-project-wordpress-labs' ) );
+			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-labs-wordpress' ) );
 		}
 	}
 }
@@ -124,7 +124,7 @@ function blueworx_current_user_has_site_protection_role( $area ) {
  * @return void
  */
 function blueworx_site_protection_die( $message ) {
-	wp_die( esc_html( $message ), esc_html__( 'Site Protection', 'blueworx-project-wordpress-labs' ), array( 'response' => 403 ) );
+	wp_die( esc_html( $message ), esc_html__( 'Site Protection', 'blueworx-labs-wordpress' ), array( 'response' => 403 ) );
 }
 
 /**

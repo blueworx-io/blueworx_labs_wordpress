@@ -4,7 +4,7 @@ Tags:              login, security, custom login url, hardening, cache
 Requires at least: 5.0
 Tested up to:      6.9
 Requires PHP:      8.0
-Stable tag:        1.6.0
+Stable tag:        1.8.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,7 +25,7 @@ The new login URL and cache refresh status are displayed in the **BlueWorx** adm
 
 == Installation ==
 
-1. Upload the `blueworx-project-wordpress-labs` folder to `/wp-content/plugins/`.
+1. Upload the `blueworx-labs-wordpress` folder to `/wp-content/plugins/`.
 2. Activate the plugin through the **Plugins** menu in WordPress.
 3. Visit **BlueWorx** to see your new login URL and active enhancements.
 4. Bookmark your new login URL before logging out.
@@ -51,7 +51,7 @@ When a page or post changes, the plugin refreshes the edited content, homepage, 
 
 The plugin is split into focused files for easier updates:
 
-* `blueworx-project-wordpress-labs.php` loads the plugin.
+* `blueworx-labs-wordpress.php` loads the plugin.
 * `includes/` contains admin, login, cache, comments, email, and helper functions.
 * `assets/js/` contains admin screen scripts.
 

@@ -1,6 +1,6 @@
 # IMPLEMENTATION_PLAN.md — BlueWorx Labs Headless REST Layer
 
-**Plugin:** BlueWorx Labs | WordPress Enhancements (`blueworx-project-wordpress-labs`)
+**Plugin:** BlueWorx Labs | WordPress Enhancements (`blueworx-labs-wordpress`)
 **Baseline:** v1.5.0 (Phase 0 complete — foundation onboarding + rename/merge)
 **Status:** Authoritative build spec for the headless phases (1–6, LatePoint deferred to 7)
 **Authored:** 2026-07-09 (Luke McFarland + Claude Code, brainstormed; decisions doc-verified against SureCart, LatePoint, WordPress REST, and RFC 9700 / OWASP sources)
@@ -439,7 +439,7 @@ bump, changelog, Playwright). Per-PR: bump the plugin header +
 - **Versioning:** patch for fixes, minor for each phase's features. Bump the
   plugin header, `BLUEWORX_LABS_VERSION`, and `package.json` together every PR;
   `npm run version:check` and `composer lint` (WPCS) must pass.
-- **Deployment artifact:** `npm run build` → `dist/blueworx-project-wordpress-labs.zip`
+- **Deployment artifact:** `npm run build` → `dist/blueworx-labs-wordpress.zip`
   (single zip; older zips removed first). Never copy individual files.
 - **Linting:** run once as a final check; present findings; fix only after
   approval (no lint→autofix→relint loop).

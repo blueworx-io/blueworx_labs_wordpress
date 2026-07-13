@@ -39,12 +39,12 @@ function blueworx_is_breeze_active() {
  */
 function blueworx_handle_manual_cache_refresh() {
 	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-project-wordpress-labs' ) );
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
 
 	check_admin_referer( 'blueworx_clear_cache_now' );
 	blueworx_refresh_manual_cache();
-	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Breeze full-cache clearing is used when available; otherwise the homepage and WordPress object cache are refreshed.', 'blueworx-project-wordpress-labs' ), 30 );
+	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Breeze full-cache clearing is used when available; otherwise the homepage and WordPress object cache are refreshed.', 'blueworx-labs-wordpress' ), 30 );
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-cache' ) );
 	exit;
 }

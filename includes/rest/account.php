@@ -57,7 +57,7 @@ function blueworx_headless_generic_email_ok() {
 	return new WP_REST_Response(
 		array(
 			'ok'      => true,
-			'message' => __( 'If that email can be used, we have sent a message with the next steps.', 'blueworx-project-wordpress-labs' ),
+			'message' => __( 'If that email can be used, we have sent a message with the next steps.', 'blueworx-labs-wordpress' ),
 		),
 		200
 	);
@@ -180,9 +180,9 @@ function blueworx_headless_clear_user_token( $user_id, $meta_key ) {
  */
 function blueworx_headless_send_verification_email( $user, $raw ) {
 	$link    = blueworx_headless_frontend_url() . '/verify?token=' . rawurlencode( $raw );
-	$subject = __( 'Confirm your email address', 'blueworx-project-wordpress-labs' );
+	$subject = __( 'Confirm your email address', 'blueworx-labs-wordpress' );
 	/* translators: %s: verification link. */
-	$body = sprintf( __( "Please confirm your email address by opening this link:\n\n%s", 'blueworx-project-wordpress-labs' ), $link );
+	$body = sprintf( __( "Please confirm your email address by opening this link:\n\n%s", 'blueworx-labs-wordpress' ), $link );
 
 	wp_mail( $user->user_email, $subject, $body );
 }
@@ -197,7 +197,7 @@ function blueworx_headless_route_register( WP_REST_Request $request ) {
 	$mode = blueworx_headless_setting( 'registration_mode' );
 
 	if ( 'closed' === $mode ) {
-		return blueworx_headless_error( 'blueworx_registration_closed', __( 'Registration is not available.', 'blueworx-project-wordpress-labs' ), 403 );
+		return blueworx_headless_error( 'blueworx_registration_closed', __( 'Registration is not available.', 'blueworx-labs-wordpress' ), 403 );
 	}
 
 	$retry = blueworx_headless_rl_hit( 'register', 10, HOUR_IN_SECONDS );
@@ -209,11 +209,11 @@ function blueworx_headless_route_register( WP_REST_Request $request ) {
 	$password = (string) $request->get_param( 'password' );
 
 	if ( ! is_email( $email ) ) {
-		return blueworx_headless_error( 'blueworx_invalid_email', __( 'A valid email address is required.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_invalid_email', __( 'A valid email address is required.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	if ( strlen( $password ) < 8 ) {
-		return blueworx_headless_error( 'blueworx_weak_password', __( 'Password must be at least 8 characters.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_weak_password', __( 'Password must be at least 8 characters.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	$role = sanitize_key( blueworx_headless_setting( 'default_role' ) );
@@ -222,7 +222,7 @@ function blueworx_headless_route_register( WP_REST_Request $request ) {
 		$invite = blueworx_headless_consume_invite( (string) $request->get_param( 'invite_token' ), $email );
 
 		if ( null === $invite ) {
-			return blueworx_headless_error( 'blueworx_invalid_invite', __( 'This invitation is invalid or has expired.', 'blueworx-project-wordpress-labs' ), 403 );
+			return blueworx_headless_error( 'blueworx_invalid_invite', __( 'This invitation is invalid or has expired.', 'blueworx-labs-wordpress' ), 403 );
 		}
 
 		if ( ! empty( $invite->role ) ) {
@@ -276,7 +276,7 @@ function blueworx_headless_route_verify( WP_REST_Request $request ) {
 	$user = blueworx_headless_find_user_by_token( (string) $request->get_param( 'token' ), 'blueworx_headless_verify_token' );
 
 	if ( null === $user ) {
-		return blueworx_headless_error( 'blueworx_invalid_token', __( 'This confirmation link is invalid or has expired.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_invalid_token', __( 'This confirmation link is invalid or has expired.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	delete_user_meta( $user->ID, 'blueworx_headless_email_unverified' );
@@ -323,9 +323,9 @@ function blueworx_headless_route_password_forgot( WP_REST_Request $request ) {
 	if ( $user ) {
 		$raw     = blueworx_headless_set_user_token( $user->ID, 'blueworx_headless_reset_token', HOUR_IN_SECONDS );
 		$link    = blueworx_headless_frontend_url() . '/reset-password?token=' . rawurlencode( $raw );
-		$subject = __( 'Reset your password', 'blueworx-project-wordpress-labs' );
+		$subject = __( 'Reset your password', 'blueworx-labs-wordpress' );
 		/* translators: %s: password reset link. */
-		$body = sprintf( __( "You can reset your password using this link:\n\n%s\n\nIf you did not request this, you can ignore this email.", 'blueworx-project-wordpress-labs' ), $link );
+		$body = sprintf( __( "You can reset your password using this link:\n\n%s\n\nIf you did not request this, you can ignore this email.", 'blueworx-labs-wordpress' ), $link );
 
 		wp_mail( $user->user_email, $subject, $body );
 	}
@@ -348,13 +348,13 @@ function blueworx_headless_route_password_reset( WP_REST_Request $request ) {
 	$password = (string) $request->get_param( 'password' );
 
 	if ( strlen( $password ) < 8 ) {
-		return blueworx_headless_error( 'blueworx_weak_password', __( 'Password must be at least 8 characters.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_weak_password', __( 'Password must be at least 8 characters.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	$user = blueworx_headless_find_user_by_token( (string) $request->get_param( 'token' ), 'blueworx_headless_reset_token' );
 
 	if ( null === $user ) {
-		return blueworx_headless_error( 'blueworx_invalid_token', __( 'This reset link is invalid or has expired.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_invalid_token', __( 'This reset link is invalid or has expired.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	wp_set_password( $password, $user->ID );
@@ -377,11 +377,11 @@ function blueworx_headless_route_password_change( WP_REST_Request $request ) {
 	$new_pass = (string) $request->get_param( 'new_password' );
 
 	if ( ! wp_check_password( $current, $user->user_pass, $user->ID ) ) {
-		return blueworx_headless_error( 'blueworx_bad_password', __( 'Your current password is incorrect.', 'blueworx-project-wordpress-labs' ), 403 );
+		return blueworx_headless_error( 'blueworx_bad_password', __( 'Your current password is incorrect.', 'blueworx-labs-wordpress' ), 403 );
 	}
 
 	if ( strlen( $new_pass ) < 8 ) {
-		return blueworx_headless_error( 'blueworx_weak_password', __( 'Password must be at least 8 characters.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_weak_password', __( 'Password must be at least 8 characters.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	wp_set_password( $new_pass, $user->ID );
@@ -413,7 +413,7 @@ function blueworx_headless_route_account_update( WP_REST_Request $request ) {
 	$result = wp_update_user( $update );
 
 	if ( is_wp_error( $result ) ) {
-		return blueworx_headless_error( 'blueworx_update_failed', __( 'Could not update your profile.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_update_failed', __( 'Could not update your profile.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	return new WP_REST_Response( blueworx_headless_user_payload( get_user_by( 'id', $user_id ) ), 200 );
@@ -432,7 +432,7 @@ function blueworx_headless_route_account_delete( WP_REST_Request $request ) {
 	$current = (string) $request->get_param( 'current_password' );
 
 	if ( ! wp_check_password( $current, $user->user_pass, $user->ID ) ) {
-		return blueworx_headless_error( 'blueworx_bad_password', __( 'Your current password is incorrect.', 'blueworx-project-wordpress-labs' ), 403 );
+		return blueworx_headless_error( 'blueworx_bad_password', __( 'Your current password is incorrect.', 'blueworx-labs-wordpress' ), 403 );
 	}
 
 	$user_id = $user->ID;

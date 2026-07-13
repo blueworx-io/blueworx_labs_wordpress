@@ -4,6 +4,32 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.8.0] - 2026-07-13
+
+### Removed
+- **Role editor / user-role controls**, to be rebuilt later. Removes the
+  "Edit Role" admin page, the three managed roles (Business Owner, External
+  Admin, Content Editor), the capability editor, and the backend-page
+  permission engine (`includes/user-roles.php` and `assets/js/role-editor.js`).
+  The separate "Site Protection" feature (role-based frontend/backend view
+  gating) is unchanged. Existing sites keep their roles and saved role options
+  in the database — only the code is removed, so nothing is lost when the
+  feature is rebuilt.
+
+## [1.7.0] - 2026-07-13
+
+### Changed
+- **Plugin slug renamed** from `blueworx-project-wordpress-labs` to
+  `blueworx-labs-wordpress`, aligning it with the renamed repository. The main
+  file, folder, text domain, admin page slug, asset handles, CI `plugin_slug`,
+  and build/version scripts all move to the new slug. The display name
+  ("BlueWorx Labs | WordPress Enhancements") is unchanged.
+
+### Migrations
+- Added a one-time migration (labs DB version 2) that remaps saved admin-menu
+  customizations (order, hidden/toggled items, and item labels) from the old
+  slug to the new one, so admins keep their menu settings across the rename.
+
 ## [1.6.0] - 2026-07-09
 
 ### Added
