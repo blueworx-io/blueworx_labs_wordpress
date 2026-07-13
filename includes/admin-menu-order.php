@@ -55,6 +55,18 @@ function blueworx_admin_menu_is_customized() {
 }
 
 /**
+ * Determines whether the computed default menu arrangement should apply.
+ *
+ * Defaults apply only to administrators and only until a custom arrangement is
+ * saved. Lower roles and customised sites fall through to the stored options.
+ *
+ * @return bool True when the computed default arrangement should be used.
+ */
+function blueworx_should_use_default_admin_menu() {
+	return ! blueworx_admin_menu_is_customized() && current_user_can( 'manage_options' );
+}
+
+/**
  * Gets the canonical top-level slugs registered by WordPress core.
  *
  * Used to tell core menu items (moved to More by default) apart from
@@ -125,6 +137,7 @@ function blueworx_compute_default_admin_menu_arrangement() {
 	foreach ( (array) $menu as $menu_item ) {
 		$slug  = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
 		$label = isset( $menu_item[0] ) ? trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $menu_item[0] ) ) ) : '';
+		$label = trim( preg_replace( '/\s+\d+$/', '', $label ) );
 
 		if ( '' === $slug || 0 === strpos( $slug, 'separator' ) || in_array( $slug, $locked, true ) ) {
 			continue;
@@ -209,7 +222,7 @@ function blueworx_compute_default_admin_menu_arrangement() {
  * @return array Hidden menu slugs.
  */
 function blueworx_get_hidden_admin_menu_items() {
-	if ( ! blueworx_admin_menu_is_customized() ) {
+	if ( blueworx_should_use_default_admin_menu() ) {
 		$arrangement = blueworx_compute_default_admin_menu_arrangement();
 
 		return $arrangement['hidden'];
@@ -230,7 +243,7 @@ function blueworx_get_hidden_admin_menu_items() {
  * @return array More menu slugs.
  */
 function blueworx_get_toggled_admin_menu_items() {
-	if ( ! blueworx_admin_menu_is_customized() ) {
+	if ( blueworx_should_use_default_admin_menu() ) {
 		$arrangement = blueworx_compute_default_admin_menu_arrangement();
 
 		return array_values( array_diff( $arrangement['toggled'], blueworx_get_locked_admin_menu_items() ) );
@@ -251,7 +264,7 @@ function blueworx_get_toggled_admin_menu_items() {
  * @return array Saved or default menu slugs.
  */
 function blueworx_get_saved_admin_menu_order() {
-	if ( ! blueworx_admin_menu_is_customized() ) {
+	if ( blueworx_should_use_default_admin_menu() ) {
 		$arrangement = blueworx_compute_default_admin_menu_arrangement();
 
 		return $arrangement['order'];

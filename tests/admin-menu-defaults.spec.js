@@ -17,6 +17,13 @@ async function login(page) {
   }
 }
 
+async function mainColumnSlugs(page) {
+  return page.$$eval(
+    '.blueworx-menu-order-list[data-blueworx-menu-section="main"] .blueworx-menu-order-item',
+    (els) => els.map((el) => el.getAttribute('data-blueworx-menu-item'))
+  );
+}
+
 test.describe('BlueWorx default admin-menu arrangement', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
@@ -41,25 +48,58 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     expect(last).toContain('More');
   });
 
-  test('Edit Menu page shows the default split with items in the More column', async ({ page }) => {
+  test('Edit Menu page shows the default split with items in More and none hidden', async ({ page }) => {
     await login(page);
     await page.goto(EDIT_MENU_PATH);
     const moreColumn = page.locator('.blueworx-menu-order-list[data-blueworx-menu-section="toggle"]');
-    // At least one core item (e.g. Settings/Tools/Appearance) defaults into More.
     await expect(moreColumn.locator('.blueworx-menu-order-item')).not.toHaveCount(0);
-    // Hidden column is empty by default.
     const hiddenColumn = page.locator('.blueworx-menu-order-list[data-blueworx-menu-section="hidden"]');
     await expect(hiddenColumn.locator('.blueworx-menu-order-item')).toHaveCount(0);
   });
 
-  test('saving the Edit Menu page freezes the arrangement', async ({ page }) => {
+  test('main menu is ordered: Dashboard, BlueWorx, then keep items by length then A-Z', async ({ page }) => {
     await login(page);
     await page.goto(EDIT_MENU_PATH);
+    const slugs = await mainColumnSlugs(page);
+    // Dashboard pinned first, BlueWorx pinned second.
+    expect(slugs.indexOf('index.php')).toBe(0);
+    expect(slugs.indexOf('blueworx-labs-wordpress')).toBe(1);
+    // Media, Pages, Posts, Users are all 5 chars -> alphabetical order.
+    const keepOrder = ['upload.php', 'edit.php?post_type=page', 'edit.php', 'users.php'];
+    const positions = keepOrder.map((slug) => slugs.indexOf(slug));
+    for (const pos of positions) {
+      expect(pos).toBeGreaterThan(1);
+    }
+    for (let i = 1; i < positions.length; i += 1) {
+      expect(positions[i]).toBeGreaterThan(positions[i - 1]);
+    }
+  });
+
+  test('hiding an item, saving, and reloading persists it as hidden (freeze)', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    // Hide the last item in the Main column (avoids the pinned Dashboard/BlueWorx rows).
+    const mainItems = page.locator(
+      '.blueworx-menu-order-list[data-blueworx-menu-section="main"] .blueworx-menu-order-item'
+    );
+    const target = mainItems.last();
+    const slug = await target.getAttribute('data-blueworx-menu-item');
+    await target.locator('.blueworx-menu-visibility-toggle').click();
     await page.getByRole('button', { name: 'Save Menu Settings' }).click();
     await expect(page.locator('.notice-success').first()).toContainText('Menu settings saved');
-    // After a save the same split still renders (defaults were persisted, not reset).
+
+    // Reload: the item must now be in the Hidden column. Defaults never hide anything,
+    // so this only holds if the saved arrangement was frozen (not recomputed).
     await page.goto(EDIT_MENU_PATH);
-    const moreColumn = page.locator('.blueworx-menu-order-list[data-blueworx-menu-section="toggle"]');
-    await expect(moreColumn.locator('.blueworx-menu-order-item')).not.toHaveCount(0);
+    const hidden = page.locator(
+      `.blueworx-menu-order-list[data-blueworx-menu-section="hidden"] .blueworx-menu-order-item[data-blueworx-menu-item="${slug}"]`
+    );
+    await expect(hidden).toHaveCount(1);
+
+    // Restore so the test is idempotent across runs.
+    await hidden.locator('.blueworx-menu-visibility-toggle').click();
+    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await expect(page.locator('.notice-success').first()).toContainText('Menu settings saved');
   });
 });

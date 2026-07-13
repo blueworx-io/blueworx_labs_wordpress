@@ -28,6 +28,7 @@ Defaults requested:
 2. **Sort:** ascending by title length, alphabetical (A–Z) tiebreak for equal lengths.
 3. **Plugin placement:** grouped *below* the keep set — keep items (sorted by length) first,
    then plugin items (sorted by length). Not globally interleaved.
+4. **Administrators only.** The computed defaults apply only to users with `manage_options`; other roles keep the standard WordPress menu. Saved (customised) arrangements continue to apply to all roles, unchanged.
 
 ## Architecture
 

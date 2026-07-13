@@ -7,7 +7,7 @@ versioning.
 ## [1.10.0] - 2026-07-13
 
 ### Added
-- **Default admin-menu arrangement.** Out of the box the admin menu now pins
+- **Default admin-menu arrangement.** Out of the box the admin menu now (for administrators) pins
   BlueWorx directly below Dashboard, keeps only Posts, Media, Pages, and Users
   visible, moves every other core WordPress item into **More**, and leaves
   plugin-added items visible below the defaults. All items are ordered by title
