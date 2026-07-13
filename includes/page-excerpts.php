@@ -18,4 +18,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 function blueworx_enable_page_excerpts() {
 	add_post_type_support( 'page', 'excerpt' );
 }
-add_action( 'init', 'blueworx_enable_page_excerpts' );
+if ( blueworx_feature_enabled( 'page_excerpts' ) ) {
+	add_action( 'init', 'blueworx_enable_page_excerpts' );
+}

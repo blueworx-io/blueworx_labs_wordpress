@@ -37,7 +37,9 @@ function blueworx_filter_application_passwords_available( $available, $user ) {
 
 	return $available;
 }
-add_filter( 'wp_is_application_passwords_available_for_user', 'blueworx_filter_application_passwords_available', 10, 2 );
+if ( blueworx_feature_enabled( 'application_passwords' ) ) {
+	add_filter( 'wp_is_application_passwords_available_for_user', 'blueworx_filter_application_passwords_available', 10, 2 );
+}
 
 /**
  * Gets the user being viewed on profile screens.

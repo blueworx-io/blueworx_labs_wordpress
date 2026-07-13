@@ -48,7 +48,9 @@ function blueworx_handle_manual_cache_refresh() {
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-cache' ) );
 	exit;
 }
-add_action( 'admin_post_blueworx_clear_cache_now', 'blueworx_handle_manual_cache_refresh' );
+if ( blueworx_feature_enabled( 'cache_manual' ) ) {
+	add_action( 'admin_post_blueworx_clear_cache_now', 'blueworx_handle_manual_cache_refresh' );
+}
 
 /**
  * Refreshes cache after a real post or page change.
@@ -65,7 +67,9 @@ function blueworx_refresh_cache_on_save( $post_id, $post, $update ) { // phpcs:i
 
 	blueworx_refresh_cache_for_post( $post_id );
 }
-add_action( 'save_post', 'blueworx_refresh_cache_on_save', 20, 3 );
+if ( blueworx_feature_enabled( 'cache_auto' ) ) {
+	add_action( 'save_post', 'blueworx_refresh_cache_on_save', 20, 3 );
+}
 
 /**
  * Refreshes cache when content is moved to or from trash.
@@ -82,9 +86,11 @@ function blueworx_refresh_cache_on_trash_change( $post_id ) {
 
 	blueworx_refresh_cache_for_post( $post_id );
 }
-add_action( 'trashed_post', 'blueworx_refresh_cache_on_trash_change' );
-add_action( 'untrashed_post', 'blueworx_refresh_cache_on_trash_change' );
-add_action( 'before_delete_post', 'blueworx_refresh_cache_on_trash_change' );
+if ( blueworx_feature_enabled( 'cache_auto' ) ) {
+	add_action( 'trashed_post', 'blueworx_refresh_cache_on_trash_change' );
+	add_action( 'untrashed_post', 'blueworx_refresh_cache_on_trash_change' );
+	add_action( 'before_delete_post', 'blueworx_refresh_cache_on_trash_change' );
+}
 
 /**
  * Determines whether a post should trigger cache refresh.
