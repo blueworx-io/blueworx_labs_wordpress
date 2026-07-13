@@ -267,7 +267,7 @@ function blueworx_compute_default_admin_menu_arrangement() {
 
 - [ ] **Step 5: Lint the changed file**
 
-Run: `composer run phpcs -- includes/admin-menu-order.php` (or `vendor/bin/phpcs includes/admin-menu-order.php`)
+Run: `vendor/bin/phpcs includes/admin-menu-order.php` (or `vendor/bin/phpcs includes/admin-menu-order.php`)
 Expected: no new errors on the added functions. Fix any WPCS spacing/Yoda issues inline before committing.
 
 - [ ] **Step 6: Commit**
@@ -331,7 +331,7 @@ Expected: locally **SKIP** (placeholder). Against staging it now **PASSES** — 
 
 - [ ] **Step 5: Lint**
 
-Run: `composer run phpcs -- includes/admin-menu-order.php`
+Run: `vendor/bin/phpcs includes/admin-menu-order.php`
 Expected: no new errors.
 
 - [ ] **Step 6: Commit**
@@ -362,7 +362,7 @@ In `blueworx_save_edit_menu_page()`, immediately after the three existing `updat
 
 - [ ] **Step 2: Lint**
 
-Run: `composer run phpcs -- includes/admin-settings.php`
+Run: `vendor/bin/phpcs includes/admin-settings.php`
 Expected: no new errors.
 
 - [ ] **Step 3: Commit**
@@ -433,7 +433,7 @@ In `blueworx_run_pending_labs_migrations()`, after the `if ( $stored_version < 2
 
 - [ ] **Step 4: Lint**
 
-Run: `composer run phpcs -- includes/upgrade.php`
+Run: `vendor/bin/phpcs includes/upgrade.php`
 Expected: no new errors.
 
 - [ ] **Step 5: Commit**
