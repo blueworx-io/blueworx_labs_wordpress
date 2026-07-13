@@ -35,23 +35,27 @@ function blueworx_register_settings_page() {
 		'blueworx_render_enhancements_page'
 	);
 
-	add_submenu_page(
-		'blueworx-labs-wordpress',
-		esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
-		esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
-		'manage_options',
-		'blueworx-edit-menu',
-		'blueworx_render_edit_menu_page'
-	);
+	if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+		add_submenu_page(
+			'blueworx-labs-wordpress',
+			esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
+			esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
+			'manage_options',
+			'blueworx-edit-menu',
+			'blueworx_render_edit_menu_page'
+		);
+	}
 
-	add_submenu_page(
-		'blueworx-labs-wordpress',
-		esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
-		esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
-		'manage_options',
-		'blueworx-cache',
-		'blueworx_render_cache_page'
-	);
+	if ( blueworx_feature_enabled( 'cache_manual' ) ) {
+		add_submenu_page(
+			'blueworx-labs-wordpress',
+			esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
+			esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
+			'manage_options',
+			'blueworx-cache',
+			'blueworx_render_cache_page'
+		);
+	}
 }
 add_action( 'admin_menu', 'blueworx_register_settings_page' );
 
