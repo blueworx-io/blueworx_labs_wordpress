@@ -11,6 +11,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Sanitizes a custom login slug, falling back to the default when unusable.
+ *
+ * @param string $raw Raw slug input.
+ * @return string A safe, non-reserved slug.
+ */
+function blueworx_sanitize_login_slug( $raw ) {
+	$slug     = sanitize_title( (string) $raw );
+	$reserved = array( 'wp-admin', 'wp-login', 'admin', 'wp-content', 'wp-includes' );
+
+	if ( '' === $slug || in_array( $slug, $reserved, true ) ) {
+		return 'admin_login';
+	}
+
+	return $slug;
+}
+
+/**
+ * Gets the active custom login slug.
+ *
+ * @return string The configured slug, or the default when unset.
+ */
+function blueworx_login_slug() {
+	return blueworx_sanitize_login_slug( get_option( 'blueworx_login_slug', BLUEWORX_CUSTOM_LOGIN_SLUG ) );
+}
+
+/**
  * Intercepts incoming requests early in the WordPress bootstrap.
  *
  * @return void
@@ -29,7 +55,11 @@ function blueworx_intercept_requests() {
 	$path        = strtolower( wp_parse_url( sanitize_text_field( $request_uri ), PHP_URL_PATH ) );
 	$path        = '/' . trim( $path, '/' );
 
-	if ( blueworx_is_custom_login_request_path( $path ) ) {
+	$login_on    = blueworx_feature_enabled( 'login' );
+	$sp_backend  = blueworx_feature_enabled( 'site_protection' ) && blueworx_site_protection_is_enabled( 'backend' );
+	$sp_frontend = blueworx_feature_enabled( 'site_protection' ) && blueworx_site_protection_is_enabled( 'frontend' );
+
+	if ( $login_on && blueworx_is_custom_login_request_path( $path ) ) {
 		$_SERVER['SCRIPT_FILENAME'] = ABSPATH . 'wp-login.php';
 		$_SERVER['PHP_SELF']        = '/wp-login.php';
 		$_SERVER['SCRIPT_NAME']     = '/wp-login.php';
@@ -43,27 +73,31 @@ function blueworx_intercept_requests() {
 		false !== strpos( $script_name, 'wp-login.php' )
 	);
 
-	if ( $is_login_php ) {
+	if ( $login_on && $is_login_php ) {
 		blueworx_redirect_home();
 	}
 
 	if ( 0 === strpos( $path, '/wp-admin' ) ) {
 		if ( ! is_user_logged_in() ) {
-			if ( blueworx_site_protection_is_enabled( 'backend' ) ) {
+			if ( $sp_backend ) {
 				blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-labs-wordpress' ) );
 			}
 
-			blueworx_redirect_home();
+			if ( $login_on ) {
+				blueworx_redirect_home();
+			}
+
+			return;
 		}
 
-		if ( blueworx_site_protection_is_enabled( 'backend' ) && ! blueworx_current_user_has_site_protection_role( 'backend' ) ) {
+		if ( $sp_backend && ! blueworx_current_user_has_site_protection_role( 'backend' ) ) {
 			blueworx_site_protection_die( __( 'You do not have access to view this area.', 'blueworx-labs-wordpress' ) );
 		}
 
 		return;
 	}
 
-	if ( blueworx_site_protection_is_enabled( 'frontend' ) ) {
+	if ( $sp_frontend ) {
 		if ( ! is_user_logged_in() ) {
 			blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-labs-wordpress' ) );
 		}
@@ -73,7 +107,10 @@ function blueworx_intercept_requests() {
 		}
 	}
 }
-add_action( 'init', 'blueworx_intercept_requests', 1 );
+
+if ( blueworx_feature_enabled( 'login' ) || blueworx_feature_enabled( 'site_protection' ) ) {
+	add_action( 'init', 'blueworx_intercept_requests', 1 );
+}
 
 /**
  * Checks whether site protection is enabled for an area.
@@ -137,11 +174,11 @@ function blueworx_is_custom_login_request_path( $path ) {
 	$path      = '/' . trim( strtolower( (string) $path ), '/' );
 	$home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
 	$home_path = '/' . trim( strtolower( (string) $home_path ), '/' );
-	$bases     = array( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG );
+	$bases     = array( '/' . blueworx_login_slug() );
 
 	if ( '/' !== $home_path ) {
-		$bases[] = $home_path . '/' . BLUEWORX_CUSTOM_LOGIN_SLUG;
-		$bases[] = $home_path . '/index.php/' . BLUEWORX_CUSTOM_LOGIN_SLUG;
+		$bases[] = $home_path . '/' . blueworx_login_slug();
+		$bases[] = $home_path . '/index.php/' . blueworx_login_slug();
 	}
 
 	foreach ( array_unique( $bases ) as $base ) {
@@ -164,7 +201,7 @@ function blueworx_is_custom_login_request_path( $path ) {
  * @return string The filtered login URL.
  */
 function blueworx_custom_login_url( $login_url, $redirect, $force_reauth ) {
-	$custom = home_url( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG . '/' );
+	$custom = home_url( '/' . blueworx_login_slug() . '/' );
 
 	if ( $redirect ) {
 		$custom = add_query_arg( 'redirect_to', $redirect, $custom );
@@ -175,7 +212,6 @@ function blueworx_custom_login_url( $login_url, $redirect, $force_reauth ) {
 
 	return $custom;
 }
-add_filter( 'login_url', 'blueworx_custom_login_url', 10, 3 );
 
 /**
  * Replaces generated wp-login.php URLs with the custom login slug.
@@ -193,7 +229,7 @@ function blueworx_replace_generated_login_url( $url, $path ) {
 	}
 
 	$query  = wp_parse_url( $url, PHP_URL_QUERY );
-	$custom = home_url( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG . '/' );
+	$custom = home_url( '/' . blueworx_login_slug() . '/' );
 
 	if ( $query ) {
 		$custom .= '?' . $query;
@@ -201,8 +237,6 @@ function blueworx_replace_generated_login_url( $url, $path ) {
 
 	return $custom;
 }
-add_filter( 'site_url', 'blueworx_replace_generated_login_url', 10, 2 );
-add_filter( 'network_site_url', 'blueworx_replace_generated_login_url', 10, 2 );
 
 /**
  * Secondary safeguard to block direct wp-login.php access.
@@ -218,4 +252,10 @@ function blueworx_template_redirect_guard() {
 
 	blueworx_redirect_home();
 }
-add_action( 'template_redirect', 'blueworx_template_redirect_guard' );
+
+if ( blueworx_feature_enabled( 'login' ) ) {
+	add_filter( 'login_url', 'blueworx_custom_login_url', 10, 3 );
+	add_filter( 'site_url', 'blueworx_replace_generated_login_url', 10, 2 );
+	add_filter( 'network_site_url', 'blueworx_replace_generated_login_url', 10, 2 );
+	add_action( 'template_redirect', 'blueworx_template_redirect_guard' );
+}
