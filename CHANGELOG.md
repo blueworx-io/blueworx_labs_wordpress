@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.10.0] - 2026-07-13
+
+### Added
+- **Default admin-menu arrangement.** For administrators, the admin menu now
+  pins BlueWorx directly below Dashboard, keeps only Posts, Media, Pages, and
+  Users visible, moves every other core WordPress item into **More**, and leaves
+  plugin-added items visible below the defaults. All items are ordered by title
+  length (shortest first, alphabetical tiebreak); More stays last. Saving the
+  Edit Menu page freezes the arrangement, after which saved choices always win.
+  Sites that had already arranged their menu are detected on upgrade and keep
+  their existing layout.
+
 ## [1.9.0] - 2026-07-13
 
 ### Added
