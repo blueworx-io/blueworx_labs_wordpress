@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.9.0] - 2026-07-13
+
+### Added
+- **Feature settings page.** BlueWorx → Enhancements is now a grouped settings
+  form with an on/off toggle for every enhancement function, organized into
+  Security & Access, Content, Notifications & Cleanup, Performance, and Admin
+  Menu sections. Disabling a function makes it fully inert and hides its page
+  and detail controls; every function defaults on, so existing sites are
+  unchanged.
+- **Editable login slug.** The custom login path is now configurable on the
+  settings page (was the fixed `admin_login`). Turning the login function off
+  restores the standard WordPress login.
+
 ## [1.8.0] - 2026-07-13
 
 ### Removed
