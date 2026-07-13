@@ -187,10 +187,10 @@ function blueworx_render_enhancements_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$sections    = blueworx_get_feature_sections();
-	$features    = blueworx_get_feature_definitions();
-	$notice      = get_transient( 'blueworx_labs_notice' );
-	$login_url   = home_url( '/' . blueworx_login_slug() . '/' );
+	$sections  = blueworx_get_feature_sections();
+	$features  = blueworx_get_feature_definitions();
+	$notice    = get_transient( 'blueworx_labs_notice' );
+	$login_url = home_url( '/' . blueworx_login_slug() . '/' );
 
 	if ( $notice ) {
 		delete_transient( 'blueworx_labs_notice' );
