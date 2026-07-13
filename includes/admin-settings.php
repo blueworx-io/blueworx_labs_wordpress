@@ -87,7 +87,9 @@ function blueworx_save_edit_menu_page() {
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-edit-menu' ) );
 	exit;
 }
-add_action( 'admin_post_blueworx_save_admin_menu_order', 'blueworx_save_edit_menu_page' );
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_action( 'admin_post_blueworx_save_admin_menu_order', 'blueworx_save_edit_menu_page' );
+}
 
 /**
  * Gets all roles that can be selected for site protection.

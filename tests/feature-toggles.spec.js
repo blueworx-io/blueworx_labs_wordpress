@@ -47,7 +47,7 @@ test.describe('BlueWorx feature toggles', () => {
 
     await toggle.setChecked(!wasChecked);
     await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success')).toContainText('Settings saved');
+    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
     await expect(
       page.locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]')
     ).toBeChecked({ checked: !wasChecked });
@@ -57,6 +57,6 @@ test.describe('BlueWorx feature toggles', () => {
       .locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]')
       .setChecked(wasChecked);
     await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success')).toContainText('Settings saved');
+    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
   });
 });
