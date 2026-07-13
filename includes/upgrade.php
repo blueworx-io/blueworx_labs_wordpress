@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 2;
+	return 3;
 }
 
 /**
@@ -186,6 +186,28 @@ function blueworx_migrate_admin_menu_slug_labs_wordpress() {
 }
 
 /**
+ * Marks sites that already arranged their admin menu as customised, so the new
+ * computed default arrangement does not overwrite an existing arrangement.
+ *
+ * A site counts as arranged if any of the three menu-state options holds a
+ * non-empty array. Sites with no saved arrangement are left unmarked and adopt
+ * the new defaults.
+ *
+ * @return void
+ */
+function blueworx_migrate_mark_admin_menu_customized() {
+	foreach ( blueworx_get_admin_menu_slug_value_options() as $option_name ) {
+		$value = get_option( $option_name, array() );
+
+		if ( is_array( $value ) && ! empty( $value ) ) {
+			update_option( 'blueworx_admin_menu_customized', '1' );
+
+			return;
+		}
+	}
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -206,6 +228,10 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 2 ) {
 		blueworx_migrate_admin_menu_slug_labs_wordpress();
+	}
+
+	if ( $stored_version < 3 ) {
+		blueworx_migrate_mark_admin_menu_customized();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );
