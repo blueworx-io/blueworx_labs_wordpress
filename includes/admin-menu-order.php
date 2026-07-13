@@ -209,6 +209,12 @@ function blueworx_compute_default_admin_menu_arrangement() {
  * @return array Hidden menu slugs.
  */
 function blueworx_get_hidden_admin_menu_items() {
+	if ( ! blueworx_admin_menu_is_customized() ) {
+		$arrangement = blueworx_compute_default_admin_menu_arrangement();
+
+		return $arrangement['hidden'];
+	}
+
 	$hidden = get_option( 'blueworx_hidden_admin_menu_items', array() );
 
 	if ( ! is_array( $hidden ) ) {
@@ -224,6 +230,12 @@ function blueworx_get_hidden_admin_menu_items() {
  * @return array More menu slugs.
  */
 function blueworx_get_toggled_admin_menu_items() {
+	if ( ! blueworx_admin_menu_is_customized() ) {
+		$arrangement = blueworx_compute_default_admin_menu_arrangement();
+
+		return array_values( array_diff( $arrangement['toggled'], blueworx_get_locked_admin_menu_items() ) );
+	}
+
 	$toggled = get_option( 'blueworx_toggled_admin_menu_items', array() );
 
 	if ( ! is_array( $toggled ) ) {
@@ -239,6 +251,12 @@ function blueworx_get_toggled_admin_menu_items() {
  * @return array Saved or default menu slugs.
  */
 function blueworx_get_saved_admin_menu_order() {
+	if ( ! blueworx_admin_menu_is_customized() ) {
+		$arrangement = blueworx_compute_default_admin_menu_arrangement();
+
+		return $arrangement['order'];
+	}
+
 	$saved_order = get_option( 'blueworx_admin_menu_order', array() );
 
 	if ( ! is_array( $saved_order ) || empty( $saved_order ) ) {
