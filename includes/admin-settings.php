@@ -82,6 +82,7 @@ function blueworx_save_edit_menu_page() {
 	update_option( 'blueworx_admin_menu_order', $order );
 	update_option( 'blueworx_hidden_admin_menu_items', array_values( array_unique( $hidden ) ) );
 	update_option( 'blueworx_toggled_admin_menu_items', array_values( array_unique( $toggled ) ) );
+	update_option( 'blueworx_admin_menu_customized', '1' );
 	set_transient( 'blueworx_admin_menu_order_notice', __( 'Menu settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-edit-menu' ) );
