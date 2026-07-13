@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.10.1] - 2026-07-13
+
+### Added
+- **Headless integration guide.** New `HEADLESS_INTEGRATION.md` documenting the
+  `blueworx/v1` REST contract, auth model, content/routing, revalidation, and
+  SureCart proxy so a headless Next.js frontend can be pointed at this repo to
+  build against the plugin. Documentation only; no runtime change.
+
 ## [1.10.0] - 2026-07-13
 
 ### Added
