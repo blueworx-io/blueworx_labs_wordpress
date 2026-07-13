@@ -24,7 +24,7 @@
 	<rule ref="WordPress.WP.I18n">
 		<properties>
 			<property name="text_domain" type="array">
-				<element value="blueworx-project-wordpress-labs"/>
+				<element value="blueworx-labs-wordpress"/>
 			</property>
 		</properties>
 	</rule>

@@ -5,11 +5,11 @@ import { createWriteStream, mkdirSync, readdirSync, rmSync, existsSync } from 'n
 import { join } from 'node:path';
 import archiver from 'archiver';
 
-const SLUG = 'blueworx-project-wordpress-labs';
+const SLUG = 'blueworx-labs-wordpress';
 const DIST = 'dist';
 
 // Runtime files/dirs that ship inside the plugin folder.
-const REQUIRED = ['blueworx-project-wordpress-labs.php', 'readme.txt', 'includes', 'assets'];
+const REQUIRED = ['blueworx-labs-wordpress.php', 'readme.txt', 'includes', 'assets'];
 const OPTIONAL = ['languages'];
 const INCLUDE = [...REQUIRED, ...OPTIONAL];
 

@@ -99,7 +99,7 @@ function blueworx_headless_rl_clear( $action, $identifier = '' ) {
 function blueworx_headless_rl_error( $retry_after ) {
 	return new WP_Error(
 		'blueworx_rate_limited',
-		__( 'Too many attempts. Please wait and try again.', 'blueworx-project-wordpress-labs' ),
+		__( 'Too many attempts. Please wait and try again.', 'blueworx-labs-wordpress' ),
 		array(
 			'status'      => 429,
 			'retry_after' => (int) $retry_after,

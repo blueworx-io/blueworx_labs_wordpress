@@ -150,30 +150,30 @@ function blueworx_headless_rotate_refresh_token( $raw ) {
 	global $wpdb;
 
 	if ( '' === (string) $raw ) {
-		return blueworx_headless_error( 'blueworx_no_refresh', __( 'No session found.', 'blueworx-project-wordpress-labs' ), 401 );
+		return blueworx_headless_error( 'blueworx_no_refresh', __( 'No session found.', 'blueworx-labs-wordpress' ), 401 );
 	}
 
 	$row = blueworx_headless_find_refresh_token( $raw );
 
 	if ( ! $row ) {
-		return blueworx_headless_error( 'blueworx_invalid_refresh', __( 'Session is no longer valid.', 'blueworx-project-wordpress-labs' ), 401 );
+		return blueworx_headless_error( 'blueworx_invalid_refresh', __( 'Session is no longer valid.', 'blueworx-labs-wordpress' ), 401 );
 	}
 
 	// Replay of a consumed token: treat as theft, revoke the whole family.
 	if ( 1 === (int) $row->revoked ) {
 		blueworx_headless_revoke_family( $row->family_id );
 
-		return blueworx_headless_error( 'blueworx_refresh_reuse', __( 'Session revoked for security reasons. Please sign in again.', 'blueworx-project-wordpress-labs' ), 401 );
+		return blueworx_headless_error( 'blueworx_refresh_reuse', __( 'Session revoked for security reasons. Please sign in again.', 'blueworx-labs-wordpress' ), 401 );
 	}
 
 	if ( strtotime( $row->expires_at . ' UTC' ) < time() ) {
-		return blueworx_headless_error( 'blueworx_expired_refresh', __( 'Session has expired.', 'blueworx-project-wordpress-labs' ), 401 );
+		return blueworx_headless_error( 'blueworx_expired_refresh', __( 'Session has expired.', 'blueworx-labs-wordpress' ), 401 );
 	}
 
 	$successor = blueworx_headless_issue_refresh_token( (int) $row->user_id, $row->family_id );
 
 	if ( ! $successor ) {
-		return blueworx_headless_error( 'blueworx_rotate_failed', __( 'Could not refresh the session.', 'blueworx-project-wordpress-labs' ), 500 );
+		return blueworx_headless_error( 'blueworx_rotate_failed', __( 'Could not refresh the session.', 'blueworx-labs-wordpress' ), 500 );
 	}
 
 	$table = blueworx_headless_refresh_tokens_table();

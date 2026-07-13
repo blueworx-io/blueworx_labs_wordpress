@@ -105,7 +105,7 @@ function blueworx_headless_surecart_request( $method, $path, $query = array(), $
 	$response = wp_remote_request( esc_url_raw( $url ), $args );
 
 	if ( is_wp_error( $response ) ) {
-		return blueworx_headless_error( 'blueworx_surecart_unreachable', __( 'The store is temporarily unavailable.', 'blueworx-project-wordpress-labs' ), 502 );
+		return blueworx_headless_error( 'blueworx_surecart_unreachable', __( 'The store is temporarily unavailable.', 'blueworx-labs-wordpress' ), 502 );
 	}
 
 	$status = (int) wp_remote_retrieve_response_code( $response );
@@ -320,7 +320,7 @@ function blueworx_headless_sc_checkout( WP_REST_Request $request ) {
 	$customer = blueworx_headless_sc_current_customer();
 
 	if ( ! is_string( $customer ) ) {
-		return blueworx_headless_error( 'blueworx_no_customer', __( 'No customer record is associated with your account yet.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_no_customer', __( 'No customer record is associated with your account yet.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	$body             = (array) $request->get_json_params();
@@ -341,7 +341,7 @@ function blueworx_headless_sc_cancel_subscription( WP_REST_Request $request ) {
 	$customer = blueworx_headless_sc_current_customer();
 
 	if ( ! is_string( $customer ) ) {
-		return blueworx_headless_error( 'blueworx_forbidden', __( 'You do not have access to that subscription.', 'blueworx-project-wordpress-labs' ), 403 );
+		return blueworx_headless_error( 'blueworx_forbidden', __( 'You do not have access to that subscription.', 'blueworx-labs-wordpress' ), 403 );
 	}
 
 	$id     = sanitize_text_field( (string) $request->get_param( 'id' ) );
@@ -353,7 +353,7 @@ function blueworx_headless_sc_cancel_subscription( WP_REST_Request $request ) {
 
 	// Ownership is verified before any state change; fail closed.
 	if ( blueworx_headless_surecart_record_customer( (array) $lookup['data'] ) !== $customer ) {
-		return blueworx_headless_error( 'blueworx_forbidden', __( 'You do not have access to that subscription.', 'blueworx-project-wordpress-labs' ), 403 );
+		return blueworx_headless_error( 'blueworx_forbidden', __( 'You do not have access to that subscription.', 'blueworx-labs-wordpress' ), 403 );
 	}
 
 	$result = blueworx_headless_surecart_request( 'POST', '/subscriptions/' . rawurlencode( $id ) . '/cancel' );
@@ -374,7 +374,7 @@ function blueworx_headless_surecart_passthrough( $result ) {
 	}
 
 	if ( $result['status'] >= 400 ) {
-		return blueworx_headless_error( 'blueworx_surecart_error', __( 'The store could not complete that request.', 'blueworx-project-wordpress-labs' ), $result['status'] );
+		return blueworx_headless_error( 'blueworx_surecart_error', __( 'The store could not complete that request.', 'blueworx-labs-wordpress' ), $result['status'] );
 	}
 
 	return new WP_REST_Response( $result['data'], $result['status'] );

@@ -79,7 +79,7 @@ function blueworx_headless_require_auth() {
 		return true;
 	}
 
-	return blueworx_headless_error( 'blueworx_unauthorized', __( 'Authentication required.', 'blueworx-project-wordpress-labs' ), 401 );
+	return blueworx_headless_error( 'blueworx_unauthorized', __( 'Authentication required.', 'blueworx-labs-wordpress' ), 401 );
 }
 
 /**
@@ -90,7 +90,7 @@ function blueworx_headless_require_auth() {
  */
 function blueworx_headless_route_login( WP_REST_Request $request ) {
 	if ( ! blueworx_headless_auth_ready() ) {
-		return blueworx_headless_error( 'blueworx_auth_unconfigured', __( 'Authentication is not configured on this site.', 'blueworx-project-wordpress-labs' ), 503 );
+		return blueworx_headless_error( 'blueworx_auth_unconfigured', __( 'Authentication is not configured on this site.', 'blueworx-labs-wordpress' ), 503 );
 	}
 
 	$max    = (int) blueworx_headless_setting( 'login_max_attempts' );
@@ -105,7 +105,7 @@ function blueworx_headless_route_login( WP_REST_Request $request ) {
 	$password = (string) $request->get_param( 'password' );
 
 	if ( '' === $login || '' === $password ) {
-		return blueworx_headless_error( 'blueworx_missing_credentials', __( 'A username/email and password are required.', 'blueworx-project-wordpress-labs' ), 400 );
+		return blueworx_headless_error( 'blueworx_missing_credentials', __( 'A username/email and password are required.', 'blueworx-labs-wordpress' ), 400 );
 	}
 
 	$user = wp_authenticate( $login, $password );
@@ -117,12 +117,12 @@ function blueworx_headless_route_login( WP_REST_Request $request ) {
 			return blueworx_headless_rl_error( $retry );
 		}
 
-		return blueworx_headless_error( 'blueworx_invalid_login', __( 'Invalid username/email or password.', 'blueworx-project-wordpress-labs' ), 401 );
+		return blueworx_headless_error( 'blueworx_invalid_login', __( 'Invalid username/email or password.', 'blueworx-labs-wordpress' ), 401 );
 	}
 
 	// Optionally block unverified accounts (set during registration).
 	if ( '1' === get_user_meta( $user->ID, 'blueworx_headless_email_unverified', true ) ) {
-		return blueworx_headless_error( 'blueworx_email_unverified', __( 'Please confirm your email address before signing in.', 'blueworx-project-wordpress-labs' ), 403 );
+		return blueworx_headless_error( 'blueworx_email_unverified', __( 'Please confirm your email address before signing in.', 'blueworx-labs-wordpress' ), 403 );
 	}
 
 	blueworx_headless_rl_clear( 'login' );
@@ -140,13 +140,13 @@ function blueworx_headless_issue_session( $user ) {
 	$access = blueworx_headless_issue_access_token( $user->ID );
 
 	if ( null === $access ) {
-		return blueworx_headless_error( 'blueworx_token_failed', __( 'Could not issue an access token.', 'blueworx-project-wordpress-labs' ), 500 );
+		return blueworx_headless_error( 'blueworx_token_failed', __( 'Could not issue an access token.', 'blueworx-labs-wordpress' ), 500 );
 	}
 
 	$refresh = blueworx_headless_issue_refresh_token( $user->ID );
 
 	if ( null === $refresh ) {
-		return blueworx_headless_error( 'blueworx_session_failed', __( 'Could not start a session.', 'blueworx-project-wordpress-labs' ), 500 );
+		return blueworx_headless_error( 'blueworx_session_failed', __( 'Could not start a session.', 'blueworx-labs-wordpress' ), 500 );
 	}
 
 	blueworx_headless_set_refresh_cookie( $refresh['token'], $refresh['expires'] );
@@ -182,13 +182,13 @@ function blueworx_headless_route_refresh() {
 	if ( ! $user ) {
 		blueworx_headless_clear_refresh_cookie();
 
-		return blueworx_headless_error( 'blueworx_invalid_refresh', __( 'Session is no longer valid.', 'blueworx-project-wordpress-labs' ), 401 );
+		return blueworx_headless_error( 'blueworx_invalid_refresh', __( 'Session is no longer valid.', 'blueworx-labs-wordpress' ), 401 );
 	}
 
 	$access = blueworx_headless_issue_access_token( $user->ID );
 
 	if ( null === $access ) {
-		return blueworx_headless_error( 'blueworx_token_failed', __( 'Could not issue an access token.', 'blueworx-project-wordpress-labs' ), 500 );
+		return blueworx_headless_error( 'blueworx_token_failed', __( 'Could not issue an access token.', 'blueworx-labs-wordpress' ), 500 );
 	}
 
 	blueworx_headless_set_refresh_cookie( $result['token'], $result['expires'] );

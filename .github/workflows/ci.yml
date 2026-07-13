@@ -5,4 +5,4 @@ jobs:
     uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@main
     with:
       preview_url: https://staging.placeholder.blueworx.io
-      plugin_slug: blueworx-project-wordpress-labs
+      plugin_slug: blueworx-labs-wordpress

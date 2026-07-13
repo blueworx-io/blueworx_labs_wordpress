@@ -34,9 +34,8 @@ function blueworx_get_admin_asset_version( $relative_path ) {
  */
 function blueworx_enqueue_admin_assets( $hook_suffix ) {
 	$allowed_screens = array(
-		'toplevel_page_blueworx-project-wordpress-labs',
+		'toplevel_page_blueworx-labs-wordpress',
 		'blueworx_page_blueworx-edit-menu',
-		'blueworx_page_blueworx-edit-role',
 		'blueworx_page_blueworx-cache',
 		'profile.php',
 		'user-edit.php',
@@ -48,7 +47,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 
 	if ( in_array( $hook_suffix, array( 'profile.php', 'user-edit.php' ), true ) ) {
 		wp_enqueue_script(
-			'blueworx-project-wordpress-labs-profile-cleanup',
+			'blueworx-labs-wordpress-profile-cleanup',
 			BLUEWORX_LABS_URL . 'assets/js/profile-cleanup.js',
 			array(),
 			blueworx_get_admin_asset_version( 'assets/js/profile-cleanup.js' ),
@@ -57,7 +56,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 
 		if ( blueworx_should_hide_application_passwords_section() ) {
 			wp_add_inline_script(
-				'blueworx-project-wordpress-labs-profile-cleanup',
+				'blueworx-labs-wordpress-profile-cleanup',
 				'window.blueworxHideApplicationPasswords = true;',
 				'before'
 			);
@@ -66,7 +65,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {
 		wp_enqueue_script(
-			'blueworx-project-wordpress-labs-admin-menu-order',
+			'blueworx-labs-wordpress-admin-menu-order',
 			BLUEWORX_LABS_URL . 'assets/js/admin-menu-order.js',
 			array( 'jquery', 'jquery-ui-sortable' ),
 			blueworx_get_admin_asset_version( 'assets/js/admin-menu-order.js' ),
@@ -74,16 +73,6 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		);
 
 		return;
-	}
-
-	if ( 'blueworx_page_blueworx-edit-role' === $hook_suffix ) {
-		wp_enqueue_script(
-			'blueworx-project-wordpress-labs-role-editor',
-			BLUEWORX_LABS_URL . 'assets/js/role-editor.js',
-			array( 'jquery', 'jquery-ui-sortable' ),
-			blueworx_get_admin_asset_version( 'assets/js/role-editor.js' ),
-			true
-		);
 	}
 }
 add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_assets' );

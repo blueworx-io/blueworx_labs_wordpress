@@ -2,7 +2,7 @@
 // Local mirror of the foundation header<->package.json version-sync guardrail.
 import { readFileSync } from 'node:fs';
 
-const SLUG = 'blueworx-project-wordpress-labs';
+const SLUG = 'blueworx-labs-wordpress';
 let header;
 try {
   header = readFileSync(`${SLUG}.php`, 'utf8');
