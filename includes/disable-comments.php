@@ -19,8 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 function blueworx_disable_comments_status( $open ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $open is required by the "comments_open"/"pings_open" filter callback signature; this implementation always returns false regardless of the incoming value.
 	return false;
 }
-add_filter( 'comments_open', 'blueworx_disable_comments_status', 20 );
-add_filter( 'pings_open', 'blueworx_disable_comments_status', 20 );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_filter( 'comments_open', 'blueworx_disable_comments_status', 20 );
+	add_filter( 'pings_open', 'blueworx_disable_comments_status', 20 );
+}
 
 /**
  * Returns an empty comments array to suppress existing comments from displaying.
@@ -32,7 +34,9 @@ function blueworx_disable_comments_hide_existing( $comments ) {
 	$comments = array();
 	return $comments;
 }
-add_filter( 'comments_array', 'blueworx_disable_comments_hide_existing', 10 );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_filter( 'comments_array', 'blueworx_disable_comments_hide_existing', 10 );
+}
 
 /**
  * Removes comment-related items from the admin menu.
@@ -42,7 +46,9 @@ add_filter( 'comments_array', 'blueworx_disable_comments_hide_existing', 10 );
 function blueworx_disable_comments_admin_menu() {
 	remove_menu_page( 'edit-comments.php' );
 }
-add_action( 'admin_menu', 'blueworx_disable_comments_admin_menu' );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_action( 'admin_menu', 'blueworx_disable_comments_admin_menu' );
+}
 
 /**
  * Redirects any direct attempt to access the comments admin page.
@@ -56,7 +62,9 @@ function blueworx_disable_comments_admin_redirect() {
 		exit;
 	}
 }
-add_action( 'admin_init', 'blueworx_disable_comments_admin_redirect' );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_action( 'admin_init', 'blueworx_disable_comments_admin_redirect' );
+}
 
 /**
  * Removes comment-related dashboard widgets.
@@ -66,7 +74,9 @@ add_action( 'admin_init', 'blueworx_disable_comments_admin_redirect' );
 function blueworx_disable_comments_dashboard() {
 	remove_meta_box( 'dashboard_recent_comments', 'dashboard', 'normal' );
 }
-add_action( 'admin_init', 'blueworx_disable_comments_dashboard' );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_action( 'admin_init', 'blueworx_disable_comments_dashboard' );
+}
 
 /**
  * Removes the Comments link from the admin bar.
@@ -77,7 +87,9 @@ add_action( 'admin_init', 'blueworx_disable_comments_dashboard' );
 function blueworx_disable_comments_admin_bar( $wp_admin_bar ) {
 	$wp_admin_bar->remove_node( 'comments' );
 }
-add_action( 'admin_bar_menu', 'blueworx_disable_comments_admin_bar', 999 );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_action( 'admin_bar_menu', 'blueworx_disable_comments_admin_bar', 999 );
+}
 
 /**
  * Removes the Comments column from post/page list tables.
@@ -89,8 +101,10 @@ function blueworx_disable_comments_remove_column( $columns ) {
 	unset( $columns['comments'] );
 	return $columns;
 }
-add_filter( 'manage_posts_columns', 'blueworx_disable_comments_remove_column' );
-add_filter( 'manage_pages_columns', 'blueworx_disable_comments_remove_column' );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_filter( 'manage_posts_columns', 'blueworx_disable_comments_remove_column' );
+	add_filter( 'manage_pages_columns', 'blueworx_disable_comments_remove_column' );
+}
 
 /**
  * Removes comment support from all registered post types.
@@ -106,4 +120,6 @@ function blueworx_disable_comments_post_types_support() {
 		}
 	}
 }
-add_action( 'admin_init', 'blueworx_disable_comments_post_types_support' );
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_action( 'admin_init', 'blueworx_disable_comments_post_types_support' );
+}

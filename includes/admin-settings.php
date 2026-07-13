@@ -35,23 +35,27 @@ function blueworx_register_settings_page() {
 		'blueworx_render_enhancements_page'
 	);
 
-	add_submenu_page(
-		'blueworx-labs-wordpress',
-		esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
-		esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
-		'manage_options',
-		'blueworx-edit-menu',
-		'blueworx_render_edit_menu_page'
-	);
+	if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+		add_submenu_page(
+			'blueworx-labs-wordpress',
+			esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
+			esc_html__( 'Edit Menu', 'blueworx-labs-wordpress' ),
+			'manage_options',
+			'blueworx-edit-menu',
+			'blueworx_render_edit_menu_page'
+		);
+	}
 
-	add_submenu_page(
-		'blueworx-labs-wordpress',
-		esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
-		esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
-		'manage_options',
-		'blueworx-cache',
-		'blueworx_render_cache_page'
-	);
+	if ( blueworx_feature_enabled( 'cache_manual' ) ) {
+		add_submenu_page(
+			'blueworx-labs-wordpress',
+			esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
+			esc_html__( 'Cache', 'blueworx-labs-wordpress' ),
+			'manage_options',
+			'blueworx-cache',
+			'blueworx_render_cache_page'
+		);
+	}
 }
 add_action( 'admin_menu', 'blueworx_register_settings_page' );
 
@@ -83,29 +87,9 @@ function blueworx_save_edit_menu_page() {
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-edit-menu' ) );
 	exit;
 }
-add_action( 'admin_post_blueworx_save_admin_menu_order', 'blueworx_save_edit_menu_page' );
-
-/**
- * Saves the Application Passwords visibility option.
- *
- * @return void
- */
-function blueworx_save_application_passwords_setting() {
-	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
-	}
-
-	check_admin_referer( 'blueworx_save_application_passwords_setting' );
-
-	$show_application_passwords = isset( $_POST['blueworx_show_application_passwords'] ) ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
-	update_option( 'blueworx_show_application_passwords', $show_application_passwords );
-	set_transient( 'blueworx_labs_notice', __( 'Application Passwords setting saved.', 'blueworx-labs-wordpress' ), 30 );
-
-	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
-	exit;
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_action( 'admin_post_blueworx_save_admin_menu_order', 'blueworx_save_edit_menu_page' );
 }
-add_action( 'admin_post_blueworx_save_application_passwords_setting', 'blueworx_save_application_passwords_setting' );
 
 /**
  * Gets all roles that can be selected for site protection.
@@ -153,21 +137,31 @@ function blueworx_get_site_protection_roles( $area ) {
 }
 
 /**
- * Saves frontend and backend site protection settings.
+ * Saves all feature toggles and their detail settings from the settings page.
  *
  * @return void
  */
-function blueworx_save_site_protection_settings() {
+function blueworx_save_feature_settings() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
 
-	check_admin_referer( 'blueworx_save_site_protection_settings' );
+	check_admin_referer( 'blueworx_save_feature_settings' );
 
+	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
+		update_option( 'blueworx_feature_' . $key, isset( $posted[ $key ] ) ? '1' : '0' );
+	}
+
+	// Login detail: editable slug.
+	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
+	update_option( 'blueworx_login_slug', blueworx_sanitize_login_slug( $raw_slug ) );
+
+	// Site Protection detail: per-area enable + roles.
 	$choices = blueworx_get_site_protection_role_choices();
-
 	foreach ( array( 'frontend', 'backend' ) as $area ) {
-		$enabled = isset( $_POST[ 'blueworx_' . $area . '_protection_enabled' ] ) ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$enabled = isset( $_POST[ 'blueworx_' . $area . '_protection_enabled' ] ) ? '1' : '0';
 		$roles   = isset( $_POST[ 'blueworx_' . $area . '_protection_roles' ] ) ? (array) wp_unslash( $_POST[ 'blueworx_' . $area . '_protection_roles' ] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$roles   = array_values( array_intersect( array_unique( array_map( 'sanitize_key', $roles ) ), array_keys( $choices ) ) );
 
@@ -175,80 +169,18 @@ function blueworx_save_site_protection_settings() {
 		update_option( 'blueworx_' . $area . '_protection_roles', $roles, false );
 	}
 
-	set_transient( 'blueworx_labs_notice', __( 'Site Protection settings saved.', 'blueworx-labs-wordpress' ), 30 );
+	// Application Passwords detail.
+	update_option( 'blueworx_show_application_passwords', isset( $_POST['blueworx_show_application_passwords'] ) ? '1' : '0' );
+
+	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
 	exit;
 }
-add_action( 'admin_post_blueworx_save_site_protection_settings', 'blueworx_save_site_protection_settings' );
+add_action( 'admin_post_blueworx_save_feature_settings', 'blueworx_save_feature_settings' );
 
 /**
- * Gets the active plugin features shown on the Enhancements page.
- *
- * @return array Feature list.
- */
-function blueworx_get_active_features() {
-	return array(
-		array(
-			'title'       => __( 'Custom login URL', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Replaces the standard WordPress login address with the BlueWorx login address.', 'blueworx-labs-wordpress' ),
-			'action'      => 'login_url',
-		),
-		array(
-			'title'       => __( 'Login protection', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Blocks direct visits to the default WordPress login and admin login paths.', 'blueworx-labs-wordpress' ),
-			'action'      => '',
-		),
-		array(
-			'title'       => __( 'Comments disabled', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Turns comments off and removes comment areas from the admin screens.', 'blueworx-labs-wordpress' ),
-			'action'      => '',
-		),
-		array(
-			'title'       => __( 'Email notifications reduced', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Stops extra admin emails for user, password, plugin, and theme changes.', 'blueworx-labs-wordpress' ),
-			'action'      => '',
-		),
-		array(
-			'title'       => __( 'Profile cleanup', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Hides unused profile options, Elementor AI, and Elementor Notes.', 'blueworx-labs-wordpress' ),
-			'action'      => '',
-		),
-		array(
-			'title'       => __( 'Application Passwords', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-labs-wordpress' ),
-			'action'      => 'application_passwords',
-		),
-		array(
-			'title'       => __( 'Site Protection', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Only lets logged-in users with selected roles view the frontend or backend.', 'blueworx-labs-wordpress' ),
-			'action'      => 'site_protection',
-		),
-		array(
-			'title'       => __( 'Automatic cache refresh', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Refreshes cache when pages or posts are changed.', 'blueworx-labs-wordpress' ),
-			'action'      => '',
-		),
-		array(
-			'title'       => __( 'Manual cache refresh', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Adds a Cache page where cache can be refreshed manually.', 'blueworx-labs-wordpress' ),
-			'action'      => 'cache',
-		),
-		array(
-			'title'       => __( 'Menu editor', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Lets you reorder menu items, hide them, or move them into More.', 'blueworx-labs-wordpress' ),
-			'action'      => 'edit_menu',
-		),
-		array(
-			'title'       => __( 'Page excerpts', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Adds excerpt support to Pages, the same way Posts already have it.', 'blueworx-labs-wordpress' ),
-			'action'      => '',
-		),
-	);
-}
-
-/**
- * Renders the BlueWorx Labs page.
+ * Renders the BlueWorx feature settings page.
  *
  * @return void
  */
@@ -257,10 +189,10 @@ function blueworx_render_enhancements_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$custom_login_url = home_url( '/' . BLUEWORX_CUSTOM_LOGIN_SLUG . '/' );
-	$features         = blueworx_get_active_features();
-	$notice           = get_transient( 'blueworx_labs_notice' );
-	$role_choices     = blueworx_get_site_protection_role_choices();
+	$sections  = blueworx_get_feature_sections();
+	$features  = blueworx_get_feature_definitions();
+	$notice    = get_transient( 'blueworx_labs_notice' );
+	$login_url = home_url( '/' . blueworx_login_slug() . '/' );
 
 	if ( $notice ) {
 		delete_transient( 'blueworx_labs_notice' );
@@ -269,113 +201,126 @@ function blueworx_render_enhancements_page() {
 	<div class="wrap">
 		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 		<?php if ( $notice ) : ?>
-			<div class="notice notice-success is-dismissible">
-				<p><?php echo esc_html( $notice ); ?></p>
-			</div>
+			<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>
 		<?php endif; ?>
-		<p><?php esc_html_e( 'This plugin is active and managing the features listed below.', 'blueworx-labs-wordpress' ); ?></p>
+		<p><?php esc_html_e( 'Turn each function on or off. Functions left on behave exactly as before.', 'blueworx-labs-wordpress' ); ?></p>
+		<?php if ( blueworx_feature_enabled( 'login' ) ) : ?>
+			<p><strong><?php esc_html_e( 'Active login URL:', 'blueworx-labs-wordpress' ); ?></strong>
+				<a href="<?php echo esc_url( $login_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $login_url ); ?></a></p>
+		<?php endif; ?>
 
-		<table class="widefat striped">
-			<thead>
-				<tr>
-					<th scope="col"><?php esc_html_e( 'Feature', 'blueworx-labs-wordpress' ); ?></th>
-					<th scope="col"><?php esc_html_e( 'Details', 'blueworx-labs-wordpress' ); ?></th>
-					<th scope="col"><?php esc_html_e( 'Settings', 'blueworx-labs-wordpress' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php foreach ( $features as $feature ) : ?>
-					<tr>
-						<th scope="row"><?php echo esc_html( $feature['title'] ); ?></th>
-						<td><?php echo esc_html( $feature['description'] ); ?></td>
-						<td>
-							<?php if ( 'login_url' === $feature['action'] ) : ?>
-								<input
-									type="text"
-									value="<?php echo esc_url( $custom_login_url ); ?>"
-									readonly
-									disabled
-									class="regular-text"
-								/>
-								<a class="button" href="<?php echo esc_url( $custom_login_url ); ?>" target="_blank" rel="noopener noreferrer">
-									<?php esc_html_e( 'Open', 'blueworx-labs-wordpress' ); ?>
-								</a>
-							<?php elseif ( 'cache' === $feature['action'] ) : ?>
-								<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-cache' ) ); ?>">
-									<?php esc_html_e( 'Open', 'blueworx-labs-wordpress' ); ?>
-								</a>
-							<?php elseif ( 'edit_menu' === $feature['action'] ) : ?>
-								<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-menu' ) ); ?>">
-									<?php esc_html_e( 'Open', 'blueworx-labs-wordpress' ); ?>
-								</a>
-							<?php elseif ( 'application_passwords' === $feature['action'] ) : ?>
-								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-									<input type="hidden" name="action" value="blueworx_save_application_passwords_setting" />
-									<?php wp_nonce_field( 'blueworx_save_application_passwords_setting' ); ?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="blueworx_save_feature_settings" />
+			<?php wp_nonce_field( 'blueworx_save_feature_settings' ); ?>
+
+			<?php foreach ( $sections as $section_id => $section_label ) : ?>
+				<div class="postbox blueworx-feature-section">
+					<div class="postbox-header"><h2 class="hndle"><?php echo esc_html( $section_label ); ?></h2></div>
+					<div class="inside">
+						<table class="form-table" role="presentation"><tbody>
+						<?php
+						foreach ( $features as $key => $feature ) :
+							if ( $feature['section'] !== $section_id ) {
+								continue;
+							}
+							$enabled = blueworx_feature_enabled( $key );
+							?>
+							<tr>
+								<th scope="row">
 									<label>
-										<input
-											type="checkbox"
-											name="blueworx_show_application_passwords"
-											value="1"
-											<?php checked( blueworx_show_application_passwords_for_admins() ); ?>
-											onchange="this.form.submit();"
-										/>
-										<?php esc_html_e( 'Show for admins', 'blueworx-labs-wordpress' ); ?>
+										<input type="checkbox" name="<?php echo esc_attr( 'blueworx_feature[' . $key . ']' ); ?>" value="1" <?php checked( $enabled ); ?> class="blueworx-feature-toggle" data-blueworx-feature="<?php echo esc_attr( $key ); ?>" />
+										<?php echo esc_html( $feature['label'] ); ?>
 									</label>
-								</form>
-							<?php elseif ( 'site_protection' === $feature['action'] ) : ?>
-								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-									<input type="hidden" name="action" value="blueworx_save_site_protection_settings" />
-									<?php wp_nonce_field( 'blueworx_save_site_protection_settings' ); ?>
-									<?php
-									foreach ( array(
-										'frontend' => __( 'Frontend protection', 'blueworx-labs-wordpress' ),
-										'backend'  => __( 'Backend protection', 'blueworx-labs-wordpress' ),
-									) as $area => $label ) :
-										?>
-										<?php $selected_roles = blueworx_get_site_protection_roles( $area ); ?>
-										<p>
-											<label>
-												<input
-													type="checkbox"
-													name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_enabled' ); ?>"
-													value="1"
-													<?php checked( blueworx_site_protection_enabled( $area ) ); ?>
-												/>
-												<?php echo esc_html( $label ); ?>
-											</label>
-										</p>
-										<p>
-											<select
-												name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_roles[]' ); ?>"
-												multiple
-												size="4"
-												aria-label="<?php echo esc_attr( $label ); ?>"
-											>
-												<?php foreach ( $role_choices as $role_slug => $role_label ) : ?>
-													<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $selected_roles, true ) ); ?>>
-														<?php echo esc_html( $role_label ); ?>
-													</option>
-												<?php endforeach; ?>
-											</select>
-										</p>
-									<?php endforeach; ?>
-									<p>
-										<button type="submit" class="button button-primary">
-											<?php esc_html_e( 'Save', 'blueworx-labs-wordpress' ); ?>
-										</button>
-									</p>
-								</form>
-							<?php else : ?>
-								&mdash;
-							<?php endif; ?>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-			</tbody>
-		</table>
+								</th>
+								<td>
+									<p class="description"><?php echo esc_html( $feature['description'] ); ?></p>
+									<?php if ( ! empty( $feature['detail'] ) ) : ?>
+										<div class="blueworx-feature-detail" data-blueworx-detail="<?php echo esc_attr( $key ); ?>" <?php echo $enabled ? '' : 'hidden'; ?>>
+											<?php blueworx_render_feature_detail( $key ); ?>
+										</div>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody></table>
+					</div>
+				</div>
+			<?php endforeach; ?>
+
+			<?php submit_button( esc_html__( 'Save Changes', 'blueworx-labs-wordpress' ) ); ?>
+		</form>
 	</div>
 	<?php
+}
+
+/**
+ * Renders the nested detail controls for a feature.
+ *
+ * @param string $key Feature key.
+ * @return void
+ */
+function blueworx_render_feature_detail( $key ) {
+	if ( 'login' === $key ) {
+		?>
+		<p>
+			<label for="blueworx_login_slug"><?php esc_html_e( 'Login slug', 'blueworx-labs-wordpress' ); ?></label><br />
+			<input type="text" id="blueworx_login_slug" name="blueworx_login_slug" class="regular-text" value="<?php echo esc_attr( blueworx_login_slug() ); ?>" />
+			<span class="description"><?php echo esc_html( home_url( '/' ) ); ?>&hellip;</span>
+		</p>
+		<?php
+		return;
+	}
+
+	if ( 'site_protection' === $key ) {
+		$role_choices = blueworx_get_site_protection_role_choices();
+		foreach ( array(
+			'frontend' => __( 'Frontend protection', 'blueworx-labs-wordpress' ),
+			'backend'  => __( 'Backend protection', 'blueworx-labs-wordpress' ),
+		) as $area => $label ) :
+			$selected_roles = blueworx_get_site_protection_roles( $area );
+			?>
+			<p>
+				<label>
+					<input type="checkbox" name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_enabled' ); ?>" value="1" <?php checked( blueworx_site_protection_enabled( $area ) ); ?> />
+					<?php echo esc_html( $label ); ?>
+				</label>
+			</p>
+			<p>
+				<select name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_roles[]' ); ?>" multiple size="4" aria-label="<?php echo esc_attr( $label ); ?>">
+					<?php foreach ( $role_choices as $role_slug => $role_label ) : ?>
+						<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $selected_roles, true ) ); ?>><?php echo esc_html( $role_label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
+			<?php
+		endforeach;
+		return;
+	}
+
+	if ( 'application_passwords' === $key ) {
+		?>
+		<p>
+			<label>
+				<input type="checkbox" name="blueworx_show_application_passwords" value="1" <?php checked( blueworx_show_application_passwords_for_admins() ); ?> />
+				<?php esc_html_e( 'Show Application Passwords for admins', 'blueworx-labs-wordpress' ); ?>
+			</label>
+		</p>
+		<?php
+		return;
+	}
+
+	if ( 'cache_manual' === $key ) {
+		?>
+		<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-cache' ) ); ?>"><?php esc_html_e( 'Open Cache page', 'blueworx-labs-wordpress' ); ?></a></p>
+		<?php
+		return;
+	}
+
+	if ( 'menu_editor' === $key ) {
+		?>
+		<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-menu' ) ); ?>"><?php esc_html_e( 'Open Edit Menu page', 'blueworx-labs-wordpress' ); ?></a></p>
+		<?php
+	}
 }
 
 /**

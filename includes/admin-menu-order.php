@@ -138,7 +138,9 @@ function blueworx_get_editable_admin_menu_items() {
 function blueworx_enable_admin_menu_order() {
 	return true;
 }
-add_filter( 'custom_menu_order', 'blueworx_enable_admin_menu_order' );
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_filter( 'custom_menu_order', 'blueworx_enable_admin_menu_order' );
+}
 
 /**
  * Sets the preferred left admin menu order.
@@ -165,7 +167,9 @@ function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.Code
 
 	return $order;
 }
-add_filter( 'menu_order', 'blueworx_admin_menu_order' );
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_filter( 'menu_order', 'blueworx_admin_menu_order' );
+}
 
 /**
  * Moves selected menu items under More and hides selected menu items.
@@ -241,7 +245,9 @@ function blueworx_apply_admin_menu_visibility() {
 		$GLOBALS['blueworx_hidden_admin_menu_ids'] = array_values( array_unique( $hidden_ids ) );
 	}
 }
-add_action( 'admin_menu', 'blueworx_apply_admin_menu_visibility', 999 );
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_action( 'admin_menu', 'blueworx_apply_admin_menu_visibility', 999 );
+}
 
 /**
  * Sanitizes a WordPress admin menu row ID for CSS output.
@@ -274,7 +280,9 @@ function blueworx_hide_admin_menu_rows() {
 	</style>
 	<?php
 }
-add_action( 'admin_head', 'blueworx_hide_admin_menu_rows' );
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_action( 'admin_head', 'blueworx_hide_admin_menu_rows' );
+}
 
 /**
  * Makes the More menu expand without loading a page.
@@ -306,7 +314,9 @@ function blueworx_make_toggle_menu_inline() {
 	</script>
 	<?php
 }
-add_action( 'admin_footer', 'blueworx_make_toggle_menu_inline' );
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_action( 'admin_footer', 'blueworx_make_toggle_menu_inline' );
+}
 
 /**
  * Gets the admin URL for a saved menu slug.

@@ -46,21 +46,44 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 	}
 
 	if ( in_array( $hook_suffix, array( 'profile.php', 'user-edit.php' ), true ) ) {
+		$profile_cleanup_enabled       = blueworx_feature_enabled( 'profile_cleanup' );
+		$application_passwords_enabled = blueworx_feature_enabled( 'application_passwords' );
+
+		if ( $profile_cleanup_enabled || $application_passwords_enabled ) {
+			wp_enqueue_script(
+				'blueworx-labs-wordpress-profile-cleanup',
+				BLUEWORX_LABS_URL . 'assets/js/profile-cleanup.js',
+				array(),
+				blueworx_get_admin_asset_version( 'assets/js/profile-cleanup.js' ),
+				true
+			);
+
+			if ( $profile_cleanup_enabled ) {
+				wp_add_inline_script(
+					'blueworx-labs-wordpress-profile-cleanup',
+					'window.blueworxProfileCleanup = true;',
+					'before'
+				);
+			}
+
+			if ( $application_passwords_enabled && blueworx_should_hide_application_passwords_section() ) {
+				wp_add_inline_script(
+					'blueworx-labs-wordpress-profile-cleanup',
+					'window.blueworxHideApplicationPasswords = true;',
+					'before'
+				);
+			}
+		}
+	}
+
+	if ( 'toplevel_page_blueworx-labs-wordpress' === $hook_suffix ) {
 		wp_enqueue_script(
-			'blueworx-labs-wordpress-profile-cleanup',
-			BLUEWORX_LABS_URL . 'assets/js/profile-cleanup.js',
+			'blueworx-labs-wordpress-feature-settings',
+			BLUEWORX_LABS_URL . 'assets/js/feature-settings.js',
 			array(),
-			blueworx_get_admin_asset_version( 'assets/js/profile-cleanup.js' ),
+			blueworx_get_admin_asset_version( 'assets/js/feature-settings.js' ),
 			true
 		);
-
-		if ( blueworx_should_hide_application_passwords_section() ) {
-			wp_add_inline_script(
-				'blueworx-labs-wordpress-profile-cleanup',
-				'window.blueworxHideApplicationPasswords = true;',
-				'before'
-			);
-		}
 	}
 
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {
