@@ -154,11 +154,10 @@ and the stock dashboard returns.
 ## Login screen
 
 `login-theme.css`: lavender (`#F5F6FF`) page background, white rounded card with
-soft shadow, indigo primary "Log In" button, Sora/Inter type, BlueWorx logo. If a
-brand logo asset is available in `assets/`, swap the login logo via CSS
-background on `.login h1 a`; otherwise leave the default WordPress mark and only
-restyle colour/layout. No PHP changes to login flow (the plugin's existing
-`login-security` wiring is not modified).
+soft shadow, indigo primary "Log In" button, Sora/Inter type. **The WordPress
+default logo mark is kept for now** (no brand asset swap) — only colour and layout
+are restyled. No PHP changes to login flow (the plugin's existing `login-security`
+wiring is not modified).
 
 ## Accessibility
 
