@@ -1,0 +1,7 @@
+/* BlueWorx self-hosted fonts — Sora + Inter (latin subset). Paths relative to assets/css/. */
+@font-face{font-family:"Sora";font-style:normal;font-weight:400;font-display:swap;src:url("../fonts/sora-400.woff2") format("woff2");}
+@font-face{font-family:"Sora";font-style:normal;font-weight:600;font-display:swap;src:url("../fonts/sora-600.woff2") format("woff2");}
+@font-face{font-family:"Sora";font-style:normal;font-weight:700;font-display:swap;src:url("../fonts/sora-700.woff2") format("woff2");}
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url("../fonts/inter-400.woff2") format("woff2");}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url("../fonts/inter-500.woff2") format("woff2");}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url("../fonts/inter-600.woff2") format("woff2");}

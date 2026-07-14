@@ -1,0 +1,81 @@
+/**
+ * BlueWorx login re-skin — colours & layout only.
+ *
+ * The default WordPress logo mark is intentionally kept for now; only the
+ * background, card, inputs, and button are restyled to the BlueWorx look.
+ */
+
+:root {
+	--bw-primary: #4F46E5;
+	--bw-primary-dark: #4338CA;
+	--bw-charcoal: #0A0C29;
+	--bw-surface: #F5F6FF;
+	--bw-border: #EFEFF0;
+}
+
+body.login {
+	background: var(--bw-surface);
+	font-family: "Inter", -apple-system, sans-serif;
+}
+
+body.login #login {
+	padding-top: 8vh;
+}
+
+.login form {
+	background: #fff;
+	border: none;
+	border-radius: 16px;
+	box-shadow: 0 7px 7px rgba(0, 0, 0, .09), 0 16px 9px rgba(0, 0, 0, .05);
+	padding: 26px 24px;
+}
+
+.login label {
+	color: var(--bw-charcoal);
+	font-size: 13px;
+}
+
+.login input[type="text"],
+.login input[type="password"],
+.login input[type="email"] {
+	border: 1px solid var(--bw-border);
+	border-radius: 8px;
+}
+
+.login input[type="text"]:focus,
+.login input[type="password"]:focus,
+.login input[type="email"]:focus {
+	border-color: var(--bw-primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
+	outline: 2px solid transparent;
+}
+
+.wp-core-ui .button-primary {
+	background: var(--bw-charcoal);
+	border-color: var(--bw-charcoal);
+	border-radius: 11px;
+	box-shadow: none;
+	text-shadow: none;
+}
+
+.wp-core-ui .button-primary:hover,
+.wp-core-ui .button-primary:focus {
+	background: var(--bw-primary-dark);
+	border-color: var(--bw-primary-dark);
+}
+
+.login #nav a,
+.login #backtoblog a {
+	color: var(--bw-primary) !important;
+}
+
+.login #nav a:hover,
+.login #backtoblog a:hover {
+	color: var(--bw-primary-dark) !important;
+}
+
+.login .message,
+.login .notice {
+	border-radius: 12px;
+	border-left-color: var(--bw-primary);
+}

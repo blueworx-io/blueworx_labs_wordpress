@@ -1,0 +1,5 @@
+# Treat font binaries as binary so autocrlf never rewrites them.
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
