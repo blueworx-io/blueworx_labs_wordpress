@@ -27,6 +27,7 @@ function blueworx_get_feature_sections() {
 		'notifications' => __( 'Notifications & Cleanup', 'blueworx-labs-wordpress' ),
 		'performance'   => __( 'Performance', 'blueworx-labs-wordpress' ),
 		'admin_menu'    => __( 'Admin Menu', 'blueworx-labs-wordpress' ),
+		'appearance'    => __( 'Appearance', 'blueworx-labs-wordpress' ),
 	);
 }
 
@@ -96,6 +97,12 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Lets you reorder menu items, hide them, or move them into More.', 'blueworx-labs-wordpress' ),
 			'section'     => 'admin_menu',
 			'detail'      => 'menu_editor',
+		),
+		'admin_theme'           => array(
+			'label'       => __( 'BlueWorx admin theme', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Restyles the WordPress admin and login screens with the BlueWorx look. Purely visual; turn off to return to the standard WordPress appearance.', 'blueworx-labs-wordpress' ),
+			'section'     => 'appearance',
+			'detail'      => null,
 		),
 	);
 }
