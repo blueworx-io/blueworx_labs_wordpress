@@ -103,13 +103,17 @@ function blueworx_customise_dashboard() {
 		'blueworx_render_dashboard_stats'
 	);
 
-	// Move the hero tiles to the top of the normal column.
+	// Move the hero tiles to the top of the normal column. Reordering the
+	// dashboard meta-box registry is the documented way to reposition a widget.
 	global $wp_meta_boxes;
-	if ( isset( $wp_meta_boxes['dashboard']['normal']['core']['blueworx_dashboard_stats'] ) ) {
-		$widget = $wp_meta_boxes['dashboard']['normal']['core']['blueworx_dashboard_stats'];
-		unset( $wp_meta_boxes['dashboard']['normal']['core']['blueworx_dashboard_stats'] );
-		$wp_meta_boxes['dashboard']['normal']['core'] = array( 'blueworx_dashboard_stats' => $widget )
-			+ $wp_meta_boxes['dashboard']['normal']['core'];
+	$core = isset( $wp_meta_boxes['dashboard']['normal']['core'] )
+		? $wp_meta_boxes['dashboard']['normal']['core']
+		: array();
+	if ( isset( $core['blueworx_dashboard_stats'] ) ) {
+		$widget = $core['blueworx_dashboard_stats'];
+		unset( $core['blueworx_dashboard_stats'] );
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Repositioning a dashboard widget requires updating the meta-box registry.
+		$wp_meta_boxes['dashboard']['normal']['core'] = array( 'blueworx_dashboard_stats' => $widget ) + $core;
 	}
 }
 add_action( 'wp_dashboard_setup', 'blueworx_customise_dashboard', 20 );

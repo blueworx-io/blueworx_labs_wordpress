@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.11.0] - 2026-07-14
+
+### Added
+- **BlueWorx admin re-skin.** A CSS-first re-skin of wp-admin and the login
+  screen using the BlueWorx design system (indigo/charcoal/lavender palette,
+  self-hosted Sora + Inter, rounded cards, restyled admin bar and sidebar). It
+  restyles WordPress's own native elements — no framework, no replacement markup.
+  Shipped as a feature flag under **BlueWorx → Enhancements → Appearance**
+  (`admin_theme`, default on); turn it off to return to the standard WordPress
+  appearance.
+- **Hybrid Dashboard.** The Dashboard gains a hero row of four live stat tiles
+  (Posts, Pages, Comments, Media) and keeps the native Activity, Quick Draft, and
+  Site Health widgets, restyled to match. The Welcome panel, WordPress Events &
+  News, and At a Glance widgets are removed while the theme is active.
+
 ## [1.10.1] - 2026-07-13
 
 ### Added
