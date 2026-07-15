@@ -3,13 +3,6 @@ import { isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
 
 const EDIT_MENU_PATH = '/wp-admin/admin.php?page=blueworx-edit-menu';
 
-async function mainColumnSlugs(page) {
-  return page.$$eval(
-    '.blueworx-menu-order-list[data-blueworx-menu-section="main"] .blueworx-menu-order-item',
-    (els) => els.map((el) => el.getAttribute('data-blueworx-menu-item'))
-  );
-}
-
 test.describe('BlueWorx default admin-menu arrangement', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
@@ -29,20 +22,15 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
   // only ever fail. The second also asserted zero hidden items, which was never a
   // safe assumption: hidden/More membership varies per site by design.
 
-  // Both skipped until Task 11 rebuilds the Edit Menu screen, which retires the
-  // `.blueworx-menu-order-list` markup and the main/toggle/hidden buckets these
-  // drive. They assert the OLD three-column UI.
-  //
-  // The freeze test is skipped for a second, more urgent reason: IT CORRUPTS THE
-  // SITE. Task 5 deleted blueworx_get_toggled_admin_menu_items(), so the old
-  // screen can no longer bucket More items — and this test clicks Save through
-  // it, rewriting blueworx_hidden_admin_menu_items with whatever the broken
-  // screen rendered. Observed on staging: it replaced hidden
-  // [plugins.php, link_category] with [themes.php, options-general.php].
-  // Do NOT re-enable against the old screen.
-  test.skip('main menu is ordered: Dashboard, BlueWorx, then keep items by length then A-Z', async () => {});
-
-  test.skip('hiding an item, saving, and reloading persists it as hidden (freeze)', async () => {});
+  // Retired with the old three-column screen, which no longer exists:
+  //  - 'main menu is ordered: Dashboard, BlueWorx, then keep items by length then A-Z'
+  //    asserted an ordering superseded by semantic groups (see the heading test).
+  //  - 'hiding an item, saving, and reloading persists it as hidden (freeze)'
+  //    drove the old markup and CORRUPTED the site: it clicked Save through a
+  //    screen Task 5 had half-dismantled, rewriting hidden [plugins.php,
+  //    link_category] as [themes.php, options-general.php] on staging.
+  // Hiding is now covered by 'hiding an item removes it from the sidebar', which
+  // drives the rebuilt screen and restores what it changes.
 
   test('migration: More items reappear in their natural group', async ({ page }) => {
     await login(page);
@@ -99,5 +87,113 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     for (const count of anchorCounts) {
       expect(count).toBe(1);
     }
+  });
+
+  test('Edit Menu renders a section per group plus Hidden', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    for (const g of ['overview', 'content', 'custom', 'site', 'hidden']) {
+      await expect(page.locator(`.bw-menu-editor-group[data-group="${g}"]`)).toHaveCount(1);
+    }
+
+    // Dashboard starts in Overview.
+    await expect(
+      page.locator('.bw-menu-editor-group[data-group="overview"] .bw-menu-editor-item[data-slug="index.php"]')
+    ).toHaveCount(1);
+
+    // Every row is keyboard-operable, not drag-only.
+    const first = page.locator('.bw-menu-editor-item').first();
+    await expect(first.locator('button.bw-menu-editor-up')).toBeVisible();
+    await expect(first.locator('button.bw-menu-editor-down')).toBeVisible();
+
+    // The rebuilt screen ships no jQuery UI sortable.
+    const sortable = await page.evaluate(
+      () => typeof (window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable)
+    );
+    expect(sortable).not.toBe('function');
+  });
+
+  test('Edit Menu: the up button moves an item up', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    const list = page.locator('.bw-menu-editor-group[data-group="site"] .bw-menu-editor-item');
+    const second = list.nth(1);
+    const slug = await second.getAttribute('data-slug');
+
+    await second.locator('button.bw-menu-editor-up').click();
+
+    await expect(list.first()).toHaveAttribute('data-slug', slug);
+    // Not saved, so nothing to restore — the reorder dies with the page.
+  });
+
+  test('Edit Menu: keyboard moves an item across a group boundary', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    // Move the last Content item down, past the boundary, into the next group.
+    const item = page.locator('.bw-menu-editor-group[data-group="content"] .bw-menu-editor-item').last();
+    const slug = await item.getAttribute('data-slug');
+    await item.locator('button.bw-menu-editor-down').click();
+
+    // It left Content...
+    await expect(
+      page.locator(`.bw-menu-editor-group[data-group="content"] .bw-menu-editor-item[data-slug="${slug}"]`)
+    ).toHaveCount(0);
+
+    // ...and its group input followed it, so a save would persist the move.
+    const group = await page
+      .locator(`.bw-menu-editor-item[data-slug="${slug}"] .bw-menu-editor-group-input`)
+      .inputValue();
+    expect(group).not.toBe('content');
+  });
+
+  test('Edit Menu: hiding an item removes it from the sidebar', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    // Drag is hard to script reliably; drive the same code path via the inputs.
+    await page.evaluate(() => {
+      const item = document.querySelector('.bw-menu-editor-item[data-slug="tools.php"]');
+      const hiddenList = document.querySelector('.bw-menu-editor-group[data-group="hidden"] .bw-menu-editor-list');
+      hiddenList.appendChild(item);
+      item.dispatchEvent(new Event('drop', { bubbles: true }));
+    });
+
+    await page.locator('input#submit').click();
+    await expect(page.locator('.notice-success')).toContainText('Menu settings saved');
+
+    await page.goto('/wp-admin/index.php');
+    // Hidden means display:none, NOT removed: blueworx_hide_admin_menu_rows()
+    // deliberately hides the row while leaving the page registered, so the
+    // screen stays reachable by URL. Asserting toHaveCount(0) would be asserting
+    // a behaviour the plugin does not have.
+    await expect(page.locator('#adminmenu > li.menu-top > a[href="tools.php"]')).toBeHidden();
+
+    // Restore, so the test is idempotent and leaves the site as it found it.
+    await page.goto(EDIT_MENU_PATH);
+    await page.evaluate(() => {
+      const item = document.querySelector('.bw-menu-editor-item[data-slug="tools.php"]');
+      const siteList = document.querySelector('.bw-menu-editor-group[data-group="site"] .bw-menu-editor-list');
+      siteList.appendChild(item);
+      item.dispatchEvent(new Event('drop', { bubbles: true }));
+    });
+    // force: true skips Playwright's actionability checks. Needed only here, on
+    // the SECOND save of the test: the button is provably visible, enabled and
+    // clickable by hand, but Playwright's "stable" wait never settles on it and
+    // times out. The first save on the same screen, via the same locator, is
+    // fine. Cause unknown — not view transitions (tested: prefers-reduced-motion
+    // makes no difference), not the locator (same with getByRole and CSS), not
+    // the fixed top bar (the button is nowhere near it).
+    // Forcing is acceptable HERE because this is the restore step, not the
+    // assertion: the test's real subject is the hide above, and the outcome is
+    // still verified against the sidebar below. Do not copy this to a step whose
+    // success is what is being tested.
+    await page.locator('input#submit').click({ force: true });
+    await expect(page.locator('.notice-success')).toContainText('Menu settings saved');
+
+    await page.goto('/wp-admin/index.php');
+    await expect(page.locator('#adminmenu > li.menu-top > a[href="tools.php"]')).toBeVisible();
   });
 });
