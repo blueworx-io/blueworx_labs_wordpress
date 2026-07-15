@@ -203,9 +203,28 @@ translucent indigo onto the **`a`** nested inside it. Hovering the current item
 composites both translucent layers over the charcoal sidebar, producing a third,
 muddier colour that belongs to neither state.
 
-**Fix:** both states paint the **same element** (the anchor), with **opaque**
-colours resolved against the sidebar background rather than stacked alphas. The
-`li` carries only layout (margin, radius); the `a` carries all state colour.
+**Fix:** both states paint the **same element** (the anchor). The `li` carries only
+layout (margin, radius); the `a` carries all state colour.
+
+The v2 export settles the values — and shows the current active colour is simply
+wrong. Its nav button styles are:
+
+| State | Export value | Currently shipped |
+|---|---|---|
+| Active background | **`#4F46E5`** (fully opaque) | `rgba(79, 70, 229, .22)` ❌ |
+| Active colour / weight | `#fff` / `600` | `#fff` / `600` ✔ |
+| Hover background | `rgba(255, 255, 255, .06)` | same, but on the wrong element ❌ |
+| Hover colour | `#fff` | `#fff` ✔ |
+| Idle colour / weight | `rgba(255, 255, 255, .62)` | `rgba(255, 255, 255, .65)` (close) |
+
+With the active pill opaque at `#4F46E5`, nothing composites: the active
+background fully covers the sidebar beneath it.
+
+**Ordering is load-bearing.** Hover must be declared *before* active at equal or
+lower specificity, and scoped so it cannot apply to the current item — otherwise
+hovering the active item would replace the indigo pill with translucent white.
+The export has this latent bug (its `style-hover` overrides the active
+background); we do not reproduce it.
 
 ## 5. Bug: the jutt (brand block overhangs the top bar)
 
@@ -457,11 +476,21 @@ following the existing harness convention (skip on placeholder URL / missing
 
 ## Versioning & deployment
 
-- Bump 1.11.0 → **1.12.0** (minor — new functionality) in
-  `blueworx-labs-wordpress.php` (header + `BLUEWORX_LABS_VERSION`),
-  `package.json`, and `readme.txt` (`Stable tag`).
-- `CHANGELOG.md` + `readme.txt` changelog updated alongside, including the
-  **Upgrade Notice** about More items reappearing.
+> **Corrected 2026-07-15.** An earlier draft said to "bump 1.11.0 → 1.12.0".
+> **The bump has already happened on this branch** — commit `81d0599` (top bar,
+> closer sidebar, branded login) set 1.12.0 across the header,
+> `BLUEWORX_LABS_VERSION`, `package.json`, and `readme.txt`, and opened a
+> `## [1.12.0] - 2026-07-15` changelog section. `main` is still 1.11.0 and 1.12.0
+> is **unreleased**.
+
+- **Do not bump again.** `main` 1.11.0 → branch 1.12.0 already satisfies CI's
+  version-bump guardrail for this PR. Re-bumping would either double-bump to a
+  version nobody asked for or create a duplicate changelog heading.
+- **Extend the existing `## [1.12.0] - 2026-07-15` section**, do not add a new
+  one. This work and the top-bar work ship as one minor release.
+- `readme.txt` changelog updated to match, including the **Upgrade Notice** about
+  More items reappearing.
+- `npm run version:check` must pass (asserts plugin header === `package.json`).
 - Branch `admin-reskin-refinements` → PR into `main`. CI (lint, build, version
   bump, changelog, Playwright) must pass.
 - Lint runs **once** as a final check; findings are presented to Luke, not
