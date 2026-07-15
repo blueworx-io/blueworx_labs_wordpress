@@ -1,81 +1,258 @@
 /**
- * BlueWorx login re-skin — colours & layout only.
+ * BlueWorx login re-skin.
  *
- * The default WordPress logo mark is intentionally kept for now; only the
- * background, card, inputs, and button are restyled to the BlueWorx look.
+ * Covers every wp-login action (log in, lost password, reset, register) — they
+ * all share this markup. The WordPress logo is replaced with a BlueWorx-style
+ * brand mark: an indigo square holding the site's initial (injected as CSS
+ * content by includes/admin-theme.php) next to the site name as a wordmark.
  */
 
 :root {
 	--bw-primary: #4F46E5;
 	--bw-primary-dark: #4338CA;
 	--bw-charcoal: #0A0C29;
+	--bw-lavender: #E8E7F7;
 	--bw-surface: #F5F6FF;
+	--bw-body: #4C4C4C;
+	--bw-muted: #667085;
 	--bw-border: #EFEFF0;
+	--bw-success: #01824C;
+	--bw-error: #FF302F;
+	--bw-shadow-card: 0 1px 2px rgba(10, 12, 41, .04), 0 4px 12px rgba(10, 12, 41, .05);
+	--bw-font-head: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--bw-font-ui: "Inter", -apple-system, sans-serif;
+	--bw-font-body: "Sora", -apple-system, sans-serif;
+}
+
+html {
+	background: var(--bw-surface);
 }
 
 body.login {
 	background: var(--bw-surface);
-	font-family: "Inter", -apple-system, sans-serif;
+	font-family: var(--bw-font-ui);
+	color: var(--bw-body);
 }
 
 body.login #login {
-	padding-top: 8vh;
+	width: 360px;
+	max-width: calc(100vw - 32px);
+	padding: 7vh 0 24px;
 }
 
-.login form {
+/* ─── Brand mark (replaces the WordPress logo) ─── */
+body.login h1 {
+	margin: 0;
+}
+
+body.login h1 a {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: auto;
+	height: auto;
+	margin: 0 auto 22px;
+	padding: 0;
+	background-image: none;
+	text-indent: 0;
+	overflow: visible;
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 18px;
+	line-height: 1.25;
+	color: var(--bw-charcoal);
+	text-decoration: none;
+}
+
+/* The ::before content (the site initial) is injected by wp_add_inline_style(). */
+body.login h1 a::before {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+	background: var(--bw-primary);
+	color: #fff;
+	font-size: 16px;
+	font-weight: 700;
+}
+
+/* ─── Card ─── */
+body.login form {
+	margin-top: 0;
+	padding: 24px;
 	background: #fff;
 	border: none;
 	border-radius: 16px;
-	box-shadow: 0 7px 7px rgba(0, 0, 0, .09), 0 16px 9px rgba(0, 0, 0, .05);
-	padding: 26px 24px;
+	box-shadow: var(--bw-shadow-card);
 }
 
-.login label {
+body.login label {
 	color: var(--bw-charcoal);
 	font-size: 13px;
+	font-weight: 500;
 }
 
-.login input[type="text"],
-.login input[type="password"],
-.login input[type="email"] {
+body.login form .input,
+body.login input[type="text"],
+body.login input[type="password"],
+body.login input[type="email"] {
+	width: 100%;
+	margin: 4px 0 16px;
+	padding: 10px 12px;
+	background: #fff;
 	border: 1px solid var(--bw-border);
 	border-radius: 8px;
+	box-shadow: none;
+	font-family: var(--bw-font-ui);
+	font-size: 15px;
+	line-height: 1.4;
+	color: var(--bw-charcoal);
 }
 
-.login input[type="text"]:focus,
-.login input[type="password"]:focus,
-.login input[type="email"]:focus {
+body.login form .input:focus,
+body.login input[type="text"]:focus,
+body.login input[type="password"]:focus,
+body.login input[type="email"]:focus {
 	border-color: var(--bw-primary);
 	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
 	outline: 2px solid transparent;
 }
 
-.wp-core-ui .button-primary {
+body.login input[type="checkbox"] {
+	border-radius: 4px;
+	border-color: var(--bw-border);
+}
+
+body.login input[type="checkbox"]:checked::before {
+	color: var(--bw-primary);
+}
+
+body.login input[type="checkbox"]:focus {
+	border-color: var(--bw-primary);
+	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
+}
+
+body.login .forgetmenot label {
+	color: var(--bw-muted);
+}
+
+/* Show/hide password button. */
+body.login .wp-pwd {
+	margin-bottom: 16px;
+}
+
+body.login .wp-pwd .button.wp-hide-pw {
+	border: none;
+	background: transparent;
+	color: var(--bw-muted);
+	box-shadow: none;
+}
+
+body.login .wp-pwd .button.wp-hide-pw:hover {
+	color: var(--bw-primary);
+	background: transparent;
+}
+
+/* ─── Submit ─── */
+body.login p.submit {
+	margin-bottom: 0;
+	text-align: right;
+}
+
+body.login .wp-core-ui .button-primary,
+body.login #wp-submit {
+	float: none;
+	width: 100%;
+	height: auto;
+	padding: 11px 20px;
 	background: var(--bw-charcoal);
-	border-color: var(--bw-charcoal);
+	border: 1px solid var(--bw-charcoal);
 	border-radius: 11px;
 	box-shadow: none;
 	text-shadow: none;
+	font-family: var(--bw-font-body);
+	font-weight: 600;
+	font-size: 14px;
+	line-height: 1.4;
+	color: #fff;
 }
 
-.wp-core-ui .button-primary:hover,
-.wp-core-ui .button-primary:focus {
+body.login .wp-core-ui .button-primary:hover,
+body.login .wp-core-ui .button-primary:focus,
+body.login #wp-submit:hover,
+body.login #wp-submit:focus {
 	background: var(--bw-primary-dark);
 	border-color: var(--bw-primary-dark);
+	color: #fff;
 }
 
-.login #nav a,
-.login #backtoblog a {
-	color: var(--bw-primary) !important;
-}
-
-.login #nav a:hover,
-.login #backtoblog a:hover {
-	color: var(--bw-primary-dark) !important;
-}
-
-.login .message,
-.login .notice {
+/* ─── Messages & errors ─── */
+body.login .message,
+body.login .notice,
+body.login #login_error,
+body.login .success {
+	margin: 0 0 16px;
+	padding: 12px 16px;
+	background: #fff;
+	border: none;
+	border-left: 4px solid var(--bw-primary);
 	border-radius: 12px;
-	border-left-color: var(--bw-primary);
+	box-shadow: var(--bw-shadow-card);
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--bw-body);
+	word-wrap: break-word;
+}
+
+body.login #login_error {
+	border-left-color: var(--bw-error);
+}
+
+body.login .notice-success,
+body.login .success {
+	border-left-color: var(--bw-success);
+}
+
+/* ─── Footer links ─── */
+body.login #nav,
+body.login #backtoblog {
+	margin: 16px 0 0;
+	padding: 0;
+	text-align: center;
+	font-size: 13px;
+}
+
+body.login #backtoblog {
+	margin-top: 8px;
+}
+
+body.login #nav a,
+body.login #backtoblog a {
+	color: var(--bw-primary);
+	text-decoration: none;
+}
+
+body.login #nav a:hover,
+body.login #nav a:focus,
+body.login #backtoblog a:hover,
+body.login #backtoblog a:focus {
+	color: var(--bw-primary-dark);
+	text-decoration: underline;
+}
+
+body.login .privacy-policy-page-link {
+	margin: 20px 0 0;
+}
+
+body.login .language-switcher {
+	margin-top: 16px;
+}
+
+body.login .language-switcher select {
+	border: 1px solid var(--bw-border);
+	border-radius: 8px;
 }

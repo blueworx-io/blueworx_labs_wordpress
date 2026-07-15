@@ -71,17 +71,36 @@ function blueworx_save_edit_menu_page() {
 
 	check_admin_referer( 'blueworx_save_admin_menu_order' );
 
-	$raw_order   = isset( $_POST['blueworx_admin_menu_order'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_order'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$raw_hidden  = isset( $_POST['blueworx_hidden_admin_menu_items'] ) ? (array) wp_unslash( $_POST['blueworx_hidden_admin_menu_items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$raw_toggled = isset( $_POST['blueworx_toggled_admin_menu_items'] ) ? (array) wp_unslash( $_POST['blueworx_toggled_admin_menu_items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$order       = array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_order ) ) ) );
-	$locked      = blueworx_get_locked_admin_menu_items();
-	$hidden      = array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_hidden ) ) ), $locked ) );
-	$toggled     = array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_toggled ) ) ), $locked, $hidden ) );
+	$raw_order  = isset( $_POST['blueworx_admin_menu_order'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_order'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below with sanitize_text_field.
+	$raw_hidden = isset( $_POST['blueworx_hidden_admin_menu_items'] ) ? (array) wp_unslash( $_POST['blueworx_hidden_admin_menu_items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
+	$raw_groups = isset( $_POST['blueworx_admin_menu_groups'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_groups'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below.
+	$order      = array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_order ) ) ) );
+	$locked     = blueworx_get_locked_admin_menu_items();
+	$hidden     = array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_hidden ) ) ), $locked ) );
+
+	// Only accept groups this build knows about; anything else is dropped rather
+	// than stored, so a stale or forged POST cannot create a phantom group.
+	// "hidden" is not a group — it is expressed by the hidden-items option — so
+	// it is skipped here rather than written as one.
+	$known  = blueworx_get_admin_menu_groups();
+	$groups = array();
+
+	foreach ( $raw_groups as $slug => $group ) {
+		$slug  = sanitize_text_field( (string) $slug );
+		$group = sanitize_key( (string) $group );
+
+		if ( '' === $slug || 'hidden' === $group ) {
+			continue;
+		}
+
+		if ( isset( $known[ $group ] ) ) {
+			$groups[ $slug ] = $group;
+		}
+	}
 
 	update_option( 'blueworx_admin_menu_order', $order );
 	update_option( 'blueworx_hidden_admin_menu_items', array_values( array_unique( $hidden ) ) );
-	update_option( 'blueworx_toggled_admin_menu_items', array_values( array_unique( $toggled ) ) );
+	update_option( 'blueworx_admin_menu_groups', $groups );
 	update_option( 'blueworx_admin_menu_customized', '1' );
 	set_transient( 'blueworx_admin_menu_order_notice', __( 'Menu settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
@@ -396,20 +415,19 @@ function blueworx_render_edit_menu_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$menu_items   = blueworx_get_editable_admin_menu_items();
-	$saved_order  = blueworx_get_saved_admin_menu_order();
-	$hidden       = blueworx_get_hidden_admin_menu_items();
-	$toggled      = blueworx_get_toggled_admin_menu_items();
-	$locked       = blueworx_get_locked_admin_menu_items();
-	$notice       = get_transient( 'blueworx_admin_menu_order_notice' );
-	$ordered      = array();
-	$main_items   = array();
-	$toggle_items = array();
-	$hidden_items = array();
+	$menu_items  = blueworx_get_editable_admin_menu_items();
+	$assignments = blueworx_get_admin_menu_group_assignments();
+	$hidden      = blueworx_get_hidden_admin_menu_items();
+	$saved_order = blueworx_get_saved_admin_menu_order();
+	$groups      = blueworx_get_admin_menu_groups();
+	$notice      = get_transient( 'blueworx_admin_menu_order_notice' );
 
 	if ( $notice ) {
 		delete_transient( 'blueworx_admin_menu_order_notice' );
 	}
+
+	// Saved order first, then anything the site has registered since.
+	$ordered = array();
 
 	foreach ( $saved_order as $slug ) {
 		if ( isset( $menu_items[ $slug ] ) ) {
@@ -423,15 +441,27 @@ function blueworx_render_edit_menu_page() {
 		}
 	}
 
+	// Bucket every editable item: hidden wins, otherwise its assigned group.
+	$buckets           = array_fill_keys( array_keys( $groups ), array() );
+	$buckets['hidden'] = array();
+
 	foreach ( $ordered as $slug => $label ) {
 		if ( in_array( $slug, $hidden, true ) ) {
-			$hidden_items[ $slug ] = $label;
-		} elseif ( in_array( $slug, $toggled, true ) ) {
-			$toggle_items[ $slug ] = $label;
-		} else {
-			$main_items[ $slug ] = $label;
+			$buckets['hidden'][ $slug ] = $label;
+			continue;
 		}
+
+		$group = isset( $assignments[ $slug ] ) ? $assignments[ $slug ] : blueworx_get_default_admin_menu_group( $slug );
+
+		if ( ! isset( $buckets[ $group ] ) ) {
+			$group = blueworx_get_default_admin_menu_group_fallback();
+		}
+
+		$buckets[ $group ][ $slug ] = $label;
 	}
+
+	$sections           = $groups;
+	$sections['hidden'] = __( 'Hidden', 'blueworx-labs-wordpress' );
 	?>
 	<div class="wrap">
 		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -440,30 +470,17 @@ function blueworx_render_edit_menu_page() {
 				<p><?php echo esc_html( $notice ); ?></p>
 			</div>
 		<?php endif; ?>
-		<p><?php esc_html_e( 'Drag items between Main Menu and More Menu. Use the eye icon to hide or show an item.', 'blueworx-labs-wordpress' ); ?></p>
+		<p><?php esc_html_e( 'Drag an item into another group to move it, or use the arrow buttons. Items in Hidden do not appear in the sidebar.', 'blueworx-labs-wordpress' ); ?></p>
 
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="blueworx_save_admin_menu_order" />
 			<?php wp_nonce_field( 'blueworx_save_admin_menu_order' ); ?>
 
-			<table class="widefat fixed striped">
-				<thead>
-					<tr>
-						<th scope="col"><?php esc_html_e( 'Main Menu', 'blueworx-labs-wordpress' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'More Menu', 'blueworx-labs-wordpress' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Hidden', 'blueworx-labs-wordpress' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<?php
-						blueworx_render_menu_editor_section( 'main', $main_items, $locked );
-						blueworx_render_menu_editor_section( 'toggle', $toggle_items, $locked );
-						blueworx_render_menu_editor_section( 'hidden', $hidden_items, $locked );
-						?>
-					</tr>
-				</tbody>
-			</table>
+			<div class="bw-menu-editor">
+				<?php foreach ( $sections as $group => $label ) : ?>
+					<?php blueworx_render_menu_editor_group( $group, $label, $buckets[ $group ] ); ?>
+				<?php endforeach; ?>
+			</div>
 
 			<?php submit_button( esc_html__( 'Save Menu Settings', 'blueworx-labs-wordpress' ) ); ?>
 		</form>
@@ -472,35 +489,34 @@ function blueworx_render_edit_menu_page() {
 }
 
 /**
- * Renders one menu editor section.
+ * Renders one Edit Menu group section.
  *
- * @param string $state  Section state.
- * @param array  $items  Menu items.
- * @param array  $locked Locked slugs.
+ * @param string $group Group key, or "hidden".
+ * @param string $label Translated section label.
+ * @param array  $items Menu labels keyed by slug.
  * @return void
  */
-function blueworx_render_menu_editor_section( $state, $items, $locked ) {
+function blueworx_render_menu_editor_group( $group, $label, $items ) {
 	?>
-	<td>
-		<ul class="categorychecklist form-no-clear blueworx-menu-order-list" data-blueworx-menu-section="<?php echo esc_attr( $state ); ?>">
-			<?php foreach ( $items as $slug => $label ) : ?>
-				<?php $is_locked = in_array( $slug, $locked, true ); ?>
-				<li class="blueworx-menu-order-item" data-blueworx-menu-item="<?php echo esc_attr( $slug ); ?>">
-					<span class="blueworx-menu-order-handle" aria-hidden="true">::</span>
-					<?php echo esc_html( $label ); ?>
-					<button
-						type="button"
-						class="button-link blueworx-menu-visibility-toggle"
-						aria-label="<?php echo esc_attr( 'hidden' === $state ? __( 'Show menu item', 'blueworx-labs-wordpress' ) : __( 'Hide menu item', 'blueworx-labs-wordpress' ) ); ?>"
-						<?php disabled( $is_locked ); ?>
-					>
-						<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
-					</button>
-					<input type="hidden" class="blueworx-menu-order-input" name="blueworx_admin_menu_order[]" value="<?php echo esc_attr( $slug ); ?>" />
-					<input type="hidden" class="blueworx-menu-state-input" value="<?php echo esc_attr( $slug ); ?>" />
+	<section class="bw-menu-editor-group" data-group="<?php echo esc_attr( $group ); ?>">
+		<h2 class="bw-menu-editor-group-title"><?php echo esc_html( $label ); ?></h2>
+		<ul class="bw-menu-editor-list">
+			<?php foreach ( $items as $slug => $item_label ) : ?>
+				<li class="bw-menu-editor-item" draggable="true" data-slug="<?php echo esc_attr( $slug ); ?>">
+					<span class="bw-menu-editor-handle" aria-hidden="true">⠿</span>
+					<span class="bw-menu-editor-label"><?php echo esc_html( $item_label ); ?></span>
+					<button type="button" class="button-link bw-menu-editor-up"
+						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s up', 'blueworx-labs-wordpress' ), $item_label ) ); ?>">▲</button>
+					<button type="button" class="button-link bw-menu-editor-down"
+						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s down', 'blueworx-labs-wordpress' ), $item_label ) ); ?>">▼</button>
+					<input type="hidden" class="bw-menu-editor-order" name="blueworx_admin_menu_order[]" value="<?php echo esc_attr( $slug ); ?>" />
+					<input type="hidden" class="bw-menu-editor-group-input" name="<?php echo esc_attr( 'blueworx_admin_menu_groups[' . $slug . ']' ); ?>" value="<?php echo esc_attr( $group ); ?>" />
+					<?php if ( 'hidden' === $group ) : ?>
+						<input type="hidden" class="bw-menu-editor-hidden-input" name="blueworx_hidden_admin_menu_items[]" value="<?php echo esc_attr( $slug ); ?>" />
+					<?php endif; ?>
 				</li>
 			<?php endforeach; ?>
 		</ul>
-	</td>
+	</section>
 	<?php
 }

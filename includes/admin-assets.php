@@ -87,11 +87,21 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 	}
 
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {
+		// Unconditional: the Edit Menu screen must be usable with admin_theme off,
+		// so it carries its own styling rather than leaning on admin-theme.css.
+		wp_enqueue_style(
+			'blueworx-labs-wordpress-admin-menu-editor',
+			BLUEWORX_LABS_URL . 'assets/css/admin-menu-editor.css',
+			array(),
+			blueworx_get_admin_asset_version( 'assets/css/admin-menu-editor.css' )
+		);
+
+		// No jQuery, no jQuery UI: the editor uses native drag-and-drop.
 		wp_enqueue_script(
-			'blueworx-labs-wordpress-admin-menu-order',
-			BLUEWORX_LABS_URL . 'assets/js/admin-menu-order.js',
-			array( 'jquery', 'jquery-ui-sortable' ),
-			blueworx_get_admin_asset_version( 'assets/js/admin-menu-order.js' ),
+			'blueworx-labs-wordpress-admin-menu-editor',
+			BLUEWORX_LABS_URL . 'assets/js/admin-menu-editor.js',
+			array(),
+			blueworx_get_admin_asset_version( 'assets/js/admin-menu-editor.js' ),
 			true
 		);
 

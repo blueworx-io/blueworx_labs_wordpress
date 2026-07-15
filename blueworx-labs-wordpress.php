@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, cache refresh, admin/profile enhancements, and the headless REST layer that powers BlueWorx headless WordPress sites.
- * Version:           1.11.0
+ * Version:           1.12.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.11.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.12.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -42,6 +42,9 @@ require_once BLUEWORX_LABS_PATH . 'includes/features.php';
 require_once BLUEWORX_LABS_PATH . 'includes/upgrade.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-assets.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-theme.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-groups.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-icons.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-badges.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';

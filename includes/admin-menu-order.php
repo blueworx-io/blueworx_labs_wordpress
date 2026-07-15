@@ -36,10 +36,7 @@ function blueworx_get_default_admin_menu_order() {
  * @return array Locked menu slugs.
  */
 function blueworx_get_locked_admin_menu_items() {
-	return array(
-		'blueworx-menu-toggle',
-		'separator-blueworx-toggle',
-	);
+	return array();
 }
 
 /**
@@ -238,27 +235,6 @@ function blueworx_get_hidden_admin_menu_items() {
 }
 
 /**
- * Gets menu items moved under the More menu.
- *
- * @return array More menu slugs.
- */
-function blueworx_get_toggled_admin_menu_items() {
-	if ( blueworx_should_use_default_admin_menu() ) {
-		$arrangement = blueworx_compute_default_admin_menu_arrangement();
-
-		return array_values( array_diff( $arrangement['toggled'], blueworx_get_locked_admin_menu_items() ) );
-	}
-
-	$toggled = get_option( 'blueworx_toggled_admin_menu_items', array() );
-
-	if ( ! is_array( $toggled ) ) {
-		return array();
-	}
-
-	return array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $toggled ) ) ), blueworx_get_locked_admin_menu_items() ) );
-}
-
-/**
  * Gets the saved admin menu order.
  *
  * @return array Saved or default menu slugs.
@@ -280,6 +256,28 @@ function blueworx_get_saved_admin_menu_order() {
 }
 
 /**
+ * Flattens a raw $menu label to plain text, without core's update bubble.
+ *
+ * Core hangs a live count off some labels. Plugins is
+ * 'Plugins <span class="update-plugins count-0"><span class="plugin-count">0</span></span>',
+ * Comments carries an 'awaiting-mod' bubble. wp_strip_all_tags() alone flattens
+ * that count INTO the text, which is why the Edit Menu listed "Plugins 0" — and
+ * why the Move up/down controls announced "Move Plugins 0 up" to a screen
+ * reader. The count is core's transient state, not part of the item's name.
+ *
+ * The bubble is always trailing, so cut from the count span to the end of the
+ * string; that handles core's nested spans without trying to match them.
+ *
+ * @param string $raw Raw $menu[0] value.
+ * @return string Plain-text label.
+ */
+function blueworx_clean_admin_menu_label( $raw ) {
+	$raw = preg_replace( '#<span[^>]*class="[^"]*\bcount[^"]*"[^>]*>.*#is', '', (string) $raw );
+
+	return trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $raw ) ) );
+}
+
+/**
  * Gets visible admin menu items for the Edit Menu page.
  *
  * @return array Menu items keyed by slug.
@@ -295,7 +293,7 @@ function blueworx_get_editable_admin_menu_items() {
 	}
 
 	foreach ( (array) $menu as $menu_item ) {
-		$label = isset( $menu_item[0] ) ? wp_strip_all_tags( (string) $menu_item[0] ) : '';
+		$label = isset( $menu_item[0] ) ? blueworx_clean_admin_menu_label( $menu_item[0] ) : '';
 		$slug  = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
 
 		if ( '' === $slug || 0 === strpos( $slug, 'separator' ) ) {
@@ -306,7 +304,7 @@ function blueworx_get_editable_admin_menu_items() {
 			continue;
 		}
 
-		$items[ $slug ] = trim( preg_replace( '/\s+/', ' ', $label ) );
+		$items[ $slug ] = $label;
 	}
 
 	foreach ( blueworx_get_saved_admin_menu_order() as $slug ) {
@@ -321,6 +319,26 @@ function blueworx_get_editable_admin_menu_items() {
 
 	return $items;
 }
+
+/*
+ * Custom post type menus are deliberately NOT promoted to top-level rows.
+ *
+ * An earlier pass here lifted every post type registered with
+ * show_in_menu => '<parent-slug>' out of its parent and gave it its own sidebar
+ * row, on the reading that the v2 design wanted one row per content type. On a
+ * real site that shredded the structure the site had authored: Clubhouse
+ * registers Sports, Teams, Fixtures, Events, Sponsors and People under its own
+ * Content menu, and promoting them scattered six rows across the sidebar while
+ * leaving the Content parent behind them, emptied.
+ *
+ * Where a site nests its post types is a statement about how that site is
+ * organised, and it is not this plugin's call to overrule it. The types stay
+ * where they were registered, and the Custom Content group is populated by the
+ * parent menus themselves — which reach it through
+ * blueworx_get_default_admin_menu_group_fallback() (includes/admin-menu-groups.php).
+ * Post types a site registers top-level still land in Custom Content via the
+ * edit.php?post_type= rule, exactly as before.
+ */
 
 /**
  * Enables a custom admin menu order.
@@ -337,100 +355,130 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 /**
  * Sets the preferred left admin menu order.
  *
- * Unknown plugin menu items are left for WordPress to place after these items.
+ * Orders top-level items by semantic group (Overview -> Content -> Custom
+ * Content -> Site), honouring the admin's saved order within each group.
+ *
+ * Shared with blueworx_mark_admin_menu_group_starts() (includes/admin-theme.php),
+ * which calls this directly to learn which slug leads each group, so the
+ * heading markers and the actual render order can never drift apart.
  *
  * @param array $menu_order Existing menu order.
  * @return array Preferred menu order.
  */
-function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $menu_order is required by the WordPress "menu_order" filter's callback signature; this implementation builds its own order from stored settings instead of the incoming value.
-	$order = array_values( array_diff( blueworx_get_saved_admin_menu_order(), array( 'separator-blueworx-toggle', 'blueworx-menu-toggle' ) ) );
+function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Required by the "menu_order" filter signature; this implementation builds its own order from group assignments and stored settings.
+	$assignments = blueworx_get_admin_menu_group_assignments();
+	$saved       = blueworx_get_saved_admin_menu_order();
+	$groups      = array_keys( blueworx_get_admin_menu_groups() );
+	$ordered     = array();
 
-	if ( ! in_array( 'blueworx-labs-wordpress', $order, true ) ) {
-		$dashboard_position = array_search( 'index.php', $order, true );
-		$insert_position    = false === $dashboard_position ? 1 : $dashboard_position + 1;
+	$customized = blueworx_admin_menu_is_customized();
 
-		array_splice( $order, $insert_position, 0, 'blueworx-labs-wordpress' );
+	// Within a group, honour the admin's saved order; unsaved items follow.
+	foreach ( $groups as $group ) {
+		$in_group = array();
+
+		foreach ( $saved as $slug ) {
+			if ( isset( $assignments[ $slug ] ) && $group === $assignments[ $slug ] ) {
+				$in_group[] = $slug;
+			}
+		}
+
+		foreach ( $assignments as $slug => $slug_group ) {
+			if ( $group === $slug_group && ! in_array( $slug, $in_group, true ) ) {
+				$in_group[] = $slug;
+			}
+		}
+
+		if ( ! $customized ) {
+			$in_group = blueworx_sort_admin_menu_group_by_design( $in_group );
+		}
+
+		foreach ( $in_group as $slug ) {
+			$ordered[] = $slug;
+		}
 	}
 
-	if ( ! empty( blueworx_get_toggled_admin_menu_items() ) ) {
-		$order[] = 'separator-blueworx-toggle';
-		$order[] = 'blueworx-menu-toggle';
-	}
-
-	return $order;
-}
-if ( blueworx_feature_enabled( 'menu_editor' ) ) {
-	add_filter( 'menu_order', 'blueworx_admin_menu_order' );
+	return $ordered;
 }
 
 /**
- * Moves selected menu items under More and hides selected menu items.
+ * Sorts one group's slugs into the v2 design's order.
+ *
+ * The saved order is computed by blueworx_compute_default_admin_menu_arrangement(),
+ * which sorts by label length then A-Z. That rule predates the semantic groups
+ * and was written for a single flat list, so inside Content it yields Media,
+ * Pages, Posts where the design reads Posts, Media, Pages.
+ *
+ * The group rules map is already written in the design's order, so it doubles as
+ * the intended order within a group. Slugs it does not list (custom post types,
+ * third-party menus) keep their existing relative order, after the listed ones.
+ *
+ * Applied only to sites that have never saved the Edit Menu: the design sets the
+ * default, an admin's own arrangement overrides it.
+ *
+ * @param array $slugs Slugs in one group.
+ * @return array Slugs in design order.
+ */
+function blueworx_sort_admin_menu_group_by_design( $slugs ) {
+	$design = array_keys( blueworx_get_admin_menu_group_rules() );
+	$listed = array();
+	$rest   = array();
+
+	foreach ( $slugs as $slug ) {
+		if ( in_array( $slug, $design, true ) ) {
+			$listed[] = $slug;
+		} else {
+			$rest[] = $slug;
+		}
+	}
+
+	usort(
+		$listed,
+		function ( $a, $b ) use ( $design ) {
+			return array_search( $a, $design, true ) - array_search( $b, $design, true );
+		}
+	);
+
+	return array_merge( $listed, $rest );
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_filter( 'menu_order', 'blueworx_admin_menu_order' );
+	add_filter( 'custom_menu_order', '__return_true' );
+}
+
+/**
+ * Hides selected menu items.
  *
  * @return void
  */
 function blueworx_apply_admin_menu_visibility() {
-	global $menu, $submenu;
+	global $menu;
 
-	$hidden        = blueworx_get_hidden_admin_menu_items();
-	$toggled       = blueworx_get_toggled_admin_menu_items();
-	$menu_items    = array();
-	$toggled_items = array();
-	$hidden_ids    = array();
-	$labels        = array();
+	$hidden     = blueworx_get_hidden_admin_menu_items();
+	$hidden_ids = array();
+	$labels     = array();
 
 	foreach ( (array) $menu as $menu_item ) {
-		$label      = isset( $menu_item[0] ) ? trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $menu_item[0] ) ) ) : '';
-		$capability = isset( $menu_item[1] ) ? (string) $menu_item[1] : 'read';
-		$slug       = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
-		$item_id    = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
+		// Same cleaning as the Edit Menu screen: without it the stored label is
+		// "Plugins 0", and it is this option the screen falls back to for items
+		// the current request has not registered.
+		$label   = isset( $menu_item[0] ) ? blueworx_clean_admin_menu_label( $menu_item[0] ) : '';
+		$slug    = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
+		$item_id = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
 
 		if ( '' === $slug || '' === $label || 0 === strpos( $slug, 'separator' ) ) {
 			continue;
 		}
 
-		$labels[ $slug ]     = $label;
-		$menu_items[ $slug ] = array(
-			'label'      => $label,
-			'capability' => $capability,
-			'url'        => blueworx_get_admin_menu_slug_url( $slug ),
-		);
+		$labels[ $slug ] = $label;
 
-		if ( ( in_array( $slug, $hidden, true ) || in_array( $slug, $toggled, true ) ) && '' !== $item_id ) {
+		if ( in_array( $slug, $hidden, true ) && '' !== $item_id ) {
 			$hidden_ids[] = blueworx_sanitize_admin_menu_id( $item_id );
 		}
 	}
 
 	if ( ! empty( $labels ) ) {
 		update_option( 'blueworx_admin_menu_item_labels', $labels );
-	}
-
-	foreach ( $toggled as $slug ) {
-		if ( isset( $menu_items[ $slug ] ) ) {
-			$toggled_items[ $slug ] = $menu_items[ $slug ];
-		}
-	}
-
-	if ( ! empty( $toggled_items ) ) {
-		$menu[998] = array( '', 'read', 'separator-blueworx-toggle', '', 'wp-menu-separator blueworx-toggle-separator' ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $menu global (inside the "admin_menu" action, via the `global $menu, $submenu;` above) is the standard, documented way to insert admin menu rows; WordPress provides no dedicated API for this.
-
-		add_menu_page(
-			esc_html__( 'More', 'blueworx-labs-wordpress' ),
-			esc_html__( 'More', 'blueworx-labs-wordpress' ),
-			'read',
-			'blueworx-menu-toggle',
-			'blueworx_render_toggle_menu_page',
-			'dashicons-ellipsis',
-			999
-		);
-
-		foreach ( $toggled_items as $slug => $item ) {
-			$submenu['blueworx-menu-toggle'][] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $submenu global (inside the "admin_menu" action) is the standard, documented way to add submenu rows; WordPress provides no dedicated API for this.
-				$item['label'],
-				$item['capability'],
-				$item['url'],
-				$item['label'],
-			);
-		}
 	}
 
 	if ( ! empty( $hidden_ids ) ) {
@@ -476,66 +524,3 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 	add_action( 'admin_head', 'blueworx_hide_admin_menu_rows' );
 }
 
-/**
- * Makes the More menu expand without loading a page.
- *
- * @return void
- */
-function blueworx_make_toggle_menu_inline() {
-	?>
-	<script>
-		document.addEventListener( 'DOMContentLoaded', function () {
-			var link = document.querySelector( '#toplevel_page_blueworx-menu-toggle > a' );
-
-			if ( ! link ) {
-				return;
-			}
-
-			link.addEventListener( 'click', function ( event ) {
-				var item = link.closest( 'li' );
-
-				if ( ! item ) {
-					return;
-				}
-
-				event.preventDefault();
-				item.classList.toggle( 'wp-menu-open' );
-				item.classList.toggle( 'opensub' );
-			} );
-		} );
-	</script>
-	<?php
-}
-if ( blueworx_feature_enabled( 'menu_editor' ) ) {
-	add_action( 'admin_footer', 'blueworx_make_toggle_menu_inline' );
-}
-
-/**
- * Gets the admin URL for a saved menu slug.
- *
- * @param string $slug Admin menu slug.
- * @return string Admin URL.
- */
-function blueworx_get_admin_menu_slug_url( $slug ) {
-	$slug = (string) $slug;
-
-	if ( false !== strpos( $slug, '.php' ) ) {
-		return $slug;
-	}
-
-	return 'admin.php?page=' . rawurlencode( $slug );
-}
-
-/**
- * Renders a simple More landing page.
- *
- * @return void
- */
-function blueworx_render_toggle_menu_page() {
-	?>
-	<div class="wrap">
-		<h1><?php esc_html_e( 'More', 'blueworx-labs-wordpress' ); ?></h1>
-		<p><?php esc_html_e( 'Use the submenu items here to open menus moved into More.', 'blueworx-labs-wordpress' ); ?></p>
-	</div>
-	<?php
-}

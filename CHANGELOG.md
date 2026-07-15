@@ -4,6 +4,154 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.12.0] - 2026-07-15
+
+### Added
+- **BlueWorx admin top bar.** On screens 783px and wider, the WordPress admin bar
+  is replaced by the design's top bar: the current page title, a **View Site**
+  button that opens the front end in a new tab, and a user menu (Edit Profile,
+  Log Out). A brand block — the site's initial in an indigo mark, the site name,
+  and "wp-admin" — sits above the menu. The user menu is a native `<details>`
+  disclosure, so no JavaScript ships with it. Below 783px the native admin bar is
+  kept, because it carries WordPress's responsive menu toggle.
+- **Semantic sidebar groups.** The sidebar is grouped by meaning — Overview,
+  Content, Custom Content, Site — with a heading above each. Custom post types
+  are recognised by shape, so any type a site registers top-level lands in Custom
+  Content without being listed. A group with nothing in it renders no heading,
+  and unrecognised third-party menus fall back to Custom Content rather than
+  being dropped — a plugin's own top-level menu is nearly always the content it
+  manages, where Site is core's housekeeping. BlueWorx sits in Overview, directly
+  below the Dashboard it extends.
+- **Design icon set** on the mapped core menus and on every custom post type,
+  replacing dashicons. Icons stroke `currentColor`, so they follow their label
+  through idle, hover and active. Unmapped third-party menus keep their own
+  glyph.
+- **Count badges** on Posts, Media, Pages, custom post types and Plugins, from
+  core's count APIs. Zero renders no badge. Where WordPress already draws its own
+  bubble (plugin updates, comments awaiting moderation), core's wins — one row
+  never carries two counts.
+- **Log Out row** at the foot of the sidebar, alongside the top bar's user menu.
+  The design shows both.
+
+### Changed
+- **Sidebar order follows the design by default.** Within a group, items now use
+  the design's order — Content reads Posts, Media, Pages — instead of the older
+  "shortest label, then A–Z" rule, which predates the groups and was written for
+  a single flat list. Sites that have saved the Edit Menu keep their own
+  arrangement: the design sets the default, an admin's choice overrides it.
+- **Collapse Menu is hidden**, per the design. It reappears if the menu is
+  folded, so the state is always reversible, and it is left alone below 961px
+  where WordPress auto-folds and it is the only way back out.
+- **Edit Menu rebuilt around the semantic groups.** One card per group plus
+  Hidden, replacing the Main/More/Hidden columns, so the screen mirrors the
+  sidebar it edits. Drag now uses the browser's own drag-and-drop instead of
+  jQuery UI, and every row gains up/down buttons — the old screen was drag-only,
+  and so unusable by keyboard. Moving an item into another group, or into
+  Hidden, is saved with the order.
+- **Sidebar matches the design more closely.** Widened to 232px when expanded,
+  with rounded menu rows, an indigo active pill, the current-item arrow removed,
+  and icons that follow their label colour instead of being tinted indigo.
+- **Lighter shadows.** `--bw-shadow-card` is now a soft two-stop lift
+  (`0 1px 2px / 0 4px 12px` at 4–5% alpha) instead of the heavier stack, matching
+  the design's elevation across cards, tables, notices, and tiles.
+- **Login screens are properly designed.** All wp-login actions (log in, lost
+  password, reset, register) now use a brand mark in place of the WordPress logo,
+  a centred white card with the light shadow, Sora/Inter type, full-width charcoal
+  button, rounded inputs with indigo focus rings, and restyled messages/errors.
+
+### Fixed
+- **Custom post types no longer torn out of the menu that registered them.** An
+  earlier pass in this release lifted every type registered with
+  `show_in_menu => '<parent>'` into its own top-level row. On a real site that
+  shredded the structure the site had authored — Clubhouse registers Sports,
+  Teams, Fixtures, Events, Sponsors and People under its own Content menu, and
+  promoting them scattered six rows across the sidebar while leaving the Content
+  parent behind them, emptied. Where a site nests its post types is a statement
+  about how that site is organised, and overruling it is not this plugin's call.
+  Types now stay where they were registered, and Custom Content is populated by
+  the parent menus themselves.
+- **The sidebar overhung its own panel.** `#adminmenu` carried `6px` of side
+  padding, but core sizes the menu with a width and leaves it content-box, so
+  that padding was added to the width and the rows spilled out of the dark panel
+  onto the content area. The padding is gone; the gutter is the row margin alone.
+- **Rows were not all the same height.** Only mapped slugs get a design SVG; an
+  unmapped third-party menu keeps core's dashicon, whose glyph box is 36px
+  (`20px/1` plus `8px` vertical padding) against the mapped rows' 20px. With the
+  same anchor padding on both, unmapped rows stood 16px taller than their
+  neighbours. The icon slot is now a fixed 20px box for every row, so they all
+  settle at the shorter height.
+- **Hovering a section's top item highlighted the whole section.** Core paints
+  hover on the `li`, not the anchor — and that `li` hosts both the group's
+  `::before` heading and, on the current item, its inline submenu. The fill
+  therefore bled across the heading and every row beneath it. The `li` no longer
+  takes a background; state lives on the anchor alone, as the design intends.
+- **Dashboard hero tiles could fail to appear.** The tiles were registered at
+  `core` priority, but `do_meta_boxes()` renders `high` → `sorted` → `core` and
+  moves any saved user layout into `sorted` — so on a dashboard that had been
+  rearranged, the tiles were pushed below everything else. They are now registered
+  at `high` priority and stay at the top.
+- **Edit Menu listed "Plugins 0".** Core hangs a live update bubble off some menu
+  labels (`Plugins <span class="update-plugins count-0">…`), and flattening the
+  label with `wp_strip_all_tags()` folded that count into the name — so the screen
+  listed "Plugins 0" and its reorder buttons announced "Move Plugins 0 up" to a
+  screen reader. The bubble is now stripped before flattening, in both the screen
+  and the stored `blueworx_admin_menu_item_labels` fallback, so the count no
+  longer leaks into either.
+
+### Internal
+- **Playwright: the admin suite no longer hangs on its second click.** WordPress
+  6.9 ships cross-document view transitions in wp-admin, guarded by
+  `@media (prefers-reduced-motion: no-preference)`. In headless Chromium those
+  transitions permanently stop the page being rendered: `requestAnimationFrame`
+  never fires again while timers keep running and the DOM stays queryable. Every
+  Playwright actionability check is built on rAF, so from the first click-driven
+  navigation onward every `click`, `setChecked` and `hover` hung for its full
+  timeout, reporting "waiting for element to be visible, enabled and stable" about
+  elements that were provably all three. Only page-initiated navigations arm it,
+  which is why `page.goto()` was always fine and why the *first* click of a test
+  always worked and the *second* never did. The suite now emulates reduced motion
+  via a fixture in `tests/helpers.js`, opting out of core's rule at source. This
+  MUST be done imperatively — `use: { reducedMotion: 'reduce' }` in
+  `playwright.config.js` is accepted and then silently ignored (verified on
+  @playwright/test 1.61.1), which is what made this look like "not view
+  transitions" for two sessions. The site itself was never affected; real browsers
+  finish the transition and keep painting.
+- **The theme flag is restored even when a test dies.** `admin_theme` is a real
+  setting on a real site. The on/off test turned it off, and a failure before the
+  restore left staging unthemed and every later test in the file asserting against
+  stock WordPress. Restoring now happens in an `afterEach`, which still runs when
+  the test throws or times out.
+- **`click({ force: true })` removed** from the Edit Menu save. It was masking the
+  view-transition freeze above; an honest click works now.
+- **Credentials come from a gitignored `.env`** via dotenv, so runs no longer need
+  them pasted onto every command line (and into shell history). Copy
+  `.env.example` to `.env`. Anything already set in the environment still wins, so
+  CI can inject real secrets with no `.env` present.
+- **The auth/login REST test skips when the site has no auth configured.** A site
+  without a JWT secret answers `503 blueworx_auth_unconfigured` and never looks at
+  the credentials, so there is no rejection behaviour to assert — an environment
+  gap, not a defect. It now skips with that reason instead of reporting a red no
+  code change could fix. Any other 503 still fails.
+
+### Known issues
+- `tests/headless-rest.spec.js` › *CORS is not granted to a disallowed origin*
+  fails, and is left failing deliberately. The plugin's CORS allowlist has no deny
+  path: it never removes core's `rest_send_cors_headers`, so any origin is echoed
+  with `Access-Control-Allow-Credentials: true`. Pre-existing and unrelated to this
+  release; tracked in #20 rather than hidden behind a skip.
+- No Playwright test gates a pull request. CI points at a placeholder URL, so every
+  admin spec skips, and the shared workflow never deploys the plugin — it would
+  test whatever is installed on staging rather than the code under review. Tracked
+  in #21.
+
+### Removed
+- **The "More" menu is retired.** The design replaces the Main/More/Hidden split
+  with the four semantic groups, so More has no equivalent. Items that sat in it
+  are assigned to their natural group and **reappear as top-level rows** — More
+  was a grouping affordance, not a hiding one, and the separate Hidden bucket is
+  untouched. Existing sites are migrated automatically.
+- **`#wpfooter` is hidden** on all admin screens while the theme is active.
+
 ## [1.11.0] - 2026-07-14
 
 ### Added

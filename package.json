@@ -1,6 +1,6 @@
 {
   "name": "blueworx-labs-wordpress",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "private": true,
   "description": "BlueWorx Labs | WordPress Enhancements — primary headless WordPress plugin.",
   "license": "GPL-2.0-or-later",
@@ -14,6 +14,7 @@
     "@eslint/js": "^9.13.0",
     "@playwright/test": "^1.48.0",
     "archiver": "^7.0.1",
+    "dotenv": "^17.4.2",
     "eslint": "^9.13.0",
     "globals": "^15.11.0"
   }

@@ -1,0 +1,511 @@
+# BlueWorx Admin Re-skin — Refinements (v2 design)
+
+**Date:** 2026-07-15
+**Repo:** `blueworx_labs_wordpress`
+**Branch:** `admin-reskin-refinements`
+**Target version:** 1.12.0
+**Status:** Approved (brainstorming)
+
+## Summary
+
+Second pass over the wp-admin re-skin, driven by a staging review of v1.11.0 and by
+a **newer design export** that arrived after the original spec was written.
+
+This spec **supersedes the sidebar and settings-page sections** of
+`2026-07-14-admin-reskin-design.md`. That spec remains the reference for the top
+bar, dashboard, login screen, tokens, and the feature-flag architecture, all of
+which are unchanged.
+
+Two kinds of work, one branch:
+
+1. **Bugs** in the shipped re-skin (the brand block overhanging the top bar,
+   sidebar hover colour overlap, broken Edit Menu drag-and-drop).
+2. **Design gaps** against the v2 export (sidebar groups, icons, badges, Log Out;
+   card containers on settings screens).
+
+## The design source changed
+
+The v1.11.0 re-skin was built from `WordPress Admin.dc.html`. The export folder
+(`~/Downloads/Reimagined WordPress Backend Design/`) now also contains
+**`WordPress Admin v2.dc.html`**, which is the demo Luke is asking to match.
+
+v2 adds, in the sidebar:
+
+- A brand block (site initial in an indigo square, site name, `wp-admin` subtitle)
+- Group headings: **OVERVIEW / CONTENT / CUSTOM CONTENT / SITE**
+- Count badges on items (`Posts 24`, `Plugins 2`)
+- A storage meter (**explicitly cut** — see Non-goals)
+- A Log Out item pinned to the bottom
+- Lucide-style stroked icons in place of dashicons
+
+### Reversed non-goal
+
+The v1 spec stated:
+
+> Not pixel-identical to the mockup. The mockup is a simplified, bespoke admin
+> (trimmed 7-item nav). We keep WordPress's real menu and notices and apply the
+> BlueWorx skin to them.
+
+**This is reversed for the sidebar.** The target is now ~99% fidelity to the v2
+sidebar. The practical consequence: the sidebar is no longer a pure-CSS re-skin —
+it restructures WordPress's `$menu` in PHP. The non-goal still holds everywhere
+else (notices, list tables, and third-party admin pages keep WordPress's real
+markup and are only skinned).
+
+## Goals
+
+- Sidebar matches the v2 export ~99%: groups, icons, badges, Log Out.
+- The three shipped bugs are fixed at root cause, not patched at the symptom.
+- Settings screens read as cards, on our pages **and** on core/third-party pages.
+- Still fully reversible via the existing feature flags.
+- No new runtime dependencies. jQuery UI `sortable` is **removed**, not added to.
+
+## Non-goals
+
+- **No storage meter.** WordPress has real disk usage but no concept of a quota,
+  so the design's `6.2 / 20 GB` would require inventing one. Cut by decision.
+- No search field or "New" button in the top bar (already decided in the v1 spec;
+  unchanged).
+- Not restyling the block-editor canvas (`.editor-styles-wrapper`).
+- No redesign of the dashboard, login screen, or top bar — v1.11.0 stands.
+
+---
+
+## 1. Sidebar groups
+
+### Model
+
+Four groups own the sidebar structure. **The "More" menu is removed entirely** —
+its purpose was visual grouping, which real groups now do properly.
+
+Default group assignment, overridable per-item in Edit Menu:
+
+| Group | Heading | Default members |
+|---|---|---|
+| `overview` | OVERVIEW | `index.php` |
+| `content` | CONTENT | `edit.php`, `upload.php`, `edit.php?post_type=page`, `edit-comments.php` |
+| `custom` | CUSTOM CONTENT | Any registered custom post type menu (e.g. Clubhouse, Content) |
+| `site` | SITE | `themes.php`, `plugins.php`, `users.php`, `tools.php`, `options-general.php`, `blueworx-labs-wordpress`, and any unrecognised third-party menu |
+
+Rules:
+
+- **Custom Content** is detected by matching top-level slugs of the form
+  `edit.php?post_type=…` where the post type is not `post` or `page`.
+- **Unknown third-party menus default to `site`.** They are never dropped.
+- **An empty group renders no heading.** With the `comments` feature enabled
+  ("Comments disabled"), `edit-comments.php` is absent from the menu — Content
+  still has other members, so this needs no special case. But a group that ends up
+  with zero visible items must not emit a stray heading.
+- `edit-comments.php` sits in Content by rule. It simply does not render when the
+  `comments` flag removes it.
+
+### Rendering the headings
+
+Headings are injected as **inert pseudo-items into the global `$menu`** on
+`admin_menu` at a late priority, carrying a `bw-menu-group` class in the menu
+item's class field (index 4). CSS renders them as headings and makes them
+non-interactive (`pointer-events: none`), and they are removed from the tab order.
+
+They are **not** faked with CSS `content:` strings, because that would hard-code
+English into the stylesheet and break translation. Labels go through
+`__( …, 'blueworx-labs-wordpress' )` like every other string.
+
+**Validation required during implementation:** core's `_wp_menu_output()` special-
+cases items whose class contains `wp-menu-separator`, and renders other items as
+anchors. The heading item must render as readable text without becoming a
+focusable link. If core's renderer cannot be made to emit an inert heading
+cleanly, the fallback is to mark the *first item of each group* with a
+`bw-group-start-{group}` class and render the heading from a `::before` on that
+item, with the label supplied via an inline `style` custom property
+(`--bw-group-label`) so translation still works. Pick the pseudo-item approach
+first; fall back only if core fights it.
+
+### Interaction with the feature flags
+
+Two independent flags, unchanged in meaning:
+
+| Flag | Owns |
+|---|---|
+| `admin_theme` | The **group structure itself**: default rule-based grouping, headings, icons, badges, Log Out, all CSS |
+| `menu_editor` | The **user's overrides** of that structure: per-item group reassignment, order within a group, hidden items |
+
+The split is *structure* vs *customisation of structure*. Grouping is a property
+of the BlueWorx sidebar design, so it belongs to `admin_theme`; Edit Menu only
+overrides what the design already establishes.
+
+Behaviour matrix:
+
+- **Both on** — full v2 sidebar, with the user's saved overrides applied.
+- **`admin_theme` on, `menu_editor` off** — full v2 sidebar, grouped by the
+  default rules, ignoring any saved overrides.
+- **`admin_theme` off, `menu_editor` on** — stock WordPress look. No grouping and
+  **no headings injected** (an unstyled heading in a stock menu would be a visual
+  defect). Saved group assignments are inert; the flat `blueworx_admin_menu_order`
+  and hidden items are still respected.
+- **Both off** — stock WordPress.
+
+There is no half-skinned state.
+
+## 2. Icons
+
+Inline SVGs lifted from the v2 export replace dashicons on all mapped core menus.
+
+| Menu | Icon |
+|---|---|
+| Dashboard | grid |
+| Posts | file-text |
+| Media Library | image |
+| Pages | layers |
+| Users | user |
+| Plugins | puzzle |
+| Appearance | palette |
+| Tools | wrench |
+| Settings | sliders |
+
+- Icons are injected as inline SVG (stroke `currentColor`) so they inherit the
+  item's label colour in every state, matching the design.
+- **Unmapped third-party menus keep their own dashicon** — there is nothing to map
+  them to, and blanking them would be worse than an inconsistent glyph.
+- Custom post type menus use a single generic `tag` icon, matching how the v2
+  export renders its repeated `{{ cn.label }}` custom-content rows.
+
+## 3. Badges and Log Out
+
+**Badges.** Real counts, from core APIs, computed **once per request** and passed
+to the menu builder:
+
+- Posts → `wp_count_posts( 'post' )->publish`
+- Pages → `wp_count_posts( 'page' )->publish`
+- Media → `wp_count_attachments()` summed
+- Custom post types → `wp_count_posts( $type )->publish`
+- Plugins → count of active plugins
+
+A count of zero renders **no badge** (the v2 export shows badges only on non-zero
+items). Badges must not collide with WordPress's own update-count bubbles
+(`.update-plugins`, `.awaiting-mod`); where core already renders a bubble on an
+item, core's bubble wins and we do not add a second.
+
+**Log Out.** Pinned to the sidebar bottom, above `#collapse-menu`, using
+`wp_logout_url()` (which carries the nonce). Duplicates the top-bar user menu's
+logout; that is intentional and matches the design.
+
+## 4. Bug: sidebar hover colour overlap
+
+**Confirmed root cause** (`assets/css/admin-theme.css:296–318`):
+
+```css
+#adminmenu li.menu-top:hover        { background: rgba(255, 255, 255, .06); }  /* the li  */
+#adminmenu li.current a.menu-top    { background: rgba(79, 70, 229, .22);   }  /* the a   */
+```
+
+Hover paints a translucent white onto the **`li`**; the active pill paints a
+translucent indigo onto the **`a`** nested inside it. Hovering the current item
+composites both translucent layers over the charcoal sidebar, producing a third,
+muddier colour that belongs to neither state.
+
+**Fix:** both states paint the **same element** (the anchor). The `li` carries only
+layout (margin, radius); the `a` carries all state colour.
+
+The v2 export settles the values — and shows the current active colour is simply
+wrong. Its nav button styles are:
+
+| State | Export value | Currently shipped |
+|---|---|---|
+| Active background | **`#4F46E5`** (fully opaque) | `rgba(79, 70, 229, .22)` ❌ |
+| Active colour / weight | `#fff` / `600` | `#fff` / `600` ✔ |
+| Hover background | `rgba(255, 255, 255, .06)` | same, but on the wrong element ❌ |
+| Hover colour | `#fff` | `#fff` ✔ |
+| Idle colour / weight | `rgba(255, 255, 255, .62)` | `rgba(255, 255, 255, .65)` (close) |
+
+With the active pill opaque at `#4F46E5`, nothing composites: the active
+background fully covers the sidebar beneath it.
+
+**Ordering is load-bearing.** Hover must be declared *before* active at equal or
+lower specificity, and scoped so it cannot apply to the current item — otherwise
+hovering the active item would replace the indigo pill with translucent white.
+The export has this latent bug (its `style-hover` overrides the active
+background); we do not reproduce it.
+
+## 5. Bug: the jutt (brand block overhangs the top bar)
+
+**Symptom:** a charcoal tab at the top-left that crosses out of the sidebar and
+over the top bar.
+
+**Root cause — confirmed** (bisected by Luke in DevTools, 2026-07-15, and verified
+against the stylesheet):
+
+`.bw-brand` is **`content-box`**. There is no `box-sizing` declaration anywhere in
+`assets/css/`, and WordPress does not set a global `border-box` in admin, so the
+element's horizontal padding is *added to* its declared width instead of being
+contained by it:
+
+| | |
+|---|---|
+| `.bw-brand` width (`--bw-sidebar-w`) | `232px` |
+| `padding: 0 12px` (added, because content-box) | `+24px` |
+| **Rendered width** | **`256px`** |
+| `.bw-topbar` starts at (`left`) | `232px` |
+| **Overhang** | **`24px`** |
+
+`.bw-brand` has `z-index: 9991` against `.bw-topbar`'s `9990`, so those 24px of
+charcoal paint *over* the top bar. That is the jutt.
+
+This also explains both bisection results, and why each is a symptom fix:
+
+- `padding: 0` ⇒ `232 + 0 = 232`, flush — but removes the padding the design needs.
+- Disabling `width: var(--bw-sidebar-w)` ⇒ falls back to `width: 36px` (the 783px
+  rule) ⇒ `60px` total, far narrower than the sidebar, so nothing overhangs — but
+  `overflow: hidden` then clips the brand text.
+
+**The folded state has the same defect**, undiagnosed until now: at 783–960px
+`.bw-brand` is `36px + 24px = 60px` against WordPress's `36px` folded sidebar —
+a 24px overhang there too, merely less visible.
+
+### Fix
+
+Add `box-sizing: border-box` — **scoped to the `.bw-*` component classes**, not
+`.bw-brand` alone:
+
+```css
+[class^="bw-"],
+[class*=" bw-"] {
+	box-sizing: border-box;
+}
+```
+
+Then `width: var(--bw-sidebar-w)` *includes* the padding: flush with the sidebar
+**and** the padding is retained. Neither of the two bisection trade-offs is needed.
+
+Scoped rather than the export's global `* { box-sizing: border-box }`, which in
+wp-admin would restyle WordPress's own layout and third-party plugin pages.
+
+**Follow-on required:** with `border-box`, the folded rule's `width: 36px` leaves
+a `12px` content box, which would clip the `34px` `.bw-brand-mark`. The folded
+state must therefore drop to `padding: 0` and centre the mark
+(`justify-content: center`) within WordPress's 36px folded sidebar.
+
+**Why the scope matters:** §§1–3 add new `.bw-*` elements — `.bw-menu-group`
+headings, `.bw-badge` counts, the `.bw-logout` row, and the Edit Menu's
+`.bw-menu-editor-*` rows. Each would otherwise inherit the identical content-box
+trap, and a badge or heading that renders wider than its container is the same
+bug in a new place. Fixing the class of bug, not the one instance, is the point.
+(§7 needs no `.bw-*` markup at all — see that section.)
+
+`.bw-topbar` is unaffected: it sets both `left` and `right` with `width: auto`, so
+its box is derived from those offsets and its padding resolves inside them.
+
+## 6. Edit Menu revamp
+
+### Why it is being rebuilt, not patched
+
+Two separate problems: drag-and-drop is broken, and the data model must change
+from three buckets (`main` / `toggle` / `hidden`) to five (four groups + hidden).
+
+**Diagnose the existing breakage first.** `assets/js/admin-menu-order.js` uses
+jQuery UI `sortable` with `handle: '.blueworx-menu-order-handle'`, and
+`jquery-ui-sortable` *is* correctly enqueued as a dependency
+(`includes/admin-assets.php:90–94`), so the obvious cause is already ruled out.
+Find the real reason before replacing it — otherwise the rebuild risks
+reproducing the same fault.
+
+### New UI
+
+Stacked group sections, one card per group, in sidebar order — the screen mirrors
+the shape of the thing it configures:
+
+```
+┌─ OVERVIEW ──────────────────┐
+│ ∷ [▦] Dashboard          ▲▼ │
+└─────────────────────────────┘
+┌─ CONTENT ───────────────────┐
+│ ∷ [▤] Posts           24 ▲▼ │
+│ ∷ [▧] Media Library      ▲▼ │
+└─────────────────────────────┘
+┌─ HIDDEN ────────────────────┐
+│ ∷ [▢] Links              ▲▼ │
+└─────────────────────────────┘
+```
+
+- Drag a row between sections to reassign its group; drag within a section to
+  reorder.
+- **Native HTML5 drag API.** No jQuery UI, no new dependency.
+- **Up/down buttons are a first-class control, not a nicety** — they make the
+  screen keyboard-accessible, which the current drag-only implementation is not.
+  Moving an item past a section boundary moves it into the adjacent group.
+- Locked items (`blueworx-menu-toggle`, `separator-blueworx-toggle`) are retired
+  along with the More menu.
+
+### Data model and migration
+
+Current options:
+
+| Option | Meaning |
+|---|---|
+| `blueworx_admin_menu_order` | Ordered top-level slugs |
+| `blueworx_toggled_admin_menu_items` | Slugs moved into More |
+| `blueworx_hidden_admin_menu_items` | Slugs hidden |
+| `blueworx_admin_menu_customized` | `'1'` once the screen has been saved |
+
+New option:
+
+| Option | Meaning |
+|---|---|
+| `blueworx_admin_menu_groups` | Map of slug → group key (`overview`/`content`/`custom`/`site`) |
+
+`blueworx_admin_menu_order` and `blueworx_hidden_admin_menu_items` are **kept
+as-is** (order is now interpreted within a group; hidden is unchanged).
+`blueworx_toggled_admin_menu_items` is **retired**.
+
+**Migration (one-time, idempotent), only when `blueworx_admin_menu_customized`
+is `'1'`:**
+
+1. Every slug in `blueworx_toggled_admin_menu_items` is assigned to its
+   **default rule group** and therefore **reappears in the sidebar**.
+2. `blueworx_hidden_admin_menu_items` is preserved untouched — hidden stays hidden.
+3. `blueworx_toggled_admin_menu_items` is deleted.
+4. A version flag records that the migration ran, so it cannot run twice.
+
+**Decision (Luke, 2026-07-15): More items reappear rather than migrate to Hidden.**
+More was a *grouping* affordance, not a *hiding* one — the plugin has a separate
+Hidden bucket for hiding, and anyone who wanted an item gone would have used it.
+Silently hiding items on upgrade would be the more destructive reading of intent.
+This **is** a visible change on upgrade and must be called out in `CHANGELOG.md`
+and `readme.txt` under an "Upgrade Notice", not buried.
+
+## 7. Containers on settings screens
+
+> **Corrected 2026-07-15, after reading the render functions.** An earlier draft
+> of this section claimed Enhancements "has no container structure at all". **That
+> was wrong.** The correction below is based on the actual markup, and it makes
+> this section substantially *smaller*, not larger.
+
+### Actual state of each page
+
+| Page | Renderer | Current markup | Real problem |
+|---|---|---|---|
+| Enhancements | `blueworx_render_enhancements_page()` (`admin-settings.php:188`) | **Already** `.postbox` > `.postbox-header` > `.inside` > `.form-table`, one per section — and `.postbox` is **already** card-styled (`admin-theme.css:366`) | **Not** missing containers. Has **no `max-width`**: on a wide viewport the cards stretch edge-to-edge and `.form-table`'s 200px `th` leaves the description stranded far from its label. |
+| Cache | `blueworx_render_cache_page()` (`admin-settings.php:332`) | Bare `<h2>` + `<table class="form-table">` inside `.wrap` | Genuinely uncontained |
+| Headless | `blueworx_headless_render_settings_page()` (`rest/settings.php:154`) | Bare `<h2>` + five `<table class="form-table">` | Genuinely uncontained |
+| General Settings | WordPress core | Bare `<h2>` + `.form-table` inside `.wrap > form` | Genuinely uncontained |
+
+### The consequence: no PHP card markup is needed
+
+Cache, Headless, and General Settings **share one markup shape** — an `<h2>`
+followed by a `.form-table`, as a direct child of `.wrap` or `.wrap > form`. So a
+single CSS rule styling `.form-table` as a card fixes **all three at once**, plus
+every third-party settings screen, with no PHP.
+
+The `.bw-card` PHP work in the earlier draft is therefore **dropped**. It would
+have been churn: hand-rolled markup duplicating what one CSS rule already does.
+
+```css
+/* Cache, Headless, General Settings, and third-party settings screens. */
+.wrap > .form-table,
+.wrap > form > .form-table {
+	background: #fff;
+	border-radius: var(--bw-radius-card);
+	box-shadow: var(--bw-shadow-card);
+	/* + row padding, lavender label column */
+}
+```
+
+**The child combinator is load-bearing, not stylistic.** Enhancements' `.form-table`
+lives at `.postbox > .inside > .form-table`, so an unscoped `.form-table` rule
+would paint a card *inside* the already-carded `.postbox` — nested cards. The
+`>` combinators exclude it. Any later relaxing of these selectors reintroduces
+that bug.
+
+### Enhancements
+
+Its problem is **measure**, not structure. Fix by constraining width and tightening
+the existing `.postbox` rhythm:
+
+- `max-width` on the page's content column so cards stop stretching edge-to-edge.
+- `.postbox-header` / `.inside` padding aligned to the card system.
+- `.form-table` `th`/`td` padding and label column tuned so the label and its
+  description read as one unit.
+
+No markup change: `.postbox` is WordPress's own card component, it is already
+skinned, and replacing it with a bespoke `.bw-card` would gain nothing.
+
+### Trade-off, accepted
+
+A core screen with multiple `<h2>` + `<table>` pairs gets **one card per table**
+rather than one per titled section, with the `<h2>` sitting above its card. Very
+close to the design, and infinitely safer than JavaScript-wrapping markup we do
+not own.
+
+## Accessibility
+
+- Group headings are inert and out of the tab order; they must not read as
+  interactive to a screen reader.
+- Icons are decorative (`aria-hidden="true"`) — the adjacent text label is the
+  accessible name.
+- Badges get an accessible label (e.g. "24 posts"), not a bare number.
+- The Edit Menu's up/down buttons make group assignment fully keyboard-operable.
+  Drag-and-drop is an enhancement layered on top, never the only route.
+- Sidebar hover/active colours retested for WCAG AA after the opaque-colour fix.
+
+## Testing
+
+Extending `tests/admin-theme.spec.js` and `tests/admin-menu-defaults.spec.js`,
+following the existing harness convention (skip on placeholder URL / missing
+`WP_ADMIN_USER` / `WP_ADMIN_PASS`; log in on redirect):
+
+1. Group headings render, in order, with the expected labels.
+2. An empty group emits no heading.
+3. Badges show real counts and are absent at zero.
+4. Log Out is present at the sidebar bottom and points at a nonced logout URL.
+5. **Regression — hover overlap:** the current item's computed background is
+   unchanged by hover (asserts the two states no longer composite).
+6. **Regression — the jutt:** `.bw-brand`'s rendered width equals the sidebar's
+   rendered width exactly, so its right edge never crosses `.bw-topbar`'s left
+   edge — asserted **in both the expanded and folded states**, since both were
+   affected. Assert the rendered box (`getBoundingClientRect().width`), not the
+   CSS `width` property, or the bug reappears invisibly.
+7. Edit Menu: dragging a row to another group persists after save; the up/down
+   buttons move an item across a group boundary.
+8. Migration: a site with `blueworx_toggled_admin_menu_items` set has those items
+   assigned to their default groups and the option deleted, and running it twice
+   changes nothing.
+9. `admin_theme` off ⇒ no headings, no injected icons, stock WordPress look.
+10. **Containers:** the `.form-table` on Cache, Headless, and General Settings has
+    the card background; **and Enhancements' `.form-table` does not** — it sits
+    inside an already-carded `.postbox`, so a card there means the child
+    combinators have been broken and cards are nesting.
+
+## Versioning & deployment
+
+> **Corrected 2026-07-15.** An earlier draft said to "bump 1.11.0 → 1.12.0".
+> **The bump has already happened on this branch** — commit `81d0599` (top bar,
+> closer sidebar, branded login) set 1.12.0 across the header,
+> `BLUEWORX_LABS_VERSION`, `package.json`, and `readme.txt`, and opened a
+> `## [1.12.0] - 2026-07-15` changelog section. `main` is still 1.11.0 and 1.12.0
+> is **unreleased**.
+
+- **Do not bump again.** `main` 1.11.0 → branch 1.12.0 already satisfies CI's
+  version-bump guardrail for this PR. Re-bumping would either double-bump to a
+  version nobody asked for or create a duplicate changelog heading.
+- **Extend the existing `## [1.12.0] - 2026-07-15` section**, do not add a new
+  one. This work and the top-bar work ship as one minor release.
+- `readme.txt` changelog updated to match, including the **Upgrade Notice** about
+  More items reappearing.
+- `npm run version:check` must pass (asserts plugin header === `package.json`).
+- Branch `admin-reskin-refinements` → PR into `main`. CI (lint, build, version
+  bump, changelog, Playwright) must pass.
+- Lint runs **once** as a final check; findings are presented to Luke, not
+  auto-fixed in a loop (per `CLAUDE.md`).
+- Plugin zip built with bsdtar (forward slashes, single top-level folder) and
+  verified with `unzip -l` before hand-off.
+
+## Risks & mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Injecting pseudo-items into `$menu` is unusual; core's renderer may fight it | Validate early; documented `::before` fallback (§1). Both routes are behind `admin_theme`. |
+| Third-party plugins that also filter `menu_order` / `custom_menu_order` could conflict | We already own these filters today; behaviour is unchanged in kind. `menu_editor` flag is the escape hatch. |
+| Removing More is a visible change for existing sites | One-time migration into natural groups; called out in the Upgrade Notice. |
+| Scoping `box-sizing` to `.bw-*` could still shift an existing `.bw-*` element's size (the top bar, dashboard stat tiles) | The change is a strict improvement in intent, but every existing `.bw-*` element must be re-checked visually once applied, not just `.bw-brand`. |
+| Icon swap could blank a third-party menu's glyph | Only mapped core slugs are swapped; everything else keeps its dashicon. |
+| CSS-only `.form-table` cards touch every plugin's settings screen | Style only the table shell; no layout rewrites. `admin_theme` flag is the escape hatch. |
+| Relaxing the `.form-table` child combinators would nest a card inside Enhancements' `.postbox` | The `>` combinators are load-bearing (§7). The regression test asserts Enhancements' `.form-table` has no card background. |

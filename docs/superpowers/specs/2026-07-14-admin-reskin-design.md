@@ -28,8 +28,22 @@ It ships inside the existing `blueworx_labs_wordpress` plugin as a **feature fla
 ## Non-goals
 
 - Not pixel-identical to the mockup. The mockup is a simplified, bespoke admin
-  (trimmed 7-item nav, invented top bar). We keep all of WordPress's real chrome
-  (full plugin-driven menu, admin bar, notices) and apply the BlueWorx skin to it.
+  (trimmed 7-item nav). We keep WordPress's real menu and notices and apply the
+  BlueWorx skin to them.
+
+> **Revised 2026-07-15 (v1.12.0).** Two decisions in this spec were reversed after
+> the first staging review:
+> 1. **The admin bar is no longer restyled-and-kept.** It is replaced on screens
+>    ≥783px by the design's own top bar (page title, View Site, user menu) rendered
+>    via `in_admin_header`. Below 783px the native bar is kept, because it carries
+>    WordPress's responsive menu toggle — the only way to open the admin menu on a
+>    phone. Search and the "New" button from the mockup are intentionally omitted.
+> 2. **The login screen is branded.** The WordPress logo is replaced by a brand
+>    mark (site initial in an indigo square + site name wordmark); no logo asset
+>    is required.
+>
+> Also revised: `#wpfooter` is hidden on all admin screens, and `--bw-shadow-card`
+> was lightened to a soft two-stop lift to match the design's elevation.
 - Not restyling the Gutenberg block-editor **canvas** (`.editor-styles-wrapper`)
   or the front-end admin bar.
 - Not the headless front-end (that is `bluegroup_project_blueworx`).
