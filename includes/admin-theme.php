@@ -441,3 +441,95 @@ function blueworx_swap_admin_menu_icons() {
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_action( 'admin_menu', 'blueworx_swap_admin_menu_icons', 997 );
 }
+
+/**
+ * Prints inline icons and count badges into the rendered menu.
+ *
+ * WordPress renders the icon span before we can filter the row's markup, so
+ * both the icon and the badge are injected client-side, in one script keyed by
+ * row id — see Task 7's commit for why the icon can't be delivered server-side.
+ *
+ * Where WordPress already renders its own bubble on a row (plugin updates,
+ * comments awaiting moderation), core's bubble wins and no BlueWorx badge is
+ * added — two count bubbles on one row would be worse than none.
+ *
+ * @return void
+ */
+function blueworx_print_admin_menu_decorations() {
+	global $menu;
+
+	$badges = blueworx_get_admin_menu_badge_counts();
+	$rows   = array();
+
+	foreach ( (array) $menu as $menu_item ) {
+		$slug = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
+		$id   = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
+
+		if ( '' === $id ) {
+			continue;
+		}
+
+		$icon  = blueworx_get_admin_menu_icon( $slug );
+		$count = isset( $badges[ $slug ] ) ? (int) $badges[ $slug ] : 0;
+
+		if ( '' === $icon && 0 === $count ) {
+			continue;
+		}
+
+		// Never trust raw SVG into the page, even though these strings are our
+		// own fixed, hardcoded set (not user input): run every icon through
+		// wp_kses with the explicit SVG allowlist before it is ever echoed.
+		$icon = '' === $icon ? '' : wp_kses( $icon, blueworx_get_svg_kses_allowlist() );
+
+		$rows[ blueworx_sanitize_admin_menu_id( $id ) ] = array(
+			'icon'  => $icon,
+			'count' => $count,
+			'label' => $count > 0
+				/* translators: %d: number of items. */
+				? sprintf( _n( '%d item', '%d items', $count, 'blueworx-labs-wordpress' ), $count )
+				: '',
+		);
+	}
+
+	if ( empty( $rows ) ) {
+		return;
+	}
+	?>
+	<script>
+		( function () {
+			var rows = <?php echo wp_json_encode( $rows ); ?>;
+
+			Object.keys( rows ).forEach( function ( id ) {
+				var row = document.getElementById( id );
+
+				if ( ! row ) {
+					return;
+				}
+
+				var data = rows[ id ];
+				var slot = row.querySelector( '.wp-menu-image' );
+
+				if ( slot && data.icon ) {
+					slot.innerHTML = data.icon;
+				}
+
+				// Core's own bubble wins; never render two counts on one row.
+				if ( data.count && ! row.querySelector( '.update-plugins, .awaiting-mod' ) ) {
+					var name = row.querySelector( '.wp-menu-name' );
+
+					if ( name && ! name.querySelector( '.bw-badge' ) ) {
+						var badge = document.createElement( 'span' );
+						badge.className = 'bw-badge';
+						badge.textContent = String( data.count );
+						badge.setAttribute( 'aria-label', data.label );
+						name.appendChild( badge );
+					}
+				}
+			} );
+		}() );
+	</script>
+	<?php
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_action( 'admin_footer', 'blueworx_print_admin_menu_decorations' );
+}

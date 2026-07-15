@@ -183,6 +183,25 @@ test.describe('BlueWorx admin theme', () => {
     await expect(dash).toHaveAttribute('stroke', 'currentColor');
   });
 
+  test('menu badges show real counts and are absent at zero', async ({ page }) => {
+    await login(page);
+
+    // Read the true published-post count from the Posts list table.
+    await page.goto('/wp-admin/edit.php');
+    const publishedText = await page.locator('.subsubsub .publish .count, .subsubsub li.publish a').first().innerText();
+    const published = parseInt(publishedText.replace(/\D/g, ''), 10);
+
+    await page.goto(DASH_PATH);
+    const badge = page.locator('#adminmenu li a[href="edit.php"] .bw-badge');
+
+    if (published > 0) {
+      await expect(badge).toHaveText(String(published));
+      await expect(badge).toHaveAttribute('aria-label', new RegExp(`${published}`));
+    } else {
+      await expect(badge).toHaveCount(0);
+    }
+  });
+
   test('settings screens get card containers, without nesting cards', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await login(page);
