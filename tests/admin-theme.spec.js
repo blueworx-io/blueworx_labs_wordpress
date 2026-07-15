@@ -150,7 +150,12 @@ test.describe('BlueWorx admin theme', () => {
     await login(page);
     await page.goto(DASH_PATH);
 
-    const currentLink = page.locator('#adminmenu li.current > a.menu-top').first();
+    // Top-level current item only. `#adminmenu li.current` also matches the
+    // SUBMENU row (Dashboard > Home), whose anchor is not .menu-top — so
+    // `li.current > a.menu-top` matched nothing and the test hung.
+    const currentLink = page
+      .locator('#adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu')
+      .first();
     const before = await currentLink.evaluate((el) => getComputedStyle(el).backgroundColor);
 
     await currentLink.hover();
