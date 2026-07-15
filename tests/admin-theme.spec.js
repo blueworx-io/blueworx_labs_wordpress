@@ -1,5 +1,9 @@
-import { test, expect } from '@playwright/test';
+// `test` comes from helpers.js, not '@playwright/test': it carries the fixture
+// that opts out of core's wp-admin view transitions, which otherwise freeze
+// rendering in headless Chromium and hang every actionability check.
 import {
+  test,
+  expect,
   isPlaceholder,
   ADMIN_USER,
   ADMIN_PASS,
@@ -30,6 +34,28 @@ test.describe('BlueWorx admin theme', () => {
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
 
+  // Set for exactly as long as the theme is deliberately switched off. Only the
+  // on/off test below ever does that.
+  let themeIsOff = false;
+
+  // The safety net. admin_theme is a REAL setting on a REAL site, and turning it
+  // off is not a test detail: it restyles the whole admin for anyone looking at
+  // it, and every later test in this file then asserts against a stock WordPress
+  // and fails. A restore on the happy path alone is not enough — the run that
+  // needs it most is the one that failed. This hook still runs when the test
+  // above throws or times out.
+  test.afterEach(async ({ page }) => {
+    if (!themeIsOff) {
+      return;
+    }
+    themeIsOff = false;
+    const toggle = await themeToggle(page);
+    if (!(await toggle.isChecked())) {
+      await toggle.setChecked(true);
+      await saveSettings(page);
+    }
+  });
+
   test('Appearance section and admin_theme toggle render', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
@@ -54,8 +80,11 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('.bw-stat-grid')).toBeVisible();
 
     // Turn it OFF — stylesheet, hero tiles, and custom chrome disappear.
+    // Flagged before the save, not after: if the save itself is what fails, the
+    // setting may still have landed, so the afterEach must assume the worst.
     toggle = await themeToggle(page);
     await toggle.setChecked(false);
+    themeIsOff = true;
     await saveSettings(page);
 
     await page.goto(DASH_PATH);
@@ -63,10 +92,12 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('.bw-stat-grid')).toHaveCount(0);
     await expect(page.locator('.bw-topbar')).toHaveCount(0);
 
-    // Restore ON so the test is idempotent across runs.
+    // Restore ON so the test is idempotent across runs. The afterEach is the
+    // net for when this line is never reached.
     toggle = await themeToggle(page);
     await toggle.setChecked(true);
     await saveSettings(page);
+    themeIsOff = false;
   });
 
   test('desktop chrome: BlueWorx top bar replaces the admin bar, footer hidden', async ({ page }) => {

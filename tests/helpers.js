@@ -5,6 +5,56 @@
  * condition, and a login that actually logs in.
  */
 
+import { test as base } from '@playwright/test';
+
+export { expect } from '@playwright/test';
+
+/**
+ * The `test` every spec must import — from here, NOT from '@playwright/test'.
+ *
+ * WordPress 6.9 ships cross-document view transitions in wp-admin:
+ *
+ *   @media (prefers-reduced-motion: no-preference) {
+ *     @view-transition { navigation: auto; }
+ *     #adminmenu > .menu-top { view-transition-name: attr(id type(<custom-ident>),none); }
+ *   }
+ *
+ * In headless Chromium those transitions permanently stop the page from being
+ * rendered. requestAnimationFrame never fires again — while timers keep running
+ * and the DOM stays queryable, so the page looks perfectly healthy. Playwright's
+ * actionability "stable" check is built on rAF, so from that moment EVERY click,
+ * setChecked and hover hangs until it times out, reporting
+ *
+ *   waiting for element to be visible, enabled and stable
+ *
+ * about an element that is provably visible, enabled, stable and hit-testable.
+ * The element is never the problem; the renderer is.
+ *
+ * Only a page-initiated same-origin navigation arms it — a link click or a form
+ * submit. page.goto() is browser-initiated and does not, which is why the first
+ * click of a test always works and the one after it never does, and why a spec
+ * that only navigates and asserts passes while any spec that clicks twice fails.
+ *
+ * Measured: healthy 73 frames/1.2s before a click, 0 frames/1.2s after one, and
+ * it never recovers — not across goto, reload, bringToFront or a resize.
+ *
+ * The site itself is fine. Real browsers finish the transition and keep
+ * painting; this is a headless-only interaction.
+ *
+ * Emulating reduced motion opts out of core's rule at source. It MUST be done
+ * imperatively: `use: { reducedMotion: 'reduce' }` in playwright.config.js is
+ * accepted and then silently ignored (verified on @playwright/test 1.61.1 —
+ * matchMedia still reports no-preference and the freeze still happens). That
+ * false negative is why this bug survived two debugging sessions: the right
+ * hypothesis was tested with a no-op and cleared.
+ */
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await use(page);
+  },
+});
+
 export const baseURL =
   process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
 

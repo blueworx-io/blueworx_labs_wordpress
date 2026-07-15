@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test';
-import { isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
+// `test` comes from helpers.js, not '@playwright/test': it carries the fixture
+// that opts out of core's wp-admin view transitions, which otherwise freeze
+// rendering in headless Chromium and hang every actionability check.
+import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 

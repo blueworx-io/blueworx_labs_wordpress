@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test';
-import { isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
+// `test` comes from helpers.js, not '@playwright/test': it carries the fixture
+// that opts out of core's wp-admin view transitions, which otherwise freeze
+// rendering in headless Chromium and hang every actionability check.
+import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
 
 const EDIT_MENU_PATH = '/wp-admin/admin.php?page=blueworx-edit-menu';
 
@@ -192,18 +194,15 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
       siteList.insertBefore(item, anchor);
       item.dispatchEvent(new Event('drop', { bubbles: true }));
     }, restoreBefore);
-    // force: true skips Playwright's actionability checks. Needed only here, on
-    // the SECOND save of the test: the button is provably visible, enabled and
-    // clickable by hand, but Playwright's "stable" wait never settles on it and
-    // times out. The first save on the same screen, via the same locator, is
-    // fine. Cause unknown — not view transitions (tested: prefers-reduced-motion
-    // makes no difference), not the locator (same with getByRole and CSS), not
-    // the fixed top bar (the button is nowhere near it).
-    // Forcing is acceptable HERE because this is the restore step, not the
-    // assertion: the test's real subject is the hide above, and the outcome is
-    // still verified against the sidebar below. Do not copy this to a step whose
-    // success is what is being tested.
-    await page.locator('input#submit').click({ force: true });
+    // This used to need click({ force: true }), because the SECOND save of the
+    // test always timed out on Playwright's "stable" wait while the first was
+    // fine. That was the view-transition freeze, and it IS now fixed at source
+    // by the reduced-motion fixture in helpers.js — the earlier "tested:
+    // prefers-reduced-motion makes no difference" was a false negative, because
+    // reducedMotion in playwright.config.js is silently ignored. An honest click
+    // works here now, and if this ever hangs again it is a real regression and
+    // must not be forced away.
+    await page.locator('input#submit').click();
     await expect(page.locator('.notice-success')).toContainText('Menu settings saved');
 
     await page.goto('/wp-admin/index.php');

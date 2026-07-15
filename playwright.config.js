@@ -1,4 +1,13 @@
 import { defineConfig } from '@playwright/test';
+import dotenv from 'dotenv';
+
+// Loads tests/../.env into process.env for local runs, so credentials do not
+// have to be pasted onto every command line (where they land in shell history).
+// .env is gitignored; copy .env.example to .env and fill it in.
+//
+// Never overrides a variable that is already set, so CI — which injects these as
+// real secrets, with no .env file present — always wins.
+dotenv.config({ quiet: true });
 
 const baseURL =
   process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
@@ -20,6 +29,10 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: {
     baseURL,
+    // NOTE: `reducedMotion: 'reduce'` does NOT belong here. It looks like it
+    // works and silently does nothing — see the fixture in tests/helpers.js,
+    // which applies it the only way that takes effect.
+    //
     // A remote host is slower than localhost for both.
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
