@@ -30,6 +30,7 @@
 	--bw-shadow-card: 0 1px 2px rgba(10, 12, 41, .04), 0 4px 12px rgba(10, 12, 41, .05);
 	--bw-shadow-card-hover: 0 2px 4px rgba(10, 12, 41, .05), 0 8px 20px rgba(10, 12, 41, .08);
 	--bw-sidebar-w: 232px;
+	--bw-measure: 1200px;
 	--bw-topbar-h: 60px;
 	--bw-font-head: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	--bw-font-ui: "Inter", -apple-system, sans-serif;
@@ -593,6 +594,55 @@ div.error {
 	font-size: 13px;
 	color: var(--bw-muted);
 	margin-top: 4px;
+}
+
+/* ─── Settings-screen containers ───
+   Cache, Headless, General Settings and third-party settings screens all share
+   one shape: an <h2> followed by a .form-table that is a direct child of .wrap
+   or .wrap > form. One rule cards all of them, with no PHP and no JS wrapping of
+   markup we do not own.
+
+   THE CHILD COMBINATORS ARE LOAD-BEARING. Enhancements' .form-table sits at
+   .postbox > .inside > .form-table, which is already carded. An unscoped
+   .form-table rule would paint a card inside that card. Do not relax `>` to a
+   descendant combinator. */
+.wrap > .form-table,
+.wrap > form > .form-table {
+	background: #fff;
+	border-radius: var(--bw-radius-card);
+	box-shadow: var(--bw-shadow-card);
+	margin-top: 12px;
+	max-width: var(--bw-measure);
+	padding: 8px 24px;
+}
+
+.wrap > .form-table > tbody > tr > th,
+.wrap > form > .form-table > tbody > tr > th,
+.wrap > .form-table > tbody > tr > td,
+.wrap > form > .form-table > tbody > tr > td {
+	padding: 16px 10px;
+}
+
+/* Constrain every BlueWorx settings screen to a readable measure. Without this
+   the cards stretch the full viewport and .form-table's 200px th strands each
+   description far from its label — the "bad spacing" on Enhancements. */
+.wrap > form > .postbox,
+.wrap > .postbox {
+	margin-bottom: 16px;
+	max-width: var(--bw-measure);
+}
+
+.wrap > h2,
+.wrap > form > h2 {
+	max-width: var(--bw-measure);
+}
+
+.postbox-header {
+	padding: 4px 8px;
+}
+
+.postbox .inside {
+	padding: 4px 20px 16px;
 }
 
 /* ─── Responsive ─── */

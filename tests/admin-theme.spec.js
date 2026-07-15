@@ -161,4 +161,29 @@ test.describe('BlueWorx admin theme', () => {
     // And the active pill is the design's opaque indigo, not a 22% wash.
     expect(before).toBe('rgb(79, 70, 229)');
   });
+
+  test('settings screens get card containers, without nesting cards', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await login(page);
+
+    const white = 'rgb(255, 255, 255)';
+
+    // Cache: bare form-table gets carded.
+    await page.goto('/wp-admin/admin.php?page=blueworx-cache');
+    await expect(page.locator('.wrap > .form-table').first()).toHaveCSS('background-color', white);
+
+    // General Settings (core markup) gets carded too.
+    await page.goto('/wp-admin/options-general.php');
+    await expect(page.locator('.wrap > form > .form-table').first()).toHaveCSS('background-color', white);
+
+    // Enhancements: its form-table lives inside an already-carded .postbox.
+    // A card here means the child combinators broke and cards are nesting.
+    await page.goto(SETTINGS_PATH);
+    const nested = page.locator('.postbox .inside > .form-table').first();
+    await expect(nested).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+
+    // And its cards must be constrained, not stretched edge-to-edge at 1600px.
+    const box = await page.locator('.postbox').first().boundingBox();
+    expect(box.width).toBeLessThan(1300);
+  });
 });
