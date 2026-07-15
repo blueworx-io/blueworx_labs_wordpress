@@ -282,8 +282,10 @@ body.wp-admin #wpwrap {
 	background: var(--bw-charcoal);
 }
 
+/* The export's nav gutter is 14px. 6px here plus the 8px margin on each
+   li.menu-top below composes it, without restating the item margin. */
 #adminmenu {
-	padding-top: 6px;
+	padding: 6px 6px 0;
 }
 
 #adminmenu li.menu-top {
@@ -744,11 +746,109 @@ div.error {
 #adminmenu li.bw-group-start::before {
 	content: var(--bw-group-label, "");
 	display: block;
-	padding: 12px 12px 4px;
+	margin-top: 14px;
+	padding: 0 12px 8px;
 	font-family: var(--bw-font-ui);
+	font-size: 10.5px;
+	font-weight: 600;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	color: rgba(255, 255, 255, .32);
+	/* A heading is not a destination. It rides on the group's first item, so it
+	   must never swallow that item's click or hover. */
+	pointer-events: none;
+}
+
+/* The first heading needs no top gap — the brand block already spaces it. */
+#adminmenu li.bw-group-start:first-child::before {
+	margin-top: 4px;
+}
+
+/* ─── Sidebar: item metrics (from the v2 export) ───
+   Item margin and radius are already set where li.menu-top is first declared;
+   not restated here. */
+#adminmenu a.menu-top {
+	align-items: center;
+	display: flex;
+	gap: 12px;
+	font-size: 14px;
+	padding: 10px 12px;
+	transition: background 200ms ease, color 200ms ease;
+}
+
+#adminmenu .wp-menu-image {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: auto;
+	width: auto;
+	padding: 0;
+}
+
+#adminmenu .bw-menu-icon {
+	flex-shrink: 0;
+}
+
+#adminmenu .wp-menu-name {
+	align-items: center;
+	display: flex;
+	flex: 1;
+	gap: 8px;
+	padding: 0;
+}
+
+/* ─── Sidebar: count badges ─── */
+.bw-badge {
+	background: rgba(255, 255, 255, .08);
+	border-radius: 9999px;
+	color: rgba(255, 255, 255, .55);
 	font-size: 11px;
 	font-weight: 600;
-	letter-spacing: .04em;
-	text-transform: uppercase;
-	color: var(--bw-muted);
+	line-height: 1.5;
+	margin-left: auto;
+	padding: 2px 8px;
+}
+
+#adminmenu li.current .bw-badge,
+#adminmenu li.wp-has-current-submenu .bw-badge {
+	background: rgba(255, 255, 255, .22);
+	color: #fff;
+}
+
+/* ─── Sidebar: Log Out ─── */
+#adminmenu li.bw-logout {
+	border-top: 1px solid rgba(255, 255, 255, .08);
+	margin: 12px 8px 8px;
+	padding-top: 8px;
+}
+
+#adminmenu li.bw-logout a {
+	align-items: center;
+	border-radius: 10px;
+	color: rgba(255, 255, 255, .62);
+	display: flex;
+	font-size: 14px;
+	font-weight: 500;
+	gap: 12px;
+	padding: 10px 12px;
+	text-decoration: none;
+}
+
+#adminmenu li.bw-logout a:hover,
+#adminmenu li.bw-logout a:focus {
+	background: rgba(255, 255, 255, .06);
+	color: #fff;
+}
+
+/* Folded: labels, badges and headings collapse; icons remain. */
+@media only screen and (min-width: 783px) {
+	body.folded #adminmenu li.bw-group-start::before,
+	body.folded .bw-badge,
+	body.folded #adminmenu li.bw-logout a span {
+		display: none;
+	}
+
+	body.folded #adminmenu li.bw-logout a {
+		justify-content: center;
+	}
 }

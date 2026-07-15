@@ -533,3 +533,41 @@ function blueworx_print_admin_menu_decorations() {
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_action( 'admin_footer', 'blueworx_print_admin_menu_decorations' );
 }
+
+/**
+ * Appends the design's Log Out row to the end of the sidebar.
+ *
+ * Duplicates the top bar's user menu logout. That is intentional — the v2
+ * design shows both.
+ *
+ * @return void
+ */
+function blueworx_print_admin_menu_logout() {
+	$icon = wp_kses( blueworx_get_admin_menu_icon( 'bw-logout', 18 ), blueworx_get_svg_kses_allowlist() );
+
+	$markup = sprintf(
+		'<a href="%1$s">%2$s<span>%3$s</span></a>',
+		esc_url( wp_logout_url() ),
+		$icon,
+		esc_html__( 'Log Out', 'blueworx-labs-wordpress' )
+	);
+	?>
+	<script>
+		( function () {
+			var menu = document.getElementById( 'adminmenu' );
+
+			if ( ! menu || menu.querySelector( '.bw-logout' ) ) {
+				return;
+			}
+
+			var item = document.createElement( 'li' );
+			item.className = 'bw-logout';
+			item.innerHTML = <?php echo wp_json_encode( $markup ); ?>;
+			menu.appendChild( item );
+		}() );
+	</script>
+	<?php
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_action( 'admin_footer', 'blueworx_print_admin_menu_logout' );
+}

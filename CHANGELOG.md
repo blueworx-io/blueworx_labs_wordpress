@@ -14,6 +14,25 @@ versioning.
   and "wp-admin" — sits above the menu. The user menu is a native `<details>`
   disclosure, so no JavaScript ships with it. Below 783px the native admin bar is
   kept, because it carries WordPress's responsive menu toggle.
+- **Semantic sidebar groups.** The sidebar is grouped by meaning — Overview,
+  Content, Custom Content, Site — with a heading above each. Custom post types
+  are recognised by shape, so any type a site registers lands in Custom Content
+  without being listed. A group with nothing in it renders no heading, and
+  unrecognised third-party menus fall back to Site rather than being dropped.
+- **Custom post types get their own sidebar rows.** A post type registered
+  against a parent menu (`show_in_menu => '<parent>'`) used to stay buried as a
+  submenu and never reached Custom Content. Those types are now lifted to
+  top-level rows, matching the design. The parent menu is left in place.
+- **Design icon set** on the nine mapped core menus and on every custom post
+  type, replacing dashicons. Icons stroke `currentColor`, so they follow their
+  label through idle, hover and active. Unmapped third-party menus keep their own
+  glyph.
+- **Count badges** on Posts, Media, Pages, custom post types and Plugins, from
+  core's count APIs. Zero renders no badge. Where WordPress already draws its own
+  bubble (plugin updates, comments awaiting moderation), core's wins — one row
+  never carries two counts.
+- **Log Out row** at the foot of the sidebar, alongside the top bar's user menu.
+  The design shows both.
 
 ### Changed
 - **Sidebar matches the design more closely.** Widened to 232px when expanded,
@@ -35,6 +54,11 @@ versioning.
   at `high` priority and stay at the top.
 
 ### Removed
+- **The "More" menu is retired.** The design replaces the Main/More/Hidden split
+  with the four semantic groups, so More has no equivalent. Items that sat in it
+  are assigned to their natural group and **reappear as top-level rows** — More
+  was a grouping affordance, not a hiding one, and the separate Hidden bucket is
+  untouched. Existing sites are migrated automatically.
 - **`#wpfooter` is hidden** on all admin screens while the theme is active.
 
 ## [1.11.0] - 2026-07-14

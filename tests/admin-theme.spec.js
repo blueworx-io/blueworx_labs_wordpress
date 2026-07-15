@@ -226,4 +226,72 @@ test.describe('BlueWorx admin theme', () => {
     const box = await page.locator('.postbox').first().boundingBox();
     expect(box.width).toBeLessThan(1300);
   });
+
+  test('sidebar has a Log Out row with a nonced URL', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const logout = page.locator('#adminmenu .bw-logout a');
+    await expect(logout).toBeVisible();
+    await expect(logout).toHaveAttribute('href', /action=logout/);
+    await expect(logout).toHaveAttribute('href', /_wpnonce=/);
+    await expect(page.locator('#adminmenu .bw-logout svg')).toHaveCount(1);
+  });
+
+  test('group headings are styled and inert', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // The heading is a ::before on the group's first item, not an element of
+    // its own, so it has to be read off the pseudo-element.
+    const heading = page.locator('#adminmenu li.bw-group-start').first();
+    const style = await heading.evaluate((el) => {
+      const cs = getComputedStyle(el, '::before');
+      return {
+        letterSpacing: cs.letterSpacing,
+        fontSize: cs.fontSize,
+        fontWeight: cs.fontWeight,
+        pointerEvents: cs.pointerEvents,
+        content: cs.content,
+      };
+    });
+
+    expect(style.letterSpacing).toBe('1.2px');
+    expect(style.fontSize).toBe('10.5px');
+    expect(style.fontWeight).toBe('600');
+    // Inert: the heading must not swallow its host item's click.
+    expect(style.pointerEvents).toBe('none');
+    // And it carries a real, translated label — not an empty string.
+    expect(style.content).toMatch(/\w/);
+  });
+
+  test('custom post types appear as top-level rows under Custom Content', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Any registered CPT — wherever the site registered it — must reach the
+    // sidebar as its own top-level row, not stay buried as a plugin submenu.
+    const cptRows = page.locator('#adminmenu > li.menu-top > a[href^="edit.php?post_type="]');
+    const hrefs = await cptRows.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    const custom = hrefs.filter((h) => h !== 'edit.php?post_type=page');
+
+    test.skip(custom.length === 0, 'This site registers no custom post types.');
+
+    // Their group heading renders, and it is the Custom Content one.
+    const firstCustom = page
+      .locator(`#adminmenu > li.menu-top:has(> a[href="${custom[0]}"])`)
+      .first();
+    await expect(firstCustom).toBeVisible();
+
+    const started = await page
+      .locator('#adminmenu li.bw-group-start-custom')
+      .count();
+    expect(started).toBe(1);
+
+    // The promoted row is decorated like every other: it gets the design icon.
+    await expect(
+      page.locator(`#adminmenu a[href="${custom[0]}"] svg.bw-menu-icon`)
+    ).toHaveCount(1);
+  });
 });
