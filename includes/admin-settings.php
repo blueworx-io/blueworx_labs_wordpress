@@ -71,17 +71,14 @@ function blueworx_save_edit_menu_page() {
 
 	check_admin_referer( 'blueworx_save_admin_menu_order' );
 
-	$raw_order   = isset( $_POST['blueworx_admin_menu_order'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_order'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$raw_hidden  = isset( $_POST['blueworx_hidden_admin_menu_items'] ) ? (array) wp_unslash( $_POST['blueworx_hidden_admin_menu_items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$raw_toggled = isset( $_POST['blueworx_toggled_admin_menu_items'] ) ? (array) wp_unslash( $_POST['blueworx_toggled_admin_menu_items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$order       = array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_order ) ) ) );
-	$locked      = blueworx_get_locked_admin_menu_items();
-	$hidden      = array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_hidden ) ) ), $locked ) );
-	$toggled     = array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_toggled ) ) ), $locked, $hidden ) );
+	$raw_order  = isset( $_POST['blueworx_admin_menu_order'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_order'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$raw_hidden = isset( $_POST['blueworx_hidden_admin_menu_items'] ) ? (array) wp_unslash( $_POST['blueworx_hidden_admin_menu_items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$order      = array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_order ) ) ) );
+	$locked     = blueworx_get_locked_admin_menu_items();
+	$hidden     = array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $raw_hidden ) ) ), $locked ) );
 
 	update_option( 'blueworx_admin_menu_order', $order );
 	update_option( 'blueworx_hidden_admin_menu_items', array_values( array_unique( $hidden ) ) );
-	update_option( 'blueworx_toggled_admin_menu_items', array_values( array_unique( $toggled ) ) );
 	update_option( 'blueworx_admin_menu_customized', '1' );
 	set_transient( 'blueworx_admin_menu_order_notice', __( 'Menu settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
@@ -396,11 +393,13 @@ function blueworx_render_edit_menu_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$menu_items   = blueworx_get_editable_admin_menu_items();
-	$saved_order  = blueworx_get_saved_admin_menu_order();
-	$hidden       = blueworx_get_hidden_admin_menu_items();
-	$toggled      = blueworx_get_toggled_admin_menu_items();
-	$locked       = blueworx_get_locked_admin_menu_items();
+	$menu_items  = blueworx_get_editable_admin_menu_items();
+	$saved_order = blueworx_get_saved_admin_menu_order();
+	$hidden      = blueworx_get_hidden_admin_menu_items();
+	$locked      = blueworx_get_locked_admin_menu_items();
+	// More is retired (migration 4): nothing can be toggled into it any more.
+	// The More column below is inert until Task 14 rewrites this page for groups.
+	$toggled     = array();
 	$notice       = get_transient( 'blueworx_admin_menu_order_notice' );
 	$ordered      = array();
 	$main_items   = array();

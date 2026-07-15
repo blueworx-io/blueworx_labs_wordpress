@@ -88,4 +88,17 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     await page.getByRole('button', { name: 'Save Menu Settings' }).click();
     await expect(page.locator('.notice-success').first()).toContainText('Menu settings saved');
   });
+
+  test('migration: More items reappear in their natural group', async ({ page }) => {
+    await login(page);
+
+    // The More menu and its separator are gone from the sidebar entirely.
+    await page.goto('/wp-admin/index.php');
+    await expect(page.locator('#toplevel_page_blueworx-menu-toggle')).toHaveCount(0);
+    await expect(page.locator('.blueworx-toggle-separator')).toHaveCount(0);
+
+    // Items that used to live in More are visible top-level rows again.
+    await expect(page.locator('#adminmenu a[href="tools.php"]')).toBeVisible();
+    await expect(page.locator('#adminmenu a[href="options-general.php"]')).toBeVisible();
+  });
 });

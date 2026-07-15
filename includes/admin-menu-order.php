@@ -36,10 +36,7 @@ function blueworx_get_default_admin_menu_order() {
  * @return array Locked menu slugs.
  */
 function blueworx_get_locked_admin_menu_items() {
-	return array(
-		'blueworx-menu-toggle',
-		'separator-blueworx-toggle',
-	);
+	return array();
 }
 
 /**
@@ -238,27 +235,6 @@ function blueworx_get_hidden_admin_menu_items() {
 }
 
 /**
- * Gets menu items moved under the More menu.
- *
- * @return array More menu slugs.
- */
-function blueworx_get_toggled_admin_menu_items() {
-	if ( blueworx_should_use_default_admin_menu() ) {
-		$arrangement = blueworx_compute_default_admin_menu_arrangement();
-
-		return array_values( array_diff( $arrangement['toggled'], blueworx_get_locked_admin_menu_items() ) );
-	}
-
-	$toggled = get_option( 'blueworx_toggled_admin_menu_items', array() );
-
-	if ( ! is_array( $toggled ) ) {
-		return array();
-	}
-
-	return array_values( array_diff( array_unique( array_filter( array_map( 'sanitize_text_field', $toggled ) ) ), blueworx_get_locked_admin_menu_items() ) );
-}
-
-/**
  * Gets the saved admin menu order.
  *
  * @return array Saved or default menu slugs.
@@ -352,11 +328,8 @@ function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.Code
 		array_splice( $order, $insert_position, 0, 'blueworx-labs-wordpress' );
 	}
 
-	if ( ! empty( blueworx_get_toggled_admin_menu_items() ) ) {
-		$order[] = 'separator-blueworx-toggle';
-		$order[] = 'blueworx-menu-toggle';
-	}
-
+	// More is retired (migration 4): nothing is ever toggled into it any more.
+	// Task 6 replaces this whole function body with group-based ordering.
 	return $order;
 }
 if ( blueworx_feature_enabled( 'menu_editor' ) ) {
@@ -364,73 +337,35 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 }
 
 /**
- * Moves selected menu items under More and hides selected menu items.
+ * Hides selected menu items.
  *
  * @return void
  */
 function blueworx_apply_admin_menu_visibility() {
-	global $menu, $submenu;
+	global $menu;
 
-	$hidden        = blueworx_get_hidden_admin_menu_items();
-	$toggled       = blueworx_get_toggled_admin_menu_items();
-	$menu_items    = array();
-	$toggled_items = array();
-	$hidden_ids    = array();
-	$labels        = array();
+	$hidden     = blueworx_get_hidden_admin_menu_items();
+	$hidden_ids = array();
+	$labels     = array();
 
 	foreach ( (array) $menu as $menu_item ) {
-		$label      = isset( $menu_item[0] ) ? trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $menu_item[0] ) ) ) : '';
-		$capability = isset( $menu_item[1] ) ? (string) $menu_item[1] : 'read';
-		$slug       = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
-		$item_id    = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
+		$label   = isset( $menu_item[0] ) ? trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $menu_item[0] ) ) ) : '';
+		$slug    = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
+		$item_id = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
 
 		if ( '' === $slug || '' === $label || 0 === strpos( $slug, 'separator' ) ) {
 			continue;
 		}
 
-		$labels[ $slug ]     = $label;
-		$menu_items[ $slug ] = array(
-			'label'      => $label,
-			'capability' => $capability,
-			'url'        => blueworx_get_admin_menu_slug_url( $slug ),
-		);
+		$labels[ $slug ] = $label;
 
-		if ( ( in_array( $slug, $hidden, true ) || in_array( $slug, $toggled, true ) ) && '' !== $item_id ) {
+		if ( in_array( $slug, $hidden, true ) && '' !== $item_id ) {
 			$hidden_ids[] = blueworx_sanitize_admin_menu_id( $item_id );
 		}
 	}
 
 	if ( ! empty( $labels ) ) {
 		update_option( 'blueworx_admin_menu_item_labels', $labels );
-	}
-
-	foreach ( $toggled as $slug ) {
-		if ( isset( $menu_items[ $slug ] ) ) {
-			$toggled_items[ $slug ] = $menu_items[ $slug ];
-		}
-	}
-
-	if ( ! empty( $toggled_items ) ) {
-		$menu[998] = array( '', 'read', 'separator-blueworx-toggle', '', 'wp-menu-separator blueworx-toggle-separator' ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $menu global (inside the "admin_menu" action, via the `global $menu, $submenu;` above) is the standard, documented way to insert admin menu rows; WordPress provides no dedicated API for this.
-
-		add_menu_page(
-			esc_html__( 'More', 'blueworx-labs-wordpress' ),
-			esc_html__( 'More', 'blueworx-labs-wordpress' ),
-			'read',
-			'blueworx-menu-toggle',
-			'blueworx_render_toggle_menu_page',
-			'dashicons-ellipsis',
-			999
-		);
-
-		foreach ( $toggled_items as $slug => $item ) {
-			$submenu['blueworx-menu-toggle'][] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $submenu global (inside the "admin_menu" action) is the standard, documented way to add submenu rows; WordPress provides no dedicated API for this.
-				$item['label'],
-				$item['capability'],
-				$item['url'],
-				$item['label'],
-			);
-		}
 	}
 
 	if ( ! empty( $hidden_ids ) ) {
@@ -476,66 +411,3 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 	add_action( 'admin_head', 'blueworx_hide_admin_menu_rows' );
 }
 
-/**
- * Makes the More menu expand without loading a page.
- *
- * @return void
- */
-function blueworx_make_toggle_menu_inline() {
-	?>
-	<script>
-		document.addEventListener( 'DOMContentLoaded', function () {
-			var link = document.querySelector( '#toplevel_page_blueworx-menu-toggle > a' );
-
-			if ( ! link ) {
-				return;
-			}
-
-			link.addEventListener( 'click', function ( event ) {
-				var item = link.closest( 'li' );
-
-				if ( ! item ) {
-					return;
-				}
-
-				event.preventDefault();
-				item.classList.toggle( 'wp-menu-open' );
-				item.classList.toggle( 'opensub' );
-			} );
-		} );
-	</script>
-	<?php
-}
-if ( blueworx_feature_enabled( 'menu_editor' ) ) {
-	add_action( 'admin_footer', 'blueworx_make_toggle_menu_inline' );
-}
-
-/**
- * Gets the admin URL for a saved menu slug.
- *
- * @param string $slug Admin menu slug.
- * @return string Admin URL.
- */
-function blueworx_get_admin_menu_slug_url( $slug ) {
-	$slug = (string) $slug;
-
-	if ( false !== strpos( $slug, '.php' ) ) {
-		return $slug;
-	}
-
-	return 'admin.php?page=' . rawurlencode( $slug );
-}
-
-/**
- * Renders a simple More landing page.
- *
- * @return void
- */
-function blueworx_render_toggle_menu_page() {
-	?>
-	<div class="wrap">
-		<h1><?php esc_html_e( 'More', 'blueworx-labs-wordpress' ); ?></h1>
-		<p><?php esc_html_e( 'Use the submenu items here to open menus moved into More.', 'blueworx-labs-wordpress' ); ?></p>
-	</div>
-	<?php
-}

@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 3;
+	return 4;
 }
 
 /**
@@ -208,6 +208,64 @@ function blueworx_migrate_mark_admin_menu_customized() {
 }
 
 /**
+ * Converts the retired More menu into semantic group assignments.
+ *
+ * The v2 design replaces the user-defined Main/More/Hidden split with four
+ * semantic groups, so the More bucket has no equivalent and is retired.
+ *
+ * Items sitting in More are assigned to their rule-based group, which means they
+ * REAPPEAR as top-level rows. This is deliberate: More was a grouping
+ * affordance, not a hiding one — the plugin has always had a separate Hidden
+ * bucket for hiding, so anyone wanting an item gone would have used it. Reading
+ * More as "hide" would be the more destructive interpretation.
+ *
+ * Hidden items are left untouched. Order is preserved and reinterpreted as
+ * order-within-group.
+ *
+ * @return void
+ */
+function blueworx_migrate_admin_menu_groups() {
+	$toggled = get_option( 'blueworx_toggled_admin_menu_items', array() );
+	$order   = get_option( 'blueworx_admin_menu_order', array() );
+	$slugs   = array();
+
+	foreach ( array( $toggled, $order ) as $source ) {
+		if ( is_array( $source ) ) {
+			$slugs = array_merge( $slugs, $source );
+		}
+	}
+
+	$assignments = array();
+
+	foreach ( array_unique( array_filter( $slugs ) ) as $slug ) {
+		$slug = sanitize_text_field( (string) $slug );
+
+		if ( '' === $slug || 0 === strpos( $slug, 'separator' ) || 'blueworx-menu-toggle' === $slug ) {
+			continue;
+		}
+
+		$assignments[ $slug ] = blueworx_get_default_admin_menu_group( $slug );
+	}
+
+	if ( ! empty( $assignments ) ) {
+		update_option( 'blueworx_admin_menu_groups', $assignments );
+	}
+
+	// Drop the retired More state and its synthetic rows from the saved order.
+	delete_option( 'blueworx_toggled_admin_menu_items' );
+
+	if ( is_array( $order ) ) {
+		$cleaned = array_values(
+			array_diff( $order, array( 'blueworx-menu-toggle', 'separator-blueworx-toggle' ) )
+		);
+
+		if ( $cleaned !== $order ) {
+			update_option( 'blueworx_admin_menu_order', $cleaned );
+		}
+	}
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -232,6 +290,10 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 3 ) {
 		blueworx_migrate_mark_admin_menu_customized();
+	}
+
+	if ( $stored_version < 4 ) {
+		blueworx_migrate_admin_menu_groups();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );
