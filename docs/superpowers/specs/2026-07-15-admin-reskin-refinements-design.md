@@ -18,8 +18,8 @@ which are unchanged.
 
 Two kinds of work, one branch:
 
-1. **Bugs** in the shipped re-skin (top-edge strip, sidebar hover colour overlap,
-   broken Edit Menu drag-and-drop).
+1. **Bugs** in the shipped re-skin (the brand block overhanging the top bar,
+   sidebar hover colour overlap, broken Edit Menu drag-and-drop).
 2. **Design gaps** against the v2 export (sidebar groups, icons, badges, Log Out;
    card containers on settings screens).
 
@@ -207,25 +207,69 @@ muddier colour that belongs to neither state.
 colours resolved against the sidebar background rather than stacked alphas. The
 `li` carries only layout (margin, radius); the `a` carries all state colour.
 
-## 5. Bug: the top-edge strip ("the jutt")
+## 5. Bug: the jutt (brand block overhangs the top bar)
 
-**Symptom (confirmed by screenshot):** a full-width strip along the very top of
-the viewport, spanning across both the sidebar and the top bar, sitting above
-both. It is a lighter, greyer tone than `--bw-charcoal` (`#0A0C29`).
+**Symptom:** a charcoal tab at the top-left that crosses out of the sidebar and
+over the top bar.
 
-**Root cause: not yet diagnosed. Do not guess.**
+**Root cause — confirmed** (bisected by Luke in DevTools, 2026-07-15, and verified
+against the stylesheet):
 
-Ruled out by inspection: `html.wp-toolbar { padding-top: 0 }` and
-`#wpadminbar { display: none }` are both already applied at ≥783px
-(`admin-theme.css:583–590`), so the obvious candidate is already handled.
+`.bw-brand` is **`content-box`**. There is no `box-sizing` declaration anywhere in
+`assets/css/`, and WordPress does not set a global `border-box` in admin, so the
+element's horizontal padding is *added to* its declared width instead of being
+contained by it:
 
-**Required approach:** use `superpowers:systematic-debugging` against the live
-admin. Identify the actual element producing the strip via DOM inspection before
-changing any CSS.
+| | |
+|---|---|
+| `.bw-brand` width (`--bw-sidebar-w`) | `232px` |
+| `padding: 0 12px` (added, because content-box) | `+24px` |
+| **Rendered width** | **`256px`** |
+| `.bw-topbar` starts at (`left`) | `232px` |
+| **Overhang** | **`24px`** |
 
-**Explicitly forbidden:** "fixing" this with a negative margin, a covering
-pseudo-element, or an offset that hides the strip without explaining it. The
-element must be found and its cause removed.
+`.bw-brand` has `z-index: 9991` against `.bw-topbar`'s `9990`, so those 24px of
+charcoal paint *over* the top bar. That is the jutt.
+
+This also explains both bisection results, and why each is a symptom fix:
+
+- `padding: 0` ⇒ `232 + 0 = 232`, flush — but removes the padding the design needs.
+- Disabling `width: var(--bw-sidebar-w)` ⇒ falls back to `width: 36px` (the 783px
+  rule) ⇒ `60px` total, far narrower than the sidebar, so nothing overhangs — but
+  `overflow: hidden` then clips the brand text.
+
+**The folded state has the same defect**, undiagnosed until now: at 783–960px
+`.bw-brand` is `36px + 24px = 60px` against WordPress's `36px` folded sidebar —
+a 24px overhang there too, merely less visible.
+
+### Fix
+
+Add `box-sizing: border-box` — **scoped to the `.bw-*` component classes**, not
+`.bw-brand` alone:
+
+```css
+.bw-brand, .bw-topbar, .bw-card, .bw-menu-group, .bw-badge, /* …all bw-* */ {
+	box-sizing: border-box;
+}
+```
+
+Then `width: var(--bw-sidebar-w)` *includes* the padding: flush with the sidebar
+**and** the padding is retained. Neither of the two bisection trade-offs is needed.
+
+Scoped rather than the export's global `* { box-sizing: border-box }`, which in
+wp-admin would restyle WordPress's own layout and third-party plugin pages.
+
+**Follow-on required:** with `border-box`, the folded rule's `width: 36px` leaves
+a `12px` content box, which would clip the `34px` `.bw-brand-mark`. The folded
+state must therefore drop to `padding: 0` and centre the mark
+(`justify-content: center`) within WordPress's 36px folded sidebar.
+
+**Why the scope matters:** §7 introduces substantial new `.bw-card` markup. Those
+elements would inherit the identical content-box trap. Fixing the class, not the
+instance, is what stops this recurring.
+
+`.bw-topbar` is unaffected: it sets both `left` and `right` with `width: auto`, so
+its box is derived from those offsets and its padding resolves inside them.
 
 ## 6. Edit Menu revamp
 
@@ -351,8 +395,11 @@ following the existing harness convention (skip on placeholder URL / missing
 4. Log Out is present at the sidebar bottom and points at a nonced logout URL.
 5. **Regression — hover overlap:** the current item's computed background is
    unchanged by hover (asserts the two states no longer composite).
-6. **Regression — the jutt:** the sidebar and top bar both start at viewport
-   `y = 0`, with no element above them.
+6. **Regression — the jutt:** `.bw-brand`'s rendered width equals the sidebar's
+   rendered width exactly, so its right edge never crosses `.bw-topbar`'s left
+   edge — asserted **in both the expanded and folded states**, since both were
+   affected. Assert the rendered box (`getBoundingClientRect().width`), not the
+   CSS `width` property, or the bug reappears invisibly.
 7. Edit Menu: dragging a row to another group persists after save; the up/down
    buttons move an item across a group boundary.
 8. Migration: a site with `blueworx_toggled_admin_menu_items` set has those items
@@ -384,6 +431,6 @@ the real cause, not the symptom.
 | Injecting pseudo-items into `$menu` is unusual; core's renderer may fight it | Validate early; documented `::before` fallback (§1). Both routes are behind `admin_theme`. |
 | Third-party plugins that also filter `menu_order` / `custom_menu_order` could conflict | We already own these filters today; behaviour is unchanged in kind. `menu_editor` flag is the escape hatch. |
 | Removing More is a visible change for existing sites | One-time migration into natural groups; called out in the Upgrade Notice. |
-| The jutt's cause may sit in core CSS we cannot cleanly override | Diagnose first. If the cause is genuinely un-overridable, bring options back to Luke rather than patching the symptom. |
+| Scoping `box-sizing` to `.bw-*` could still shift an existing `.bw-*` element's size (the top bar, dashboard stat tiles) | The change is a strict improvement in intent, but every existing `.bw-*` element must be re-checked visually once applied, not just `.bw-brand`. |
 | Icon swap could blank a third-party menu's glyph | Only mapped core slugs are swapped; everything else keeps its dashicon. |
 | CSS-only `.form-table` cards touch every plugin's settings screen | Style only the table shell; no layout rewrites. `admin_theme` flag is the escape hatch. |
