@@ -36,6 +36,17 @@
 	--bw-font-body: "Sora", -apple-system, sans-serif;
 }
 
+/* ─── Box model ───
+   Scoped to BlueWorx components only. The design export uses a global
+   `* { box-sizing: border-box }`; applying that in wp-admin would restyle
+   WordPress's own layout and every third-party plugin page. Without this,
+   .bw-brand's 12px padding is ADDED to its 232px width and the block overhangs
+   the top bar by 24px. */
+[class^="bw-"],
+[class*=" bw-"] {
+	box-sizing: border-box;
+}
+
 /* ─── Base ─── */
 body.wp-admin,
 body.wp-admin #wpwrap {
@@ -589,9 +600,14 @@ div.error {
 		padding-top: 0;
 	}
 
+	/* Folded: WordPress's folded menu is 36px. With border-box the 12px side
+	   padding would leave a 12px content box and clip the 34px brand mark, so
+	   the folded state drops the padding and centres the mark instead. */
 	.bw-brand {
 		display: flex;
 		width: 36px;
+		padding: 0;
+		justify-content: center;
 	}
 
 	.bw-topbar {
@@ -631,6 +647,8 @@ div.error {
 
 	body:not(.folded) .bw-brand {
 		width: var(--bw-sidebar-w);
+		padding: 0 12px;
+		justify-content: flex-start;
 	}
 
 	body:not(.folded) .bw-brand-text {

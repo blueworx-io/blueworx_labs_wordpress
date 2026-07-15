@@ -116,4 +116,32 @@ test.describe('BlueWorx admin theme', () => {
     await expect(logo).not.toHaveCSS('background-image', /wordpress-logo/);
     await expect(page.locator('link#blueworx-login-theme-css')).toHaveCount(1);
   });
+
+  test('regression: brand block never overhangs the top bar (the jutt)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Expanded: the brand's rendered box must match the sidebar's exactly.
+    const brand = await page.locator('.bw-brand').boundingBox();
+    const menu = await page.locator('#adminmenuwrap').boundingBox();
+    expect(brand.width).toBeCloseTo(menu.width, 0);
+
+    // And it must not cross into the top bar.
+    const topbar = await page.locator('.bw-topbar').boundingBox();
+    expect(brand.x + brand.width).toBeLessThanOrEqual(topbar.x + 0.5);
+
+    // Folded: same guarantee (this state had the same 24px overhang).
+    await page.locator('#collapse-button').click();
+    await expect(page.locator('body.folded')).toHaveCount(1);
+    const fBrand = await page.locator('.bw-brand').boundingBox();
+    const fMenu = await page.locator('#adminmenuwrap').boundingBox();
+    expect(fBrand.width).toBeCloseTo(fMenu.width, 0);
+
+    // The brand mark must still be visible when folded, not clipped to nothing.
+    const mark = await page.locator('.bw-brand-mark').boundingBox();
+    expect(mark.width).toBeGreaterThan(20);
+
+    await page.locator('#collapse-button').click(); // restore
+  });
 });
