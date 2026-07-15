@@ -116,6 +116,26 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     expect(sortable).not.toBe('function');
   });
 
+  test('Edit Menu: labels carry no core update count', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    // Core labels Plugins with a live update bubble:
+    //   Plugins <span class="update-plugins count-0"><span class="plugin-count">0</span></span>
+    // Flattening that with the label listed the item as "Plugins 0", and had the
+    // reorder controls announce "Move Plugins 0 up" to a screen reader. The
+    // count is core's state, not the item's name.
+    const item = page.locator('.bw-menu-editor-item[data-slug="plugins.php"]');
+    await expect(item).toHaveCount(1);
+    await expect(item.locator('.bw-menu-editor-label')).toHaveText('Plugins');
+    await expect(item.locator('button.bw-menu-editor-up')).toHaveAttribute('aria-label', 'Move Plugins up');
+
+    // And no other row picked up a trailing count either.
+    const labels = await page.locator('.bw-menu-editor-label').allInnerTexts();
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.filter((l) => /\s\d+$/.test(l.trim()))).toEqual([]);
+  });
+
   test('Edit Menu: the up button moves an item up', async ({ page }) => {
     await login(page);
     await page.goto(EDIT_MENU_PATH);

@@ -69,6 +69,59 @@ versioning.
   moves any saved user layout into `sorted` — so on a dashboard that had been
   rearranged, the tiles were pushed below everything else. They are now registered
   at `high` priority and stay at the top.
+- **Edit Menu listed "Plugins 0".** Core hangs a live update bubble off some menu
+  labels (`Plugins <span class="update-plugins count-0">…`), and flattening the
+  label with `wp_strip_all_tags()` folded that count into the name — so the screen
+  listed "Plugins 0" and its reorder buttons announced "Move Plugins 0 up" to a
+  screen reader. The bubble is now stripped before flattening, in both the screen
+  and the stored `blueworx_admin_menu_item_labels` fallback, so the count no
+  longer leaks into either.
+
+### Internal
+- **Playwright: the admin suite no longer hangs on its second click.** WordPress
+  6.9 ships cross-document view transitions in wp-admin, guarded by
+  `@media (prefers-reduced-motion: no-preference)`. In headless Chromium those
+  transitions permanently stop the page being rendered: `requestAnimationFrame`
+  never fires again while timers keep running and the DOM stays queryable. Every
+  Playwright actionability check is built on rAF, so from the first click-driven
+  navigation onward every `click`, `setChecked` and `hover` hung for its full
+  timeout, reporting "waiting for element to be visible, enabled and stable" about
+  elements that were provably all three. Only page-initiated navigations arm it,
+  which is why `page.goto()` was always fine and why the *first* click of a test
+  always worked and the *second* never did. The suite now emulates reduced motion
+  via a fixture in `tests/helpers.js`, opting out of core's rule at source. This
+  MUST be done imperatively — `use: { reducedMotion: 'reduce' }` in
+  `playwright.config.js` is accepted and then silently ignored (verified on
+  @playwright/test 1.61.1), which is what made this look like "not view
+  transitions" for two sessions. The site itself was never affected; real browsers
+  finish the transition and keep painting.
+- **The theme flag is restored even when a test dies.** `admin_theme` is a real
+  setting on a real site. The on/off test turned it off, and a failure before the
+  restore left staging unthemed and every later test in the file asserting against
+  stock WordPress. Restoring now happens in an `afterEach`, which still runs when
+  the test throws or times out.
+- **`click({ force: true })` removed** from the Edit Menu save. It was masking the
+  view-transition freeze above; an honest click works now.
+- **Credentials come from a gitignored `.env`** via dotenv, so runs no longer need
+  them pasted onto every command line (and into shell history). Copy
+  `.env.example` to `.env`. Anything already set in the environment still wins, so
+  CI can inject real secrets with no `.env` present.
+- **The auth/login REST test skips when the site has no auth configured.** A site
+  without a JWT secret answers `503 blueworx_auth_unconfigured` and never looks at
+  the credentials, so there is no rejection behaviour to assert — an environment
+  gap, not a defect. It now skips with that reason instead of reporting a red no
+  code change could fix. Any other 503 still fails.
+
+### Known issues
+- `tests/headless-rest.spec.js` › *CORS is not granted to a disallowed origin*
+  fails, and is left failing deliberately. The plugin's CORS allowlist has no deny
+  path: it never removes core's `rest_send_cors_headers`, so any origin is echoed
+  with `Access-Control-Allow-Credentials: true`. Pre-existing and unrelated to this
+  release; tracked in #20 rather than hidden behind a skip.
+- No Playwright test gates a pull request. CI points at a placeholder URL, so every
+  admin spec skips, and the shared workflow never deploys the plugin — it would
+  test whatever is installed on staging rather than the code under review. Tracked
+  in #21.
 
 ### Removed
 - **The "More" menu is retired.** The design replaces the Main/More/Hidden split

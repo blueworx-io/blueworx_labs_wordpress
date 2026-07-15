@@ -256,6 +256,28 @@ function blueworx_get_saved_admin_menu_order() {
 }
 
 /**
+ * Flattens a raw $menu label to plain text, without core's update bubble.
+ *
+ * Core hangs a live count off some labels. Plugins is
+ * 'Plugins <span class="update-plugins count-0"><span class="plugin-count">0</span></span>',
+ * Comments carries an 'awaiting-mod' bubble. wp_strip_all_tags() alone flattens
+ * that count INTO the text, which is why the Edit Menu listed "Plugins 0" — and
+ * why the Move up/down controls announced "Move Plugins 0 up" to a screen
+ * reader. The count is core's transient state, not part of the item's name.
+ *
+ * The bubble is always trailing, so cut from the count span to the end of the
+ * string; that handles core's nested spans without trying to match them.
+ *
+ * @param string $raw Raw $menu[0] value.
+ * @return string Plain-text label.
+ */
+function blueworx_clean_admin_menu_label( $raw ) {
+	$raw = preg_replace( '#<span[^>]*class="[^"]*\bcount[^"]*"[^>]*>.*#is', '', (string) $raw );
+
+	return trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $raw ) ) );
+}
+
+/**
  * Gets visible admin menu items for the Edit Menu page.
  *
  * @return array Menu items keyed by slug.
@@ -271,7 +293,7 @@ function blueworx_get_editable_admin_menu_items() {
 	}
 
 	foreach ( (array) $menu as $menu_item ) {
-		$label = isset( $menu_item[0] ) ? wp_strip_all_tags( (string) $menu_item[0] ) : '';
+		$label = isset( $menu_item[0] ) ? blueworx_clean_admin_menu_label( $menu_item[0] ) : '';
 		$slug  = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
 
 		if ( '' === $slug || 0 === strpos( $slug, 'separator' ) ) {
@@ -282,7 +304,7 @@ function blueworx_get_editable_admin_menu_items() {
 			continue;
 		}
 
-		$items[ $slug ] = trim( preg_replace( '/\s+/', ' ', $label ) );
+		$items[ $slug ] = $label;
 	}
 
 	foreach ( blueworx_get_saved_admin_menu_order() as $slug ) {
@@ -559,7 +581,10 @@ function blueworx_apply_admin_menu_visibility() {
 	$labels     = array();
 
 	foreach ( (array) $menu as $menu_item ) {
-		$label   = isset( $menu_item[0] ) ? trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $menu_item[0] ) ) ) : '';
+		// Same cleaning as the Edit Menu screen: without it the stored label is
+		// "Plugins 0", and it is this option the screen falls back to for items
+		// the current request has not registered.
+		$label   = isset( $menu_item[0] ) ? blueworx_clean_admin_menu_label( $menu_item[0] ) : '';
 		$slug    = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
 		$item_id = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
 
