@@ -411,3 +411,33 @@ function blueworx_print_admin_menu_group_heading_labels() {
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_action( 'admin_head', 'blueworx_print_admin_menu_group_heading_labels' );
 }
+
+/**
+ * Replaces dashicons with the design's icon set on mapped core menus.
+ *
+ * Unmapped menus are left alone, so third-party plugins keep their own glyph.
+ * Field 4 is the class field, 6 the icon URL. "none" stops WordPress printing
+ * its own dashicon span; the actual SVG is injected by
+ * blueworx_print_admin_menu_decorations() (Task 8), keyed off the bw-has-icon
+ * class this sets.
+ *
+ * @return void
+ */
+function blueworx_swap_admin_menu_icons() {
+	global $menu;
+
+	foreach ( (array) $menu as $index => $menu_item ) {
+		$slug = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
+		$icon = blueworx_get_admin_menu_icon( $slug );
+
+		if ( '' === $icon ) {
+			continue;
+		}
+
+		$menu[ $index ][4] = trim( ( isset( $menu_item[4] ) ? $menu_item[4] : '' ) . ' bw-has-icon' ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct $menu mutation inside "admin_menu" is the documented way to alter admin menu rows.
+		$menu[ $index ][6] = 'none'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- As above.
+	}
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_action( 'admin_menu', 'blueworx_swap_admin_menu_icons', 997 );
+}

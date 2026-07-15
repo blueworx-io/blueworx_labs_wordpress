@@ -167,6 +167,22 @@ test.describe('BlueWorx admin theme', () => {
     expect(before).toBe('rgb(79, 70, 229)');
   });
 
+  // The icon-swap ($menu field 6 = 'none') runs in this task; the actual SVG
+  // injection lands with the badges renderer in Task 8, so this test only
+  // becomes green once both are in place. Written now per TDD; not run here.
+  test('core menu items use the design icon set, third-party keep dashicons', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Mapped core items get an inline SVG.
+    const dash = page.locator('#adminmenu li a[href="index.php"] svg.bw-menu-icon');
+    await expect(dash).toHaveCount(1);
+    await expect(dash).toHaveAttribute('aria-hidden', 'true');
+
+    // Icons inherit the label colour.
+    await expect(dash).toHaveAttribute('stroke', 'currentColor');
+  });
+
   test('settings screens get card containers, without nesting cards', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await login(page);
