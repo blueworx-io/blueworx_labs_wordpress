@@ -35,6 +35,12 @@ versioning.
   The design shows both.
 
 ### Changed
+- **Edit Menu rebuilt around the semantic groups.** One card per group plus
+  Hidden, replacing the Main/More/Hidden columns, so the screen mirrors the
+  sidebar it edits. Drag now uses the browser's own drag-and-drop instead of
+  jQuery UI, and every row gains up/down buttons — the old screen was drag-only,
+  and so unusable by keyboard. Moving an item into another group, or into
+  Hidden, is saved with the order.
 - **Sidebar matches the design more closely.** Widened to 232px when expanded,
   with rounded menu rows, an indigo active pill, the current-item arrow removed,
   and icons that follow their label colour instead of being tinted indigo.
