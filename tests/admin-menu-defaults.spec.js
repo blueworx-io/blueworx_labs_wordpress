@@ -26,22 +26,12 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     expect(second).toContain('BlueWorx');
   });
 
-  test('More is the last visible top-level item', async ({ page }) => {
-    await login(page);
-    await page.goto('/wp-admin/');
-    const visible = page.locator('#adminmenu > li.menu-top:visible');
-    const last = await visible.last().innerText();
-    expect(last).toContain('More');
-  });
-
-  test('Edit Menu page shows the default split with items in More and none hidden', async ({ page }) => {
-    await login(page);
-    await page.goto(EDIT_MENU_PATH);
-    const moreColumn = page.locator('.blueworx-menu-order-list[data-blueworx-menu-section="toggle"]');
-    await expect(moreColumn.locator('.blueworx-menu-order-item')).not.toHaveCount(0);
-    const hiddenColumn = page.locator('.blueworx-menu-order-list[data-blueworx-menu-section="hidden"]');
-    await expect(hiddenColumn.locator('.blueworx-menu-order-item')).toHaveCount(0);
-  });
+  // Removed with the More menu (see the migration test below):
+  //  - 'More is the last visible top-level item'
+  //  - 'Edit Menu page shows the default split with items in More and none hidden'
+  // Both asserted the existence of a feature this branch retires, so they could
+  // only ever fail. The second also asserted zero hidden items, which was never a
+  // safe assumption: hidden/More membership varies per site by design.
 
   test('main menu is ordered: Dashboard, BlueWorx, then keep items by length then A-Z', async ({ page }) => {
     await login(page);
