@@ -314,57 +314,123 @@ test.describe('BlueWorx admin theme', () => {
     expect(style.content).toMatch(/\w/);
   });
 
-  test('custom post types appear as top-level rows under Custom Content', async ({ page }) => {
+  test('custom post types stay nested under the menu that registered them', async ({ page }) => {
     await login(page);
     await page.goto(DASH_PATH);
 
-    // Any registered CPT — wherever the site registered it — must reach the
-    // sidebar as its own top-level row, not stay buried as a plugin submenu.
-    const cptRows = page.locator('#adminmenu > li.menu-top > a[href^="edit.php?post_type="]');
-    const hrefs = await cptRows.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
-    const custom = hrefs.filter((h) => h !== 'edit.php?post_type=page');
-
-    test.skip(custom.length === 0, 'This site registers no custom post types.');
-
-    // Their group heading renders, and it is the Custom Content one.
-    const firstCustom = page
-      .locator(`#adminmenu > li.menu-top:has(> a[href="${custom[0]}"])`)
-      .first();
-    await expect(firstCustom).toBeVisible();
-
-    const started = await page
-      .locator('#adminmenu li.bw-group-start-custom')
-      .count();
-    expect(started).toBe(1);
-
-    // The promoted row is decorated like every other: it gets the design icon.
-    await expect(
-      page.locator(`#adminmenu a[href="${custom[0]}"] svg.bw-menu-icon`)
-    ).toHaveCount(1);
-  });
-
-  test('promoted custom post types keep their nested submenu', async ({ page }) => {
-    await login(page);
-    await page.goto(DASH_PATH);
-
-    const first = await page
-      .locator('#adminmenu > li.menu-top > a[href^="edit.php?post_type="]')
+    // A post type registered with show_in_menu => '<parent>' is core's way of
+    // saying "this belongs under that menu". An earlier pass promoted those to
+    // top-level rows and scattered a site's authored structure across the
+    // sidebar; nothing may lift them out again.
+    const nested = await page
+      .locator('#adminmenu .wp-submenu a[href^="edit.php?post_type="]')
       .evaluateAll((els) =>
-        els.map((el) => el.getAttribute('href')).filter((h) => h !== 'edit.php?post_type=page')
+        els
+          .map((el) => el.getAttribute('href'))
+          .filter((h) => h && h !== 'edit.php?post_type=page')
       );
 
-    test.skip(first.length === 0, 'This site registers no custom post types.');
+    test.skip(nested.length === 0, 'This site registers no nested custom post types.');
 
-    const row = page.locator(`#adminmenu > li.menu-top:has(> a[href="${first[0]}"])`);
+    // Each one that is a submenu row must NOT also exist as a top-level row.
+    const topLevel = await page
+      .locator('#adminmenu > li.menu-top > a[href^="edit.php?post_type="]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
 
-    // A post type registered against a parent menu gets no All/Add New rows of
-    // its own, so promoting it without rebuilding them would leave a top-level
-    // row with nothing under it and no route to Add New.
-    const links = await row.locator('.wp-submenu li a').evaluateAll((els) =>
-      els.map((el) => el.getAttribute('href'))
-    );
+    for (const href of nested) {
+      expect(topLevel).not.toContain(href);
+    }
+  });
 
-    expect(links).toContain(first[0]);
-    expect(links.some((h) => h && h.startsWith('post-new.php?post_type='))).toBe(true);
+  test('unmapped plugin menus land in Custom Content, not Site', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // The fallback group is Custom Content, so a plugin's own top-level menu —
+    // anything the design does not map — heads the Custom Content group rather
+    // than being swept into Site.
+    await expect(page.locator('#adminmenu li.bw-group-start-custom')).toHaveCount(1);
+
+    // Site is the last group, so it is the start row plus everything after it —
+    // and it must hold only mapped core housekeeping menus.
+    const siteSlugs = await page
+      .locator(
+        '#adminmenu li.bw-group-start-site > a.menu-top, #adminmenu li.bw-group-start-site ~ li.menu-top > a.menu-top'
+      )
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+
+    expect(siteSlugs.length).toBeGreaterThan(0);
+
+    for (const href of siteSlugs) {
+      expect(href).toMatch(/^(themes|plugins|users|tools|options-general)\.php/);
+    }
+  });
+
+  test('BlueWorx sits in Overview, directly below Dashboard', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const slugs = await page
+      .locator('#adminmenu > li.menu-top > a.menu-top')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+
+    const dashboard = slugs.findIndex((h) => h && h.endsWith('index.php'));
+    const blueworx = slugs.findIndex((h) => h && h.includes('page=blueworx-labs-wordpress'));
+
+    expect(dashboard).toBeGreaterThanOrEqual(0);
+    expect(blueworx).toBe(dashboard + 1);
+
+    // And it is inside Overview — so it must not start a group of its own.
+    const row = page.locator('#adminmenu > li.menu-top').nth(blueworx);
+    await expect(row).not.toHaveClass(/bw-group-start/);
+  });
+
+  test('every top-level row is the same height, and none overhangs the sidebar', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Rows whose icon the design does not map keep core's dashicon, whose glyph
+    // box is 36px against the mapped rows' 20px. Left alone those rows render
+    // visibly taller than their neighbours.
+    const heights = await page
+      .locator('#adminmenu > li.menu-top > a.menu-top')
+      .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+
+    expect(heights.length).toBeGreaterThan(1);
+    expect(new Set(heights).size).toBe(1);
+
+    // Side padding on #adminmenu is added to core's content-box width, pushing
+    // items out over the content area. The menu must not exceed its own panel.
+    const overhang = await page.evaluate(() => {
+      const menu = document.getElementById('adminmenu');
+      const back = document.getElementById('adminmenuback');
+      return menu.getBoundingClientRect().right - back.getBoundingClientRect().right;
+    });
+
+    expect(overhang).toBeLessThanOrEqual(0);
+  });
+
+  test('hovering a group heading item does not paint the whole group', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Core paints hover on the li, which hosts both the group's ::before heading
+    // and (on the current item) its inline submenu — so the highlight bled
+    // across the entire section. State belongs to the anchor alone.
+    const row = page.locator('#adminmenu li.bw-group-start').first();
+    await row.hover();
+
+    const transparent = ['rgba(0, 0, 0, 0)', 'transparent'];
+    const liBackground = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(transparent).toContain(liBackground);
+
+    // The anchor still takes its own state, so hover is not simply gone.
+    const anchor = row.locator('> a.menu-top');
+    const anchorBackground = await anchor.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(transparent).not.toContain(anchorBackground);
   });
 });

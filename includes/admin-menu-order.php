@@ -320,147 +320,25 @@ function blueworx_get_editable_admin_menu_items() {
 	return $items;
 }
 
-/**
- * Promotes custom post type menus to top-level sidebar rows.
+/*
+ * Custom post type menus are deliberately NOT promoted to top-level rows.
  *
- * A post type registered with show_in_menu => '<parent-slug>' is added by core
- * as a submenu of that parent, so it never reaches the $menu global. Grouping
- * reads $menu, which is why a site whose post types all hang off one plugin
- * menu renders an empty Custom Content group: the rule was right, the menu
- * shape was not what it assumed.
+ * An earlier pass here lifted every post type registered with
+ * show_in_menu => '<parent-slug>' out of its parent and gave it its own sidebar
+ * row, on the reading that the v2 design wanted one row per content type. On a
+ * real site that shredded the structure the site had authored: Clubhouse
+ * registers Sports, Teams, Fixtures, Events, Sponsors and People under its own
+ * Content menu, and promoting them scattered six rows across the sidebar while
+ * leaving the Content parent behind them, emptied.
  *
- * The v2 design gives every custom content type its own sidebar row, so those
- * submenus are lifted to the top level and land in Custom Content via the
- * existing edit.php?post_type= rule. Post types already registered top-level
- * are untouched — they are found by the same rule either way.
- *
- * The parent menu is deliberately left in place. It may have its own screen and
- * its own remaining submenus, and deciding that a menu the site owns should
- * disappear is not this plugin's call.
- *
- * Runs at priority 996, before the icon swap (997) and the group heading
- * markers (998), so the promoted rows are decorated like any other.
- *
- * @return void
+ * Where a site nests its post types is a statement about how that site is
+ * organised, and it is not this plugin's call to overrule it. The types stay
+ * where they were registered, and the Custom Content group is populated by the
+ * parent menus themselves — which reach it through
+ * blueworx_get_default_admin_menu_group_fallback() (includes/admin-menu-groups.php).
+ * Post types a site registers top-level still land in Custom Content via the
+ * edit.php?post_type= rule, exactly as before.
  */
-function blueworx_promote_custom_content_menus() {
-	global $menu, $submenu;
-
-	$prefix   = 'edit.php?post_type=';
-	$existing = array();
-
-	foreach ( (array) $menu as $menu_item ) {
-		if ( isset( $menu_item[2] ) ) {
-			$existing[ (string) $menu_item[2] ] = true;
-		}
-	}
-
-	foreach ( (array) $submenu as $parent => $items ) {
-		foreach ( (array) $items as $index => $item ) {
-			$slug = isset( $item[2] ) ? (string) $item[2] : '';
-
-			if ( 0 !== strpos( $slug, $prefix ) || isset( $existing[ $slug ] ) ) {
-				continue;
-			}
-
-			$post_type = substr( $slug, strlen( $prefix ) );
-			$type_obj  = get_post_type_object( $post_type );
-
-			// Built-ins already have their own top-level rows and their own
-			// group; a plugin re-listing them under its menu must not spawn a
-			// duplicate row.
-			if ( ! $type_obj || ! $type_obj->show_ui || in_array( $post_type, array( 'post', 'page', 'attachment' ), true ) ) {
-				continue;
-			}
-
-			// menu_name ("Sports"), not the submenu's own label, which core sets
-			// to all_items ("All Sports") — a top-level row wants the short form.
-			$label = isset( $type_obj->labels->menu_name ) && '' !== $type_obj->labels->menu_name
-				? $type_obj->labels->menu_name
-				: ( isset( $item[0] ) ? $item[0] : $post_type );
-
-			// Mirrors the row core builds for a top-level post type in
-			// wp-admin/menu.php: label, cap, slug, page title, classes, id, icon.
-			$menu[] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $menu global inside the "admin_menu" action is the standard, documented way to insert admin menu rows; WordPress provides no API for this.
-				esc_attr( $label ),
-				$type_obj->cap->edit_posts,
-				$slug,
-				'',
-				'menu-top menu-icon-' . $post_type,
-				'menu-posts-' . $post_type,
-				'dashicons-admin-post',
-			);
-
-			$existing[ $slug ] = true;
-
-			// Drop the now-duplicated submenu row, leaving the parent itself.
-			unset( $submenu[ $parent ][ $index ] ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- As above, for the $submenu global.
-
-			blueworx_add_promoted_post_type_submenu( $post_type, $type_obj );
-		}
-	}
-}
-
-/**
- * Gives a promoted post type the submenu core would have given it.
- *
- * A post type registered against a parent menu gets exactly one submenu row —
- * the "all items" link on that parent. The All / Add New / taxonomy rows exist
- * only for post types core itself puts at the top level. Promoting a type
- * without rebuilding them would leave a top-level row with nothing nested under
- * it, and no route to Add New or to its taxonomies.
- *
- * Mirrors wp-admin/menu.php's own construction, including its position numbers
- * (5, 10, then 15+ per taxonomy), so the rows read in core's order.
- *
- * @param string $post_type Post type name.
- * @param object $type_obj  Post type object.
- * @return void
- */
-function blueworx_add_promoted_post_type_submenu( $post_type, $type_obj ) {
-	global $submenu;
-
-	$parent = 'edit.php?post_type=' . $post_type;
-
-	// Never clobber rows the site registered itself.
-	if ( ! empty( $submenu[ $parent ] ) ) {
-		return;
-	}
-
-	$rows = array(
-		5  => array(
-			$type_obj->labels->all_items,
-			$type_obj->cap->edit_posts,
-			$parent,
-		),
-		10 => array(
-			$type_obj->labels->add_new,
-			$type_obj->cap->create_posts,
-			'post-new.php?post_type=' . $post_type,
-		),
-	);
-
-	$position = 15;
-
-	foreach ( get_object_taxonomies( $post_type, 'objects' ) as $taxonomy ) {
-		if ( ! $taxonomy->show_ui || ! $taxonomy->show_in_menu ) {
-			continue;
-		}
-
-		$rows[ $position ] = array(
-			esc_attr( $taxonomy->labels->menu_name ),
-			$taxonomy->cap->manage_terms,
-			'edit-tags.php?taxonomy=' . $taxonomy->name . '&amp;post_type=' . $post_type,
-		);
-
-		++$position;
-	}
-
-	$submenu[ $parent ] = $rows; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $submenu global inside the "admin_menu" action is the standard, documented way to add admin submenu rows; WordPress provides no API for this.
-}
-if ( blueworx_feature_enabled( 'admin_theme' ) ) {
-	add_action( 'admin_menu', 'blueworx_promote_custom_content_menus', 996 );
-}
 
 /**
  * Enables a custom admin menu order.

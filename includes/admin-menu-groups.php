@@ -34,30 +34,43 @@ function blueworx_get_admin_menu_groups() {
  *
  * Unrecognised third-party menus land here. They are never dropped.
  *
+ * Custom Content, not Site. A plugin's own top-level menu is nearly always the
+ * content it manages — Clubhouse's Content menu and the collections nested under
+ * it are the case in hand — whereas Site is core's housekeeping (Appearance,
+ * Plugins, Users, Tools, Settings). Sending unknown menus to Site read as "the
+ * bucket for everything we could not place"; Custom Content is what they
+ * actually are.
+ *
  * @return string Group key.
  */
 function blueworx_get_default_admin_menu_group_fallback() {
-	return 'site';
+	return 'custom';
 }
 
 /**
  * Gets the static slug => group map for core menus.
  *
+ * Key order is load-bearing: blueworx_sort_admin_menu_group_by_design()
+ * (includes/admin-menu-order.php) reads it as the intended order within a group,
+ * so BlueWorx must sit directly after Dashboard here to render directly below it.
+ *
  * @return array Group keys by slug.
  */
 function blueworx_get_admin_menu_group_rules() {
 	return array(
-		'index.php'                => 'overview',
-		'edit.php'                 => 'content',
-		'upload.php'               => 'content',
-		'edit.php?post_type=page'  => 'content',
-		'edit-comments.php'        => 'content',
-		'themes.php'               => 'site',
-		'plugins.php'              => 'site',
-		'users.php'                => 'site',
-		'tools.php'                => 'site',
-		'options-general.php'      => 'site',
-		'blueworx-labs-wordpress'  => 'site',
+		'index.php'               => 'overview',
+		// Overview, not Site. BlueWorx is this plugin's own console and belongs
+		// beside the Dashboard it extends, not at the bottom of the sidebar.
+		'blueworx-labs-wordpress' => 'overview',
+		'edit.php'                => 'content',
+		'upload.php'              => 'content',
+		'edit.php?post_type=page' => 'content',
+		'edit-comments.php'       => 'content',
+		'themes.php'              => 'site',
+		'plugins.php'             => 'site',
+		'users.php'               => 'site',
+		'tools.php'               => 'site',
+		'options-general.php'     => 'site',
 	);
 }
 

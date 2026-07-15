@@ -282,10 +282,12 @@ body.wp-admin #wpwrap {
 	background: var(--bw-charcoal);
 }
 
-/* The export's nav gutter is 14px. 6px here plus the 8px margin on each
-   li.menu-top below composes it, without restating the item margin. */
+/* No horizontal padding here. Core sizes #adminmenu with a width and leaves it
+   content-box, so side padding is ADDED to that width and the menu renders wider
+   than the sidebar it sits in — items overhang the dark panel onto the content.
+   The nav gutter is the 8px margin on each li.menu-top below, on its own. */
 #adminmenu {
-	padding: 6px 6px 0;
+	padding: 0;
 }
 
 #adminmenu li.menu-top {
@@ -313,6 +315,21 @@ body.wp-admin #wpwrap {
    current item two translucent layers composited into a third colour.
    Values are the v2 export's: idle rgba(255,255,255,.62), hover
    rgba(255,255,255,.06)/#fff, active #4F46E5 (opaque) /#fff/600. */
+
+/* Core paints hover on the LI (#adminmenu li.menu-top:hover in wp-admin's colour
+   scheme), not the anchor. Two things then go wrong that the anchor rules below
+   cannot reach, because they never touch the li:
+     1. A group's first item hosts that group's heading as a ::before INSIDE its
+        li, so the li's background floods the "OVERVIEW"/"CONTENT" label too.
+     2. The current item renders its submenu inline, inside the same li, so the
+        li's background also floods the rows beneath it.
+   Together that reads as "hovering the top item highlights the whole section".
+   State belongs to the anchor and nothing else; strip the li right back. */
+#adminmenu li.menu-top:hover,
+#adminmenu li.menu-top.opensub,
+#adminmenu li.menu-top:focus-within {
+	background: none;
+}
 
 /* Hover — declared BEFORE active, and never applied to the current item, so the
    active pill always wins. */
@@ -783,15 +800,32 @@ div.error {
    sat in a 36px box and the label started 36px after it, stranding the label in
    the middle of the row. Dropping `div` loses the specificity contest with core
    and the gap comes straight back. */
+/* The icon slot is a fixed 20px box for EVERY row, mapped or not.
+   blueworx_swap_admin_menu_icons() only replaces icons on slugs the design maps,
+   so a third-party menu (Clubhouse, Site Content, Content) keeps core's dashicon
+   — and core sizes that glyph 20px/1 with `padding: 8px 0`, a 36px box, against
+   the 19px SVG the mapped rows get. Same anchor padding, icon boxes 17px apart,
+   so the unmapped rows stood visibly taller than their neighbours. Pinning the
+   box makes every row the shorter, mapped height regardless of which icon
+   lands in it. */
 #adminmenu div.wp-menu-image {
 	align-items: center;
 	display: flex;
 	float: none;
-	height: auto;
+	height: 20px;
 	justify-content: center;
 	margin: 0;
 	padding: 0;
-	width: auto;
+	width: 20px;
+}
+
+/* Core's 8px vertical padding on the dashicon glyph is what makes its box 36px;
+   the box above only constrains the slot, so the padding has to go too or the
+   glyph overflows it. */
+#adminmenu div.wp-menu-image::before {
+	font-size: 20px;
+	line-height: 20px;
+	padding: 0;
 }
 
 #adminmenu .bw-menu-icon {

@@ -16,19 +16,15 @@ versioning.
   kept, because it carries WordPress's responsive menu toggle.
 - **Semantic sidebar groups.** The sidebar is grouped by meaning — Overview,
   Content, Custom Content, Site — with a heading above each. Custom post types
-  are recognised by shape, so any type a site registers lands in Custom Content
-  without being listed. A group with nothing in it renders no heading, and
-  unrecognised third-party menus fall back to Site rather than being dropped.
-- **Custom post types get their own sidebar rows, with their submenus intact.** A
-  post type registered against a parent menu (`show_in_menu => '<parent>'`) used
-  to stay buried as a submenu and never reached Custom Content. Those types are
-  now lifted to top-level rows, matching the design, and are given the All / Add
-  New / taxonomy rows WordPress only creates for types it places at the top level
-  itself — so a promoted type nests exactly like a native one. The parent menu is
-  left in place.
-- **Design icon set** on the nine mapped core menus and on every custom post
-  type, replacing dashicons. Icons stroke `currentColor`, so they follow their
-  label through idle, hover and active. Unmapped third-party menus keep their own
+  are recognised by shape, so any type a site registers top-level lands in Custom
+  Content without being listed. A group with nothing in it renders no heading,
+  and unrecognised third-party menus fall back to Custom Content rather than
+  being dropped — a plugin's own top-level menu is nearly always the content it
+  manages, where Site is core's housekeeping. BlueWorx sits in Overview, directly
+  below the Dashboard it extends.
+- **Design icon set** on the mapped core menus and on every custom post type,
+  replacing dashicons. Icons stroke `currentColor`, so they follow their label
+  through idle, hover and active. Unmapped third-party menus keep their own
   glyph.
 - **Count badges** on Posts, Media, Pages, custom post types and Plugins, from
   core's count APIs. Zero renders no badge. Where WordPress already draws its own
@@ -64,6 +60,31 @@ versioning.
   button, rounded inputs with indigo focus rings, and restyled messages/errors.
 
 ### Fixed
+- **Custom post types no longer torn out of the menu that registered them.** An
+  earlier pass in this release lifted every type registered with
+  `show_in_menu => '<parent>'` into its own top-level row. On a real site that
+  shredded the structure the site had authored — Clubhouse registers Sports,
+  Teams, Fixtures, Events, Sponsors and People under its own Content menu, and
+  promoting them scattered six rows across the sidebar while leaving the Content
+  parent behind them, emptied. Where a site nests its post types is a statement
+  about how that site is organised, and overruling it is not this plugin's call.
+  Types now stay where they were registered, and Custom Content is populated by
+  the parent menus themselves.
+- **The sidebar overhung its own panel.** `#adminmenu` carried `6px` of side
+  padding, but core sizes the menu with a width and leaves it content-box, so
+  that padding was added to the width and the rows spilled out of the dark panel
+  onto the content area. The padding is gone; the gutter is the row margin alone.
+- **Rows were not all the same height.** Only mapped slugs get a design SVG; an
+  unmapped third-party menu keeps core's dashicon, whose glyph box is 36px
+  (`20px/1` plus `8px` vertical padding) against the mapped rows' 20px. With the
+  same anchor padding on both, unmapped rows stood 16px taller than their
+  neighbours. The icon slot is now a fixed 20px box for every row, so they all
+  settle at the shorter height.
+- **Hovering a section's top item highlighted the whole section.** Core paints
+  hover on the `li`, not the anchor — and that `li` hosts both the group's
+  `::before` heading and, on the current item, its inline submenu. The fill
+  therefore bled across the heading and every row beneath it. The `li` no longer
+  takes a background; state lives on the anchor alone, as the design intends.
 - **Dashboard hero tiles could fail to appear.** The tiles were registered at
   `core` priority, but `do_meta_boxes()` renders `high` → `sorted` → `core` and
   moves any saved user layout into `sorted` — so on a dashboard that had been
