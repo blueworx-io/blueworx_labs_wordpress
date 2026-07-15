@@ -304,31 +304,41 @@ body.wp-admin #wpwrap {
 	opacity: 1;
 }
 
-#adminmenu li.menu-top:hover,
-#adminmenu li.opensub > a.menu-top,
-#adminmenu li > a.menu-top:focus {
+/* ─── Sidebar item states ───
+   All state colour lives on the anchor. The li carries layout only.
+   Previously hover painted the li and the active pill painted the a, so on the
+   current item two translucent layers composited into a third colour.
+   Values are the v2 export's: idle rgba(255,255,255,.62), hover
+   rgba(255,255,255,.06)/#fff, active #4F46E5 (opaque) /#fff/600. */
+
+/* Hover — declared BEFORE active, and never applied to the current item, so the
+   active pill always wins. */
+#adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:hover,
+#adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:focus,
+#adminmenu li.opensub:not(.current) > a.menu-top {
 	background: rgba(255, 255, 255, .06);
 	color: #fff;
 }
 
-#adminmenu li.menu-top:hover a.menu-top,
-#adminmenu li.menu-top:hover div.wp-menu-name,
-#adminmenu li > a.menu-top:focus div.wp-menu-name {
+#adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:hover div.wp-menu-name,
+#adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:focus div.wp-menu-name {
 	color: #fff;
 }
 
-/* Active item: indigo pill. */
-#adminmenu li.current a.menu-top,
-#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
+/* Active — opaque indigo. Nothing composites beneath it. */
+#adminmenu li.current > a.menu-top,
+#adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
 #adminmenu li.wp-has-current-submenu.wp-menu-open > a.wp-has-current-submenu,
+#adminmenu li.current > a.menu-top:hover,
+#adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu:hover,
 #adminmenu a.wp-has-current-submenu:focus {
-	background: rgba(79, 70, 229, .22);
+	background: var(--bw-primary);
 	color: #fff;
 	border-radius: 10px;
 	box-shadow: none;
 }
 
-#adminmenu li.current a.menu-top div.wp-menu-name,
+#adminmenu li.current > a.menu-top div.wp-menu-name,
 #adminmenu li.wp-has-current-submenu div.wp-menu-name {
 	color: #fff;
 	font-weight: 600;

@@ -144,4 +144,21 @@ test.describe('BlueWorx admin theme', () => {
 
     await page.locator('#collapse-button').click(); // restore
   });
+
+  test('regression: hovering the current item does not shift its colour', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const currentLink = page.locator('#adminmenu li.current > a.menu-top').first();
+    const before = await currentLink.evaluate((el) => getComputedStyle(el).backgroundColor);
+
+    await currentLink.hover();
+    const after = await currentLink.evaluate((el) => getComputedStyle(el).backgroundColor);
+
+    // Hover must not composite a second translucent layer over the active pill.
+    expect(after).toBe(before);
+    // And the active pill is the design's opaque indigo, not a 22% wash.
+    expect(before).toBe('rgb(79, 70, 229)');
+  });
 });
