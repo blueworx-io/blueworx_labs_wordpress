@@ -1,21 +1,7 @@
 import { test, expect } from '@playwright/test';
-
-const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
-const isPlaceholder = /placeholder/i.test(baseURL);
-const ADMIN_USER = process.env.WP_ADMIN_USER;
-const ADMIN_PASS = process.env.WP_ADMIN_PASS;
+import { isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
 
 const EDIT_MENU_PATH = '/wp-admin/admin.php?page=blueworx-edit-menu';
-
-async function login(page) {
-  await page.goto('/wp-admin/');
-  if (await page.locator('#user_login').count()) {
-    await page.fill('#user_login', ADMIN_USER);
-    await page.fill('#user_pass', ADMIN_PASS);
-    await page.click('#wp-submit');
-  }
-}
 
 async function mainColumnSlugs(page) {
   return page.$$eval(

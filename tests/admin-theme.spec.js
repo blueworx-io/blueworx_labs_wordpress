@@ -1,25 +1,7 @@
 import { test, expect } from '@playwright/test';
-
-const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
-const isPlaceholder = /placeholder/i.test(baseURL);
-const ADMIN_USER = process.env.WP_ADMIN_USER;
-const ADMIN_PASS = process.env.WP_ADMIN_PASS;
+import { isPlaceholder, ADMIN_USER, ADMIN_PASS, DASH_PATH, LOGIN_PATH, login } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
-const DASH_PATH = '/wp-admin/index.php';
-
-/**
- * Log in if a fresh context lands on the login screen.
- */
-async function login(page) {
-  await page.goto(DASH_PATH);
-  if (await page.locator('#user_login').count()) {
-    await page.fill('#user_login', ADMIN_USER);
-    await page.fill('#user_pass', ADMIN_PASS);
-    await page.click('#wp-submit');
-  }
-}
 
 /**
  * Go to the settings page and return the admin_theme toggle locator.
@@ -111,7 +93,10 @@ test.describe('BlueWorx admin theme', () => {
 
   test('login screen is branded', async ({ page, context }) => {
     await context.clearCookies();
-    await page.goto('/wp-login.php');
+    // Not a hardcoded /wp-login.php: the `login` feature blocks that path and
+    // moves the form to a custom slug, so the branded screen only exists at
+    // LOGIN_PATH on sites with it enabled.
+    await page.goto(LOGIN_PATH);
 
     // The WordPress logo is replaced by the site-name wordmark.
     const logo = page.locator('.login h1 a');

@@ -1,25 +1,15 @@
 import { test, expect } from '@playwright/test';
-
-const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
-const isPlaceholder = /placeholder/i.test(baseURL);
-const ADMIN_USER = process.env.WP_ADMIN_USER;
-const ADMIN_PASS = process.env.WP_ADMIN_PASS;
+import { isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
 /**
- * Navigate to the settings page, logging in first if WordPress redirects
- * to the login screen (fresh browser context has no session).
+ * Navigate to the settings page, logging in first (a fresh context has no
+ * session).
  */
 async function gotoSettings(page) {
+  await login(page);
   await page.goto(SETTINGS_PATH);
-  if (await page.locator('#user_login').count()) {
-    await page.fill('#user_login', ADMIN_USER);
-    await page.fill('#user_pass', ADMIN_PASS);
-    await page.click('#wp-submit');
-    await page.goto(SETTINGS_PATH);
-  }
 }
 
 test.describe('BlueWorx feature toggles', () => {
