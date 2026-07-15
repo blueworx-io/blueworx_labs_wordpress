@@ -32,6 +32,34 @@ export const LOGIN_PATH = `/${String(rawLoginPath).replace(/^.*[/\\]/, '').trim(
 
 export const DASH_PATH = '/wp-admin/index.php';
 
+let bustCounter = 0;
+
+/**
+ * Appends a unique query arg to defeat an edge cache.
+ *
+ * Cloudways fronts the site with Varnish, which caches LOGGED-OUT responses even
+ * though WordPress marks the login page `no-cache, no-store, private`. Observed
+ * live: /admin_login served with `X-Cache: HIT` and `Age: 14897` — a 4-hour-old
+ * copy. That is not cosmetic for tests:
+ *
+ *  - a stale login page carries a stale nonce and test cookie, so logins fail at
+ *    random, and
+ *  - assertions about logged-out pages test whatever was cached hours ago rather
+ *    than the code under test. It made the working branded-login feature look
+ *    broken.
+ *
+ * Logged-in admin requests are not affected (the auth cookie bypasses the cache),
+ * so only logged-out navigations need this.
+ *
+ * @param {string} path Path to bust.
+ * @return {string} Path with a unique query arg.
+ */
+export function cacheBust(path) {
+  bustCounter += 1;
+  const unique = `${process.pid}-${bustCounter}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${path}${path.includes('?') ? '&' : '?'}bw_test_nocache=${unique}`;
+}
+
 /**
  * Logs into wp-admin, and throws if it did not work.
  *
@@ -53,7 +81,9 @@ export const DASH_PATH = '/wp-admin/index.php';
  * @param {import('@playwright/test').Page} page Playwright page.
  */
 export async function login(page) {
-  await page.goto(LOGIN_PATH);
+  // Cache-busted: a Varnish-cached login page carries a stale nonce and test
+  // cookie, which makes logins fail intermittently. See cacheBust().
+  await page.goto(cacheBust(LOGIN_PATH));
 
   if (await page.locator('body.wp-admin').count()) {
     return;

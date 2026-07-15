@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { isPlaceholder, ADMIN_USER, ADMIN_PASS, DASH_PATH, LOGIN_PATH, login } from './helpers.js';
+import {
+  isPlaceholder,
+  ADMIN_USER,
+  ADMIN_PASS,
+  DASH_PATH,
+  LOGIN_PATH,
+  login,
+  cacheBust,
+} from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
@@ -96,7 +104,11 @@ test.describe('BlueWorx admin theme', () => {
     // Not a hardcoded /wp-login.php: the `login` feature blocks that path and
     // moves the form to a custom slug, so the branded screen only exists at
     // LOGIN_PATH on sites with it enabled.
-    await page.goto(LOGIN_PATH);
+    //
+    // Cache-busted: this is a logged-out page, and Varnish serves those from
+    // cache. Without this the test asserts against whatever HTML was cached
+    // hours ago — which reported this working feature as broken.
+    await page.goto(cacheBust(LOGIN_PATH));
 
     // The WordPress logo is replaced by the site-name wordmark.
     const logo = page.locator('.login h1 a');
