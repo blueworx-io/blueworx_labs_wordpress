@@ -53,8 +53,10 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     await expect(page.locator('.blueworx-toggle-separator')).toHaveCount(0);
 
     // Items that used to live in More are visible top-level rows again.
-    await expect(page.locator('#adminmenu a[href="tools.php"]')).toBeVisible();
-    await expect(page.locator('#adminmenu a[href="options-general.php"]')).toBeVisible();
+    // Scoped to the top-level anchor: an unscoped href match also hits the
+    // item's own submenu row ("Tools > Tools"), which is a strict-mode violation.
+    await expect(page.locator('#adminmenu > li.menu-top > a[href="tools.php"]')).toBeVisible();
+    await expect(page.locator('#adminmenu > li.menu-top > a[href="options-general.php"]')).toBeVisible();
   });
 
   // Route decision: WordPress's _wp_menu_output() (wp-admin/menu-header.php)
@@ -88,8 +90,12 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     expect(seen).toContain('SITE');
 
     // The heading decorates the group's first real item; it must not add a
-    // second anchor to that row (each row keeps exactly its own one link).
-    const anchorCounts = await starts.evaluateAll((els) => els.map((el) => el.querySelectorAll('a').length));
+    // SECOND top-level anchor to that row. Counts direct children only —
+    // querySelectorAll('a') would also count the row's submenu links (Dashboard
+    // has Home + Updates), which are legitimate and unrelated to the heading.
+    const anchorCounts = await starts.evaluateAll((els) =>
+      els.map((el) => el.querySelectorAll(':scope > a').length)
+    );
     for (const count of anchorCounts) {
       expect(count).toBe(1);
     }
