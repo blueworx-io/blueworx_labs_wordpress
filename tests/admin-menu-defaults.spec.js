@@ -16,15 +16,11 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
 
-  test('BlueWorx sits directly below Dashboard in the admin menu', async ({ page }) => {
-    await login(page);
-    await page.goto('/wp-admin/');
-    const topLevel = page.locator('#adminmenu > li.menu-top:visible');
-    const first = await topLevel.nth(0).innerText();
-    const second = await topLevel.nth(1).innerText();
-    expect(first).toContain('Dashboard');
-    expect(second).toContain('BlueWorx');
-  });
+  // Superseded by semantic groups. The old default arrangement pinned BlueWorx
+  // second; the sidebar is now ordered Overview -> Content -> Custom Content ->
+  // Site, and BlueWorx belongs to Site, so it can no longer sit second. The
+  // group ordering is covered by 'sidebar renders semantic group headings'.
+  test.skip('BlueWorx sits directly below Dashboard in the admin menu', async () => {});
 
   // Removed with the More menu (see the migration test below):
   //  - 'More is the last visible top-level item'
@@ -33,51 +29,20 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
   // only ever fail. The second also asserted zero hidden items, which was never a
   // safe assumption: hidden/More membership varies per site by design.
 
-  test('main menu is ordered: Dashboard, BlueWorx, then keep items by length then A-Z', async ({ page }) => {
-    await login(page);
-    await page.goto(EDIT_MENU_PATH);
-    const slugs = await mainColumnSlugs(page);
-    // Dashboard pinned first, BlueWorx pinned second.
-    expect(slugs.indexOf('index.php')).toBe(0);
-    expect(slugs.indexOf('blueworx-labs-wordpress')).toBe(1);
-    // Media, Pages, Posts, Users are all 5 chars -> alphabetical order.
-    const keepOrder = ['upload.php', 'edit.php?post_type=page', 'edit.php', 'users.php'];
-    const positions = keepOrder.map((slug) => slugs.indexOf(slug));
-    for (const pos of positions) {
-      expect(pos).toBeGreaterThan(1);
-    }
-    for (let i = 1; i < positions.length; i += 1) {
-      expect(positions[i]).toBeGreaterThan(positions[i - 1]);
-    }
-  });
+  // Both skipped until Task 11 rebuilds the Edit Menu screen, which retires the
+  // `.blueworx-menu-order-list` markup and the main/toggle/hidden buckets these
+  // drive. They assert the OLD three-column UI.
+  //
+  // The freeze test is skipped for a second, more urgent reason: IT CORRUPTS THE
+  // SITE. Task 5 deleted blueworx_get_toggled_admin_menu_items(), so the old
+  // screen can no longer bucket More items — and this test clicks Save through
+  // it, rewriting blueworx_hidden_admin_menu_items with whatever the broken
+  // screen rendered. Observed on staging: it replaced hidden
+  // [plugins.php, link_category] with [themes.php, options-general.php].
+  // Do NOT re-enable against the old screen.
+  test.skip('main menu is ordered: Dashboard, BlueWorx, then keep items by length then A-Z', async () => {});
 
-  test('hiding an item, saving, and reloading persists it as hidden (freeze)', async ({ page }) => {
-    await login(page);
-    await page.goto(EDIT_MENU_PATH);
-
-    // Hide the last item in the Main column (avoids the pinned Dashboard/BlueWorx rows).
-    const mainItems = page.locator(
-      '.blueworx-menu-order-list[data-blueworx-menu-section="main"] .blueworx-menu-order-item'
-    );
-    const target = mainItems.last();
-    const slug = await target.getAttribute('data-blueworx-menu-item');
-    await target.locator('.blueworx-menu-visibility-toggle').click();
-    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Menu settings saved');
-
-    // Reload: the item must now be in the Hidden column. Defaults never hide anything,
-    // so this only holds if the saved arrangement was frozen (not recomputed).
-    await page.goto(EDIT_MENU_PATH);
-    const hidden = page.locator(
-      `.blueworx-menu-order-list[data-blueworx-menu-section="hidden"] .blueworx-menu-order-item[data-blueworx-menu-item="${slug}"]`
-    );
-    await expect(hidden).toHaveCount(1);
-
-    // Restore so the test is idempotent across runs.
-    await hidden.locator('.blueworx-menu-visibility-toggle').click();
-    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Menu settings saved');
-  });
+  test.skip('hiding an item, saving, and reloading persists it as hidden (freeze)', async () => {});
 
   test('migration: More items reappear in their natural group', async ({ page }) => {
     await login(page);
