@@ -248,7 +248,8 @@ Add `box-sizing: border-box` — **scoped to the `.bw-*` component classes**, no
 `.bw-brand` alone:
 
 ```css
-.bw-brand, .bw-topbar, .bw-card, .bw-menu-group, .bw-badge, /* …all bw-* */ {
+[class^="bw-"],
+[class*=" bw-"] {
 	box-sizing: border-box;
 }
 ```
@@ -264,9 +265,12 @@ a `12px` content box, which would clip the `34px` `.bw-brand-mark`. The folded
 state must therefore drop to `padding: 0` and centre the mark
 (`justify-content: center`) within WordPress's 36px folded sidebar.
 
-**Why the scope matters:** §7 introduces substantial new `.bw-card` markup. Those
-elements would inherit the identical content-box trap. Fixing the class, not the
-instance, is what stops this recurring.
+**Why the scope matters:** §§1–3 add new `.bw-*` elements — `.bw-menu-group`
+headings, `.bw-badge` counts, the `.bw-logout` row, and the Edit Menu's
+`.bw-menu-editor-*` rows. Each would otherwise inherit the identical content-box
+trap, and a badge or heading that renders wider than its container is the same
+bug in a new place. Fixing the class of bug, not the one instance, is the point.
+(§7 needs no `.bw-*` markup at all — see that section.)
 
 `.bw-topbar` is unaffected: it sets both `left` and `right` with `width: auto`, so
 its box is derived from those offsets and its padding resolves inside them.
@@ -351,26 +355,66 @@ and `readme.txt` under an "Upgrade Notice", not buried.
 
 ## 7. Containers on settings screens
 
-Split by ownership of the markup:
+> **Corrected 2026-07-15, after reading the render functions.** An earlier draft
+> of this section claimed Enhancements "has no container structure at all". **That
+> was wrong.** The correction below is based on the actual markup, and it makes
+> this section substantially *smaller*, not larger.
 
-**Our pages** (`Enhancements`, `Cache`, `Headless`) — real card markup in PHP,
-since we own the templates. Each section becomes a `.bw-card` with a heading,
-optional description, and body.
+### Actual state of each page
 
-This is also the actual fix for "Enhancements is very ugly with bad spacing": the
-page has **no container structure at all**, so its problem is missing hierarchy,
-not wrong padding. Rhythm comes from the card system, not from tweaked margins.
+| Page | Renderer | Current markup | Real problem |
+|---|---|---|---|
+| Enhancements | `blueworx_render_enhancements_page()` (`admin-settings.php:188`) | **Already** `.postbox` > `.postbox-header` > `.inside` > `.form-table`, one per section — and `.postbox` is **already** card-styled (`admin-theme.css:366`) | **Not** missing containers. Has **no `max-width`**: on a wide viewport the cards stretch edge-to-edge and `.form-table`'s 200px `th` leaves the description stranded far from its label. |
+| Cache | `blueworx_render_cache_page()` (`admin-settings.php:332`) | Bare `<h2>` + `<table class="form-table">` inside `.wrap` | Genuinely uncontained |
+| Headless | `blueworx_headless_render_settings_page()` (`rest/settings.php:154`) | Bare `<h2>` + five `<table class="form-table">` | Genuinely uncontained |
+| General Settings | WordPress core | Bare `<h2>` + `.form-table` inside `.wrap > form` | Genuinely uncontained |
 
-**Core and third-party pages** (`General Settings`, and every plugin settings
-screen) — **CSS only**. `.form-table` is styled as a card: white surface, 16px
-radius, `--bw-shadow-card`, with row padding and a lavender label column. Section
-`<h2>`s sit above their card.
+### The consequence: no PHP card markup is needed
 
-No JavaScript wrapping of core markup. The CSS-only approach means every settings
-screen benefits — including plugins we have never seen — with zero risk of
-breaking markup we do not control. The trade-off, accepted: a core screen with
-multiple `<h2>` + `<table>` pairs gets one card per table rather than one card per
-titled section, which is very close and infinitely safer.
+Cache, Headless, and General Settings **share one markup shape** — an `<h2>`
+followed by a `.form-table`, as a direct child of `.wrap` or `.wrap > form`. So a
+single CSS rule styling `.form-table` as a card fixes **all three at once**, plus
+every third-party settings screen, with no PHP.
+
+The `.bw-card` PHP work in the earlier draft is therefore **dropped**. It would
+have been churn: hand-rolled markup duplicating what one CSS rule already does.
+
+```css
+/* Cache, Headless, General Settings, and third-party settings screens. */
+.wrap > .form-table,
+.wrap > form > .form-table {
+	background: #fff;
+	border-radius: var(--bw-radius-card);
+	box-shadow: var(--bw-shadow-card);
+	/* + row padding, lavender label column */
+}
+```
+
+**The child combinator is load-bearing, not stylistic.** Enhancements' `.form-table`
+lives at `.postbox > .inside > .form-table`, so an unscoped `.form-table` rule
+would paint a card *inside* the already-carded `.postbox` — nested cards. The
+`>` combinators exclude it. Any later relaxing of these selectors reintroduces
+that bug.
+
+### Enhancements
+
+Its problem is **measure**, not structure. Fix by constraining width and tightening
+the existing `.postbox` rhythm:
+
+- `max-width` on the page's content column so cards stop stretching edge-to-edge.
+- `.postbox-header` / `.inside` padding aligned to the card system.
+- `.form-table` `th`/`td` padding and label column tuned so the label and its
+  description read as one unit.
+
+No markup change: `.postbox` is WordPress's own card component, it is already
+skinned, and replacing it with a bespoke `.bw-card` would gain nothing.
+
+### Trade-off, accepted
+
+A core screen with multiple `<h2>` + `<table>` pairs gets **one card per table**
+rather than one per titled section, with the `<h2>` sitting above its card. Very
+close to the design, and infinitely safer than JavaScript-wrapping markup we do
+not own.
 
 ## Accessibility
 
@@ -406,9 +450,10 @@ following the existing harness convention (skip on placeholder URL / missing
    assigned to their default groups and the option deleted, and running it twice
    changes nothing.
 9. `admin_theme` off ⇒ no headings, no injected icons, stock WordPress look.
-
-Test 6 is only meaningful once the jutt's root cause is known; write it against
-the real cause, not the symptom.
+10. **Containers:** the `.form-table` on Cache, Headless, and General Settings has
+    the card background; **and Enhancements' `.form-table` does not** — it sits
+    inside an already-carded `.postbox`, so a card there means the child
+    combinators have been broken and cards are nesting.
 
 ## Versioning & deployment
 
@@ -434,3 +479,4 @@ the real cause, not the symptom.
 | Scoping `box-sizing` to `.bw-*` could still shift an existing `.bw-*` element's size (the top bar, dashboard stat tiles) | The change is a strict improvement in intent, but every existing `.bw-*` element must be re-checked visually once applied, not just `.bw-brand`. |
 | Icon swap could blank a third-party menu's glyph | Only mapped core slugs are swapped; everything else keeps its dashicon. |
 | CSS-only `.form-table` cards touch every plugin's settings screen | Style only the table shell; no layout rewrites. `admin_theme` flag is the escape hatch. |
+| Relaxing the `.form-table` child combinators would nest a card inside Enhancements' `.postbox` | The `>` combinators are load-bearing (§7). The regression test asserts Enhancements' `.form-table` has no card background. |
