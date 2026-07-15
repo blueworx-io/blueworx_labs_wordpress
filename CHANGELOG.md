@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.12.0] - 2026-07-15
+
+### Added
+- **BlueWorx admin top bar.** On screens 783px and wider, the WordPress admin bar
+  is replaced by the design's top bar: the current page title, a **View Site**
+  button that opens the front end in a new tab, and a user menu (Edit Profile,
+  Log Out). A brand block — the site's initial in an indigo mark, the site name,
+  and "wp-admin" — sits above the menu. The user menu is a native `<details>`
+  disclosure, so no JavaScript ships with it. Below 783px the native admin bar is
+  kept, because it carries WordPress's responsive menu toggle.
+
+### Changed
+- **Sidebar matches the design more closely.** Widened to 232px when expanded,
+  with rounded menu rows, an indigo active pill, the current-item arrow removed,
+  and icons that follow their label colour instead of being tinted indigo.
+- **Lighter shadows.** `--bw-shadow-card` is now a soft two-stop lift
+  (`0 1px 2px / 0 4px 12px` at 4–5% alpha) instead of the heavier stack, matching
+  the design's elevation across cards, tables, notices, and tiles.
+- **Login screens are properly designed.** All wp-login actions (log in, lost
+  password, reset, register) now use a brand mark in place of the WordPress logo,
+  a centred white card with the light shadow, Sora/Inter type, full-width charcoal
+  button, rounded inputs with indigo focus rings, and restyled messages/errors.
+
+### Fixed
+- **Dashboard hero tiles could fail to appear.** The tiles were registered at
+  `core` priority, but `do_meta_boxes()` renders `high` → `sorted` → `core` and
+  moves any saved user layout into `sorted` — so on a dashboard that had been
+  rearranged, the tiles were pushed below everything else. They are now registered
+  at `high` priority and stay at the top.
+
+### Removed
+- **`#wpfooter` is hidden** on all admin screens while the theme is active.
+
 ## [1.11.0] - 2026-07-14
 
 ### Added

@@ -63,7 +63,7 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('link#blueworx-admin-theme-css')).toHaveCount(1);
     await expect(page.locator('.bw-stat-grid')).toBeVisible();
 
-    // Turn it OFF — stylesheet and hero tiles disappear.
+    // Turn it OFF — stylesheet, hero tiles, and custom chrome disappear.
     toggle = await themeToggle(page);
     await toggle.setChecked(false);
     await saveSettings(page);
@@ -71,10 +71,52 @@ test.describe('BlueWorx admin theme', () => {
     await page.goto(DASH_PATH);
     await expect(page.locator('link#blueworx-admin-theme-css')).toHaveCount(0);
     await expect(page.locator('.bw-stat-grid')).toHaveCount(0);
+    await expect(page.locator('.bw-topbar')).toHaveCount(0);
 
     // Restore ON so the test is idempotent across runs.
     toggle = await themeToggle(page);
     await toggle.setChecked(true);
     await saveSettings(page);
+  });
+
+  test('desktop chrome: BlueWorx top bar replaces the admin bar, footer hidden', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Custom top bar is present with the site link and user menu.
+    await expect(page.locator('.bw-topbar')).toBeVisible();
+    await expect(page.locator('.bw-topbar-site')).toBeVisible();
+    await expect(page.locator('.bw-topbar-site')).toHaveAttribute('target', '_blank');
+    await expect(page.locator('.bw-user-summary')).toBeVisible();
+    await expect(page.locator('.bw-brand')).toBeVisible();
+
+    // WordPress chrome we replaced is not visible on desktop.
+    await expect(page.locator('#wpadminbar')).toBeHidden();
+    await expect(page.locator('#wpfooter')).toBeHidden();
+
+    // The user menu is a native <details> — opening it reveals profile + logout.
+    await page.locator('.bw-user-summary').click();
+    await expect(page.locator('.bw-user-menu a', { hasText: 'Log Out' })).toBeVisible();
+  });
+
+  test('mobile keeps the native admin bar so the menu toggle still works', async ({ page }) => {
+    await login(page);
+    await page.setViewportSize({ width: 480, height: 900 });
+    await page.goto(DASH_PATH);
+
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+    await expect(page.locator('#wpadminbar')).toBeVisible();
+  });
+
+  test('login screen is branded', async ({ page, context }) => {
+    await context.clearCookies();
+    await page.goto('/wp-login.php');
+
+    // The WordPress logo is replaced by the site-name wordmark.
+    const logo = page.locator('.login h1 a');
+    await expect(logo).toBeVisible();
+    await expect(logo).not.toHaveCSS('background-image', /wordpress-logo/);
+    await expect(page.locator('link#blueworx-login-theme-css')).toHaveCount(1);
   });
 });

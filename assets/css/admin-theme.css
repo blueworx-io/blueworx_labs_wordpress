@@ -2,8 +2,8 @@
  * BlueWorx admin re-skin.
  *
  * Restyles WordPress's native wp-admin markup with the BlueWorx design system.
- * Organised in blocks: Tokens, Base, Sidebar, Admin bar, Cards & tables,
- * Buttons, Inputs, Headings & notices, Dashboard hero tiles.
+ * Blocks: Tokens, Base, Chrome (top bar + brand), Sidebar, Cards & tables,
+ * Buttons, Inputs, Headings & notices, Dashboard hero tiles, Responsive.
  *
  * Scope note: this file only loads inside wp-admin (via admin_enqueue_scripts),
  * so the front-end admin bar and the block-editor canvas are untouched.
@@ -26,7 +26,11 @@
 	--bw-radius-card: 16px;
 	--bw-radius-btn: 11px;
 	--bw-radius-input: 8px;
-	--bw-shadow-card: 0 7px 7px rgba(0, 0, 0, .09), 0 16px 9px rgba(0, 0, 0, .05);
+	/* Deliberately light — the design uses a soft lift, not a heavy drop shadow. */
+	--bw-shadow-card: 0 1px 2px rgba(10, 12, 41, .04), 0 4px 12px rgba(10, 12, 41, .05);
+	--bw-shadow-card-hover: 0 2px 4px rgba(10, 12, 41, .05), 0 8px 20px rgba(10, 12, 41, .08);
+	--bw-sidebar-w: 232px;
+	--bw-topbar-h: 60px;
 	--bw-font-head: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	--bw-font-ui: "Inter", -apple-system, sans-serif;
 	--bw-font-body: "Sora", -apple-system, sans-serif;
@@ -54,6 +58,208 @@ body.wp-admin #wpwrap {
 	color: var(--bw-primary-dark);
 }
 
+/* The BlueWorx top bar replaces the WordPress footer credit. */
+#wpfooter {
+	display: none;
+}
+
+/* ─── Chrome: brand block + top bar ─── */
+/* Hidden by default; the responsive block below shows them from 783px up, where
+   the native admin bar is hidden. Below that the native bar stays (it carries the
+   mobile menu toggle). */
+.bw-brand,
+.bw-topbar {
+	display: none;
+}
+
+.bw-brand {
+	position: fixed;
+	top: 0;
+	left: 0;
+	height: var(--bw-topbar-h);
+	background: var(--bw-charcoal);
+	align-items: center;
+	gap: 10px;
+	padding: 0 12px;
+	z-index: 9991;
+	overflow: hidden;
+}
+
+.bw-brand-mark {
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+	background: var(--bw-primary);
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 16px;
+	flex-shrink: 0;
+}
+
+.bw-brand-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.bw-brand-name {
+	color: #fff;
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 14px;
+	line-height: 1.25;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.bw-brand-sub {
+	color: rgba(255, 255, 255, .45);
+	font-size: 11px;
+	line-height: 1.3;
+}
+
+.bw-topbar {
+	position: fixed;
+	top: 0;
+	right: 0;
+	height: var(--bw-topbar-h);
+	background: #fff;
+	border-bottom: 1px solid var(--bw-border);
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 0 24px;
+	z-index: 9990;
+}
+
+.bw-topbar-title {
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 18px;
+	color: var(--bw-charcoal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.bw-topbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-shrink: 0;
+}
+
+.bw-topbar-site {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--bw-charcoal);
+	color: #fff !important;
+	border-radius: 10px;
+	padding: 9px 16px;
+	font-family: var(--bw-font-body);
+	font-weight: 600;
+	font-size: 13px;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.bw-topbar-site:hover,
+.bw-topbar-site:focus {
+	background: var(--bw-primary-dark);
+	color: #fff !important;
+	text-decoration: none;
+}
+
+/* User menu — a native <details> disclosure, so no JavaScript is needed. */
+.bw-user {
+	position: relative;
+}
+
+.bw-user-summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	padding: 5px 8px;
+	border-radius: 10px;
+	list-style: none;
+	user-select: none;
+}
+
+.bw-user-summary::-webkit-details-marker {
+	display: none;
+}
+
+.bw-user-summary::marker {
+	content: "";
+}
+
+.bw-user-summary:hover,
+.bw-user[open] .bw-user-summary {
+	background: var(--bw-surface);
+}
+
+.bw-user-summary:focus-visible {
+	outline: 2px solid var(--bw-primary);
+	outline-offset: 1px;
+}
+
+.bw-user-avatar {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background: var(--bw-primary-dark);
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.bw-user-name {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--bw-charcoal);
+	white-space: nowrap;
+}
+
+.bw-user-menu {
+	position: absolute;
+	right: 0;
+	top: calc(100% + 6px);
+	min-width: 172px;
+	background: #fff;
+	border: 1px solid var(--bw-border);
+	border-radius: 12px;
+	box-shadow: var(--bw-shadow-card);
+	padding: 6px;
+	z-index: 10001;
+}
+
+.bw-user-menu a {
+	display: block;
+	padding: 8px 10px;
+	border-radius: 8px;
+	font-size: 13px;
+	color: var(--bw-charcoal);
+	text-decoration: none;
+}
+
+.bw-user-menu a:hover,
+.bw-user-menu a:focus {
+	background: var(--bw-surface);
+	color: var(--bw-primary);
+	text-decoration: none;
+}
+
 /* ─── Sidebar (#adminmenu) ─── */
 #adminmenuback,
 #adminmenuwrap,
@@ -65,116 +271,95 @@ body.wp-admin #wpwrap {
 }
 
 #adminmenu {
-	padding-top: 8px;
+	padding-top: 6px;
 }
 
-/* Top-level items: comfortable rounded rows, muted-white text. */
 #adminmenu li.menu-top {
 	margin: 0 8px 2px;
 	border-radius: 10px;
-	overflow: hidden;
 }
 
 #adminmenu a.menu-top,
 #adminmenu div.wp-menu-name {
 	color: rgba(255, 255, 255, .65);
 	font-family: var(--bw-font-ui);
+	font-size: 14px;
+	font-weight: 500;
 }
 
+/* Icons follow the label colour, matching the design's currentColor strokes. */
 #adminmenu .wp-menu-image::before {
-	color: var(--bw-primary);
+	color: inherit;
 	opacity: 1;
 }
 
-/* Hover. */
 #adminmenu li.menu-top:hover,
 #adminmenu li.opensub > a.menu-top,
 #adminmenu li > a.menu-top:focus {
-	background: rgba(255, 255, 255, .06) !important;
-	color: #fff !important;
+	background: rgba(255, 255, 255, .06);
+	color: #fff;
 }
 
 #adminmenu li.menu-top:hover a.menu-top,
-#adminmenu li.menu-top:hover div.wp-menu-name {
-	color: #fff !important;
+#adminmenu li.menu-top:hover div.wp-menu-name,
+#adminmenu li > a.menu-top:focus div.wp-menu-name {
+	color: #fff;
 }
 
-/* Active / current item: indigo pill. */
+/* Active item: indigo pill. */
 #adminmenu li.current a.menu-top,
 #adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
-#adminmenu li.wp-has-current-submenu.wp-menu-open > a.wp-has-current-submenu {
-	background: rgba(79, 70, 229, .22) !important;
-	color: #fff !important;
+#adminmenu li.wp-has-current-submenu.wp-menu-open > a.wp-has-current-submenu,
+#adminmenu a.wp-has-current-submenu:focus {
+	background: rgba(79, 70, 229, .22);
+	color: #fff;
+	border-radius: 10px;
+	box-shadow: none;
 }
 
-#adminmenu li.current .wp-menu-image::before,
-#adminmenu li.wp-has-current-submenu .wp-menu-image::before {
+#adminmenu li.current a.menu-top div.wp-menu-name,
+#adminmenu li.wp-has-current-submenu div.wp-menu-name {
 	color: #fff;
+	font-weight: 600;
+}
+
+/* Remove WordPress's blue current-item arrow — the pill communicates state. */
+#adminmenu .wp-menu-arrow,
+#adminmenu li.current a.menu-top::after,
+#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu::after {
+	display: none;
 }
 
 /* Submenus. */
+#adminmenu .wp-submenu {
+	border-radius: 10px;
+}
+
 #adminmenu .wp-submenu a {
 	color: rgba(255, 255, 255, .55);
+	font-size: 13px;
 }
 
 #adminmenu .wp-submenu a:hover,
-#adminmenu .wp-submenu a:focus,
-#adminmenu .wp-submenu li.current a,
-#adminmenu .wp-submenu li.current a:hover {
+#adminmenu .wp-submenu a:focus {
 	color: #fff;
 }
 
-#adminmenu .wp-submenu li.current a {
-	color: var(--bw-primary);
+#adminmenu .wp-submenu li.current a,
+#adminmenu .wp-submenu li.current a:hover,
+#adminmenu .wp-submenu li.current a:focus {
+	color: #fff;
+	font-weight: 600;
 }
 
-/* Collapse button + admin menu bottom. */
 #collapse-button {
 	color: rgba(255, 255, 255, .45);
 }
 
-#adminmenu div.wp-menu-name {
-	font-weight: 500;
-}
-
-/* ─── Admin bar (restyled to a light top bar, not hidden) ─── */
-#wpadminbar {
-	background: #fff;
-	border-bottom: 1px solid var(--bw-border);
-	box-shadow: none;
-	color: var(--bw-charcoal);
-}
-
-#wpadminbar .ab-item,
-#wpadminbar a.ab-item,
-#wpadminbar > #wp-toolbar span.ab-label,
-#wpadminbar > #wp-toolbar span.noticon,
-#wpadminbar .ab-icon,
-#wpadminbar .ab-icon::before,
-#wpadminbar .ab-item::before,
-#wpadminbar #adminbarsearch::before {
-	color: var(--bw-charcoal) !important;
-}
-
-#wpadminbar .ab-top-menu > li:hover > .ab-item,
-#wpadminbar .ab-top-menu > li.hover > .ab-item,
-#wpadminbar.nojq .quicklinks .ab-top-menu > li > .ab-item:focus,
-#wpadminbar .ab-top-menu > li > .ab-item:focus,
-#wpadminbar li:hover .ab-icon::before,
-#wpadminbar li:hover .ab-item::before {
-	background: var(--bw-surface) !important;
-	color: var(--bw-primary) !important;
-}
-
-/* Submenus of the admin bar stay dark for contrast/readability. */
-#wpadminbar .ab-submenu,
-#wpadminbar .menupop .ab-sub-wrapper {
-	background: var(--bw-charcoal);
-}
-
-#wpadminbar .quicklinks .menupop ul li a,
-#wpadminbar .quicklinks .menupop ul li a strong {
-	color: rgba(255, 255, 255, .85) !important;
+/* Belt-and-braces: if anything re-renders the admin bar, keep it out of the way
+   on desktop (the responsive block below governs when it may appear). */
+#wpadminbar .quicklinks a {
+	font-family: var(--bw-font-ui);
 }
 
 /* ─── Cards & tables ─── */
@@ -224,7 +409,6 @@ body.wp-admin #wpwrap {
 	color: var(--bw-charcoal);
 }
 
-/* Pagination / bulk-action bar. */
 .tablenav .tablenav-pages a,
 .tablenav .tablenav-pages span.current {
 	border-radius: var(--bw-radius-input);
@@ -338,7 +522,7 @@ div.error {
 	border-left-color: var(--bw-info);
 }
 
-/* ─── Dashboard hero tiles (markup added in includes/admin-theme.php) ─── */
+/* ─── Dashboard hero tiles ─── */
 #blueworx_dashboard_stats.postbox {
 	background: transparent;
 	box-shadow: none;
@@ -373,7 +557,7 @@ div.error {
 .bw-stat-card:hover,
 .bw-stat-card:focus {
 	text-decoration: none;
-	box-shadow: 0 10px 20px rgba(10, 12, 41, .12);
+	box-shadow: var(--bw-shadow-card-hover);
 }
 
 .bw-stat-num {
@@ -390,13 +574,81 @@ div.error {
 	margin-top: 4px;
 }
 
-@media screen and (max-width: 1100px) {
+/* ─── Responsive ─── */
+/*
+ * From 783px up the BlueWorx top bar replaces the WordPress admin bar. Below that
+ * the native bar is left alone on purpose: it carries WordPress's responsive menu
+ * toggle, which is the only way to reach the admin menu on a phone.
+ */
+@media only screen and (min-width: 783px) {
+	#wpadminbar {
+		display: none;
+	}
+
+	html.wp-toolbar {
+		padding-top: 0;
+	}
+
+	.bw-brand {
+		display: flex;
+		width: 36px;
+	}
+
+	.bw-topbar {
+		display: flex;
+		left: 36px;
+	}
+
+	.bw-brand-text {
+		display: none;
+	}
+
+	#wpcontent {
+		padding-top: var(--bw-topbar-h);
+	}
+
+	#adminmenu {
+		margin-top: var(--bw-topbar-h);
+	}
+}
+
+/* Full-width sidebar only when the menu is expanded. */
+@media only screen and (min-width: 961px) {
+	body:not(.folded) #adminmenu,
+	body:not(.folded) #adminmenuback,
+	body:not(.folded) #adminmenuwrap {
+		width: var(--bw-sidebar-w);
+	}
+
+	body:not(.folded) #wpcontent,
+	body:not(.folded) #wpfooter {
+		margin-left: var(--bw-sidebar-w);
+	}
+
+	body:not(.folded) #adminmenu .wp-not-current-submenu .wp-submenu {
+		left: var(--bw-sidebar-w);
+	}
+
+	body:not(.folded) .bw-brand {
+		width: var(--bw-sidebar-w);
+	}
+
+	body:not(.folded) .bw-brand-text {
+		display: flex;
+	}
+
+	body:not(.folded) .bw-topbar {
+		left: var(--bw-sidebar-w);
+	}
+}
+
+@media only screen and (max-width: 1100px) {
 	.bw-stat-grid {
 		grid-template-columns: repeat(2, 1fr);
 	}
 }
 
-@media screen and (max-width: 600px) {
+@media only screen and (max-width: 782px) {
 	.bw-stat-grid {
 		grid-template-columns: 1fr;
 	}
