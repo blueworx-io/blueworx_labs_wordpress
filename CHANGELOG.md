@@ -19,10 +19,13 @@ versioning.
   are recognised by shape, so any type a site registers lands in Custom Content
   without being listed. A group with nothing in it renders no heading, and
   unrecognised third-party menus fall back to Site rather than being dropped.
-- **Custom post types get their own sidebar rows.** A post type registered
-  against a parent menu (`show_in_menu => '<parent>'`) used to stay buried as a
-  submenu and never reached Custom Content. Those types are now lifted to
-  top-level rows, matching the design. The parent menu is left in place.
+- **Custom post types get their own sidebar rows, with their submenus intact.** A
+  post type registered against a parent menu (`show_in_menu => '<parent>'`) used
+  to stay buried as a submenu and never reached Custom Content. Those types are
+  now lifted to top-level rows, matching the design, and are given the All / Add
+  New / taxonomy rows WordPress only creates for types it places at the top level
+  itself — so a promoted type nests exactly like a native one. The parent menu is
+  left in place.
 - **Design icon set** on the nine mapped core menus and on every custom post
   type, replacing dashicons. Icons stroke `currentColor`, so they follow their
   label through idle, hover and active. Unmapped third-party menus keep their own
@@ -35,6 +38,14 @@ versioning.
   The design shows both.
 
 ### Changed
+- **Sidebar order follows the design by default.** Within a group, items now use
+  the design's order — Content reads Posts, Media, Pages — instead of the older
+  "shortest label, then A–Z" rule, which predates the groups and was written for
+  a single flat list. Sites that have saved the Edit Menu keep their own
+  arrangement: the design sets the default, an admin's choice overrides it.
+- **Collapse Menu is hidden**, per the design. It reappears if the menu is
+  folded, so the state is always reversible, and it is left alone below 961px
+  where WordPress auto-folds and it is the only way back out.
 - **Edit Menu rebuilt around the semantic groups.** One card per group plus
   Hidden, replacing the Main/More/Hidden columns, so the screen mirrors the
   sidebar it edits. Drag now uses the browser's own drag-and-drop instead of

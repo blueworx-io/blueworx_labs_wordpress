@@ -132,8 +132,13 @@ test.describe('BlueWorx admin theme', () => {
     expect(brand.x + brand.width).toBeLessThanOrEqual(topbar.x + 0.5);
 
     // Folded: same guarantee (this state had the same 24px overhang).
-    await page.locator('#collapse-button').click();
-    await expect(page.locator('body.folded')).toHaveCount(1);
+    // Folded by adding the class rather than clicking #collapse-button: the
+    // design has no Collapse Menu, so the theme hides that button whenever the
+    // menu is expanded. body.folded is still reachable in the wild — WordPress
+    // auto-folds between 783px and 960px, and it persists the state per user —
+    // and it is the rendered state, not the click, that this regression is
+    // about. Toggling the class keeps the test on the real CSS.
+    await page.evaluate(() => document.body.classList.add('folded'));
     const fBrand = await page.locator('.bw-brand').boundingBox();
     const fMenu = await page.locator('#adminmenuwrap').boundingBox();
     expect(fBrand.width).toBeCloseTo(fMenu.width, 0);
@@ -142,7 +147,19 @@ test.describe('BlueWorx admin theme', () => {
     const mark = await page.locator('.bw-brand-mark').boundingBox();
     expect(mark.width).toBeGreaterThan(20);
 
-    await page.locator('#collapse-button').click(); // restore
+    // Folded is the one state where the button must come back, so nobody can be
+    // stranded in it.
+    await expect(page.locator('#collapse-button')).toBeVisible();
+
+    await page.evaluate(() => document.body.classList.remove('folded'));
+  });
+
+  test('Collapse Menu is hidden when expanded, per the design', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    await expect(page.locator('#collapse-menu')).toBeHidden();
   });
 
   test('regression: hovering the current item does not shift its colour', async ({ page }) => {
@@ -293,5 +310,30 @@ test.describe('BlueWorx admin theme', () => {
     await expect(
       page.locator(`#adminmenu a[href="${custom[0]}"] svg.bw-menu-icon`)
     ).toHaveCount(1);
+  });
+
+  test('promoted custom post types keep their nested submenu', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const first = await page
+      .locator('#adminmenu > li.menu-top > a[href^="edit.php?post_type="]')
+      .evaluateAll((els) =>
+        els.map((el) => el.getAttribute('href')).filter((h) => h !== 'edit.php?post_type=page')
+      );
+
+    test.skip(first.length === 0, 'This site registers no custom post types.');
+
+    const row = page.locator(`#adminmenu > li.menu-top:has(> a[href="${first[0]}"])`);
+
+    // A post type registered against a parent menu gets no All/Add New rows of
+    // its own, so promoting it without rebuilding them would leave a top-level
+    // row with nothing under it and no route to Add New.
+    const links = await row.locator('.wp-submenu li a').evaluateAll((els) =>
+      els.map((el) => el.getAttribute('href'))
+    );
+
+    expect(links).toContain(first[0]);
+    expect(links.some((h) => h && h.startsWith('post-new.php?post_type='))).toBe(true);
   });
 });

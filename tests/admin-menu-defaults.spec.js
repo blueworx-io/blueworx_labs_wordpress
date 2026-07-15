@@ -153,6 +153,15 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     await login(page);
     await page.goto(EDIT_MENU_PATH);
 
+    // Remember which row Tools sits above, so the restore below can put it back
+    // exactly where it was. Appending it to the end of Site would "restore" it to
+    // a different position and quietly walk the real site's menu order down one
+    // slot on every run.
+    const restoreBefore = await page.evaluate(() => {
+      const item = document.querySelector('.bw-menu-editor-item[data-slug="tools.php"]');
+      return item.nextElementSibling ? item.nextElementSibling.getAttribute('data-slug') : null;
+    });
+
     // Drag is hard to script reliably; drive the same code path via the inputs.
     await page.evaluate(() => {
       const item = document.querySelector('.bw-menu-editor-item[data-slug="tools.php"]');
@@ -171,14 +180,18 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     // a behaviour the plugin does not have.
     await expect(page.locator('#adminmenu > li.menu-top > a[href="tools.php"]')).toBeHidden();
 
-    // Restore, so the test is idempotent and leaves the site as it found it.
+    // Restore, so the test is idempotent and leaves the site as it found it —
+    // same group AND same position.
     await page.goto(EDIT_MENU_PATH);
-    await page.evaluate(() => {
+    await page.evaluate((before) => {
       const item = document.querySelector('.bw-menu-editor-item[data-slug="tools.php"]');
       const siteList = document.querySelector('.bw-menu-editor-group[data-group="site"] .bw-menu-editor-list');
-      siteList.appendChild(item);
+      const anchor = before
+        ? siteList.querySelector(`.bw-menu-editor-item[data-slug="${before}"]`)
+        : null;
+      siteList.insertBefore(item, anchor);
       item.dispatchEvent(new Event('drop', { bubbles: true }));
-    });
+    }, restoreBefore);
     // force: true skips Playwright's actionability checks. Needed only here, on
     // the SECOND save of the test: the button is provably visible, enabled and
     // clickable by hand, but Playwright's "stable" wait never settles on it and

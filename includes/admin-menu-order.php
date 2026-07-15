@@ -373,8 +373,68 @@ function blueworx_promote_custom_content_menus() {
 
 			// Drop the now-duplicated submenu row, leaving the parent itself.
 			unset( $submenu[ $parent ][ $index ] ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- As above, for the $submenu global.
+
+			blueworx_add_promoted_post_type_submenu( $post_type, $type_obj );
 		}
 	}
+}
+
+/**
+ * Gives a promoted post type the submenu core would have given it.
+ *
+ * A post type registered against a parent menu gets exactly one submenu row —
+ * the "all items" link on that parent. The All / Add New / taxonomy rows exist
+ * only for post types core itself puts at the top level. Promoting a type
+ * without rebuilding them would leave a top-level row with nothing nested under
+ * it, and no route to Add New or to its taxonomies.
+ *
+ * Mirrors wp-admin/menu.php's own construction, including its position numbers
+ * (5, 10, then 15+ per taxonomy), so the rows read in core's order.
+ *
+ * @param string $post_type Post type name.
+ * @param object $type_obj  Post type object.
+ * @return void
+ */
+function blueworx_add_promoted_post_type_submenu( $post_type, $type_obj ) {
+	global $submenu;
+
+	$parent = 'edit.php?post_type=' . $post_type;
+
+	// Never clobber rows the site registered itself.
+	if ( ! empty( $submenu[ $parent ] ) ) {
+		return;
+	}
+
+	$rows = array(
+		5  => array(
+			$type_obj->labels->all_items,
+			$type_obj->cap->edit_posts,
+			$parent,
+		),
+		10 => array(
+			$type_obj->labels->add_new,
+			$type_obj->cap->create_posts,
+			'post-new.php?post_type=' . $post_type,
+		),
+	);
+
+	$position = 15;
+
+	foreach ( get_object_taxonomies( $post_type, 'objects' ) as $taxonomy ) {
+		if ( ! $taxonomy->show_ui || ! $taxonomy->show_in_menu ) {
+			continue;
+		}
+
+		$rows[ $position ] = array(
+			esc_attr( $taxonomy->labels->menu_name ),
+			$taxonomy->cap->manage_terms,
+			'edit-tags.php?taxonomy=' . $taxonomy->name . '&amp;post_type=' . $post_type,
+		);
+
+		++$position;
+	}
+
+	$submenu[ $parent ] = $rows; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $submenu global inside the "admin_menu" action is the standard, documented way to add admin submenu rows; WordPress provides no API for this.
 }
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_action( 'admin_menu', 'blueworx_promote_custom_content_menus', 996 );
@@ -411,6 +471,8 @@ function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.Code
 	$groups      = array_keys( blueworx_get_admin_menu_groups() );
 	$ordered     = array();
 
+	$customized = blueworx_admin_menu_is_customized();
+
 	// Within a group, honour the admin's saved order; unsaved items follow.
 	foreach ( $groups as $group ) {
 		$in_group = array();
@@ -427,12 +489,57 @@ function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.Code
 			}
 		}
 
+		if ( ! $customized ) {
+			$in_group = blueworx_sort_admin_menu_group_by_design( $in_group );
+		}
+
 		foreach ( $in_group as $slug ) {
 			$ordered[] = $slug;
 		}
 	}
 
 	return $ordered;
+}
+
+/**
+ * Sorts one group's slugs into the v2 design's order.
+ *
+ * The saved order is computed by blueworx_compute_default_admin_menu_arrangement(),
+ * which sorts by label length then A-Z. That rule predates the semantic groups
+ * and was written for a single flat list, so inside Content it yields Media,
+ * Pages, Posts where the design reads Posts, Media, Pages.
+ *
+ * The group rules map is already written in the design's order, so it doubles as
+ * the intended order within a group. Slugs it does not list (custom post types,
+ * third-party menus) keep their existing relative order, after the listed ones.
+ *
+ * Applied only to sites that have never saved the Edit Menu: the design sets the
+ * default, an admin's own arrangement overrides it.
+ *
+ * @param array $slugs Slugs in one group.
+ * @return array Slugs in design order.
+ */
+function blueworx_sort_admin_menu_group_by_design( $slugs ) {
+	$design = array_keys( blueworx_get_admin_menu_group_rules() );
+	$listed = array();
+	$rest   = array();
+
+	foreach ( $slugs as $slug ) {
+		if ( in_array( $slug, $design, true ) ) {
+			$listed[] = $slug;
+		} else {
+			$rest[] = $slug;
+		}
+	}
+
+	usort(
+		$listed,
+		function ( $a, $b ) use ( $design ) {
+			return array_search( $a, $design, true ) - array_search( $b, $design, true );
+		}
+	);
+
+	return array_merge( $listed, $rest );
 }
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_filter( 'menu_order', 'blueworx_admin_menu_order' );

@@ -825,6 +825,25 @@ div.error {
 	color: #fff;
 }
 
+/* ─── Sidebar: Collapse Menu ───
+   Not in the design, so it goes — but only where removing it cannot trap
+   anyone.
+
+   `body:not(.folded)` is load-bearing. WordPress stores the collapsed state per
+   user, so an admin who folded their menu before this release still loads with
+   body.folded. Hiding the button unconditionally would take away the only
+   control that unfolds it, stranding them in a folded sidebar with no way back.
+   Scoped this way the button reappears whenever the menu IS folded, so the
+   state is always reversible.
+
+   Restricted to 961px and up for the same reason: below that WordPress
+   auto-folds, and the button is the way out. */
+@media only screen and (min-width: 961px) {
+	body:not(.folded) #adminmenu #collapse-menu {
+		display: none;
+	}
+}
+
 /* ─── Sidebar: Log Out ─── */
 #adminmenu li.bw-logout {
 	border-top: 1px solid rgba(255, 255, 255, .08);
