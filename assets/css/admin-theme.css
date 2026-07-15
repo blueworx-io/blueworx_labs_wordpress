@@ -731,3 +731,24 @@ div.error {
 		grid-template-columns: 1fr;
 	}
 }
+
+/*
+ * Semantic sidebar group headings (Task 6). The label text is never
+ * hard-coded here: blueworx_print_admin_menu_group_heading_labels() (Task 6,
+ * includes/admin-theme.php) sets --bw-group-label per row via an inline
+ * <style> block scoped to that row's id, keyed by the request's translated
+ * label. This rule only turns the custom property into visible generated
+ * content ahead of the item's own (still fully functional, still focusable)
+ * link. Full positioning/visual treatment lands with Task 10.
+ */
+#adminmenu li.bw-group-start::before {
+	content: var(--bw-group-label, "");
+	display: block;
+	padding: 12px 12px 4px;
+	font-family: var(--bw-font-ui);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+	color: var(--bw-muted);
+}

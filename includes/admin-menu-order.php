@@ -313,27 +313,48 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 /**
  * Sets the preferred left admin menu order.
  *
- * Unknown plugin menu items are left for WordPress to place after these items.
+ * Orders top-level items by semantic group (Overview -> Content -> Custom
+ * Content -> Site), honouring the admin's saved order within each group.
+ *
+ * Shared with blueworx_mark_admin_menu_group_starts() (includes/admin-theme.php),
+ * which calls this directly to learn which slug leads each group, so the
+ * heading markers and the actual render order can never drift apart.
  *
  * @param array $menu_order Existing menu order.
  * @return array Preferred menu order.
  */
-function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $menu_order is required by the WordPress "menu_order" filter's callback signature; this implementation builds its own order from stored settings instead of the incoming value.
-	$order = array_values( array_diff( blueworx_get_saved_admin_menu_order(), array( 'separator-blueworx-toggle', 'blueworx-menu-toggle' ) ) );
+function blueworx_admin_menu_order( $menu_order ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Required by the "menu_order" filter signature; this implementation builds its own order from group assignments and stored settings.
+	$assignments = blueworx_get_admin_menu_group_assignments();
+	$saved       = blueworx_get_saved_admin_menu_order();
+	$groups      = array_keys( blueworx_get_admin_menu_groups() );
+	$ordered     = array();
 
-	if ( ! in_array( 'blueworx-labs-wordpress', $order, true ) ) {
-		$dashboard_position = array_search( 'index.php', $order, true );
-		$insert_position    = false === $dashboard_position ? 1 : $dashboard_position + 1;
+	// Within a group, honour the admin's saved order; unsaved items follow.
+	foreach ( $groups as $group ) {
+		$in_group = array();
 
-		array_splice( $order, $insert_position, 0, 'blueworx-labs-wordpress' );
+		foreach ( $saved as $slug ) {
+			if ( isset( $assignments[ $slug ] ) && $group === $assignments[ $slug ] ) {
+				$in_group[] = $slug;
+			}
+		}
+
+		foreach ( $assignments as $slug => $slug_group ) {
+			if ( $group === $slug_group && ! in_array( $slug, $in_group, true ) ) {
+				$in_group[] = $slug;
+			}
+		}
+
+		foreach ( $in_group as $slug ) {
+			$ordered[] = $slug;
+		}
 	}
 
-	// More is retired (migration 4): nothing is ever toggled into it any more.
-	// Task 6 replaces this whole function body with group-based ordering.
-	return $order;
+	return $ordered;
 }
-if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_filter( 'menu_order', 'blueworx_admin_menu_order' );
+	add_filter( 'custom_menu_order', '__return_true' );
 }
 
 /**

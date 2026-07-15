@@ -304,3 +304,110 @@ function blueworx_render_dashboard_stats() {
 	}
 	echo '</div>';
 }
+
+/**
+ * Marks the first visible item of each semantic group and queues its heading.
+ *
+ * A synthetic $menu row was rejected as the mechanism for headings.
+ * _wp_menu_output() (wp-admin/menu-header.php) only has two branches for a
+ * row: a separator (wp-menu-separator in the class field — rendered with no
+ * title and no link) or an ordinary item, which core always wraps in a
+ * focusable <a> regardless of what the URL field contains. There is no branch
+ * that renders a titled row without an anchor, so a synthetic row can never be
+ * both visible and inert at once — it would either show nothing (separator) or
+ * be a broken, clickable link to a page that does not exist (ordinary item).
+ *
+ * Instead, the first real item of each populated group is tagged
+ * bw-group-start and bw-group-start-{key}, and its translated label is queued
+ * for blueworx_print_admin_menu_group_heading_labels() to emit as a CSS custom
+ * property scoped to that row's id — the same "inline <style> keyed by row id"
+ * idiom blueworx_hide_admin_menu_rows() already uses. CSS (Task 10) renders the
+ * label as generated ::before content, so nothing is hard-coded into the
+ * stylesheet and it stays translatable.
+ *
+ * Uses blueworx_admin_menu_order() directly (rather than duplicating its
+ * grouping logic) so the heading markers can never drift from the actual
+ * render order.
+ *
+ * A group with no visible items gets no heading.
+ *
+ * @return void
+ */
+function blueworx_mark_admin_menu_group_starts() {
+	global $menu;
+
+	if ( ! function_exists( 'blueworx_get_admin_menu_group_assignments' ) ) {
+		return;
+	}
+
+	$assignments = blueworx_get_admin_menu_group_assignments();
+	$hidden      = blueworx_get_hidden_admin_menu_items();
+	$labels      = blueworx_get_admin_menu_groups();
+	$seen        = array();
+	$rules       = array();
+
+	foreach ( blueworx_admin_menu_order( array() ) as $slug ) {
+		if ( ! isset( $assignments[ $slug ] ) || in_array( $slug, $hidden, true ) ) {
+			continue;
+		}
+
+		$group = $assignments[ $slug ];
+
+		if ( isset( $seen[ $group ] ) ) {
+			continue;
+		}
+
+		foreach ( (array) $menu as $index => $menu_item ) {
+			$item_slug = isset( $menu_item[2] ) ? (string) $menu_item[2] : '';
+
+			if ( $item_slug !== $slug ) {
+				continue;
+			}
+
+			$id = isset( $menu_item[5] ) ? (string) $menu_item[5] : '';
+
+			if ( '' === $id ) {
+				break;
+			}
+
+			$seen[ $group ] = true;
+
+			$menu[ $index ][4] = trim( ( isset( $menu_item[4] ) ? $menu_item[4] : '' ) . ' bw-group-start bw-group-start-' . $group ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Direct mutation of the $menu global inside the "admin_menu" action is the standard, documented way to alter admin menu rows; WordPress provides no API for this.
+
+			$rules[ blueworx_sanitize_admin_menu_id( $id ) ] = isset( $labels[ $group ] ) ? $labels[ $group ] : '';
+
+			break;
+		}
+	}
+
+	$GLOBALS['blueworx_admin_menu_group_heading_rules'] = $rules;
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_action( 'admin_menu', 'blueworx_mark_admin_menu_group_starts', 998 );
+}
+
+/**
+ * Prints the group heading labels as inline CSS custom properties.
+ *
+ * Keeps the labels out of the compiled stylesheet (Task 10's ::before rule
+ * just reads var(--bw-group-label)) so they stay translatable per-request.
+ *
+ * @return void
+ */
+function blueworx_print_admin_menu_group_heading_labels() {
+	$rules = isset( $GLOBALS['blueworx_admin_menu_group_heading_rules'] ) ? (array) $GLOBALS['blueworx_admin_menu_group_heading_rules'] : array();
+
+	if ( empty( $rules ) ) {
+		return;
+	}
+	?>
+	<style>
+		<?php foreach ( $rules as $row_id => $label ) : ?>
+			#adminmenu [id="<?php echo esc_attr( $row_id ); ?>"] { --bw-group-label: "<?php echo esc_attr( addcslashes( (string) $label, '"\\' ) ); ?>"; }
+		<?php endforeach; ?>
+	</style>
+	<?php
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_action( 'admin_head', 'blueworx_print_admin_menu_group_heading_labels' );
+}

@@ -101,4 +101,42 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     await expect(page.locator('#adminmenu a[href="tools.php"]')).toBeVisible();
     await expect(page.locator('#adminmenu a[href="options-general.php"]')).toBeVisible();
   });
+
+  // Route decision: WordPress's _wp_menu_output() (wp-admin/menu-header.php)
+  // only has two branches per $menu row — a separator (no title, no link) or
+  // an ordinary item, which core always wraps in a focusable <a> regardless of
+  // the URL field. There is no branch that renders a titled row without an
+  // anchor, so a synthetic "heading row" can never be both visible and inert.
+  // This uses the documented fallback instead: the first real item of each
+  // group is tagged bw-group-start(-{key}), and its translated label is
+  // rendered as ::before generated content (not innerText) sourced from a
+  // --bw-group-label custom property set inline per row — so the heading is
+  // real, translatable, and never introduces a second anchor.
+  test('sidebar renders semantic group headings in order', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/index.php');
+
+    const starts = page.locator('#adminmenu li.bw-group-start');
+    await expect(starts.first()).toBeVisible();
+
+    // Generated content isn't part of innerText, so read the computed ::before
+    // content directly. Chromium/Firefox both quote it, e.g. '"Overview"'.
+    const labels = await starts.evaluateAll((els) =>
+      els.map((el) => window.getComputedStyle(el, '::before').content.replace(/^"|"$/g, ''))
+    );
+    const seen = labels.map((t) => t.trim().toUpperCase()).filter(Boolean);
+
+    // Groups appear in the design's order, and only non-empty ones appear.
+    const expected = ['OVERVIEW', 'CONTENT', 'CUSTOM CONTENT', 'SITE'];
+    expect(seen).toEqual(expected.filter((g) => seen.includes(g)));
+    expect(seen).toContain('OVERVIEW');
+    expect(seen).toContain('SITE');
+
+    // The heading decorates the group's first real item; it must not add a
+    // second anchor to that row (each row keeps exactly its own one link).
+    const anchorCounts = await starts.evaluateAll((els) => els.map((el) => el.querySelectorAll('a').length));
+    for (const count of anchorCounts) {
+      expect(count).toBe(1);
+    }
+  });
 });
