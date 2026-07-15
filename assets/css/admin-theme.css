@@ -776,25 +776,35 @@ div.error {
 	transition: background 200ms ease, color 200ms ease;
 }
 
-#adminmenu .wp-menu-image {
-	display: flex;
+/* The `div` in these two selectors is load-bearing, not noise. Core styles the
+   row for a FLOATED 36px icon box with a matching 36px padding-left on the
+   label (#adminmenu div.wp-menu-image / div.wp-menu-name in wp-admin/css/
+   common.css). The row is a flex line here, so both become dead space: the icon
+   sat in a 36px box and the label started 36px after it, stranding the label in
+   the middle of the row. Dropping `div` loses the specificity contest with core
+   and the gap comes straight back. */
+#adminmenu div.wp-menu-image {
 	align-items: center;
-	justify-content: center;
+	display: flex;
+	float: none;
 	height: auto;
-	width: auto;
+	justify-content: center;
+	margin: 0;
 	padding: 0;
+	width: auto;
 }
 
 #adminmenu .bw-menu-icon {
 	flex-shrink: 0;
 }
 
-#adminmenu .wp-menu-name {
+#adminmenu div.wp-menu-name {
 	align-items: center;
 	display: flex;
 	flex: 1;
 	gap: 8px;
 	padding: 0;
+	width: auto;
 }
 
 /* ─── Sidebar: count badges ─── */
