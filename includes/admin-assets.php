@@ -74,6 +74,51 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 				);
 			}
 		}
+
+		// The two-column profile redesign rides on the admin re-skin: it moves
+		// native form sections into BlueWorx cards styled by admin-theme.css, so
+		// it only makes sense when that stylesheet is loading.
+		if ( blueworx_admin_theme_enabled() ) {
+			$profile_user = blueworx_get_current_profile_user();
+
+			if ( $profile_user instanceof WP_User ) {
+				wp_enqueue_script(
+					'blueworx-labs-wordpress-profile-redesign',
+					BLUEWORX_LABS_URL . 'assets/js/profile-redesign.js',
+					array(),
+					blueworx_get_admin_asset_version( 'assets/js/profile-redesign.js' ),
+					true
+				);
+
+				$roles      = (array) $profile_user->roles;
+				$role_key   = ! empty( $roles ) ? reset( $roles ) : '';
+				$wp_roles   = wp_roles();
+				$role_label = ( '' !== $role_key && isset( $wp_roles->role_names[ $role_key ] ) )
+					? translate_user_role( $wp_roles->role_names[ $role_key ] )
+					: '';
+				$post_count = (int) count_user_posts( $profile_user->ID, 'post', true );
+				$registered = $profile_user->user_registered
+					? date_i18n( 'F Y', strtotime( $profile_user->user_registered ) )
+					: '';
+
+				wp_localize_script(
+					'blueworx-labs-wordpress-profile-redesign',
+					'blueworxProfile',
+					array(
+						'initials'    => blueworx_user_initials( $profile_user->display_name ),
+						'name'        => $profile_user->display_name,
+						'role'        => $role_label,
+						'handle'      => $profile_user->user_login,
+						'memberSince' => $registered,
+						/* translators: %s: number of published posts. */
+						'posts'       => sprintf( _n( '%s post', '%s posts', $post_count, 'blueworx-labs-wordpress' ), number_format_i18n( $post_count ) ),
+						'postsUrl'    => get_author_posts_url( $profile_user->ID ),
+						'saveLabel'   => __( 'Save Changes', 'blueworx-labs-wordpress' ),
+						'viewLabel'   => __( 'View Posts', 'blueworx-labs-wordpress' ),
+					)
+				);
+			}
+		}
 	}
 
 	if ( 'toplevel_page_blueworx-labs-wordpress' === $hook_suffix ) {

@@ -200,9 +200,21 @@ function blueworx_compute_default_admin_menu_arrangement() {
 		return $slugs;
 	};
 
-	$keep_rest = $sort( $keep_rest );
-	$plugins   = $sort( $plugins );
-	$toggled   = $sort( $toggled );
+	// Design order first for recognised slugs, length-then-A-Z for the rest.
+	// This MUST match blueworx_admin_menu_order()'s within-group design sort:
+	// that path normalises a non-customised sidebar to the design order, but the
+	// order computed here is what a site snapshots the first time the Edit Menu
+	// is saved. When the two disagreed (design gave Posts, Media, Pages; the bare
+	// length/A-Z sort gave Media, Pages, Posts) two otherwise-identical sites drew
+	// the sidebar in different orders depending only on whether either had ever
+	// been saved. Sorting design-first here makes the default deterministic.
+	$sort_design_first = function ( $slugs ) use ( $sort ) {
+		return blueworx_sort_admin_menu_group_by_design( $sort( $slugs ) );
+	};
+
+	$keep_rest = $sort_design_first( $keep_rest );
+	$plugins   = $sort_design_first( $plugins );
+	$toggled   = $sort_design_first( $toggled );
 
 	$cache = array(
 		'order'   => array_values( array_merge( $pinned_top, $keep_rest, $plugins, $toggled ) ),
@@ -355,7 +367,7 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 /**
  * Sets the preferred left admin menu order.
  *
- * Orders top-level items by semantic group (Overview -> Content -> Custom
+ * Orders top-level items by semantic group (Overview -> Custom Content ->
  * Content -> Site), honouring the admin's saved order within each group.
  *
  * Shared with blueworx_mark_admin_menu_group_starts() (includes/admin-theme.php),

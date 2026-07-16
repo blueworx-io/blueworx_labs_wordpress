@@ -176,7 +176,7 @@ function blueworx_render_admin_topbar() {
 		<span class="bw-brand-mark" aria-hidden="true"><?php echo esc_html( $initial ); ?></span>
 		<span class="bw-brand-text">
 			<span class="bw-brand-name"><?php echo esc_html( $site_name ); ?></span>
-			<span class="bw-brand-sub">wp-admin</span>
+			<span class="bw-brand-sub">BlueWorx</span>
 		</span>
 	</div>
 	<div class="bw-topbar">
