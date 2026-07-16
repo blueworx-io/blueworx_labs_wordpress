@@ -89,6 +89,9 @@ body.wp-admin #wpwrap {
 	top: 0;
 	left: 0;
 	height: var(--bw-topbar-h);
+	/* Opaque, so menu content scrolls up and disappears behind the header rather
+	   than showing through it. The brand dot sits below this header (not behind
+	   it), so a solid fill here no longer cuts across the disc. */
 	background: var(--bw-charcoal);
 	align-items: center;
 	gap: 10px;
@@ -273,9 +276,40 @@ body.wp-admin #wpwrap {
 }
 
 /* ─── Sidebar (#adminmenu) ─── */
-#adminmenuback,
+/* The charcoal panel lives on #adminmenuback (fixed, full-height, behind the
+   menu) so the decorative brand dot painted on it shows through. The wrap and
+   the menu list themselves are transparent; only the fly-out submenus keep a
+   solid fill so they stay legible over page content. */
+#adminmenuback {
+	background-color: var(--bw-charcoal);
+	/* Clip the brand dot to the sidebar column so it never bleeds across the
+	   sidebar/content boundary into the page. */
+	overflow: hidden;
+}
+
+/* The design's brand dot: one defined disc tucked into the TOP-RIGHT of the
+   sidebar, just below the header. It is fixed (its parent #adminmenuback is
+   position:fixed, so it neither scrolls nor drifts), paints above the charcoal
+   panel but below the menu text (showing through the transparent menu list), and
+   is clipped at the sidebar's right edge by the overflow:hidden above. Its top
+   sits below the header so the opaque brand block never cuts across it. */
+#adminmenuback::before {
+	content: "";
+	position: absolute;
+	top: -25px;
+	right: -45px;
+	width: 150px;
+	height: 150px;
+	border-radius: 50%;
+	background: #1d2043;
+	pointer-events: none;
+}
+
 #adminmenuwrap,
-#adminmenu,
+#adminmenu {
+	background: transparent;
+}
+
 #adminmenu .wp-submenu,
 #adminmenu li.wp-has-current-submenu .wp-submenu,
 #adminmenu a.wp-has-current-submenu:focus + .wp-submenu {
@@ -364,10 +398,17 @@ body.wp-admin #wpwrap {
 	font-weight: 600;
 }
 
-/* Remove WordPress's blue current-item arrow — the pill communicates state. */
+/* Remove WordPress's arrows: the blue current-item pointer (the pill already
+   communicates state) and the dark fly-out pointer triangle WordPress draws on
+   the right of any submenu item (shown on hover/open). The .opensub and :hover
+   selectors match core's own specificity so the triangle stays hidden in the
+   states that would otherwise reveal it. */
 #adminmenu .wp-menu-arrow,
 #adminmenu li.current a.menu-top::after,
-#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu::after {
+#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu::after,
+#adminmenu li.wp-has-submenu::after,
+#adminmenu li.wp-has-submenu.opensub::after,
+#adminmenu li.wp-has-submenu:hover::after {
 	display: none;
 }
 
@@ -391,6 +432,44 @@ body.wp-admin #wpwrap {
 #adminmenu .wp-submenu li.current a:focus {
 	color: #fff;
 	font-weight: 600;
+}
+
+/* Sub-item differentiation (Option B — guide rail + indent). A hairline rail
+   tucks the children under their parent and the active child gets a short
+   brand-coloured tick. Scoped to the EXPANDED sidebar's open/current submenu so
+   fly-out submenus (folded state, or hover on a non-current parent) — which are
+   absolutely positioned panels — keep their rounded-card treatment untouched. */
+@media only screen and (min-width: 961px) {
+	body:not(.folded) #adminmenu li.wp-has-current-submenu > .wp-submenu,
+	body:not(.folded) #adminmenu li.wp-menu-open > .wp-submenu {
+		/* The open submenu sits inline in the sidebar, so it needs no fill of its
+		   own — transparent lets it read as part of the panel rather than a dark
+		   block. Fly-out submenus (folded, or hovering a non-current parent) are
+		   absolutely positioned over page content and keep their charcoal fill. */
+		background: transparent;
+		margin-left: 24px;
+		padding-left: 14px;
+		border-left: 1px solid rgba(255, 255, 255, .14);
+		border-radius: 0;
+	}
+
+	body:not(.folded) #adminmenu li.wp-has-current-submenu > .wp-submenu a,
+	body:not(.folded) #adminmenu li.wp-menu-open > .wp-submenu a {
+		position: relative;
+	}
+
+	body:not(.folded) #adminmenu li.wp-has-current-submenu > .wp-submenu li.current > a::before,
+	body:not(.folded) #adminmenu li.wp-menu-open > .wp-submenu li.current > a::before {
+		content: "";
+		position: absolute;
+		left: -15px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 2px;
+		height: 18px;
+		border-radius: 2px;
+		background: var(--bw-primary);
+	}
 }
 
 #collapse-button {
@@ -466,13 +545,21 @@ body.wp-admin #wpwrap {
 	text-shadow: none;
 }
 
+/* Every interactive state repeats border-radius. WordPress core's own :active
+   rule resets it, so the button snapped to square corners on click; restating
+   it here keeps the radius stable through hover, focus and active. */
 .wp-core-ui .button-primary:hover,
 .wp-core-ui .button-primary:focus,
+.wp-core-ui .button-primary:focus-visible,
+.wp-core-ui .button-primary:active,
 .wp-core-ui .page-title-action:hover,
-.wp-core-ui .page-title-action:focus {
+.wp-core-ui .page-title-action:focus,
+.wp-core-ui .page-title-action:focus-visible,
+.wp-core-ui .page-title-action:active {
 	background: var(--bw-primary-dark);
 	border-color: var(--bw-primary-dark);
 	color: #fff;
+	border-radius: var(--bw-radius-btn);
 }
 
 .wp-core-ui .button,
@@ -484,10 +571,17 @@ body.wp-admin #wpwrap {
 }
 
 .wp-core-ui .button:hover,
-.wp-core-ui .button-secondary:hover {
+.wp-core-ui .button:focus,
+.wp-core-ui .button:focus-visible,
+.wp-core-ui .button:active,
+.wp-core-ui .button-secondary:hover,
+.wp-core-ui .button-secondary:focus,
+.wp-core-ui .button-secondary:focus-visible,
+.wp-core-ui .button-secondary:active {
 	background: var(--bw-lavender);
 	border-color: var(--bw-primary-dark);
 	color: var(--bw-primary-dark);
+	border-radius: var(--bw-radius-btn);
 }
 
 /* ─── Inputs ─── */
@@ -581,7 +675,7 @@ div.error {
 
 .bw-stat-grid {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(2, 1fr);
 	gap: 16px;
 }
 
@@ -702,8 +796,31 @@ div.error {
 		padding-top: var(--bw-topbar-h);
 	}
 
+	/* Pin the sidebar to the viewport so it fills from below the top bar to the
+	   foot of the screen and no further. WordPress otherwise sizes the sidebar to
+	   the PAGE height, so a long page stretched the dark panel into a tall empty
+	   column below the last menu item and tied the menu to the page scroll.
+	   #adminmenuback (charcoal + brand dot) spans the full height behind the top
+	   bar; #adminmenuwrap starts below it and holds the scrolling menu. The
+	   !important overrides the inline styles WordPress's own sticky-menu JS
+	   writes onto these elements. */
+	#adminmenuback {
+		position: fixed !important;
+		top: 0 !important;
+		bottom: 0 !important;
+		height: auto !important;
+	}
+
+	#adminmenuwrap {
+		position: fixed !important;
+		top: var(--bw-topbar-h) !important;
+		bottom: 0 !important;
+		left: 0;
+		height: auto !important;
+	}
+
 	#adminmenu {
-		margin-top: var(--bw-topbar-h);
+		margin-top: 0;
 	}
 }
 
@@ -713,6 +830,32 @@ div.error {
 	body:not(.folded) #adminmenuback,
 	body:not(.folded) #adminmenuwrap {
 		width: var(--bw-sidebar-w);
+	}
+
+	/* The expanded sidebar scrolls to its last item independently of the page
+	   scroll. The scroll lives on #adminmenuwrap — the fixed element whose height
+	   is pinned by its top/bottom, so it is a reliable scroll container — while
+	   #adminmenu keeps its natural height so its whole length is reachable (a
+	   percentage-height child could not always scroll to the end). Folded keeps
+	   visible overflow so its fly-out submenus — the only way to open a submenu
+	   when collapsed — are never clipped. The scrollbar is hidden (scroll still
+	   works by wheel/trackpad/keys). */
+	body:not(.folded) #adminmenuwrap {
+		overflow-x: hidden;
+		overflow-y: auto;
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	body:not(.folded) #adminmenuwrap::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+		display: none;
+	}
+
+	body:not(.folded) #adminmenu {
+		height: auto;
+		overflow: visible;
 	}
 
 	body:not(.folded) #wpcontent,
@@ -914,4 +1057,243 @@ div.error {
 	body.folded #adminmenu li.bw-logout a {
 		justify-content: center;
 	}
+}
+
+/* Pin Log Out to the bottom of the sidebar so it stays in view while the menu
+   items above it scroll. Scoped to the BlueWorx top-bar breakpoint; below 783px
+   WordPress's own responsive menu overlay owns the sidebar and is left alone. */
+@media only screen and (min-width: 783px) {
+	/* Reserve height at the foot of the scrolling menu so the last real item
+	   clears the pinned Log Out row when scrolled fully down — generous enough to
+	   cover the row plus a gap on short viewports. */
+	#adminmenu {
+		padding-bottom: 84px;
+	}
+
+	#adminmenu li.bw-logout {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		width: 36px;
+		margin: 0;
+		padding: 8px;
+		box-sizing: border-box;
+		background: var(--bw-charcoal);
+		z-index: 9990;
+	}
+}
+
+/* Match the expanded sidebar width when the menu is not folded (mirrors the
+   sidebar-width logic above). */
+@media only screen and (min-width: 961px) {
+	body:not(.folded) #adminmenu li.bw-logout {
+		width: var(--bw-sidebar-w);
+	}
+}
+
+/* ─── Profile screen (profile.php / user-edit.php) ───
+   The .bw-profile class and the hero + two-column card structure are injected
+   by assets/js/profile-redesign.js, which MOVES the native form sections into
+   the cards. Native inputs keep their own styling from the Inputs block above;
+   this block owns the hero, the grid, and flattening WordPress's th/td
+   .form-table into stacked, label-above fields inside each card. */
+.bw-profile > h1 {
+	display: none;
+}
+
+.bw-profile-hero {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	flex-wrap: wrap;
+	background-color: var(--bw-charcoal);
+	background-image: radial-gradient(280px 280px at 92% -60%, rgba(79, 70, 229, .5) 0%, rgba(79, 70, 229, .12) 55%, transparent 75%);
+	border-radius: var(--bw-radius-card);
+	padding: 22px 26px;
+	margin: 8px 0 24px;
+}
+
+.bw-profile-hero-id {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	min-width: 0;
+}
+
+.bw-profile-avatar {
+	flex: 0 0 auto;
+	width: 54px;
+	height: 54px;
+	border-radius: 50%;
+	background: var(--bw-primary);
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 20px;
+}
+
+.bw-profile-hero-name {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	color: #fff;
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 20px;
+	line-height: 1.2;
+}
+
+.bw-profile-role {
+	font-family: var(--bw-font-ui);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: .02em;
+	color: #fff;
+	background: rgba(99, 102, 241, .9);
+	padding: 3px 10px;
+	border-radius: 999px;
+}
+
+.bw-profile-hero-meta {
+	margin-top: 4px;
+	color: rgba(255, 255, 255, .6);
+	font-size: 13px;
+}
+
+.bw-profile-hero-actions {
+	display: flex;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+.bw-profile-hero .bw-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid transparent;
+	border-radius: var(--bw-radius-btn);
+	padding: 9px 16px;
+	font-family: var(--bw-font-ui);
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.bw-profile-hero .bw-btn-ghost {
+	color: #fff;
+	background: transparent;
+	border-color: rgba(255, 255, 255, .25);
+}
+
+.bw-profile-hero .bw-btn-ghost:hover,
+.bw-profile-hero .bw-btn-ghost:focus {
+	background: rgba(255, 255, 255, .08);
+	color: #fff;
+}
+
+.bw-profile-hero .bw-btn-primary {
+	color: #fff;
+	background: var(--bw-primary);
+}
+
+.bw-profile-hero .bw-btn-primary:hover,
+.bw-profile-hero .bw-btn-primary:focus {
+	background: var(--bw-primary-dark);
+	color: #fff;
+}
+
+.bw-profile-grid {
+	display: grid;
+	grid-template-columns: 2fr 1fr;
+	gap: 20px;
+	align-items: start;
+}
+
+@media only screen and (max-width: 1100px) {
+	.bw-profile-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.bw-profile-col {
+	display: grid;
+	gap: 20px;
+	min-width: 0;
+}
+
+.bw-profile-card {
+	background: #fff;
+	border-radius: var(--bw-radius-card);
+	box-shadow: var(--bw-shadow-card);
+	padding: 20px 22px;
+}
+
+.bw-profile-card-title {
+	margin: 0 0 14px;
+	font-family: var(--bw-font-head);
+	font-weight: 700;
+	font-size: 15px;
+	color: var(--bw-charcoal);
+}
+
+/* Flatten WordPress's two-column .form-table into stacked, label-above fields.
+   Scoped to the injected card so the table's card treatment from the Cards
+   block never double-applies. */
+.bw-profile-card .form-table,
+.bw-profile-card .form-table > tbody {
+	display: block;
+	width: 100%;
+	max-width: none;
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.bw-profile-card .form-table tr {
+	display: block;
+	margin-bottom: 14px;
+}
+
+.bw-profile-card .form-table tr:last-child {
+	margin-bottom: 0;
+}
+
+.bw-profile-card .form-table th,
+.bw-profile-card .form-table td {
+	display: block;
+	width: auto;
+	padding: 0;
+}
+
+.bw-profile-card .form-table th {
+	padding-bottom: 6px;
+	font-family: var(--bw-font-ui);
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--bw-charcoal);
+}
+
+.bw-profile-card .form-table td input[type="text"],
+.bw-profile-card .form-table td input[type="email"],
+.bw-profile-card .form-table td input[type="url"],
+.bw-profile-card .form-table td input[type="password"],
+.bw-profile-card .form-table td select,
+.bw-profile-card .form-table td textarea {
+	width: 100%;
+	max-width: 100%;
+}
+
+.bw-profile-card .form-table td .description {
+	margin-top: 6px;
+	color: var(--bw-muted);
+	font-size: 12px;
 }

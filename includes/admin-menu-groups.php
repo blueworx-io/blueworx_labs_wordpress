@@ -2,7 +2,7 @@
 /**
  * Admin menu semantic groups.
  *
- * The v2 design groups the sidebar by meaning (Overview / Content / Custom
+ * The v2 design groups the sidebar by meaning (Overview / Custom Content /
  * Content / Site) rather than by user preference. This module owns the group
  * vocabulary and the rules that assign a menu slug to a group. It computes
  * only — it renders nothing and mutates no globals.
@@ -23,8 +23,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 function blueworx_get_admin_menu_groups() {
 	return array(
 		'overview' => __( 'Overview', 'blueworx-labs-wordpress' ),
-		'content'  => __( 'Content', 'blueworx-labs-wordpress' ),
 		'custom'   => __( 'Custom Content', 'blueworx-labs-wordpress' ),
+		'content'  => __( 'Content', 'blueworx-labs-wordpress' ),
 		'site'     => __( 'Site', 'blueworx-labs-wordpress' ),
 	);
 }

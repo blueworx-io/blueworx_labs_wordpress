@@ -12,7 +12,7 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
   );
 
   // Superseded by semantic groups. The old default arrangement pinned BlueWorx
-  // second; the sidebar is now ordered Overview -> Content -> Custom Content ->
+  // second; the sidebar is now ordered Overview -> Custom Content -> Content ->
   // Site, and BlueWorx belongs to Site, so it can no longer sit second. The
   // group ordering is covered by 'sidebar renders semantic group headings'.
   test.skip('BlueWorx sits directly below Dashboard in the admin menu', async () => {});
@@ -74,7 +74,7 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     const seen = labels.map((t) => t.trim().toUpperCase()).filter(Boolean);
 
     // Groups appear in the design's order, and only non-empty ones appear.
-    const expected = ['OVERVIEW', 'CONTENT', 'CUSTOM CONTENT', 'SITE'];
+    const expected = ['OVERVIEW', 'CUSTOM CONTENT', 'CONTENT', 'SITE'];
     expect(seen).toEqual(expected.filter((g) => seen.includes(g)));
     expect(seen).toContain('OVERVIEW');
     expect(seen).toContain('SITE');

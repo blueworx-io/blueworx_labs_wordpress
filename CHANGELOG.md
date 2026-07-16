@@ -4,6 +4,68 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.14.0] - 2026-07-16
+
+### Changed
+- **Sidebar pinned to the viewport.** The sidebar now fills from below the top
+  bar to the foot of the screen and no further, so a long page no longer
+  stretches the dark panel into a tall empty column below the last item. The
+  menu gets its own scroll, independent of the page scroll, and only scrolls as
+  far as its last item. The scrollbar is hidden (scroll still works by
+  wheel/trackpad/keys) and the foot clearance was raised so the last items clear
+  the pinned Log Out on short viewports.
+- **Brand dot** recoloured to `#1d2043`, resized, moved to the top-right and
+  clipped to the sidebar so it no longer bleeds into the content area. The header
+  is opaque so menu content disappears behind it when scrolling.
+- **Open submenu background is transparent** — the inline (current) submenu now
+  reads as part of the sidebar rather than a dark block; only the guide rail and
+  active tick remain. Fly-out submenus keep their solid fill.
+- **BlueWorx menu icon** is now Lucide `layout-panel-top`.
+
+### Fixed
+- **Buttons keep their radius** through hover, focus and active — primary and
+  `page-title-action` buttons were snapping to square corners on click because
+  core's `:active` rule reset the radius.
+- **Removed WordPress's fly-out pointer triangle** (the dark caret on the right
+  of any submenu item).
+
+### Note
+- Giving the expanded sidebar its own scroll clips horizontally, so hover
+  fly-out submenus for non-current items are suppressed when the sidebar is
+  expanded (the current section's submenu still shows inline). Folded mode keeps
+  its fly-outs, which are the only way to reach a submenu when collapsed.
+
+## [1.13.0] - 2026-07-16
+
+### Added
+- **Profile screen redesign** (`profile.php` / `user-edit.php`). When the admin
+  re-skin is on, the native profile form is restructured into a dark hero header
+  — avatar, display name, role badge, `@handle · Member since · post count`, plus
+  **View Posts** and **Save Changes** — over a two-column card layout. Native
+  form sections are MOVED (never recreated) into the cards, so every field,
+  nonce and hidden input still posts through core's save handler; the hero
+  **Save Changes** proxies core's own submit button. WordPress's two-column
+  `.form-table` rows are flattened to stacked, label-above fields inside each
+  card. Non-native concepts from the comp (two-factor, session device counts,
+  email-verified badges) are intentionally omitted rather than faked.
+- **Sidebar brand dot.** A soft indigo radial now sits behind the top of the
+  sidebar. The charcoal panel moved to `#adminmenuback` so the dot shows through
+  the (now transparent) menu list; fly-out submenus keep their solid fill.
+- **Submenu differentiation.** Expanded sub-items now sit under a hairline guide
+  rail, and the active child carries a short brand-coloured tick.
+
+### Changed
+- **Log Out is pinned** to the foot of the sidebar (783px and up) and stays in
+  view while the menu items above it scroll.
+- **Consistent default menu order.** The computed default arrangement now sorts
+  recognised items into the same design order the render filter uses, so two
+  unedited sites no longer draw the Content group in different orders depending
+  on whether either had ever saved the menu.
+- **Custom Content sits above Content** in the sidebar group order.
+- **Dashboard stat tiles** render two per row instead of four.
+- **Custom-content icon** is a distinct "shapes" glyph rather than the generic
+  tag, and the brand block subtitle reads **BlueWorx** in place of "wp-admin".
+
 ## [1.12.0] - 2026-07-15
 
 ### Added

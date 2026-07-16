@@ -59,6 +59,8 @@ function blueworx_get_admin_menu_icon_paths() {
 	return array(
 		// Dashboard — grid.
 		'index.php'               => '<rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect>',
+		// BlueWorx console — layout-panel-top.
+		'blueworx-labs-wordpress' => '<rect x="3" y="3" width="18" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect>',
 		// Posts — document.
 		'edit.php'                => '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h7M9 8h3"></path>',
 		// Media — image.
@@ -75,8 +77,8 @@ function blueworx_get_admin_menu_icon_paths() {
 		'tools.php'               => '<path d="M14.7 6.3a4 4 0 00-5.3 5.3L3 18v3h3l6.4-6.4a4 4 0 005.3-5.3l-2.9 2.9-2.1-2.1 2.9-2.9z"></path>',
 		// Settings — gear.
 		'options-general.php'     => '<circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 00-2-1.2L14 3h-4l-.6 2.6a7 7 0 00-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 002 1.2L10 21h4l.6-2.6a7 7 0 002-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"></path>',
-		// Custom post types — tag.
-		'bw-custom-post-type'     => '<path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0l-7-7A2 2 0 013 12.2V5a2 2 0 012-2h7.2a2 2 0 011.4.6l7 7a2 2 0 010 2.8z"></path><circle cx="7.5" cy="7.5" r="1"></circle>',
+		// Custom content — shapes (custom post types and unmapped plugin menus).
+		'bw-custom-post-type'     => '<path d="M8.3 10a.7.7 0 01-.6-1.1L11.4 3a.7.7 0 011.2 0l3.7 5.9a.7.7 0 01-.6 1.1z"></path><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><circle cx="17.5" cy="17.5" r="3.5"></circle>',
 		// Log Out — log-out.
 		'bw-logout'               => '<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"></path><path d="M16 17l5-5-5-5M21 12H9"></path>',
 	);
