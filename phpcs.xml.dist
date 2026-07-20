@@ -37,13 +37,4 @@
 			</property>
 		</properties>
 	</rule>
-
-	<rule ref="WordPress.WP.Capabilities">
-		<properties>
-			<!-- Custom capability registered by this plugin via WP_Role->add_cap() in includes/user-roles.php. -->
-			<property name="custom_capabilities" type="array">
-				<element value="blueworx_edit_elementor_templates"/>
-			</property>
-		</properties>
-	</rule>
 </ruleset>

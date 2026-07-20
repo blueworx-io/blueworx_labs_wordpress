@@ -32,6 +32,23 @@ test.describe('BlueWorx feature toggles', () => {
     ).toBeVisible();
   });
 
+  test('orphaned managed roles are absent from the Site Protection role lists', async ({ page }) => {
+    await gotoSettings(page);
+
+    // The role editor removed in 1.8.0 left blueworx_business_owner /
+    // _external_admin / _content_editor behind in the database; the 1.15.0
+    // migration sweeps up any that have no users. They must no longer be offered
+    // as Site Protection role options. (A role still holding users is skipped by
+    // design — if this fails, that role still has members to reassign first.)
+    for (const slug of [
+      'blueworx_business_owner',
+      'blueworx_external_admin',
+      'blueworx_content_editor',
+    ]) {
+      await expect(page.locator(`option[value="${slug}"]`)).toHaveCount(0);
+    }
+  });
+
   test('toggling a feature persists after save', async ({ page }) => {
     await gotoSettings(page);
     const toggle = page.locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]');

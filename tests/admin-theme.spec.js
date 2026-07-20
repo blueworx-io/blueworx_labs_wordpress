@@ -121,6 +121,45 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('.bw-user-menu a', { hasText: 'Log Out' })).toBeVisible();
   });
 
+  test('critical layout CSS is inlined in the head before the stylesheet loads', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // The anti-flash skeleton is printed inline (not a <link>), so an asset
+    // optimiser cannot defer it and it lands in the first paint. It must sit in
+    // the <head>, ahead of the deferrable main stylesheet.
+    const critical = page.locator('head style#blueworx-admin-critical');
+    await expect(critical).toHaveCount(1);
+    await expect(critical).toContainText('#wpadminbar');
+
+    const orderedBeforeStylesheet = await page.evaluate(() => {
+      const style = document.getElementById('blueworx-admin-critical');
+      const link = document.getElementById('blueworx-admin-theme-css');
+      if (!style || !link) {
+        return false;
+      }
+      // DOCUMENT_POSITION_FOLLOWING (4) => link comes after the inline style.
+      return Boolean(style.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(orderedBeforeStylesheet).toBe(true);
+  });
+
+  test('dashboard default layout: At a Glance shown, Quick Draft hidden', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // The BlueWorx hero tiles (our "At a Glance") are part of the default layout.
+    await expect(page.locator('.bw-stat-grid')).toBeVisible();
+
+    // Quick Draft is hidden by default via default_hidden_meta_boxes. toBeHidden
+    // passes whether the box is display:none or absent. This asserts the default
+    // only; a user who re-enables it in Screen Options overrides the filter, so
+    // this runs against the automation account's untouched dashboard.
+    await expect(page.locator('#dashboard_quick_press')).toBeHidden();
+  });
+
   test('mobile keeps the native admin bar so the menu toggle still works', async ({ page }) => {
     await login(page);
     await page.setViewportSize({ width: 480, height: 900 });

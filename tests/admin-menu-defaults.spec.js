@@ -91,6 +91,42 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     }
   });
 
+  test('Menus (nav-menus.php) is a top-level row in the Site group', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/index.php');
+
+    // Promoted out of Appearance to its own top-level row, scoped to the
+    // top-level anchor so the "Appearance > Menus" submenu row does not also
+    // match (strict-mode violation).
+    const row = page.locator('#adminmenu > li.menu-top > a[href="nav-menus.php"]');
+    await expect(row).toBeVisible();
+
+    // It carries the re-skin's inline SVG icon, not a dashicon.
+    await expect(row.locator('svg.bw-menu-icon')).toHaveCount(1);
+  });
+
+  test('Menus appears in the Site section of the Edit Menu screen', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    await expect(
+      page.locator('.bw-menu-editor-group[data-group="site"] .bw-menu-editor-item[data-slug="nav-menus.php"]')
+    ).toHaveCount(1);
+  });
+
+  test('Edit Menu move controls render as inline SVG chevrons, not glyphs', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    const first = page.locator('.bw-menu-editor-item').first();
+    await expect(first.locator('button.bw-menu-editor-up svg')).toHaveCount(1);
+    await expect(first.locator('button.bw-menu-editor-down svg')).toHaveCount(1);
+
+    // The old ▲/▼ text glyphs are gone from the buttons.
+    await expect(first.locator('button.bw-menu-editor-up')).toHaveText('');
+    await expect(first.locator('button.bw-menu-editor-down')).toHaveText('');
+  });
+
   test('Edit Menu renders a section per group plus Hidden', async ({ page }) => {
     await login(page);
     await page.goto(EDIT_MENU_PATH);

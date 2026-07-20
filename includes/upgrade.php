@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 4;
+	return 5;
 }
 
 /**
@@ -266,6 +266,67 @@ function blueworx_migrate_admin_menu_groups() {
 }
 
 /**
+ * Gets the orphaned managed-role slugs left by the removed role editor.
+ *
+ * These roles were registered by the "Edit Role" feature removed in 1.8.0. The
+ * code that created them is gone, but the roles persisted in the database (that
+ * removal deliberately left existing roles untouched). Listed here as the single
+ * source of truth for the removal migration and any future reintroduction.
+ *
+ * @return array Role slugs.
+ */
+function blueworx_get_orphaned_managed_role_slugs() {
+	return array(
+		'blueworx_business_owner',
+		'blueworx_external_admin',
+		'blueworx_content_editor',
+	);
+}
+
+/**
+ * Removes the orphaned managed roles left by the role editor removed in 1.8.0.
+ *
+ * A role is removed only when no users are assigned to it. remove_role() does not
+ * reassign users, so dropping a role that is still a user's only role would strand
+ * that account; roles that still have users are therefore left in place and their
+ * slugs recorded in blueworx_orphaned_roles_skipped so the situation is visible
+ * and they can be cleared once their users are reassigned. The roles can be
+ * reintroduced later — this only sweeps up the abandoned rows.
+ *
+ * @return void
+ */
+function blueworx_migrate_remove_orphaned_roles() {
+	$skipped = array();
+
+	foreach ( blueworx_get_orphaned_managed_role_slugs() as $slug ) {
+		if ( ! get_role( $slug ) ) {
+			continue;
+		}
+
+		$assigned = get_users(
+			array(
+				'role'   => $slug,
+				'number' => 1,
+				'fields' => 'ID',
+			)
+		);
+
+		if ( ! empty( $assigned ) ) {
+			$skipped[] = $slug;
+			continue;
+		}
+
+		remove_role( $slug );
+	}
+
+	if ( ! empty( $skipped ) ) {
+		update_option( 'blueworx_orphaned_roles_skipped', array_values( $skipped ) );
+	} else {
+		delete_option( 'blueworx_orphaned_roles_skipped' );
+	}
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -294,6 +355,10 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 4 ) {
 		blueworx_migrate_admin_menu_groups();
+	}
+
+	if ( $stored_version < 5 ) {
+		blueworx_migrate_remove_orphaned_roles();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

@@ -23,11 +23,39 @@ function blueworx_get_default_admin_menu_order() {
 		'upload.php',
 		'edit.php?post_type=page',
 		'themes.php',
+		'nav-menus.php',
 		'plugins.php',
 		'users.php',
 		'tools.php',
 		'options-general.php',
 	);
+}
+
+/**
+ * Promotes the Menus editor (nav-menus.php) to a top-level sidebar row.
+ *
+ * WordPress nests the Menus screen under Appearance. The v2 design surfaces it
+ * directly in the Site group, so this registers a top-level row that links
+ * straight to nav-menus.php. From there the row is grouped and iconed by the
+ * same rules as core items (see the nav-menus.php entries in
+ * blueworx_get_admin_menu_group_rules() and the icon map). Registered at the
+ * default admin_menu priority so the row exists before the icon swap (997),
+ * group markers (998) and visibility pass (999) run.
+ *
+ * @return void
+ */
+function blueworx_register_menus_shortcut() {
+	add_menu_page(
+		__( 'Menus', 'blueworx-labs-wordpress' ),
+		__( 'Menus', 'blueworx-labs-wordpress' ),
+		'edit_theme_options',
+		'nav-menus.php',
+		'',
+		'none'
+	);
+}
+if ( blueworx_feature_enabled( 'admin_theme' ) ) {
+	add_action( 'admin_menu', 'blueworx_register_menus_shortcut' );
 }
 
 /**
@@ -100,6 +128,7 @@ function blueworx_get_default_visible_admin_menu_slugs() {
 		'edit.php',
 		'upload.php',
 		'edit.php?post_type=page',
+		'nav-menus.php',
 		'users.php',
 	);
 }
