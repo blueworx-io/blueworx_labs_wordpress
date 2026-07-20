@@ -50,6 +50,12 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'security',
 			'detail'      => 'site_protection',
 		),
+		'client_roles'          => array(
+			'label'       => __( 'Client Roles', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Adds Business Owner, External Dev and Content Editor roles that show or hide backend areas for client accounts.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => 'client_roles',
+		),
 		'application_passwords' => array(
 			'label'       => __( 'Application Passwords', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-labs-wordpress' ),

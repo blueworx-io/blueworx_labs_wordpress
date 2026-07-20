@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.16.0] - 2026-07-20
+
+### Added
+- **Client Roles.** Three assignable roles for client accounts — **Admin —
+  Business Owner**, **External Dev** and **Content Editor** — that show or hide
+  whole backend areas, gated behind a new *Client Roles* toggle on BlueWorx >
+  Enhancements (on by default). Areas are hidden by capability where possible and
+  by the plugin's existing sidebar groups for third-party menus:
+  - *Business Owner* — everything except Plugins and the file/code editors; Tools
+    trimmed (no import/export). Keeps Settings, Appearance, Users and the store.
+  - *External Dev* — plugins, appearance, tools and settings, but no Users
+    management (own account only) and no file editors.
+  - *Content Editor* — posts, pages, media and comments, plus editing other
+    users' accounts (not deleting them, unless enabled below). Everything
+    technical is hidden.
+- **"Allow Content Editors to delete users"** setting under Client Roles, off by
+  default, which grants Content Editors the delete-user capability.
+- The three roles appear automatically in the Site Protection role lists.
+
+### Security
+- **Admin accounts protected from Content Editors.** A Content Editor's
+  user-editing capability cannot be used to edit, delete or promote an
+  administrator, closing a password-reset takeover path.
+- **BlueWorx console is administrators-only** when Client Roles is on — hidden and
+  URL-blocked for the client roles even though they may hold `manage_options`.
+
+### Notes
+- Client roles are registered on activation and via a one-time migration, persist
+  across deactivation, and are removed (definitions only) on uninstall — user
+  assignments are preserved, so reinstalling restores them.
+
 ## [1.15.1] - 2026-07-20
 
 ### Changed

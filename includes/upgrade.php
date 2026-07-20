@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 5;
+	return 6;
 }
 
 /**
@@ -327,6 +327,19 @@ function blueworx_migrate_remove_orphaned_roles() {
 }
 
 /**
+ * Registers the client roles on sites upgrading to 1.16.0.
+ *
+ * Fresh activations get the roles from the activation hook; this covers existing
+ * sites, where the activation hook does not fire on a plugin update. Idempotent
+ * and gated on the feature being enabled (which it is by default).
+ *
+ * @return void
+ */
+function blueworx_migrate_ensure_client_roles() {
+	blueworx_client_roles_maybe_ensure();
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -359,6 +372,10 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 5 ) {
 		blueworx_migrate_remove_orphaned_roles();
+	}
+
+	if ( $stored_version < 6 ) {
+		blueworx_migrate_ensure_client_roles();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

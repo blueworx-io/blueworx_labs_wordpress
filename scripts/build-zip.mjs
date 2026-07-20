@@ -9,7 +9,7 @@ const SLUG = 'blueworx-labs-wordpress';
 const DIST = 'dist';
 
 // Runtime files/dirs that ship inside the plugin folder.
-const REQUIRED = ['blueworx-labs-wordpress.php', 'readme.txt', 'includes', 'assets'];
+const REQUIRED = ['blueworx-labs-wordpress.php', 'uninstall.php', 'readme.txt', 'includes', 'assets'];
 const OPTIONAL = ['languages'];
 const INCLUDE = [...REQUIRED, ...OPTIONAL];
 
