@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.15.1] - 2026-07-20
+
+### Changed
+- **CI unblocked, not fixed.** The shared foundation workflow now fails any run
+  that executes zero Playwright tests. This project's `preview_url` is still a
+  placeholder, so every spec skips itself — meaning that gate would fail every
+  PR here. `ci.yml` now passes `allow_zero_tests: true`, which downgrades the
+  failure to a warning while the test-host decision is open.
+
+  **This project's CI asserts nothing today.** The flag is a suppressed alarm,
+  not a passing suite, and is tracked for removal in #24.
+- `ci.yml` now passes `secrets: inherit`, so `WP_ADMIN_USER` / `WP_ADMIN_PASS`
+  reach the Playwright step once they exist as repo secrets. Until then the
+  admin specs continue to skip.
+
 ## [1.15.0] - 2026-07-20
 
 ### Added
