@@ -6,3 +6,13 @@ jobs:
     with:
       preview_url: https://staging.placeholder.blueworx.io
       plugin_slug: blueworx-labs-wordpress
+      # TEMPORARY — remove with issue #24.
+      #
+      # preview_url above is a placeholder, so every spec skips itself and this
+      # project's CI asserts nothing. The foundation now fails a run that
+      # executes zero tests; without this flag that failure would block all
+      # unrelated work here while the test-host decision is still open.
+      #
+      # This is not a passing test suite. It is a suppressed alarm.
+      allow_zero_tests: true
+    secrets: inherit
