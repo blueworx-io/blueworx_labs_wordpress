@@ -46,6 +46,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-groups.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-icons.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-badges.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
+require_once BLUEWORX_LABS_PATH . 'includes/client-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
@@ -58,4 +59,5 @@ require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
 
 register_activation_hook( __FILE__, 'blueworx_headless_install' );
+register_activation_hook( __FILE__, 'blueworx_client_roles_maybe_ensure' );
 register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );

@@ -215,3 +215,166 @@ function blueworx_client_roles_remove_definitions() {
 
 	delete_option( 'blueworx_client_roles_signature' );
 }
+
+/**
+ * Gets the client role the current user holds, if any.
+ *
+ * @return string Role slug, or '' when the user holds none.
+ */
+function blueworx_current_user_client_role() {
+	$user = wp_get_current_user();
+
+	if ( ! $user || empty( $user->roles ) ) {
+		return '';
+	}
+
+	foreach ( blueworx_client_role_slugs() as $slug ) {
+		if ( in_array( $slug, (array) $user->roles, true ) ) {
+			return $slug;
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Whether a user holds the administrator role.
+ *
+ * @param WP_User|null $user User object.
+ * @return bool True for administrators.
+ */
+function blueworx_user_is_administrator( $user ) {
+	return $user instanceof WP_User && in_array( 'administrator', (array) $user->roles, true );
+}
+
+/**
+ * Gets the sidebar groups a client role may see.
+ *
+ * Items whose group is not listed are removed from the sidebar; items still
+ * appear only if the role's capabilities register them. Dashboard and Users are
+ * handled as exceptions (see blueworx_client_role_menu_exceptions()).
+ *
+ * @param string $role_slug Client role slug.
+ * @return array Group keys (from blueworx_get_admin_menu_groups()).
+ */
+function blueworx_get_client_role_visible_groups( $role_slug ) {
+	$map = array(
+		'blueworx_client_owner'  => array( 'overview', 'custom', 'content', 'site' ),
+		'blueworx_client_dev'    => array( 'custom', 'content', 'site' ),
+		'blueworx_client_editor' => array( 'custom', 'content' ),
+	);
+
+	return isset( $map[ $role_slug ] ) ? $map[ $role_slug ] : array();
+}
+
+/**
+ * Top-level slugs shown regardless of group (still capability-bounded).
+ *
+ * Dashboard is universal; Users is surfaced for the roles that carry a user
+ * capability (Business Owner, Content Editor), while External Dev has no user
+ * capability so the item never registers for them.
+ *
+ * @return array Slugs.
+ */
+function blueworx_client_role_menu_exceptions() {
+	return array( 'index.php', 'users.php' );
+}
+
+/**
+ * Removes top-level sidebar items outside the current client role's groups.
+ *
+ * Runs only for non-administrator users holding a client role. The BlueWorx
+ * console is removed unconditionally for them (administrators-only). Priority
+ * 9999 so it runs after core, third-party plugins and the admin-theme passes
+ * have registered and ordered the menu.
+ *
+ * @return void
+ */
+function blueworx_apply_client_role_menu_gating() {
+	if ( ! blueworx_feature_enabled( 'client_roles' ) ) {
+		return;
+	}
+
+	$user = wp_get_current_user();
+
+	if ( ! $user instanceof WP_User || ! $user->exists() || blueworx_user_is_administrator( $user ) ) {
+		return;
+	}
+
+	$role = blueworx_current_user_client_role();
+
+	if ( '' === $role ) {
+		return;
+	}
+
+	// Console is administrators-only; removing the parent drops its submenus too.
+	remove_menu_page( 'blueworx-labs-wordpress' );
+
+	$visible    = blueworx_get_client_role_visible_groups( $role );
+	$exceptions = blueworx_client_role_menu_exceptions();
+
+	global $menu;
+
+	foreach ( (array) $menu as $item ) {
+		$slug = isset( $item[2] ) ? (string) $item[2] : '';
+
+		if ( '' === $slug || 0 === strpos( $slug, 'separator' ) || 'blueworx-labs-wordpress' === $slug ) {
+			continue;
+		}
+
+		if ( in_array( $slug, $exceptions, true ) ) {
+			continue;
+		}
+
+		if ( ! in_array( blueworx_get_admin_menu_group_for_slug( $slug ), $visible, true ) ) {
+			remove_menu_page( $slug );
+		}
+	}
+}
+add_action( 'admin_menu', 'blueworx_apply_client_role_menu_gating', 9999 );
+
+/**
+ * Whether the BlueWorx console must be blocked for the current user.
+ *
+ * True when the feature is on and the user is a non-administrator holding a
+ * client role. Other roles are unaffected.
+ *
+ * @return bool True when the console should be blocked.
+ */
+function blueworx_client_roles_should_block_console() {
+	if ( ! blueworx_feature_enabled( 'client_roles' ) ) {
+		return false;
+	}
+
+	$user = wp_get_current_user();
+
+	if ( ! $user instanceof WP_User || blueworx_user_is_administrator( $user ) ) {
+		return false;
+	}
+
+	return '' !== blueworx_current_user_client_role();
+}
+
+/**
+ * Blocks direct URL access to the BlueWorx console pages for gated users.
+ *
+ * The menu is already removed for them; this stops hand-typed URLs.
+ *
+ * @return void
+ */
+function blueworx_block_console_page_access() {
+	if ( ! blueworx_client_roles_should_block_console() ) {
+		return;
+	}
+
+	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+	if ( in_array( $page, array( 'blueworx-labs-wordpress', 'blueworx-edit-menu', 'blueworx-cache' ), true ) ) {
+		wp_die(
+			esc_html__( 'You do not have access to this page.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'Client Roles', 'blueworx-labs-wordpress' ),
+			array( 'response' => 403 )
+		);
+	}
+}
+add_action( 'admin_init', 'blueworx_block_console_page_access' );
