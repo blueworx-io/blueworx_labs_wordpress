@@ -378,3 +378,50 @@ function blueworx_block_console_page_access() {
 	}
 }
 add_action( 'admin_init', 'blueworx_block_console_page_access' );
+
+/**
+ * Stops a Content Editor from editing, deleting or promoting administrators.
+ *
+ * Content Editors carry edit_users so they can manage lesser accounts, but that
+ * capability would otherwise let them reset an administrator's password and take
+ * over the site. WordPress has no native "edit users except admins" capability,
+ * so this denies the meta-cap when the target user is an administrator and the
+ * acting user is a Content Editor (and not themselves also an administrator).
+ *
+ * @param array  $caps    Required primitive capabilities.
+ * @param string $cap     Meta capability being checked.
+ * @param int    $user_id Acting user ID.
+ * @param array  $args    Extra args; $args[0] is the target user ID.
+ * @return array Filtered primitive capabilities.
+ */
+function blueworx_protect_admins_from_content_editors( $caps, $cap, $user_id, $args ) {
+	if ( ! blueworx_feature_enabled( 'client_roles' ) ) {
+		return $caps;
+	}
+
+	if ( ! in_array( $cap, array( 'edit_user', 'delete_user', 'promote_user', 'remove_user' ), true ) ) {
+		return $caps;
+	}
+
+	$actor = get_userdata( $user_id );
+
+	if ( ! $actor
+		|| ! in_array( 'blueworx_client_editor', (array) $actor->roles, true )
+		|| in_array( 'administrator', (array) $actor->roles, true )
+	) {
+		return $caps;
+	}
+
+	$target_id = isset( $args[0] ) ? (int) $args[0] : 0;
+
+	if ( $target_id && $target_id !== (int) $user_id ) {
+		$target = get_userdata( $target_id );
+
+		if ( $target && in_array( 'administrator', (array) $target->roles, true ) ) {
+			$caps[] = 'do_not_allow';
+		}
+	}
+
+	return $caps;
+}
+add_filter( 'map_meta_cap', 'blueworx_protect_admins_from_content_editors', 10, 4 );
