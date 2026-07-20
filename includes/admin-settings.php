@@ -192,6 +192,12 @@ function blueworx_save_feature_settings() {
 	// Application Passwords detail.
 	update_option( 'blueworx_show_application_passwords', isset( $_POST['blueworx_show_application_passwords'] ) ? '1' : '0' );
 
+	// Client Roles detail: allow Content Editors to delete users.
+	update_option( 'blueworx_client_editor_can_delete_users', isset( $_POST['blueworx_client_editor_can_delete_users'] ) ? '1' : '0' );
+
+	// Re-sync role capabilities to match the current toggle + delete setting.
+	blueworx_client_roles_maybe_ensure();
+
 	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
@@ -314,6 +320,27 @@ function blueworx_render_feature_detail( $key ) {
 			</p>
 			<?php
 		endforeach;
+		return;
+	}
+
+	if ( 'client_roles' === $key ) {
+		$definitions = blueworx_get_client_role_definitions();
+		?>
+		<p class="description">
+			<?php esc_html_e( 'Three assignable roles. Areas are shown or hidden by role; the roles also appear in Site Protection. Roles are remembered if the plugin is disabled or removed, and restored when it is re-added.', 'blueworx-labs-wordpress' ); ?>
+		</p>
+		<ul>
+			<?php foreach ( $definitions as $definition ) : ?>
+				<li><?php echo esc_html( $definition['label'] ); ?></li>
+			<?php endforeach; ?>
+		</ul>
+		<p>
+			<label>
+				<input type="checkbox" name="blueworx_client_editor_can_delete_users" value="1" <?php checked( blueworx_client_editor_can_delete_users() ); ?> />
+				<?php esc_html_e( 'Allow Content Editors to delete users', 'blueworx-labs-wordpress' ); ?>
+			</label>
+		</p>
+		<?php
 		return;
 	}
 
