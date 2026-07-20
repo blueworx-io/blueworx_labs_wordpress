@@ -4,6 +4,45 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.15.0] - 2026-07-20
+
+### Added
+- **Menus in the Site group.** The WordPress Menus editor (`nav-menus.php`),
+  which core nests under Appearance, is now promoted to its own top-level row in
+  the Site group of the re-skinned sidebar, directly after Appearance, with a
+  matching list icon.
+
+### Changed
+- **Default dashboard layout.** On dashboards a user has not customised, Elementor
+  Overview, Quick Draft and Site Management are hidden by default, leaving At a
+  Glance, SureRank Website Insights, Object Cache Pro, Site Health Status and
+  Activity visible. Applied through `default_hidden_meta_boxes`, so it only sets
+  the default and never overrides a user's own Screen Options; widgets whose
+  plugins are inactive are unaffected.
+- **Edit Menu arrows** now use inline-SVG chevrons from the sidebar icon set
+  (stroke 1.75, viewBox 24) in place of the `▲`/`▼` glyphs, so the reorder
+  controls match the rest of the re-skin.
+
+### Fixed
+- **Admin chrome flash on slow connections.** The layout skeleton that hides the
+  native admin bar and offsets the sidebar below the fixed top bar is now printed
+  inline in the document head, so it can no longer be deferred by an asset
+  optimiser or arrive late behind the main stylesheet. This removes the transient
+  stray line under the top bar and the sidebar overflowing its bounds before the
+  full theme applied.
+
+### Removed
+- **Orphaned managed roles.** A one-time migration removes the `Business Owner`,
+  `External Admin` and `Content Editor` roles left in the database by the role
+  editor removed in 1.8.0. A role is only removed when it has no users assigned;
+  any role still in use is left in place (and its slug recorded in
+  `blueworx_orphaned_roles_skipped`) so no account is stranded. The roles can be
+  reintroduced later.
+- **Stale PHPCS capability rule.** Dropped the `WordPress.WP.Capabilities`
+  override whitelisting `blueworx_edit_elementor_templates` — a remnant of the
+  same removed role editor; the capability and its `includes/user-roles.php` no
+  longer exist.
+
 ## [1.14.0] - 2026-07-16
 
 ### Changed

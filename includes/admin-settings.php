@@ -506,9 +506,9 @@ function blueworx_render_menu_editor_group( $group, $label, $items ) {
 					<span class="bw-menu-editor-handle" aria-hidden="true">⠿</span>
 					<span class="bw-menu-editor-label"><?php echo esc_html( $item_label ); ?></span>
 					<button type="button" class="button-link bw-menu-editor-up"
-						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s up', 'blueworx-labs-wordpress' ), $item_label ) ); ?>">▲</button>
+						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s up', 'blueworx-labs-wordpress' ), $item_label ) ); ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6"></path></svg></button>
 					<button type="button" class="button-link bw-menu-editor-down"
-						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s down', 'blueworx-labs-wordpress' ), $item_label ) ); ?>">▼</button>
+						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s down', 'blueworx-labs-wordpress' ), $item_label ) ); ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"></path></svg></button>
 					<input type="hidden" class="bw-menu-editor-order" name="blueworx_admin_menu_order[]" value="<?php echo esc_attr( $slug ); ?>" />
 					<input type="hidden" class="bw-menu-editor-group-input" name="<?php echo esc_attr( 'blueworx_admin_menu_groups[' . $slug . ']' ); ?>" value="<?php echo esc_attr( $group ); ?>" />
 					<?php if ( 'hidden' === $group ) : ?>

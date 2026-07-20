@@ -94,6 +94,49 @@ function blueworx_enqueue_admin_theme() {
 add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
 
 /**
+ * Prints the critical layout skeleton inline in <head>, before any stylesheet.
+ *
+ * The full re-skin lives in the enqueued admin-theme.css. On slow connections —
+ * or where an asset optimiser / cache plugin combines or defers the <link> — that
+ * external sheet can apply a few frames (sometimes seconds) after first paint. In
+ * that gap WordPress paints its native chrome: the dark #wpadminbar shows as a
+ * stray full-width line under the top bar, and the sidebar, not yet offset below
+ * the fixed 60px header, overlaps it. This handful of rules is printed inline in
+ * the document head, so it cannot be deferred or async-loaded and lands in the
+ * first paint, holding the corrected geometry until the full sheet arrives.
+ *
+ * Hooked on admin_print_styles at a low priority so it prints ahead of the
+ * enqueued admin-theme.css <link> (admin_head fires after styles are printed,
+ * which would place it too late and let the native chrome paint first).
+ *
+ * Values are literals (not the --bw-* custom properties) on purpose: those
+ * properties are defined in the external sheet, which is exactly the resource
+ * that may be late here. Keep the 60px top bar height in sync with
+ * --bw-topbar-h in admin-theme.css.
+ *
+ * @return void
+ */
+function blueworx_print_admin_theme_critical_css() {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return;
+	}
+	?>
+	<style id="blueworx-admin-critical">
+		@media only screen and (min-width: 783px) {
+			#wpadminbar { display: none !important; }
+			html.wp-toolbar { padding-top: 0 !important; }
+			#wpcontent { padding-top: 60px; }
+			#adminmenuback,
+			#adminmenuwrap { position: fixed !important; bottom: 0 !important; height: auto !important; }
+			#adminmenuback { top: 0 !important; }
+			#adminmenuwrap { top: 60px !important; left: 0; }
+		}
+	</style>
+	<?php
+}
+add_action( 'admin_print_styles', 'blueworx_print_admin_theme_critical_css', -100 );
+
+/**
  * Enqueues the login re-skin.
  *
  * @return void
@@ -304,6 +347,72 @@ function blueworx_render_dashboard_stats() {
 	}
 	echo '</div>';
 }
+
+/**
+ * Sets the dashboard widgets hidden by default.
+ *
+ * WordPress applies the default_hidden_meta_boxes filter only while a user has no
+ * saved metaboxhidden_dashboard preference, so this establishes the BlueWorx
+ * default layout without ever overriding anyone who has set their own Screen
+ * Options. The moment a user ticks their own boxes, their choice wins.
+ *
+ * Hides Elementor Overview, Quick Draft and Site Management; everything else —
+ * At a Glance (the BlueWorx hero tiles), SureRank Website Insights, Object Cache
+ * Pro, Site Health Status and Activity — stays visible. Nothing here depends on
+ * SureRank, Object Cache or Elementor being active: an inactive plugin never
+ * registers its widget, so its box is neither shown nor needs hiding.
+ *
+ * Quick Draft and Elementor Overview are matched by their stable IDs. Site
+ * Management has no documented stable ID, so it is matched by title against the
+ * live meta-box registry — additive, case-insensitive, and only ever hides a box
+ * that actually exists.
+ *
+ * @param array          $hidden Meta box IDs hidden by default.
+ * @param WP_Screen|null $screen Current screen.
+ * @return array Filtered hidden meta box IDs.
+ */
+function blueworx_default_hidden_dashboard_widgets( $hidden, $screen ) {
+	if ( ! blueworx_admin_theme_enabled() || ! isset( $screen->id ) || 'dashboard' !== $screen->id ) {
+		return $hidden;
+	}
+
+	$hidden = (array) $hidden;
+
+	// Boxes with stable IDs.
+	foreach ( array( 'dashboard_quick_press', 'e-dashboard-overview' ) as $id ) {
+		if ( ! in_array( $id, $hidden, true ) ) {
+			$hidden[] = $id;
+		}
+	}
+
+	// Boxes with no documented stable ID, matched by title against the registry.
+	$hide_by_title = array( 'site management' );
+	global $wp_meta_boxes;
+
+	if ( isset( $wp_meta_boxes['dashboard'] ) && is_array( $wp_meta_boxes['dashboard'] ) ) {
+		foreach ( $wp_meta_boxes['dashboard'] as $contexts ) {
+			foreach ( (array) $contexts as $boxes ) {
+				foreach ( (array) $boxes as $box ) {
+					if ( empty( $box['id'] ) || empty( $box['title'] ) || in_array( $box['id'], $hidden, true ) ) {
+						continue;
+					}
+
+					$title = strtolower( trim( wp_strip_all_tags( (string) $box['title'] ) ) );
+
+					foreach ( $hide_by_title as $needle ) {
+						if ( false !== strpos( $title, $needle ) ) {
+							$hidden[] = $box['id'];
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return array_values( array_unique( $hidden ) );
+}
+add_filter( 'default_hidden_meta_boxes', 'blueworx_default_hidden_dashboard_widgets', 10, 2 );
 
 /**
  * Marks the first visible item of each semantic group and queues its heading.

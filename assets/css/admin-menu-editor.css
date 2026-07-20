@@ -75,6 +75,16 @@
 	text-decoration: none;
 }
 
+.bw-menu-editor-up svg,
+.bw-menu-editor-down svg {
+	display: block;
+}
+
+.bw-menu-editor-up:hover,
+.bw-menu-editor-down:hover {
+	color: #4f46e5;
+}
+
 .bw-menu-editor-up:focus,
 .bw-menu-editor-down:focus {
 	box-shadow: 0 0 0 2px #4f46e5;

@@ -67,6 +67,10 @@ function blueworx_get_admin_menu_group_rules() {
 		'edit.php?post_type=page' => 'content',
 		'edit-comments.php'       => 'content',
 		'themes.php'              => 'site',
+		// Menus editor, promoted to a top-level Site row by
+		// blueworx_register_menus_shortcut(). Sits directly after Appearance,
+		// where WordPress nests it as a submenu.
+		'nav-menus.php'           => 'site',
 		'plugins.php'             => 'site',
 		'users.php'               => 'site',
 		'tools.php'               => 'site',

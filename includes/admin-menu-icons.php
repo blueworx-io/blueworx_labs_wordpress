@@ -75,6 +75,8 @@ function blueworx_get_admin_menu_icon_paths() {
 		'users.php'               => '<circle cx="12" cy="8" r="3.5"></circle><path d="M4.5 20c1.5-4 4.5-6 7.5-6s6 2 7.5 6"></path>',
 		// Tools — wrench.
 		'tools.php'               => '<path d="M14.7 6.3a4 4 0 00-5.3 5.3L3 18v3h3l6.4-6.4a4 4 0 005.3-5.3l-2.9 2.9-2.1-2.1 2.9-2.9z"></path>',
+		// Menus — list.
+		'nav-menus.php'           => '<path d="M8 6h13M8 12h13M8 18h13"></path><path d="M3 6h.01M3 12h.01M3 18h.01"></path>',
 		// Settings — gear.
 		'options-general.php'     => '<circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 00-2-1.2L14 3h-4l-.6 2.6a7 7 0 00-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 002 1.2L10 21h4l.6-2.6a7 7 0 002-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"></path>',
 		// Custom content — shapes (custom post types and unmapped plugin menus).
