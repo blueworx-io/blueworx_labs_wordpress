@@ -69,6 +69,10 @@ function blueworx_save_edit_menu_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
 
+	if ( blueworx_client_roles_should_block_console() ) {
+		wp_die( esc_html__( 'You do not have access to this action.', 'blueworx-labs-wordpress' ), '', array( 'response' => 403 ) );
+	}
+
 	check_admin_referer( 'blueworx_save_admin_menu_order' );
 
 	$raw_order  = isset( $_POST['blueworx_admin_menu_order'] ) ? (array) wp_unslash( $_POST['blueworx_admin_menu_order'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below with sanitize_text_field.
@@ -167,6 +171,10 @@ function blueworx_save_feature_settings() {
 	}
 
 	check_admin_referer( 'blueworx_save_feature_settings' );
+
+	if ( blueworx_client_roles_should_block_console() ) {
+		wp_die( esc_html__( 'You do not have access to this action.', 'blueworx-labs-wordpress' ), '', array( 'response' => 403 ) );
+	}
 
 	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
