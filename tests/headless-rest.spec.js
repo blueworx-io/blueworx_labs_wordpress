@@ -66,4 +66,23 @@ test.describe('Headless REST layer', () => {
     const acao = res.headers()['access-control-allow-origin'];
     expect(acao, 'disallowed origins must not be echoed').not.toBe('https://not-allowed.example.com');
   });
+
+  // wp/v2 matters as much as our own namespace: the headless front-end reads
+  // content bodies from it, so a permissive handler there is just as exploitable.
+  // Core's default echoes any origin with credentials, and removing it is the
+  // only thing that closes this — an allowlist alongside it does nothing.
+  test('CORS is not granted to a disallowed origin on core routes either', async () => {
+    const res = await api.get('wp/v2/types', { headers: { Origin: 'https://not-allowed.example.com' } });
+    const acao = res.headers()['access-control-allow-origin'];
+    expect(acao, 'core routes must not echo disallowed origins').not.toBe(
+      'https://not-allowed.example.com'
+    );
+  });
+
+  // A denied request must still vary on Origin, or a shared cache can hand one
+  // origin's response to another and undo the check above.
+  test('responses vary on Origin even when CORS is denied', async () => {
+    const res = await api.get(`${ns}/site`, { headers: { Origin: 'https://not-allowed.example.com' } });
+    expect(String(res.headers().vary || '')).toContain('Origin');
+  });
 });

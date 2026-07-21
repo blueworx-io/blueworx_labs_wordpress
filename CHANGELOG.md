@@ -4,6 +4,38 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.16.2] - 2026-07-21
+
+### Security
+- **The CORS allowlist now actually restricts origins.** WordPress core echoes
+  any `Origin` back with `Access-Control-Allow-Credentials: true` on REST routes.
+  Core's handler ran first and this plugin's allowlist only ever *declined to add*
+  headers — it never removed core's — so any site could make credentialed
+  cross-origin calls to `blueworx/v1` and `wp/v2` and read the responses. That
+  matters here because the refresh cookie is deliberately `SameSite=None`.
+  Core's handler is now removed and replaced, so a disallowed origin receives no
+  `Access-Control-Allow-Origin` at all.
+- **Fails closed.** An empty allowlist now denies every cross-origin caller
+  instead of effectively allowing everyone.
+- `Vary: Origin` is sent whether or not the origin is allowed, so a shared cache
+  cannot serve one origin's response to another.
+
+### Changed
+- CORS now covers `wp/v2` as well as `blueworx/v1`, because the headless
+  front-end reads content bodies from `wp/v2` and simply removing core's handler
+  would otherwise have broken it. Namespaces are filterable via
+  `blueworx_headless_cors_namespaces`.
+- Allowed responses now also send `X-WP-Nonce` in `Access-Control-Allow-Headers`
+  and expose `X-WP-Total`, `X-WP-TotalPages` and `Link`, matching what core used
+  to provide so pagination keeps working.
+
+### Notes
+- **Breaking for other REST namespaces.** Third-party namespaces outside
+  `blueworx/v1` and `wp/v2` no longer receive CORS headers, since core's
+  permissive handler is gone. Add them via the filter if an integration needs
+  them — deliberately opt-in rather than open by default.
+- Found by #24's harness the first time the suite ran for real. Fixes #35.
+
 ## [1.16.1] - 2026-07-21
 
 ### Changed
