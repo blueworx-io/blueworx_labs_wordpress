@@ -189,9 +189,22 @@ function blueworx_public_current_template() {
 	$slug  = array_search( $post->ID, $map, true );
 
 	// Fall back to the slug so a fresh install works before the option is
-	// written, and so a manually created page still resolves.
+	// written, and so a manually created page still resolves — but only when
+	// that slug has no entry in the map at all. A slug the map already claims
+	// belongs exclusively to the mapped ID: if an admin renames that page away
+	// and a different, unrelated page later takes the freed slug, the new
+	// page's ID will not be in the map (so array_search fails) but its slug
+	// still collides with the map entry. Falling through to the static
+	// registry in that case would render the plugin's template over a page
+	// it does not own.
 	if ( false === $slug ) {
-		$slug = $post->post_name;
+		$candidate_slug = $post->post_name;
+
+		if ( isset( $map[ $candidate_slug ] ) && (int) $map[ $candidate_slug ] !== (int) $post->ID ) {
+			return null;
+		}
+
+		$slug = $candidate_slug;
 	}
 
 	if ( ! isset( $pages[ $slug ] ) ) {

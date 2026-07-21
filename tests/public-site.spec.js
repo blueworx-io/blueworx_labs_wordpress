@@ -1,7 +1,11 @@
 // Public-site specs are logged out by definition, so every navigation goes
 // through cacheBust() — Cloudways Varnish caches logged-out responses and a
 // stale hit makes a passing build look broken (see tests/helpers.js:88-105).
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
 import { test, isPlaceholder, cacheBust, login, ADMIN_USER, ADMIN_PASS } from './helpers.js';
 
@@ -274,6 +278,132 @@ test.describe('Public site', () => {
       await page.getByRole('button', { name: 'Save Changes' }).click();
       await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
     }
+  });
+});
+
+const PAGES_PHP = fileURLToPath(new URL('../includes/public/pages.php', import.meta.url));
+
+/**
+ * Directly invokes the real blueworx_public_current_template() against a
+ * synthetic blueworx_public_page_ids map and queried post, entirely outside
+ * WordPress.
+ *
+ * WHY HERMETIC RATHER THAN BROWSER-DRIVEN: the slug-collision bug this guards
+ * against lives entirely inside blueworx_public_current_template()'s
+ * ownership-resolution logic, but that function's return value has no
+ * browser-observable effect yet. `template_include` is not hooked to it until
+ * Task 4, and the one consumer that exists today
+ * (blueworx_enqueue_public_assets(), via blueworx_public_is_owned_page())
+ * is itself gated on file_exists() for templates/pages/home.php — which does
+ * not exist yet either (also Task 4). So right now EVERY call returns null
+ * regardless of this bug, and a real "rename via Quick Edit, create a
+ * colliding page, load it in a browser" repro would pass identically whether
+ * the bug is present or fixed — a vacuous test. This harness instead
+ * `require`s the actual production file with the handful of WordPress
+ * functions it touches stubbed (get_option, is_page, get_queried_object,
+ * WP_Post, …) and a throwaway template file so file_exists() succeeds, then
+ * calls the real function with a fixture matching the exact defect scenario.
+ *
+ * ONCE TASK 4 LANDS (templates/pages/home.php + the template_include hook),
+ * replace this with a true end-to-end test: rename the Home page's slug via
+ * Quick Edit (see "a renamed plugin-owned page stays exempt" above), create a
+ * new page with the freed slug, visit it, and assert `.bw-page` has count 0
+ * — i.e. the plugin did not render its template over the new page.
+ *
+ * @param {object} fixture
+ * @param {Record<string, number>} fixture.map  The blueworx_public_page_ids option value.
+ * @param {number} fixture.postId               The queried post's ID.
+ * @param {string} fixture.postName              The queried post's current slug.
+ * @return {string} 'NULL' when the function returned null, otherwise the resolved template path.
+ */
+function resolveOwnedTemplate({ map, postId, postName }) {
+  const workDir = mkdtempSync(join(tmpdir(), 'bw-pages-test-'));
+
+  try {
+    const templateDir = join(workDir, 'templates', 'pages');
+    mkdirSync(templateDir, { recursive: true });
+    writeFileSync(join(templateDir, 'home.php'), '<?php // test stub, never executed\n');
+
+    // Forward slashes: safe in a PHP path on every platform and avoids
+    // Windows backslashes breaking out of the single-quoted PHP literals below.
+    const bwPath = `${workDir.replace(/\\/g, '/')}/`;
+    const pagesPhp = PAGES_PHP.replace(/\\/g, '/');
+
+    const script = `<?php
+define( 'ABSPATH', '${bwPath}' );
+define( 'BLUEWORX_LABS_PATH', '${bwPath}' );
+
+class WP_Post {
+	public $ID;
+	public $post_name;
+	public function __construct( $id, $post_name ) {
+		$this->ID        = $id;
+		$this->post_name = $post_name;
+	}
+}
+
+function __( $text, $domain = 'default' ) { return $text; }
+function apply_filters( $tag, $value ) { return $value; }
+function add_filter( $tag, $callback, $priority = 10 ) { /* no-op */ }
+function get_option( $name, $default = false ) {
+	if ( 'blueworx_public_page_ids' === $name ) {
+		return json_decode( '${JSON.stringify(map)}', true );
+	}
+	return $default;
+}
+function is_admin() { return false; }
+function is_page() { return true; }
+function get_queried_object() { return new WP_Post( ${postId}, '${postName}' ); }
+
+require '${pagesPhp}';
+
+$result = blueworx_public_current_template();
+echo null === $result ? 'NULL' : $result;
+`;
+
+    const scriptPath = join(workDir, 'harness.php');
+    writeFileSync(scriptPath, script);
+
+    return execFileSync('php', [scriptPath], { encoding: 'utf8' }).trim();
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+// Deliberately outside the "Public site" describe above: it needs neither a
+// browser nor a live WordPress target (see resolveOwnedTemplate()'s doc
+// comment for why), so it must never be skipped by the isPlaceholder /
+// ADMIN_USER / ADMIN_PASS gate that guards the rest of this file.
+test.describe('Public page ownership resolution (blueworx_public_current_template)', () => {
+  test('a page reusing a slug freed by a rename is not hijacked', () => {
+    // THE DEFECT: admin renames the Home page's slug away from "home" — the
+    // map still points its "home" key at that page's ID (111). Later, an
+    // unrelated page is created and takes the now-free slug "home" (ID 222).
+    // 222 is not in the map, so array_search() fails; the buggy fallback then
+    // matched purely on post_name against the static registry, hijacking a
+    // page the plugin does not own.
+    const result = resolveOwnedTemplate({ map: { home: 111 }, postId: 222, postName: 'home' });
+
+    expect(
+      result,
+      'a page whose slug collides with a DIFFERENT mapped ID must not resolve to the plugin template'
+    ).toBe('NULL');
+  });
+
+  test('a fresh install with no map entry still resolves by slug', () => {
+    // Guards the fallback's actual purpose: before blueworx_public_page_ids
+    // is ever written (fresh activation), a page must still be found by slug.
+    const result = resolveOwnedTemplate({ map: {}, postId: 333, postName: 'home' });
+
+    expect(result, 'an unmapped slug must still fall back to the static registry').not.toBe('NULL');
+  });
+
+  test('a renamed page is still recognised by its mapped ID', () => {
+    // Guards the other direction: the page the map actually points at must
+    // keep resolving after a rename, however its slug reads now.
+    const result = resolveOwnedTemplate({ map: { home: 111 }, postId: 111, postName: 'home-renamed-xyz' });
+
+    expect(result, 'the mapped ID must still resolve regardless of its current slug').not.toBe('NULL');
   });
 });
 

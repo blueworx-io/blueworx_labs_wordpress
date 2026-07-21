@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.19.3] - 2026-07-21
+
+### Fixed
+- **Slug-collision hijack in `blueworx_public_current_template()`.** After a
+  rename, the map's `home` key keeps pointing at the renamed page's ID. If a
+  different, unrelated page later takes the now-free `home` slug, its ID is
+  not in the map, so `array_search()` fails and the code fell back to
+  matching the static registry purely by slug — rendering the plugin's Home
+  template over a page it does not own. The fallback now only resolves by
+  slug when the map has no entry for that slug at all; if the slug is
+  already claimed by a different mapped ID, the page is correctly reported as
+  not owned. The fresh-install path (no map entry yet) is unaffected.
+
 ## [1.19.2] - 2026-07-21
 
 ### Fixed
