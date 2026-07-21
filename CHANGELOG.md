@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.16.1] - 2026-07-21
+
+### Changed
+- **CI now actually tests this plugin.** `ci.yml` switches to
+  `use_local_wordpress: true`, so each run provisions a disposable WordPress on
+  the runner (PHP + SQLite, no Docker) and tests against that instead of a
+  placeholder staging URL. Also passes `wp_login_path: admin_login`, because this
+  plugin moves the login screen off `wp-login.php` and every admin spec would
+  otherwise fail at the sign-in step.
+- Removed `allow_zero_tests`. It was a suppressed alarm added in 1.15.1 to keep
+  the repo unblocked; with a real test target the gate can do its job.
+- `.wp-test/` added to `.gitignore` — it holds a full WordPress tree.
+
+### Notes
+- For context on what this changes: the suite had been skipping **all 40 tests**
+  in CI since it was written, reporting green while asserting nothing. Running it
+  for real surfaced #35, #36 and #37.
+- Run the same instance locally:
+  `node ../bluegroup_core_foundation/scripts/wp-test-env.mjs up --plugin .`
+  See `docs/wordpress-test-harness.md` in the foundation.
+
 ## [1.16.0] - 2026-07-20
 
 ### Added
