@@ -4,6 +4,46 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.17.0] - 2026-07-21
+
+### Added
+- **`POST blueworx/v1/render` — shortcodes that actually work on a headless
+  front-end.** A shortcode's markup already reached the front-end via
+  `content.rendered`, but its CSS and JS never did: plugins enqueue those on
+  `wp_enqueue_scripts`, which does not fire for a REST request. Anything
+  interactive therefore arrived as inert markup or an empty container. This
+  endpoint renders the shortcode and returns the assets it enqueued —
+  `{ html, shortcodes, styles[], scripts[] }` — including `wp_localize_script`
+  data and inline before/after scripts, so the front-end can load them alongside
+  the markup.
+  - Returns the **full dependency closure in load order**, not just the handles
+    enqueued directly. WordPress resolves dependencies at print time, which never
+    happens here, so a front-end given only the enqueued handle would load a
+    script whose jQuery dependency was missing and it would throw.
+  - Relative asset URLs are made absolute, since the front-end is on another
+    origin and could not resolve them otherwise.
+  - `with_global_enqueue: true` also fires `wp_enqueue_scripts` for plugins that
+    register assets there rather than in the shortcode callback. Off by default,
+    because it also pulls in everything the theme and other plugins enqueue.
+- **"Renderable shortcodes" setting** under BlueWorx → Headless.
+
+### Security
+- The render endpoint **fails closed**: the allowlist is empty by default and the
+  endpoint refuses everything until tags are named explicitly. A shortcode is a
+  PHP function, so an unrestricted `do_shortcode()` on public input would be
+  remote code execution by proxy.
+- A request mixing allowlisted and non-allowlisted tags is refused whole, rather
+  than returning partial markup that looks like a success.
+- Rate limited (30 per 5 minutes per IP), and output buffering prevents anything
+  a callback echoes from corrupting the JSON body.
+
+### Notes
+- **This is a workaround, not a cure.** Shortcodes depending on `wp_head`, the
+  loop, or inline output outside the enqueue system may still misbehave, and each
+  third-party plugin is its own compatibility question. `HEADLESS_INTEGRATION.md`
+  §6.3 documents the contract and the limits.
+- Closes #25. The front-end side is `bluegroup_project_blueworx#11`.
+
 ## [1.16.4] - 2026-07-21
 
 ### Fixed
