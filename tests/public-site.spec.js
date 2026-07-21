@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
-import { test, isPlaceholder, cacheBust, login, ADMIN_USER, ADMIN_PASS } from './helpers.js';
+import { test, isPlaceholder, cacheBust, login, baseURL, ADMIN_USER, ADMIN_PASS } from './helpers.js';
 
 // A keyframe step ("0%", "100%", "from", "to") is the one kind of bare-looking
 // prelude this file legitimately needs — it is never a document element and
@@ -16,6 +16,16 @@ const isKeyframeStop = (branch) => branch === 'from' || branch === 'to' || /^\d+
 
 test.describe('Public site', () => {
   test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No real WordPress target configured.');
+
+  test('the front page renders from the plugin, not the theme', async ({ page }) => {
+    await page.goto(cacheBust('/'));
+
+    // .bw-page is the plugin's wrapper and the scope for every ported style.
+    await expect(page.locator('.bw-page')).toHaveCount(1);
+    // wp_head must still run or other plugins and the admin bar break.
+    await expect(page.locator('head link[href*="public.css"]')).toHaveCount(1);
+    await expect(page.locator('main > div')).toHaveCount(1);
+  });
 
   test('the public_site feature is registered and on by default', async ({ page }) => {
     await login(page);
@@ -122,31 +132,47 @@ test.describe('Public site', () => {
     }
   });
 
-  test('"/" is not exempt from Site Protection while show_on_front is still the default', async ({
+  test('"/" is not exempt from Site Protection when show_on_front is not a plugin-owned page', async ({
     page,
     browser,
   }) => {
     // WHY THIS TEST EXISTS: blueworx_public_is_owned_request_path() used to
-    // treat "/" as an owned page unconditionally. "/" only becomes an owned
-    // page once WordPress's front page is actually pointed at one of the
-    // plugin's pages (Task 4, not done yet) — until then it is WordPress's
-    // own default posts index, not a page this plugin renders. Exempting it
-    // from Site Protection would weaken the gate at the site root, the one
-    // path every anonymous visitor hits first.
+    // treat "/" as an owned page unconditionally. "/" only counts as owned
+    // when show_on_front is 'page' AND page_on_front is one of the plugin's
+    // mapped page IDs (pages.php). Task 4 makes activation set exactly that
+    // state for the Home page, so a fresh install never reaches the
+    // "not owned" branch on its own any more — but Settings > Reading can
+    // still be flipped back to "Your latest posts" by an admin (or another
+    // plugin) at any time, and "/" must stop being exempt the moment that
+    // happens, since it reverts to WordPress's own default posts index.
     await login(page);
 
+    const readingPath = '/wp-admin/options-reading.php';
+    await page.goto(cacheBust(readingPath));
+    const originalPageOnFront = await page.locator('select[name="page_on_front"]').inputValue();
+
     const settingsPath = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
-    await page.goto(cacheBust(settingsPath));
 
     const siteProtectionToggle = page.locator(
       'input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]'
     );
     const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
 
-    const featureWasChecked = await siteProtectionToggle.isChecked();
-    const frontendWasChecked = await frontendToggle.isChecked();
+    let featureWasChecked;
+    let frontendWasChecked;
+    let frontChanged = false;
 
     try {
+      // Move the site off "a static page" so "/" is WordPress's default
+      // posts index again — the exact state this test guards.
+      await page.locator('input[name="show_on_front"][value="posts"]').check();
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      frontChanged = true;
+
+      await page.goto(cacheBust(settingsPath));
+      featureWasChecked = await siteProtectionToggle.isChecked();
+      frontendWasChecked = await frontendToggle.isChecked();
+
       if (!featureWasChecked) {
         await siteProtectionToggle.setChecked(true);
       }
@@ -160,8 +186,8 @@ test.describe('Public site', () => {
 
       expect(
         response && response.status(),
-        '"/" must still be gated (wp_die 403) by Site Protection — it is the default posts ' +
-          'index, not yet a plugin-owned page'
+        '"/" must still be gated (wp_die 403) by Site Protection when show_on_front is not a ' +
+          'plugin-owned page'
       ).toBe(403);
 
       await loggedOutContext.close();
@@ -169,15 +195,26 @@ test.describe('Public site', () => {
       // Restore both toggles even if an assertion above failed, so this test
       // never leaves the site inaccessible for the rest of the suite or a
       // real visitor.
-      await page.goto(cacheBust(settingsPath));
-      await page
-        .locator('input[name="blueworx_frontend_protection_enabled"]')
-        .setChecked(frontendWasChecked);
-      await page
-        .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
-        .setChecked(featureWasChecked);
-      await page.getByRole('button', { name: 'Save Changes' }).click();
-      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      if (undefined !== featureWasChecked) {
+        await page.goto(cacheBust(settingsPath));
+        await page
+          .locator('input[name="blueworx_frontend_protection_enabled"]')
+          .setChecked(frontendWasChecked);
+        await page
+          .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
+          .setChecked(featureWasChecked);
+        await page.getByRole('button', { name: 'Save Changes' }).click();
+        await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      }
+
+      // Put "/" back on the Home page last, so a failure above never leaves
+      // the site root serving the default posts index.
+      if (frontChanged) {
+        await page.goto(cacheBust(readingPath));
+        await page.locator('input[name="show_on_front"][value="page"]').check();
+        await page.locator('select[name="page_on_front"]').selectOption(originalPageOnFront);
+        await page.getByRole('button', { name: 'Save Changes' }).click();
+      }
     }
   });
 
@@ -191,6 +228,13 @@ test.describe('Public site', () => {
     // renamed page, but the path check — and therefore the Site Protection
     // exemption — did not, so a real visitor to the renamed page would get
     // wp_die()'d on a page the plugin still owns.
+    //
+    // Home is also WordPress's configured front page (Task 4), so its admin
+    // "View" link — and get_permalink() itself — always read home_url('/')
+    // regardless of its actual slug. That is WordPress's own front-page
+    // special-casing, not this plugin, so the real current slug is read
+    // straight out of Quick Edit instead, and the renamed page's URL is
+    // built directly rather than off the (unhelpfully always-"/") View link.
     await login(page);
 
     await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
@@ -198,9 +242,15 @@ test.describe('Public site', () => {
       has: page.locator('.row-title', { hasText: 'Home' }),
     });
 
-    const originalUrl = await homeRow.locator('.row-actions .view a').getAttribute('href');
-    expect(originalUrl, 'the Home page must expose a public URL').toBeTruthy();
-    const originalSlug = new URL(originalUrl).pathname.replace(/^\/+|\/+$/g, '');
+    await homeRow.hover();
+    await homeRow.locator('button.editinline').click();
+    const originalSlugInput = page.locator('input[name="post_name"]:visible');
+    await expect(originalSlugInput).toBeVisible();
+    const originalSlug = await originalSlugInput.inputValue();
+    expect(originalSlug, 'the Home page must have a slug').toBeTruthy();
+    // Cancel out of Quick Edit without saving — this was only a read.
+    await page.locator('.inline-edit-save button.cancel:visible').click();
+    await expect(originalSlugInput).toBeHidden();
     const newSlug = `home-renamed-${Date.now()}`;
 
     const settingsPath = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
@@ -240,13 +290,17 @@ test.describe('Public site', () => {
       await expect(slugInput).toBeHidden();
       renamed = true;
 
-      const renamedUrl = await homeRow.locator('.row-actions .view a').getAttribute('href');
-      expect(renamedUrl, 'the renamed page must still expose a public URL').toContain(newSlug);
+      const renamedUrl = `${baseURL}/${newSlug}/`;
 
       const loggedOutContext = await browser.newContext();
       const loggedOutPage = await loggedOutContext.newPage();
       const response = await loggedOutPage.goto(cacheBust(renamedUrl));
 
+      // Site Protection gates on `init`, before WordPress's own
+      // redirect_canonical() sends the front page's slug URL back to "/" —
+      // an unexempted request 403s right here and never reaches that
+      // redirect. A 200 (after following the redirect to "/", which must
+      // also stay exempt) proves the exemption held throughout.
       expect(
         response && response.status(),
         'a renamed plugin-owned page must still be exempt (200, not wp_die 403) from Site Protection'
@@ -279,6 +333,108 @@ test.describe('Public site', () => {
       await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
     }
   });
+
+  test('a page whose slug collides with a freed owned slug renders its own content, not the plugin template', async ({
+    page,
+    browser,
+  }) => {
+    // WHY THIS TEST EXISTS: this is the real end-to-end version of the defect
+    // covered hermetically below by "Public page ownership resolution"
+    // (a page reusing a slug freed by a rename is not hijacked). That harness
+    // calls blueworx_public_current_template() directly because, until
+    // template_include was wired (this task), its return value had no
+    // browser-observable effect. Now it does, so this reproduces the actual
+    // scenario end-to-end: rename Home away from "home" (the map keeps
+    // pointing 'home' at Home's ID — renaming never touches the map), hand
+    // the freed "home" slug to an unrelated page (WordPress's default Sample
+    // Page), and confirm that unrelated page renders its OWN theme output —
+    // not the plugin's .bw-page template — even though its slug now matches
+    // a key in blueworx_public_page_ids.
+    await login(page);
+
+    await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
+    const homeRow = page.locator('#the-list tr', {
+      has: page.locator('.row-title', { hasText: 'Home' }),
+    });
+    const sampleRow = page.locator('#the-list tr', {
+      has: page.locator('.row-title', { hasText: 'Sample Page' }),
+    });
+
+    const originalHomeUrl = await homeRow.locator('.row-actions .view a').getAttribute('href');
+    expect(originalHomeUrl, 'the Home page must expose a public URL').toBeTruthy();
+    const homeSlug = new URL(originalHomeUrl).pathname.replace(/^\/+|\/+$/g, '');
+    const tempHomeSlug = `home-collision-${Date.now()}`;
+
+    const originalSampleUrl = await sampleRow.locator('.row-actions .view a').getAttribute('href');
+    expect(
+      originalSampleUrl,
+      'a default "Sample Page" must exist on a fresh install to reuse the freed slug'
+    ).toBeTruthy();
+    const sampleSlug = new URL(originalSampleUrl).pathname.replace(/^\/+|\/+$/g, '');
+
+    let homeRenamed = false;
+    let sampleRenamed = false;
+
+    try {
+      // Free the "home" slug: rename Home away from it. The map still maps
+      // 'home' => Home's ID afterwards — renaming never updates the map.
+      await homeRow.hover();
+      await homeRow.locator('button.editinline').click();
+      let slugInput = page.locator('input[name="post_name"]:visible');
+      await expect(slugInput).toBeVisible();
+      await slugInput.fill(tempHomeSlug);
+      await page.locator('.inline-edit-save button.save:visible').click();
+      await expect(slugInput).toBeHidden();
+      homeRenamed = true;
+
+      // Hand the now-free "home" slug to a completely unrelated page.
+      await sampleRow.hover();
+      await sampleRow.locator('button.editinline').click();
+      slugInput = page.locator('input[name="post_name"]:visible');
+      await expect(slugInput).toBeVisible();
+      await slugInput.fill(homeSlug);
+      await page.locator('.inline-edit-save button.save:visible').click();
+      await expect(slugInput).toBeHidden();
+      sampleRenamed = true;
+
+      const collidedUrl = await sampleRow.locator('.row-actions .view a').getAttribute('href');
+      expect(collidedUrl, 'the unrelated page must now expose the freed slug').toContain(homeSlug);
+
+      const loggedOutContext = await browser.newContext();
+      const loggedOutPage = await loggedOutContext.newPage();
+      const response = await loggedOutPage.goto(cacheBust(collidedUrl));
+
+      expect(response && response.status(), 'the colliding page must still load').toBe(200);
+      await expect(
+        loggedOutPage.locator('.bw-page'),
+        'a page whose slug collides with a freed owned slug must render its own (theme) content — not be hijacked by the plugin template'
+      ).toHaveCount(0);
+
+      await loggedOutContext.close();
+    } finally {
+      // Restore both slugs even if an assertion above failed, so the site is
+      // left exactly as found for the rest of the suite.
+      if (sampleRenamed) {
+        await sampleRow.hover();
+        await sampleRow.locator('button.editinline').click();
+        const slugInput = page.locator('input[name="post_name"]:visible');
+        await expect(slugInput).toBeVisible();
+        await slugInput.fill(sampleSlug);
+        await page.locator('.inline-edit-save button.save:visible').click();
+        await expect(slugInput).toBeHidden();
+      }
+
+      if (homeRenamed) {
+        await homeRow.hover();
+        await homeRow.locator('button.editinline').click();
+        const slugInput = page.locator('input[name="post_name"]:visible');
+        await expect(slugInput).toBeVisible();
+        await slugInput.fill(homeSlug);
+        await page.locator('.inline-edit-save button.save:visible').click();
+        await expect(slugInput).toBeHidden();
+      }
+    }
+  });
 });
 
 const PAGES_PHP = fileURLToPath(new URL('../includes/public/pages.php', import.meta.url));
@@ -304,11 +460,14 @@ const PAGES_PHP = fileURLToPath(new URL('../includes/public/pages.php', import.m
  * WP_Post, …) and a throwaway template file so file_exists() succeeds, then
  * calls the real function with a fixture matching the exact defect scenario.
  *
- * ONCE TASK 4 LANDS (templates/pages/home.php + the template_include hook),
- * replace this with a true end-to-end test: rename the Home page's slug via
- * Quick Edit (see "a renamed plugin-owned page stays exempt" above), create a
- * new page with the freed slug, visit it, and assert `.bw-page` has count 0
- * — i.e. the plugin did not render its template over the new page.
+ * TASK 4 HAS NOW LANDED (templates/pages/home.php + the template_include
+ * hook), so the return value of blueworx_public_current_template() is
+ * browser-observable and the real end-to-end version of this scenario exists
+ * above: "a page whose slug collides with a freed owned slug renders its own
+ * content, not the plugin template". This hermetic harness is kept alongside
+ * it deliberately — it is far cheaper to run (no browser, no WordPress) and
+ * pins the exact defect inside the resolution function itself, while the
+ * browser test pins the end-to-end behaviour a real visitor sees.
  *
  * @param {object} fixture
  * @param {Record<string, number>} fixture.map  The blueworx_public_page_ids option value.

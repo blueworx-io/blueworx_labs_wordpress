@@ -71,6 +71,14 @@ function blueworx_public_install_pages() {
 	}
 
 	update_option( 'blueworx_public_page_ids', $map );
+
+	// "/" only becomes an owned page once the front page is actually pointed
+	// at the plugin's home page — see blueworx_public_is_owned_request_path()
+	// for why that condition matters at init time as well.
+	if ( isset( $map['home'] ) ) {
+		update_option( 'show_on_front', 'page' );
+		update_option( 'page_on_front', (int) $map['home'] );
+	}
 }
 
 /**
@@ -236,3 +244,16 @@ function blueworx_public_exempt_from_site_protection( $protected ) {
 	return blueworx_public_is_owned_request_path() ? false : $protected;
 }
 add_filter( 'blueworx_site_protection_applies', 'blueworx_public_exempt_from_site_protection', 10 );
+
+/**
+ * Hands rendering of owned pages to the plugin's own template.
+ *
+ * @param string $template Theme template WordPress resolved.
+ * @return string Template path to load.
+ */
+function blueworx_public_template( $template ) {
+	$own = blueworx_public_current_template();
+
+	return null === $own ? $template : $own;
+}
+add_filter( 'template_include', 'blueworx_public_template' );

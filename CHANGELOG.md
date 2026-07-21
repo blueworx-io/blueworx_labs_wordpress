@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.20.0] - 2026-07-21
+
+### Added
+- **Theme-independent document shell and template routing.** The public site
+  now renders its own complete HTML document — `blueworx_public_document_open()`
+  / `blueworx_public_document_close()` (`includes/public/render.php`) call
+  `wp_head()` / `wp_footer()` but deliberately never `get_header()` /
+  `get_footer()`, so the site looks identical no matter which theme is active
+  or where it ends up hosted. `template_include` is now hooked
+  (`blueworx_public_template()` in `includes/public/pages.php`) to hand
+  rendering of owned pages to the plugin's own templates, and a
+  `templates/pages/home.php` placeholder (via the new `blueworx_public_part()`
+  helper) is the first template to actually render. Activation now also
+  points `show_on_front` / `page_on_front` at the Home page, so `/` is
+  WordPress's actual front page rather than the default posts index.
+
 ## [1.19.3] - 2026-07-21
 
 ### Fixed
