@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.18.1] - 2026-07-21
+
+### Added
+- **Public asset pipeline.** `assets/css/public.css` ports the headless
+  front-end's `globals.css` (marketing sections only — the client portal and
+  auth forms stay out of scope), scoped under `.bw-page` so its reset can't
+  reach the admin bar or block styles. `blueworx_enqueue_public_assets()`
+  enqueues it alongside the existing self-hosted font stylesheet on
+  `wp_enqueue_scripts`, versioned via the existing asset-version helper so a
+  CSS change reaches visitors immediately instead of waiting on a stale
+  browser cache. Gated on `is_front_page()` until Task 3 adds real page-
+  ownership detection.
+
 ## [1.18.0] - 2026-07-21
 
 ### Added

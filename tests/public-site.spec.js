@@ -17,4 +17,17 @@ test.describe('Public site', () => {
     // must ship with the public site on, or activation renders nothing.
     await expect(toggle).toBeChecked();
   });
+
+  test('the public stylesheet loads on the front page', async ({ page }) => {
+    await page.goto(cacheBust('/'));
+    const href = await page
+      .locator('link[rel="stylesheet"][href*="public.css"]')
+      .first()
+      .getAttribute('href');
+
+    expect(href, 'public.css must be enqueued').toBeTruthy();
+    // Cache-busting is a house rule, not a nicety: without it a CSS change
+    // silently does not reach anyone until their browser cache expires.
+    expect(href, 'stylesheet must be versioned').toMatch(/[?&]ver=/);
+  });
 });
