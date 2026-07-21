@@ -21,6 +21,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/rest/rate-limit.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/auth.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/account.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/content.php';
+require_once BLUEWORX_LABS_PATH . 'includes/rest/render.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/cors.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/revalidate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/surecart.php';
@@ -73,6 +74,7 @@ function blueworx_headless_register_routes() {
 	blueworx_headless_register_auth_routes();
 	blueworx_headless_register_account_routes();
 	blueworx_headless_register_content_routes();
+	blueworx_headless_register_render_routes();
 	blueworx_headless_register_surecart_routes();
 }
 add_action( 'rest_api_init', 'blueworx_headless_register_routes' );

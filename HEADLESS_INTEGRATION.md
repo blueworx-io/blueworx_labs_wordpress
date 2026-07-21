@@ -231,6 +231,51 @@ All errors use one envelope (§7). All responses are JSON.
 | `GET /site` | none | — | Whitelisted site config (§6.2) |
 | `GET /resolve` | none | `?uri=<path or url>` (required) | `{ type, id, slug, rest_url, template }` (§6.1) |
 | `GET /acf-options` | none | — | ACF options-page fields as a flat object (`{}` if ACF is inactive) |
+| `POST /render` | none | body: `{ content, with_global_enqueue? }` | `{ html, shortcodes, styles[], scripts[] }` (§6.3) |
+
+### 6.3 Rendering shortcodes
+
+A shortcode's **markup** already reaches you through `content.rendered`, because
+`wp/v2` runs `do_shortcode()` server-side. What does not reach you is its **CSS
+and JS**: plugins enqueue those on `wp_enqueue_scripts`, which never fires for a
+REST request. That is why a SureCart table or a form arrives as inert markup or
+an empty container.
+
+`POST /render` renders the shortcode *and* tells you what it enqueued:
+
+```jsonc
+{
+  "html": "<div class=\"...\">…</div>",
+  "shortcodes": ["sureforms"],
+  "styles":  [{ "handle": "…", "src": "https://…", "deps": [], "media": "all", "inline": ["…"] }],
+  "scripts": [{ "handle": "…", "src": "https://…", "deps": [],
+                "data": "var cfg = {…};", "before": [], "after": [], "strategy": "defer" }]
+}
+```
+
+Notes that matter when you consume it:
+
+- **Load in array order.** The lists are the full dependency closure, dependencies
+  first — a script's `deps` are already included as their own entries.
+- **Skip entries with an empty `src`.** Some handles (`jquery`) are grouping
+  aliases with no file of their own, only dependencies.
+- **`data` is `wp_localize_script` output.** Inject it *before* the script, or
+  anything reading its config object throws on load.
+- **Tags must be allowlisted** in *BlueWorx → Headless → Renderable shortcodes*.
+  It is empty by default, so the endpoint refuses everything until configured —
+  a shortcode is a PHP function, so the allowlist is what stops an
+  unauthenticated caller invoking arbitrary code. Requests are rate limited, and
+  a request mixing allowed and disallowed tags is refused whole rather than
+  rendered in part.
+- **`with_global_enqueue: true`** additionally fires `wp_enqueue_scripts` for
+  shortcodes that register assets there rather than in their own callback. It
+  also pulls in whatever the theme and every other plugin enqueue site-wide, so
+  it is off by default.
+
+**This is a workaround, not a cure.** Shortcodes depending on `wp_head`, on the
+loop, or on inline output outside the enqueue system may still misbehave, and
+each third-party plugin is its own compatibility question. Test the ones you
+actually use.
 
 `MenuItem` is a recursive tree:
 

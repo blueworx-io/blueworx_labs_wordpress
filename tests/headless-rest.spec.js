@@ -85,4 +85,42 @@ test.describe('Headless REST layer', () => {
     const res = await api.get(`${ns}/site`, { headers: { Origin: 'https://not-allowed.example.com' } });
     expect(String(res.headers().vary || '')).toContain('Origin');
   });
+
+  // POST /render runs do_shortcode, so a shortcode tag is effectively a
+  // function name an unauthenticated caller can invoke. These assert the gate,
+  // not the rendering — they hold whether or not any tag is allowlisted on the
+  // site under test, so they never depend on ambient configuration.
+  test.describe('POST /render', () => {
+    test('refuses a tag that is not on the allowlist', async () => {
+      const res = await api.post(`${ns}/render`, {
+        data: { content: '[bw_definitely_not_allowlisted]' },
+      });
+
+      // Three refusals are all correct here, and which one you get depends on
+      // the site's configuration rather than on the property being guarded:
+      //   403 blueworx_render_disabled     — no allowlist configured at all
+      //   403 blueworx_render_not_allowed  — registered tag, not allowlisted
+      //   400 blueworx_render_no_shortcode — tag isn't registered, so
+      //       get_shortcode_regex() (which matches only registered tags) never
+      //       sees it and do_shortcode would leave it as literal text
+      // The property under test is that it never renders, so assert that.
+      expect(res.status(), 'an arbitrary tag must never render').toBeGreaterThanOrEqual(400);
+
+      const body = await res.json();
+      expect(body).not.toHaveProperty('html');
+    });
+
+    test('rejects content with no shortcode in it', async () => {
+      const res = await api.post(`${ns}/render`, { data: { content: 'just some text' } });
+
+      // 403 when the endpoint is disabled entirely, 400 when it is on and the
+      // content simply has nothing to render. Both are refusals; neither is 200.
+      expect([400, 403]).toContain(res.status());
+    });
+
+    test('requires content', async () => {
+      const res = await api.post(`${ns}/render`, { data: {} });
+      expect(res.status()).toBeGreaterThanOrEqual(400);
+    });
+  });
 });

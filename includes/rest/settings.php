@@ -59,6 +59,7 @@ function blueworx_headless_save_settings() {
 	update_option( 'blueworx_headless_revalidate_url', isset( $_POST['revalidate_url'] ) ? esc_url_raw( wp_unslash( $_POST['revalidate_url'] ) ) : '' );
 	update_option( 'blueworx_headless_surecart_enabled', isset( $_POST['surecart_enabled'] ) ? '1' : '0' );
 	update_option( 'blueworx_headless_cpts', isset( $_POST['cpts'] ) ? sanitize_text_field( wp_unslash( $_POST['cpts'] ) ) : '' );
+	update_option( 'blueworx_headless_render_shortcodes', isset( $_POST['render_shortcodes'] ) ? sanitize_text_field( wp_unslash( $_POST['render_shortcodes'] ) ) : '' );
 
 	set_transient( 'blueworx_headless_notice', __( 'Headless settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
@@ -262,6 +263,17 @@ function blueworx_headless_render_settings_page() {
 					<td>
 						<input type="text" name="cpts" id="cpts" class="regular-text" value="<?php echo esc_attr( blueworx_headless_setting( 'cpts' ) ); ?>" placeholder="portfolio, testimonial" />
 						<p class="description"><?php esc_html_e( 'Comma-separated post-type keys to expose on the core REST API.', 'blueworx-labs-wordpress' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="render_shortcodes"><?php esc_html_e( 'Renderable shortcodes', 'blueworx-labs-wordpress' ); ?></label></th>
+					<td>
+						<input type="text" name="render_shortcodes" id="render_shortcodes" class="regular-text" value="<?php echo esc_attr( blueworx_headless_setting( 'render_shortcodes' ) ); ?>" placeholder="sureforms, product_table" />
+						<p class="description">
+							<?php esc_html_e( 'Comma-separated shortcode tags the frontend may render via POST /render, which returns the markup plus the CSS and JS the shortcode enqueued.', 'blueworx-labs-wordpress' ); ?>
+							<strong><?php esc_html_e( 'Leave empty to keep the endpoint disabled.', 'blueworx-labs-wordpress' ); ?></strong>
+							<?php esc_html_e( 'Only list tags you trust: a shortcode is a PHP function, so anything here can be run by an unauthenticated caller.', 'blueworx-labs-wordpress' ); ?>
+						</p>
 					</td>
 				</tr>
 			</table>

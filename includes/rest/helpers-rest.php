@@ -42,6 +42,9 @@ function blueworx_headless_default_settings() {
 		'revalidate_url'              => '',
 		'surecart_enabled'            => '0',
 		'cpts'                        => '',
+		// Empty means the render endpoint refuses everything. do_shortcode() on
+		// arbitrary public input would be remote code execution by proxy.
+		'render_shortcodes'           => '',
 	);
 }
 
