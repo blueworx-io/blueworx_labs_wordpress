@@ -75,30 +75,36 @@ Create `tests/public-site.spec.js`:
 // Public-site specs are logged out by definition, so every navigation goes
 // through cacheBust() — Cloudways Varnish caches logged-out responses and a
 // stale hit makes a passing build look broken (see tests/helpers.js:88-105).
-import { test, expect } from '@playwright/test';
-import { baseURL, isPlaceholder, cacheBust } from './helpers.js';
+import { expect } from '@playwright/test';
+import { test, isPlaceholder, cacheBust, login, ADMIN_USER, ADMIN_PASS } from './helpers.js';
 
 test.describe('Public site', () => {
-  test.skip(isPlaceholder, 'No real WordPress target configured.');
+  test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No real WordPress target configured.');
 
-  test('the plugin declares a public_site feature', async ({ request }) => {
-    // The flag must exist before anything can be gated on it. Asserted via the
-    // home page rendering at all, which only happens when the flag is on.
-    const res = await request.get(cacheBust('/'));
-    expect(res.status()).toBeLessThan(500);
+  test('the public_site feature is registered and on by default', async ({ page }) => {
+    await login(page);
+    await page.goto(cacheBust('/wp-admin/admin.php?page=blueworx-labs-wordpress'));
+
+    const toggle = page.locator('[data-blueworx-feature="public_site"]');
+    await expect(toggle, 'the feature must appear on the Enhancements screen').toHaveCount(1);
+    // Absent option means enabled (features.php:125-127) — a fresh install
+    // must ship with the public site on, or activation renders nothing.
+    await expect(toggle).toBeChecked();
   });
 });
 ```
 
-- [ ] **Step 2: Run it to confirm the harness is wired**
+- [ ] **Step 2: Run it to verify it fails**
 
 ```bash
 node ../bluegroup_core_foundation/scripts/wp-test-env.mjs up --plugin . --slug blueworx-labs-wordpress --dir .wp-test --port 8881
 PLAYWRIGHT_BASE_URL=http://127.0.0.1:8881 WP_ADMIN_USER=admin WP_ADMIN_PASS=wptest-admin-pw \
-  npx playwright test tests/public-site.spec.js --workers=1
+  WP_LOGIN_PATH=admin_login npx playwright test tests/public-site.spec.js --workers=1
 ```
 
-Expected: PASS (WordPress returns its default home page — a 200). This test is a tripwire for fatals, not a feature assertion.
+Expected: FAIL — `toHaveCount(1)` receives 0, because the feature is not registered yet.
+
+**The suite must not skip.** The harness is a real WordPress, so `isPlaceholder` is false and credentials are set. A skipped run here means the environment is misconfigured — investigate it rather than accepting green.
 
 - [ ] **Step 3: Register the feature flag**
 
@@ -365,16 +371,24 @@ git commit -m "feat: public asset pipeline with scoped stylesheet"
 - [ ] **Step 1: Write the failing test**
 
 ```js
-test('plugin-owned pages exist and are not 404s', async ({ page }) => {
-  const res = await page.goto(cacheBust('/'));
-  expect(res.status()).toBe(200);
-  await expect(page.locator('body')).not.toHaveClass(/error404/);
+test('activation creates the plugin-owned pages', async ({ page }) => {
+  await login(page);
+  await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
+
+  // Asserts the registry actually produced a Page, which is what later tasks
+  // route on. A 200 on "/" would pass without any of this existing.
+  await expect(
+    page.locator('#the-list .row-title', { hasText: 'Home' }),
+    'activation must create the Home page'
+  ).toHaveCount(1);
 });
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Expected: FAIL — WordPress's default front page has no `.bw-page`, and once Task 4 lands the assertion is meaningful. At this step it may pass trivially; that is fine, it becomes load-bearing in Task 4.
+Expected: FAIL — no Home page exists; WordPress's default install has a Sample Page only.
+
+This must genuinely fail before Step 3. If it passes now, the assertion is not testing what it claims.
 
 - [ ] **Step 3: Write the registry**
 
@@ -822,7 +836,17 @@ Add `blueworx_icon_allowed_svg()` returning a `wp_kses` allowlist permitting `pa
 
 - [ ] **Step 5: Write the footer part**
 
-`templates/parts/footer.php` — port `CtaBand.tsx` then `Footer.tsx` verbatim (structures are in the source files). Note: the CTA band renders on **every** page, outside `<main>`, before the footer. Three social links and Blog/Resources/Careers have no `href` in the source; keep them as non-links rather than inventing destinations. The newsletter form is non-functional in the source — render the markup but leave it inert; a real form plugin shortcode replaces it later.
+`templates/parts/footer.php` — port `CtaBand.tsx` then `Footer.tsx`. The source files are the specification; read them at
+`c:\Users\LukeMcfarland\Documents\GitHub\bluegroup_project_blueworx\components\`.
+
+**Acceptance criteria (these are what review checks against):**
+
+- CTA band renders **outside** `<main>`, before the footer, on every page.
+- Required classes present, exactly: `.cta-soft` > `.cta-inner` containing two `.blob` divs, an `h2.h2`, a `<p>`, and `.cta-actions` with two links — `/pricing` (`btn btn-brand btn-md`) and `/contact` (`btn btn-outline-w btn-md`).
+- Footer: `<footer>` > `.ft` containing `.fb` (logo + paragraph + `.fsocial`), two `.fcol` blocks, and `.fnews` (heading, paragraph, `.fnews-in` with input + button); then `.fbot` with two `<p>`.
+- Social links and Blog/Resources/Careers have **no `href`** in the source — keep them non-links rather than inventing destinations.
+- The newsletter form is inert in the source — render the markup, wire nothing. A form plugin shortcode replaces it later.
+- All user-facing strings wrapped in `esc_html__()` with the `blueworx-labs-wordpress` text domain.
 
 - [ ] **Step 6: Run the test and commit**
 
@@ -877,9 +901,19 @@ Expected: FAIL — no `nav` element.
 
 - [ ] **Step 3: Write the nav markup**
 
-`templates/parts/nav.php`. The mega panel must be **present in the DOM** (hidden with a class) rather than conditionally absent, so CSS/JS can animate it — this differs from the React version, which unmounts it.
+`templates/parts/nav.php`. Source: `components/Nav.tsx` in the front-end repo.
 
-Keep `.nav-links a.mega-item { white-space: normal; }` working: the source notes at `globals.css:939` that this override is load-bearing, without it descriptions cannot wrap and the 760px panel overflows.
+The mega panel must be **present in the DOM** (hidden with a class) rather than conditionally absent, so CSS/JS can animate it — this differs from the React version, which unmounts it.
+
+**Acceptance criteria (these are what review checks against):**
+
+- `<nav>` with no class (CSS targets the element), containing in order: `.nav-logo`, `.nav-links`, `.nav-cta`, `.nav-sign-in-mobile`, `.hamburger`.
+- `.nav-links` items in order: Home `/`, Services `/services`, Toolbox `/toolbox` (wrapped in a `position:relative` div with the mega panel), Pricing `/pricing`, About Us `/about` (wrapped, with dropdown), AI Powered `/ai` with `<span class="nav-tag tag-light">New</span>`.
+- `.hamburger` contains exactly **two** `<span>` bars (the source's asymmetric design), and carries `aria-label` and `aria-expanded`.
+- `.mobile-menu` is a **sibling of `<nav>`**, not a child.
+- Mega panel items use class `.mega-item`; descriptions must be able to wrap — `globals.css:939` notes `.nav-links a.mega-item { white-space: normal; }` is load-bearing, and without it the fixed 760px panel overflows.
+- Active state: exact match for `/`, prefix match otherwise.
+- All user-facing strings wrapped in `esc_html__()` with the `blueworx-labs-wordpress` text domain; all `href` values through `esc_url()`.
 
 - [ ] **Step 4: Write the nav behaviour**
 
