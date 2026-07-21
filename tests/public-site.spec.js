@@ -109,6 +109,30 @@ test.describe('Public site', () => {
     await expect(page.locator('footer > .fbot > p')).toHaveCount(2);
   });
 
+  test('the footer logo is bundled by the plugin, not resolved via the active theme', async ({ page }) => {
+    // WHY THIS TEST EXISTS: the plugin's core guarantee is that public output
+    // is identical regardless of which theme is active. The footer logo
+    // previously read get_theme_mod('custom_logo') — a per-theme setting that
+    // changes or vanishes on theme switch. It must now be the plugin's own
+    // bundled asset at assets/img/logo.png, served from BLUEWORX_LABS_URL.
+    // A naive "<img> exists" check would pass even for a broken src, so this
+    // asserts the actual HTTP response for the logo request succeeds and
+    // that its URL points at the plugin, not a theme or upload path.
+    await page.goto(cacheBust('/'));
+
+    const logo = page.locator('footer .fb img');
+    await expect(logo).toHaveCount(1);
+
+    const src = await logo.getAttribute('src');
+    expect(src, 'logo src must be set').toBeTruthy();
+    expect(src, 'logo must be served from the plugin, not a theme/uploads path').toMatch(
+      /\/wp-content\/plugins\/blueworx-labs-wordpress\/assets\/img\/logo\.png/
+    );
+
+    const response = await page.request.get(src);
+    expect(response.status(), 'the plugin logo asset must load successfully').toBe(200);
+  });
+
   test('the public_site feature is registered and on by default', async ({ page }) => {
     await login(page);
     await page.goto(cacheBust('/wp-admin/admin.php?page=blueworx-labs-wordpress'));

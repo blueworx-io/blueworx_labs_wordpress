@@ -13,10 +13,15 @@
  * markup only, no handler or action — a form plugin shortcode replaces it
  * later.
  *
- * The source's <img src="/assets/logo.png"> has no equivalent bundled asset
- * in this plugin. Rather than reference a file that does not exist, the logo
- * slot uses the site's Customizer logo when one is set, and falls back to
- * the site name as text so `.fb` never renders a broken image.
+ * The source's <img src="/assets/logo.png"> is bundled by the plugin itself
+ * at assets/img/logo.png, matching what the front-end design ships. This
+ * deliberately does NOT read get_theme_mod('custom_logo') — a theme mod is
+ * stored per-theme, so it changes or vanishes on theme switch, which would
+ * make the footer's output depend on which theme happens to be active. The
+ * whole point of this public layer is that output is identical regardless
+ * of theme, so the plugin owns its own brand asset instead. A graceful text
+ * fallback (the site name) still applies if the bundled file is somehow
+ * absent, so `.fb` never renders a broken image.
  *
  * @package BlueWorxLabs
  */
@@ -26,7 +31,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$blueworx_footer_custom_logo_id = get_theme_mod( 'custom_logo' );
+$blueworx_footer_logo_path = BLUEWORX_LABS_PATH . 'assets/img/logo.png';
+$blueworx_footer_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 ?>
 <div class="cta-soft">
 	<div class="cta-inner">
@@ -45,18 +51,12 @@ $blueworx_footer_custom_logo_id = get_theme_mod( 'custom_logo' );
 <footer>
 	<div class="ft">
 		<div class="fb">
-			<?php if ( $blueworx_footer_custom_logo_id ) : ?>
-				<?php
-				echo wp_get_attachment_image(
-					(int) $blueworx_footer_custom_logo_id,
-					'full',
-					false,
-					array(
-						'style' => 'filter:brightness(0) invert(1)',
-						'alt'   => get_bloginfo( 'name' ),
-					)
-				);
-				?>
+			<?php if ( file_exists( $blueworx_footer_logo_path ) ) : ?>
+				<img
+					src="<?php echo esc_url( $blueworx_footer_logo_url ); ?>"
+					alt="<?php echo esc_attr__( 'BlueWorx', 'blueworx-labs-wordpress' ); ?>"
+					style="filter:brightness(0) invert(1)"
+				/>
 			<?php else : ?>
 				<span class="bw-footer-logo-text"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></span>
 			<?php endif; ?>

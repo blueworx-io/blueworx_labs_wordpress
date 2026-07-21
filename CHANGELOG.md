@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.21.1] - 2026-07-21
+
+### Fixed
+- **Footer logo depended on the active theme.** `templates/parts/footer.php`
+  resolved the logo via `get_theme_mod( 'custom_logo' )` — a per-theme
+  Customizer setting that changes or vanishes on theme switch, undermining
+  the public layer's core guarantee that output is identical regardless of
+  which theme is active. The plugin now bundles its own brand asset at
+  `assets/img/logo.png` (matching what the source front-end ships at
+  `/assets/logo.png`), served via `BLUEWORX_LABS_URL`, with the same
+  `filter:brightness(0) invert(1)` treatment and the same graceful
+  site-name text fallback if the bundled file is ever absent. The
+  `get_theme_mod()` call is removed entirely.
+
 ## [1.21.0] - 2026-07-21
 
 ### Added
