@@ -14,6 +14,35 @@ import { test, isPlaceholder, cacheBust, login, baseURL, ADMIN_USER, ADMIN_PASS 
 // never needs .bw-page scoping.
 const isKeyframeStop = (branch) => branch === 'from' || branch === 'to' || /^\d+(\.\d+)?%$/.test(branch);
 
+/**
+ * Runs a set of state-restoring cleanup steps to completion, one after
+ * another, even if an earlier step throws — so a failure restoring one
+ * piece of mutated global state (e.g. a `.notice-success` assertion timing
+ * out) can never skip restoring another, unrelated piece of state.
+ *
+ * Every step still runs regardless of earlier failures, but a genuine
+ * cleanup failure is never swallowed: each step's error is collected and,
+ * once all steps have been attempted, re-thrown together so the test still
+ * fails loudly and visibly.
+ *
+ * @param {Array<[string, () => Promise<void>]>} steps  [label, step] pairs.
+ */
+async function restoreAll(steps) {
+  const errors = [];
+  for (const [label, step] of steps) {
+    try {
+      await step();
+    } catch (error) {
+      errors.push(`${label}: ${error && error.message ? error.message : String(error)}`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(
+      `Cleanup failed for ${errors.length} of ${steps.length} restore step(s):\n${errors.join('\n')}`
+    );
+  }
+}
+
 test.describe('Public site', () => {
   test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No real WordPress target configured.');
 
@@ -192,29 +221,41 @@ test.describe('Public site', () => {
 
       await loggedOutContext.close();
     } finally {
-      // Restore both toggles even if an assertion above failed, so this test
-      // never leaves the site inaccessible for the rest of the suite or a
-      // real visitor.
-      if (undefined !== featureWasChecked) {
-        await page.goto(cacheBust(settingsPath));
-        await page
-          .locator('input[name="blueworx_frontend_protection_enabled"]')
-          .setChecked(frontendWasChecked);
-        await page
-          .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
-          .setChecked(featureWasChecked);
-        await page.getByRole('button', { name: 'Save Changes' }).click();
-        await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
-      }
-
-      // Put "/" back on the Home page last, so a failure above never leaves
-      // the site root serving the default posts index.
-      if (frontChanged) {
-        await page.goto(cacheBust(readingPath));
-        await page.locator('input[name="show_on_front"][value="page"]').check();
-        await page.locator('select[name="page_on_front"]').selectOption(originalPageOnFront);
-        await page.getByRole('button', { name: 'Save Changes' }).click();
-      }
+      // Restore the Site Protection toggles and show_on_front/page_on_front
+      // independently — these are two unrelated pieces of mutated global
+      // state, so a throw while restoring one (e.g. the .notice-success
+      // assertion timing out) must never skip restoring the other. Any
+      // errors are collected and re-thrown together so a genuine cleanup
+      // failure still fails this test loudly instead of being swallowed.
+      await restoreAll([
+        [
+          'restore Site Protection toggles',
+          async () => {
+            if (undefined !== featureWasChecked) {
+              await page.goto(cacheBust(settingsPath));
+              await page
+                .locator('input[name="blueworx_frontend_protection_enabled"]')
+                .setChecked(frontendWasChecked);
+              await page
+                .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
+                .setChecked(featureWasChecked);
+              await page.getByRole('button', { name: 'Save Changes' }).click();
+              await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+            }
+          },
+        ],
+        [
+          'restore show_on_front/page_on_front',
+          async () => {
+            if (frontChanged) {
+              await page.goto(cacheBust(readingPath));
+              await page.locator('input[name="show_on_front"][value="page"]').check();
+              await page.locator('select[name="page_on_front"]').selectOption(originalPageOnFront);
+              await page.getByRole('button', { name: 'Save Changes' }).click();
+            }
+          },
+        ],
+      ]);
     }
   });
 
@@ -308,29 +349,42 @@ test.describe('Public site', () => {
 
       await loggedOutContext.close();
     } finally {
-      // Rename the slug back first so the site is left exactly as found,
-      // then restore both Site Protection toggles — in that order, even if
-      // an assertion above failed.
-      if (renamed) {
-        await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
-        await homeRow.hover();
-        await homeRow.locator('button.editinline').click();
-        const slugInput = page.locator('input[name="post_name"]:visible');
-        await expect(slugInput).toBeVisible();
-        await slugInput.fill(originalSlug);
-        await page.locator('.inline-edit-save button.save:visible').click();
-        await expect(slugInput).toBeHidden();
-      }
-
-      await page.goto(cacheBust(settingsPath));
-      await page
-        .locator('input[name="blueworx_frontend_protection_enabled"]')
-        .setChecked(frontendWasChecked);
-      await page
-        .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
-        .setChecked(featureWasChecked);
-      await page.getByRole('button', { name: 'Save Changes' }).click();
-      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      // Restore the Home page's slug and the Site Protection toggles
+      // independently — two unrelated pieces of mutated state — so a throw
+      // in either step can never skip the other. Any errors are collected
+      // and re-thrown together so a genuine cleanup failure still fails
+      // this test loudly instead of being swallowed.
+      await restoreAll([
+        [
+          'restore Home page slug',
+          async () => {
+            if (renamed) {
+              await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
+              await homeRow.hover();
+              await homeRow.locator('button.editinline').click();
+              const slugInput = page.locator('input[name="post_name"]:visible');
+              await expect(slugInput).toBeVisible();
+              await slugInput.fill(originalSlug);
+              await page.locator('.inline-edit-save button.save:visible').click();
+              await expect(slugInput).toBeHidden();
+            }
+          },
+        ],
+        [
+          'restore Site Protection toggles',
+          async () => {
+            await page.goto(cacheBust(settingsPath));
+            await page
+              .locator('input[name="blueworx_frontend_protection_enabled"]')
+              .setChecked(frontendWasChecked);
+            await page
+              .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
+              .setChecked(featureWasChecked);
+            await page.getByRole('button', { name: 'Save Changes' }).click();
+            await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+          },
+        ],
+      ]);
     }
   });
 
@@ -412,27 +466,42 @@ test.describe('Public site', () => {
 
       await loggedOutContext.close();
     } finally {
-      // Restore both slugs even if an assertion above failed, so the site is
-      // left exactly as found for the rest of the suite.
-      if (sampleRenamed) {
-        await sampleRow.hover();
-        await sampleRow.locator('button.editinline').click();
-        const slugInput = page.locator('input[name="post_name"]:visible');
-        await expect(slugInput).toBeVisible();
-        await slugInput.fill(sampleSlug);
-        await page.locator('.inline-edit-save button.save:visible').click();
-        await expect(slugInput).toBeHidden();
-      }
-
-      if (homeRenamed) {
-        await homeRow.hover();
-        await homeRow.locator('button.editinline').click();
-        const slugInput = page.locator('input[name="post_name"]:visible');
-        await expect(slugInput).toBeVisible();
-        await slugInput.fill(homeSlug);
-        await page.locator('.inline-edit-save button.save:visible').click();
-        await expect(slugInput).toBeHidden();
-      }
+      // Restore both slugs independently — a throw while restoring the
+      // Sample page's slug must never skip restoring Home's, which would
+      // otherwise leave Home on a temporary slug with the collision still
+      // in place. Any errors are collected and re-thrown together so a
+      // genuine cleanup failure still fails this test loudly instead of
+      // being swallowed.
+      await restoreAll([
+        [
+          'restore Sample Page slug',
+          async () => {
+            if (sampleRenamed) {
+              await sampleRow.hover();
+              await sampleRow.locator('button.editinline').click();
+              const slugInput = page.locator('input[name="post_name"]:visible');
+              await expect(slugInput).toBeVisible();
+              await slugInput.fill(sampleSlug);
+              await page.locator('.inline-edit-save button.save:visible').click();
+              await expect(slugInput).toBeHidden();
+            }
+          },
+        ],
+        [
+          'restore Home page slug',
+          async () => {
+            if (homeRenamed) {
+              await homeRow.hover();
+              await homeRow.locator('button.editinline').click();
+              const slugInput = page.locator('input[name="post_name"]:visible');
+              await expect(slugInput).toBeVisible();
+              await slugInput.fill(homeSlug);
+              await page.locator('.inline-edit-save button.save:visible').click();
+              await expect(slugInput).toBeHidden();
+            }
+          },
+        ],
+      ]);
     }
   });
 });

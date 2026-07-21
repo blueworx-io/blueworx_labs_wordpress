@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.20.1] - 2026-07-21
+
+### Fixed
+- **Fragile test cleanup in `tests/public-site.spec.js`.** Two tests
+  (`"/" is not exempt from Site Protection when show_on_front is not a
+  plugin-owned page` and the slug-collision test) restored multiple
+  independent pieces of mutated global state — Site Protection toggles,
+  show_on_front/page_on_front, and page slugs — as sequential steps inside a
+  single `finally` block. A throw partway through (e.g. a `.notice-success`
+  assertion timing out) skipped every restore step after it, risking the site
+  root being left serving the posts index or a page stuck on a temporary
+  slug for the rest of the suite and any real visitor. A new `restoreAll()`
+  helper runs each restore step in isolation via its own try/catch,
+  collecting errors and re-throwing them together at the end, so every
+  mutated piece of state is restored regardless of which step fails, while a
+  genuine cleanup failure still fails the test loudly. Applied to both named
+  tests plus the sibling `a renamed plugin-owned page stays exempt from Site
+  Protection` test, which had the same underlying fragility despite already
+  ordering its restores correctly.
+
 ## [1.20.0] - 2026-07-21
 
 ### Added
