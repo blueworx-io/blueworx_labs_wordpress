@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.19.1] - 2026-07-21
+
+### Fixed
+- **Site Protection exemption ran before the query.** The exemption that keeps
+  plugin-owned public pages reachable when Site Protection is on is hooked to
+  `blueworx_site_protection_applies`, which fires from
+  `blueworx_intercept_requests()` on `init` priority 1 — before the main
+  WordPress query has run. The exemption previously called
+  `blueworx_public_is_owned_page()`, which depends on `is_page()` /
+  `get_queried_object()`; both are unreliable that early and always reported
+  "not a page", so the exemption never fired. Turning Site Protection on
+  would have `wp_die()`'d every logged-out visitor to the plugin's own
+  marketing pages. Added `blueworx_public_is_owned_request_path()`, an
+  `init`-safe check that compares the normalized request path against the
+  plugin's page registry (mirroring `blueworx_is_custom_login_request_path()`
+  in `includes/login-security.php`), and pointed the exemption at it.
+  `blueworx_public_is_owned_page()` is unchanged and remains correct for its
+  existing query-time callers.
+
 ## [1.19.0] - 2026-07-21
 
 ### Added

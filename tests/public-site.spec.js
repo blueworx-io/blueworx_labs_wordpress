@@ -48,6 +48,75 @@ test.describe('Public site', () => {
     // silently does not reach anyone until their browser cache expires.
     expect(href, 'stylesheet must be versioned').toMatch(/[?&]ver=/);
   });
+
+  test('a plugin-owned public page stays reachable while logged out with Site Protection on', async ({
+    page,
+    browser,
+  }) => {
+    // WHY THIS TEST EXISTS: the Site Protection exemption for plugin-owned
+    // pages (includes/public/pages.php) is wired to a filter that fires on
+    // `init` priority 1 — before the main query runs. A version of that
+    // exemption that reads is_page()/get_queried_object() at that point
+    // always sees "not a page" and never exempts anything, so turning Site
+    // Protection on would wp_die() every logged-out visitor to the plugin's
+    // own marketing pages. Nothing else in this suite turns Site Protection
+    // on, so nothing else would catch that regression.
+    await login(page);
+
+    // Grab the Home page's real public URL before touching any settings.
+    await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
+    const homeRow = page.locator('#the-list tr', {
+      has: page.locator('.row-title', { hasText: 'Home' }),
+    });
+    const homeUrl = await homeRow.locator('.row-actions .view a').getAttribute('href');
+    expect(homeUrl, 'the Home page must expose a public URL').toBeTruthy();
+
+    const settingsPath = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+    await page.goto(cacheBust(settingsPath));
+
+    const siteProtectionToggle = page.locator(
+      'input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]'
+    );
+    const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
+
+    const featureWasChecked = await siteProtectionToggle.isChecked();
+    const frontendWasChecked = await frontendToggle.isChecked();
+
+    try {
+      if (!featureWasChecked) {
+        await siteProtectionToggle.setChecked(true);
+      }
+      await frontendToggle.setChecked(true);
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+
+      // A fresh, unauthenticated context: the plugin-owned page must still be
+      // reachable even though the frontend Site Protection gate is now on.
+      const loggedOutContext = await browser.newContext();
+      const loggedOutPage = await loggedOutContext.newPage();
+      const response = await loggedOutPage.goto(cacheBust(homeUrl));
+
+      expect(
+        response && response.status(),
+        'a plugin-owned public page must not be blocked (wp_die 403) by Site Protection'
+      ).toBe(200);
+
+      await loggedOutContext.close();
+    } finally {
+      // Restore both toggles even if an assertion above failed, so this test
+      // never leaves the site inaccessible for the rest of the suite or a
+      // real visitor.
+      await page.goto(cacheBust(settingsPath));
+      await page
+        .locator('input[name="blueworx_frontend_protection_enabled"]')
+        .setChecked(frontendWasChecked);
+      await page
+        .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
+        .setChecked(featureWasChecked);
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    }
+  });
 });
 
 // This suite is deliberately outside the "Public site" describe above: it

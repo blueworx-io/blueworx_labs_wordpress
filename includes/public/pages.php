@@ -76,10 +76,60 @@ function blueworx_public_install_pages() {
 /**
  * Whether the current request is a page this plugin renders.
  *
+ * QUERY-TIME ONLY. This depends on is_page() / get_queried_object(), which
+ * are only reliable once the main query has run — around the `wp` action
+ * and later (template_include, wp_enqueue_scripts, etc.). Called any
+ * earlier (e.g. on `init`), the query has not executed yet, is_page()
+ * always reports false, and this always returns false. For an `init`-time
+ * check use blueworx_public_is_owned_request_path() instead, which reads
+ * the request path directly rather than query state. Two functions exist on
+ * purpose — do not collapse them back into one.
+ *
  * @return bool True when owned.
  */
 function blueworx_public_is_owned_page() {
 	return null !== blueworx_public_current_template();
+}
+
+/**
+ * Whether the current request path is one of this plugin's owned pages.
+ *
+ * INIT-TIME SAFE. Unlike blueworx_public_is_owned_page(), this never touches
+ * the main query — it normalizes $_SERVER['REQUEST_URI'] and compares it
+ * directly against the plugin's page slugs, the same way
+ * blueworx_is_custom_login_request_path() (includes/login-security.php)
+ * determines the custom login path before the query exists. Use this for
+ * anything that runs at or before `init` (e.g. the Site Protection
+ * exemption); use blueworx_public_is_owned_page() once the query has run,
+ * where query state is available and preferable.
+ *
+ * @return bool True when the request path belongs to this plugin.
+ */
+function blueworx_public_is_owned_request_path() {
+	$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$path        = strtolower( (string) wp_parse_url( sanitize_text_field( $request_uri ), PHP_URL_PATH ) );
+	$path        = '/' . trim( $path, '/' );
+
+	$home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+	$home_path = '/' . trim( strtolower( (string) $home_path ), '/' );
+
+	$bases = array( $home_path );
+
+	foreach ( array_keys( blueworx_public_pages() ) as $slug ) {
+		$bases[] = $home_path . '/' . $slug;
+		$bases[] = $home_path . '/index.php/' . $slug;
+	}
+
+	foreach ( array_unique( $bases ) as $base ) {
+		$base = '/' . trim( $base, '/' );
+		$base = '' === $base ? '/' : $base;
+
+		if ( $path === $base ) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /**
@@ -124,10 +174,16 @@ function blueworx_public_current_template() {
  * marketing site is the part that is deliberately public, so it is exempted —
  * otherwise turning that feature on takes the live site down.
  *
+ * This filter fires from blueworx_intercept_requests() on `init` priority 1
+ * (includes/login-security.php) — before the main query runs — so it must use
+ * the path-based, init-time-safe blueworx_public_is_owned_request_path()
+ * rather than blueworx_public_is_owned_page(). The query-time check always
+ * reports false this early, which would silently disable the exemption.
+ *
  * @param bool $protected Whether the request should be gated.
  * @return bool Filtered value.
  */
 function blueworx_public_exempt_from_site_protection( $protected ) {
-	return blueworx_public_is_owned_page() ? false : $protected;
+	return blueworx_public_is_owned_request_path() ? false : $protected;
 }
 add_filter( 'blueworx_site_protection_applies', 'blueworx_public_exempt_from_site_protection', 10 );
