@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.19.2] - 2026-07-21
+
+### Fixed
+- **The two ownership checks could disagree.** `blueworx_public_is_owned_request_path()`
+  (init-time, drives the Site Protection exemption) and
+  `blueworx_public_is_owned_page()` (query-time, drives rendering and asset
+  enqueue) were meant to describe the same notion of "owned", but the
+  path-based check had two gaps:
+  - It unconditionally treated `/` as owned. `/` only becomes an owned page
+    once WordPress's front page is pointed at one of the plugin's pages
+    (Task 4) — until then it's WordPress's default posts index, and
+    exempting it from Site Protection weakened the gate at the site root.
+    Now `/` counts as owned only when `show_on_front` is `'page'` and
+    `page_on_front` is one of the IDs in `blueworx_public_page_ids`.
+  - It compared the request path against the plugin's *static* slugs, so
+    renaming an owned page's slug kept the query-time check correct but made
+    the path check — and so the Site Protection exemption — stop recognising
+    it, wp_die()-ing a real visitor to a page the plugin still owns. Now the
+    path check resolves each mapped page's slug via `get_post_field()`
+    (falling back to the static slug only for a page not yet in the map),
+    matching how `blueworx_public_current_template()` already resolves
+    renames at query time.
+
+  Site Protection's default behaviour is unchanged — only which requests are
+  exempt from it. Added two tests to `tests/public-site.spec.js` covering
+  both gaps.
+
 ## [1.19.1] - 2026-07-21
 
 ### Fixed

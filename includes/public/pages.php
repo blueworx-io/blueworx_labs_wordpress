@@ -103,6 +103,17 @@ function blueworx_public_is_owned_page() {
  * exemption); use blueworx_public_is_owned_page() once the query has run,
  * where query state is available and preferable.
  *
+ * Kept in agreement with blueworx_public_is_owned_page() on two points that
+ * previously drifted:
+ * - The site root ("/") only counts as owned once WordPress's front page has
+ *   actually been pointed at a mapped page (`show_on_front` = 'page' and
+ *   `page_on_front` is one of the IDs in blueworx_public_page_ids) — not
+ *   unconditionally, since "/" is WordPress's own posts index until then.
+ * - Slugs are resolved from the stored ID map (get_post_field()), so a page
+ *   the admin has renamed is still recognised, falling back to the static
+ *   slug from blueworx_public_pages() only for a page not yet in the map
+ *   (fresh install, before activation has run).
+ *
  * @return bool True when the request path belongs to this plugin.
  */
 function blueworx_public_is_owned_request_path() {
@@ -113,11 +124,36 @@ function blueworx_public_is_owned_request_path() {
 	$home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
 	$home_path = '/' . trim( strtolower( (string) $home_path ), '/' );
 
-	$bases = array( $home_path );
+	$map = (array) get_option( 'blueworx_public_page_ids', array() );
+
+	$bases = array();
+
+	// "/" is only an owned page once the front page has actually been
+	// pointed at one of the plugin's pages (Task 4). Reading these two plain
+	// options is safe at `init` — neither touches the main query.
+	$page_on_front = (int) get_option( 'page_on_front' );
+
+	if ( 'page' === get_option( 'show_on_front' ) && $page_on_front && in_array( $page_on_front, array_map( 'intval', $map ), true ) ) {
+		$bases[] = $home_path;
+	}
 
 	foreach ( array_keys( blueworx_public_pages() ) as $slug ) {
-		$bases[] = $home_path . '/' . $slug;
-		$bases[] = $home_path . '/index.php/' . $slug;
+		$current_slug = $slug;
+
+		// get_post_field() is a direct post lookup, safe at `init` (unlike
+		// is_page(), it is not a query conditional). Resolving through the
+		// map means a rename is still recognised, matching
+		// blueworx_public_current_template()'s query-time resolution.
+		if ( isset( $map[ $slug ] ) ) {
+			$actual_slug = get_post_field( 'post_name', (int) $map[ $slug ] );
+
+			if ( $actual_slug ) {
+				$current_slug = $actual_slug;
+			}
+		}
+
+		$bases[] = $home_path . '/' . $current_slug;
+		$bases[] = $home_path . '/index.php/' . $current_slug;
 	}
 
 	foreach ( array_unique( $bases ) as $base ) {
