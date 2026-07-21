@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.16.4] - 2026-07-21
+
+### Fixed
+- **Two tests that could never have caught a regression.**
+  - The critical-CSS assertion used `toContainText` on a `<style>` element.
+    A `<style>` renders no text, so it always saw `""` — the assertion could not
+    pass regardless of the CSS. Now asserts on `textContent`.
+  - The unmapped-menu test demanded exactly one Custom Content group, which only
+    exists when a third-party plugin registers a top-level menu. It therefore
+    tracked what happened to be installed rather than the plugin's behaviour, and
+    failed on a clean site where rendering no group is correct. Now asserts the
+    invariant (never more than one) and keeps the real guard: Site holds only
+    mapped core menus.
+- **A third bug the above was masking.** That test's Site-group allowlist never
+  included `nav-menus.php`, even though 1.15.0 deliberately promoted Menus into
+  the Site group. The line could not fail because the assertion before it always
+  threw first.
+
+### Changed
+- `retries: 1` in the Playwright config. The local harness serves WordPress from
+  PHP's single-threaded built-in server, and a sign-in occasionally times out
+  under load. One retry absorbs that; a genuine failure still fails twice and is
+  reported as failed rather than flaky.
+
+### Notes
+- Full suite against the harness: 41 passed, 2 skipped, 1 flaky, 0 failed.
+- Fixes #37.
+
 ## [1.16.3] - 2026-07-21
 
 ### Fixed

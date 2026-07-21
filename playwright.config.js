@@ -27,6 +27,11 @@ export default defineConfig({
   // the element were unactionable, when it was only slow to get to.
   timeout: 120_000,
   expect: { timeout: 10_000 },
+  // The local harness serves WordPress from PHP's single-threaded built-in
+  // server, so a sign-in occasionally times out under load — seen twice in one
+  // run, then not at all on the next with no code change. One retry absorbs
+  // that without hiding a genuine failure, which would fail twice.
+  retries: 1,
   use: {
     baseURL,
     // NOTE: `reducedMotion: 'reduce'` does NOT belong here. It looks like it
