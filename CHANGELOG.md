@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.21.0] - 2026-07-21
+
+### Added
+- **Shared public helpers: icons and decorative blobs, plus the CTA band and
+  footer template part.** `blueworx_icon()` and `blueworx_blob()`
+  (`includes/public/helpers-public.php`) port the 21 inline SVG icons and the
+  decorative background blobs from the front-end design's `lib/icons.ts` and
+  `CtaBand.tsx`. The icon renderer wraps every `<svg>` in a `<span
+  data-ic="...">` sized to fill it at 100% — the span is what `public.css`
+  sizes at ten separate selectors, so a bare `<svg>` would collapse icon
+  sizing sitewide. `templates/parts/footer.php` ports `CtaBand.tsx` and
+  `Footer.tsx`: the CTA band renders as a sibling of `<main>`, before the
+  footer, on every page; the footer reproduces the source's `.fb`/`.fcol`
+  /`.fnews`/`.fbot` structure, keeping the social and Blog/Resources/Careers
+  links as non-links (no `href` in the source) and the newsletter form inert
+  (markup only, no handler — a form plugin shortcode replaces it later).
+  `home.php`'s existing call to `blueworx_public_part( 'parts/footer.php' )`
+  now resolves.
+
 ## [1.20.1] - 2026-07-21
 
 ### Fixed

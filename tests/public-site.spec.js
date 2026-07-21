@@ -56,6 +56,59 @@ test.describe('Public site', () => {
     await expect(page.locator('main > div')).toHaveCount(1);
   });
 
+  test('the CTA band and footer render on every page', async ({ page }) => {
+    // WHY THIS TEST EXISTS: CtaBand.tsx/Footer.tsx are ported as a single
+    // template part (templates/parts/footer.php) that home.php already calls
+    // after </main>. This pins the acceptance shape: the CTA band is a
+    // sibling of <main>, not nested inside it, and the footer's class
+    // structure matches the source exactly.
+    await page.goto(cacheBust('/'));
+
+    const ctaBand = page.locator('body > .cta-soft');
+    await expect(ctaBand, 'the CTA band must be a direct child of <body>, outside <main>').toHaveCount(1);
+    await expect(page.locator('main ~ .cta-soft'), 'the CTA band must come after <main>, before the footer').toHaveCount(1);
+
+    const ctaInner = ctaBand.locator('.cta-inner');
+    await expect(ctaInner).toHaveCount(1);
+    await expect(ctaInner.locator('> .blob')).toHaveCount(2);
+    await expect(ctaInner.locator('> h2.h2')).toHaveCount(1);
+    await expect(ctaInner.locator('> p')).toHaveCount(1);
+
+    const ctaLinks = ctaInner.locator('.cta-actions a');
+    await expect(ctaLinks).toHaveCount(2);
+    await expect(ctaLinks.nth(0)).toHaveClass(/\bbtn-brand\b/);
+    await expect(ctaLinks.nth(0)).toHaveAttribute('href', /\/pricing\/?$/);
+    await expect(ctaLinks.nth(1)).toHaveClass(/\bbtn-outline-w\b/);
+    await expect(ctaLinks.nth(1)).toHaveAttribute('href', /\/contact\/?$/);
+
+    const footer = page.locator('footer .ft');
+    await expect(footer).toHaveCount(1);
+    await expect(footer.locator('> .fb')).toHaveCount(1);
+
+    // Three social links, none of them real hrefs in the source.
+    const socialLinks = footer.locator('.fb .fsocial a');
+    await expect(socialLinks).toHaveCount(3);
+    const socialHrefs = await socialLinks.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    for (const href of socialHrefs) {
+      expect(href, 'social links must stay non-links, not point at an invented destination').toBeNull();
+    }
+
+    await expect(footer.locator('> .fcol')).toHaveCount(2);
+    // Blog/Resources/Careers also have no href in the source.
+    const aboutCol = footer.locator('> .fcol').nth(1);
+    const nonLinkTexts = ['Blog', 'Resources', 'Careers'];
+    for (const text of nonLinkTexts) {
+      const el = aboutCol.locator('a', { hasText: text });
+      await expect(el).toHaveCount(1);
+      expect(await el.getAttribute('href'), `"${text}" must stay a non-link`).toBeNull();
+    }
+
+    await expect(footer.locator('> .fnews .fnews-in input')).toHaveCount(1);
+    await expect(footer.locator('> .fnews .fnews-in button')).toHaveCount(1);
+    await expect(page.locator('footer > .fbot')).toHaveCount(1);
+    await expect(page.locator('footer > .fbot > p')).toHaveCount(2);
+  });
+
   test('the public_site feature is registered and on by default', async ({ page }) => {
     await login(page);
     await page.goto(cacheBust('/wp-admin/admin.php?page=blueworx-labs-wordpress'));
@@ -632,6 +685,109 @@ test.describe('Public page ownership resolution (blueworx_public_current_templat
     const result = resolveOwnedTemplate({ map: { home: 111 }, postId: 111, postName: 'home-renamed-xyz' });
 
     expect(result, 'the mapped ID must still resolve regardless of its current slug').not.toBe('NULL');
+  });
+});
+
+const HELPERS_PUBLIC_PHP = fileURLToPath(new URL('../includes/public/helpers-public.php', import.meta.url));
+
+/**
+ * Directly `require`s the real includes/public/helpers-public.php with the
+ * handful of WordPress escaping functions it calls stubbed out, then runs a
+ * snippet of PHP against it and returns stdout.
+ *
+ * WHY HERMETIC RATHER THAN BROWSER-DRIVEN: nothing in this task's scope
+ * (helpers-public.php + templates/parts/footer.php) calls blueworx_icon()
+ * from a page that actually renders — CtaBand.tsx/Footer.tsx, the two
+ * components this task ports, never use the Icon component in the source
+ * either (their social/subscribe glyphs are bespoke inline <svg>, not from
+ * the ICONS map). So there is currently no browser-observable page with a
+ * `[data-ic]` element, the same "not wired to anything visible yet" shape
+ * `resolveOwnedTemplate()` above documents for a different function. This
+ * harness instead exercises the real function directly, exactly like that
+ * one does, to pin the one behaviour that matters most here: the span
+ * carries data-ic and the svg fills it at 100% — get that backwards and
+ * icon sizing collapses sitewide the moment a later task calls
+ * blueworx_icon() from a real page.
+ *
+ * @param {string} php PHP statements to run after helpers-public.php loads.
+ * @return {string} Captured stdout, trimmed.
+ */
+function runHelpersPublicPhp(php) {
+  const workDir = mkdtempSync(join(tmpdir(), 'bw-helpers-public-test-'));
+
+  try {
+    const bwPath = `${workDir.replace(/\\/g, '/')}/`;
+    const helpersPath = HELPERS_PUBLIC_PHP.replace(/\\/g, '/');
+
+    const script = `<?php
+define( 'ABSPATH', '${bwPath}' );
+
+// Minimal stand-ins for the WordPress escaping functions helpers-public.php
+// calls — real WordPress is not loaded in this harness, so these mirror just
+// enough of core's behaviour (attribute-escape, pass geometry through) to
+// exercise blueworx_icon()/blueworx_blob() in isolation.
+function esc_attr( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES ); }
+function wp_kses( $string, $allowed_html ) { return $string; }
+
+require '${helpersPath}';
+
+${php}
+`;
+
+    const scriptPath = join(workDir, 'harness.php');
+    writeFileSync(scriptPath, script);
+
+    return execFileSync('php', [scriptPath], { encoding: 'utf8' });
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+// Deliberately outside the "Public site" describe above: it needs neither a
+// browser nor a live WordPress target, so it must never be skipped by the
+// isPlaceholder / ADMIN_USER / ADMIN_PASS gate that guards the rest of this
+// file.
+test.describe('Shared public helpers (blueworx_icon, blueworx_blob)', () => {
+  test('icons render with the data-ic sizing hook', () => {
+    const html = runHelpersPublicPhp("blueworx_icon( 'chat' );");
+
+    const spanOpen = html.indexOf('<span data-ic="chat"');
+    const svgOpen = html.indexOf('<svg', spanOpen);
+    const svgClose = html.indexOf('</svg>', svgOpen);
+    const spanClose = html.indexOf('</span>', svgClose);
+
+    expect(spanOpen, 'the span must carry data-ic — CSS sizes the span, not the svg').toBeGreaterThanOrEqual(0);
+    expect(svgOpen, 'the svg must be nested inside the data-ic span').toBeGreaterThan(spanOpen);
+    expect(svgClose, 'the svg must close').toBeGreaterThan(svgOpen);
+    expect(spanClose, 'the span must close after the svg').toBeGreaterThan(svgClose);
+
+    const svgTag = html.slice(svgOpen, html.indexOf('>', svgOpen) + 1);
+    expect(
+      svgTag,
+      'the svg must be 100% of its span or icon sizing collapses'
+    ).toMatch(/style="[^"]*width:100%;height:100%[^"]*"/);
+  });
+
+  test('an unknown icon name renders nothing', () => {
+    const html = runHelpersPublicPhp("blueworx_icon( 'does-not-exist' );");
+    expect(html.trim()).toBe('');
+  });
+
+  test('an optional class and style are applied to the wrapping span, not the svg', () => {
+    const html = runHelpersPublicPhp("blueworx_icon( 'zap', 'pt-nav-item-ic', 'color:red' );");
+    const spanOpen = html.slice(0, html.indexOf('>') + 1);
+    expect(spanOpen).toContain('class="pt-nav-item-ic"');
+    expect(spanOpen).toContain('style="color:red"');
+  });
+
+  test('blueworx_blob renders a bare, style-only decorative div', () => {
+    const html = runHelpersPublicPhp("blueworx_blob( 'width:220px;height:220px' );");
+    expect(html.trim()).toBe('<div class="blob" style="width:220px;height:220px"></div>');
+  });
+
+  test('blueworx_blob with no style renders a plain .blob div', () => {
+    const html = runHelpersPublicPhp('blueworx_blob();');
+    expect(html.trim()).toBe('<div class="blob"></div>');
   });
 });
 
