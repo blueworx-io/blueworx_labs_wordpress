@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.16.3] - 2026-07-21
+
+### Fixed
+- **Sidebar rows are a uniform height again.** A row carrying a count badge
+  rendered 1px taller than one without. `.wp-menu-name` is a flex container, so
+  the row is as tall as its tallest item — and the badge's `line-height: 1.5`
+  plus `2px` vertical padding came to 20.5px against the label's 18.2px line box.
+  The badge is now a fixed 18px box with centred content, which cannot drive the
+  row height. Visually it is a slightly smaller pill; the rows are level.
+
+### Notes
+- Found by #24's harness. Fixes #36.
+
 ## [1.16.2] - 2026-07-21
 
 ### Security
