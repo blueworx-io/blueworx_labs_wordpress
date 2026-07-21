@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, cache refresh, admin/profile enhancements, and the headless REST layer that powers BlueWorx headless WordPress sites.
- * Version:           1.18.3
+ * Version:           1.19.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.18.3' );
+	define( 'BLUEWORX_LABS_VERSION', '1.19.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -62,6 +62,23 @@ if ( blueworx_feature_enabled( 'public_site' ) ) {
 	require_once BLUEWORX_LABS_PATH . 'includes/public/bootstrap.php';
 }
 
+/**
+ * Installs the public front-end's pages on activation, if enabled.
+ *
+ * Kept as its own activation hook, alongside the plugin's other per-concern
+ * activation callbacks below, rather than folded into the headless REST
+ * layer's install routine — this module's activation logic stays
+ * self-contained under includes/public/.
+ *
+ * @return void
+ */
+function blueworx_public_activate() {
+	if ( blueworx_feature_enabled( 'public_site' ) && function_exists( 'blueworx_public_install_pages' ) ) {
+		blueworx_public_install_pages();
+	}
+}
+
 register_activation_hook( __FILE__, 'blueworx_headless_install' );
 register_activation_hook( __FILE__, 'blueworx_client_roles_maybe_ensure' );
+register_activation_hook( __FILE__, 'blueworx_public_activate' );
 register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );

@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.19.0] - 2026-07-21
+
+### Added
+- **Plugin-owned page registry.** `blueworx_public_pages()` declares the pages
+  this plugin renders (slug ⇒ title/template — one entry, `home`, for now);
+  `blueworx_public_install_pages()` creates a real WordPress Page for each one
+  on activation so menus, SEO plugins, and later content editing all work
+  normally. Idempotent and safe to run on every activation: pages are matched
+  by their previously-stored ID first, then by slug, so a page the user has
+  renamed or moved is recognised rather than duplicated.
+- **Page-ownership lookup for later rendering.** `blueworx_public_is_owned_page()`
+  and `blueworx_public_current_template()` resolve the current request against
+  the registry to an absolute template path (or `null`), which `template_include`
+  will use in a later task to take over rendering from the active theme.
+  `includes/public/assets.php` now gates its stylesheet enqueue on this real
+  ownership check instead of the `is_front_page()` placeholder from 1.18.1.
+
+### Security
+- **Site Protection now exempts plugin-owned public pages.** Site Protection's
+  frontend gate (`includes/login-security.php`) can `wp_die()` logged-out
+  visitors — appropriate for a site still in progress, but it would also take
+  down the deliberately-public marketing pages this plugin renders. A new
+  `blueworx_site_protection_applies` filter (applied only around that gate, no
+  other behaviour changed) lets `blueworx_public_exempt_from_site_protection()`
+  exclude owned pages from the block. Unhooked — i.e. with `public_site` off —
+  this is a no-op and Site Protection behaves exactly as before.
+
 ## [1.18.3] - 2026-07-21
 
 ### Fixed

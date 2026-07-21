@@ -24,6 +24,18 @@ test.describe('Public site', () => {
     await expect(toggle).toBeChecked();
   });
 
+  test('activation creates the plugin-owned pages', async ({ page }) => {
+    await login(page);
+    await page.goto(cacheBust('/wp-admin/edit.php?post_type=page'));
+
+    // Asserts the registry actually produced a Page, which is what later tasks
+    // route on. A 200 on "/" would pass without any of this existing.
+    await expect(
+      page.locator('#the-list .row-title', { hasText: 'Home' }),
+      'activation must create the Home page'
+    ).toHaveCount(1);
+  });
+
   test('the public stylesheet loads on the front page', async ({ page }) => {
     await page.goto(cacheBust('/'));
     const href = await page

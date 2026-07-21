@@ -19,10 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return void
  */
 function blueworx_enqueue_public_assets() {
-	// TODO(Task 3): replace with blueworx_public_is_owned_page() once page
-	// routing exists — is_front_page() is a stand-in so this hook has
-	// something narrower than "every front-end page" to gate on until then.
-	if ( ! is_front_page() ) {
+	if ( ! blueworx_public_is_owned_page() ) {
 		return;
 	}
 
