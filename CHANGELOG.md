@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.18.2] - 2026-07-21
+
+### Fixed
+- **`assets/css/public.css` leaked bare element selectors document-wide.**
+  The stylesheet was ported from a standalone front-end where it owned the
+  whole document, and was scoped to `.bw-page` for the `*` reset and `body`
+  rule — but five bare element selectors (`img`, `button`, `nav` twice
+  including its responsive variant, `footer`) were missed and still matched
+  document-wide. In WordPress that restyled the admin bar and the active
+  theme's own markup — worst of all, a theme's `<nav>` picked up a full
+  96px sticky reskin. All five are now scoped under `.bw-page`. Added a
+  regression test (`tests/public-site.spec.js`) that reads the stylesheet
+  from disk and fails if any unscoped bare element selector reappears.
+
 ## [1.18.1] - 2026-07-21
 
 ### Added

@@ -40,8 +40,8 @@
 	letter-spacing: -.01em;
 	text-rendering: optimizeLegibility;
 }
-img { display: block; max-width: 100%; }
-button { font-family: inherit; }
+.bw-page img { display: block; max-width: 100%; }
+.bw-page button { font-family: inherit; }
 .wrap { max-width: 1440px; margin: 0 auto; }
 
 /* ===== keyframes ===== */
@@ -52,7 +52,7 @@ button { font-family: inherit; }
    compositor is running; it never hides content as a fallback. */
 
 /* ===== nav ===== */
-nav { width: 100%; height: 96px; background: rgba(255,255,255,.62); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%); display: flex; align-items: center; padding: 0 var(--gut); border-bottom: 1px solid rgba(10,12,41,.07); position: sticky; top: 0; z-index: 200; transition: transform .38s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease, background .3s ease; will-change: transform; }
+.bw-page nav { width: 100%; height: 96px; background: rgba(255,255,255,.62); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%); display: flex; align-items: center; padding: 0 var(--gut); border-bottom: 1px solid rgba(10,12,41,.07); position: sticky; top: 0; z-index: 200; transition: transform .38s cubic-bezier(.2,.7,.2,1), box-shadow .3s ease, background .3s ease; will-change: transform; }
 nav.nav-hidden { transform: translateY(-100%); }
 nav.nav-scrolled { background: rgba(255,255,255,.78); box-shadow: 0 10px 34px rgba(10,12,41,.09); }
 .nav-logo { display: flex; align-items: center; cursor: pointer; }
@@ -356,7 +356,7 @@ main > div > .sec:last-child:not([style*="background"]) { padding-bottom: 0; }
 .cta-actions { position: relative; z-index: 1; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 
 /* footer */
-footer { background: #0A0C29; padding: 72px var(--gut) 40px; }
+.bw-page footer { background: #0A0C29; padding: 72px var(--gut) 40px; }
 .ft { display: grid; grid-template-columns: 2fr 1fr 1fr 1.4fr; gap: 44px; margin-bottom: 48px; }
 .fb img { height: 26px; margin-bottom: 18px; filter: brightness(0) invert(1); }
 .fb p { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.5); max-width: 240px; margin-bottom: 20px; }
@@ -575,7 +575,7 @@ footer { background: #0A0C29; padding: 72px var(--gut) 40px; }
 }
 @media (max-width: 1000px) {
   :root { --gut: 24px; }
-  nav { padding: 0 24px; justify-content: space-between; }
+  .bw-page nav { padding: 0 24px; justify-content: space-between; }
   .nav-links, .nav-cta { display: none; }
   .hamburger { display: flex; }
   .nav-sign-in-mobile { display: block; margin-right: 16px; }
