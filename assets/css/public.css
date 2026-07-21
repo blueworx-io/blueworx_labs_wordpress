@@ -64,13 +64,13 @@ nav.nav-scrolled { background: rgba(255,255,255,.78); box-shadow: 0 10px 34px rg
 .nav-links svg { width: 16px; height: 16px; }
 .nav-cta { display: flex; align-items: center; gap: 20px; }
 .nav-cta::before { content: ''; width: 1px; height: 26px; background: rgba(10,12,41,.12); }
-.nav-sign-in { font-size: 15px; font-weight: 600; cursor: pointer; color: #0A0C29; transition: color .18s ease; white-space: nowrap; }
+.nav-sign-in { font-size: 15px; font-weight: 600; cursor: pointer; color: #0A0C29; text-decoration: none; transition: color .18s ease; white-space: nowrap; }
 .nav-sign-in:hover { color: #4F46E5; }
 .nav-btn { height: 46px; padding: 0 22px; border-radius: 12px; background: linear-gradient(150deg,#5B52F0,#4338CA); color: #fff; font-size: 15px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 20px rgba(79,70,229,.28); transition: box-shadow .2s ease, transform .2s ease; }
 .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(79,70,229,.4); }
 .nav-btn svg { width: 16px; height: 16px; }
 .hamburger { display: none; width: 44px; height: 44px; border-radius: 12px; border: none; background: #F5F6FF; box-shadow: inset 0 0 0 1px #E4E5FF; cursor: pointer; flex-direction: column; gap: 6px; align-items: center; justify-content: center; transition: background .3s ease, box-shadow .3s ease; }
-.nav-sign-in-mobile { display: none; font-size: 14.5px; font-weight: 600; color: #0A0C29; cursor: pointer; white-space: nowrap; margin-left: auto; }
+.nav-sign-in-mobile { display: none; font-size: 14.5px; font-weight: 600; color: #0A0C29; text-decoration: none; cursor: pointer; white-space: nowrap; margin-left: auto; }
 .hamburger span { height: 2px; border-radius: 2px; background: #0A0C29; transition: transform .32s cubic-bezier(.2,.7,.2,1), width .25s ease, margin .25s ease, background .25s ease; }
 .hamburger span:nth-child(1) { width: 20px; }
 .hamburger span:nth-child(2) { width: 13px; align-self: flex-end; margin-right: 11px; background: #4F46E5; }
@@ -88,6 +88,16 @@ nav.nav-scrolled { background: rgba(255,255,255,.78); box-shadow: 0 10px 34px rg
 .tag-dark { color: #B7B9FF; background: rgba(139,142,255,.08); border: 1px solid rgba(139,142,255,.32); box-shadow: 0 0 12px rgba(109,106,240,.4); }
 .tag-dark::before { background: #6D6AF0; box-shadow: 0 0 6px rgba(109,106,240,.95); }
 .mobile-menu .tag-light { margin-left: 8px; vertical-align: 2px; }
+
+/* Toolbox mega panel + About Us dropdown (Nav.tsx). Unlike the React source,
+   which mounts these only while open, templates/parts/nav.php renders both
+   unconditionally and assets/js/public-nav.js toggles ".open" — so the panel
+   has to be hidden by CSS rather than by not existing. */
+.nav-drop { position: relative; }
+.mega-panel { display: none; position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%); width: 760px; background: #0A0C29; border-radius: 20px; box-shadow: 0 30px 70px rgba(10,12,41,.35); padding: 28px; grid-template-columns: 1fr 1fr; gap: 6px 18px; z-index: 60; }
+.mega-panel.open { display: grid; }
+.about-panel { display: none; position: absolute; top: calc(100% + 10px); left: 0; min-width: 160px; background: #0A0C29; border-radius: 14px; box-shadow: 0 20px 50px rgba(10,12,41,.3); padding: 8px; z-index: 60; }
+.about-panel.open { display: block; }
 
 /* ===== buttons ===== */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: none; cursor: pointer; font-family: var(--font-sora), sans-serif; font-weight: 600; letter-spacing: -.01em; border-radius: 13px; transition: background .22s ease, color .22s ease, box-shadow .28s ease, transform .28s cubic-bezier(.2,.7,.2,1); white-space: nowrap; }
@@ -579,7 +589,7 @@ main > div > .sec:last-child:not([style*="background"]) { padding-bottom: 0; }
   .nav-links, .nav-cta { display: none; }
   .hamburger { display: flex; }
   .nav-sign-in-mobile { display: block; margin-right: 16px; }
-  .mobile-menu { display: flex; flex-direction: column; position: fixed; top: 96px; left: 0; right: 0; background: #fff; border-bottom: 1px solid #EFEFF0; padding: 10px 20px 18px; gap: 2px; z-index: 190; box-shadow: 0 20px 40px rgba(10,12,41,.1); max-height: calc(100vh - 96px); overflow-y: auto; }
+  .mobile-menu.open { display: flex; flex-direction: column; position: fixed; top: 96px; left: 0; right: 0; background: #fff; border-bottom: 1px solid #EFEFF0; padding: 10px 20px 18px; gap: 2px; z-index: 190; box-shadow: 0 20px 40px rgba(10,12,41,.1); max-height: calc(100vh - 96px); overflow-y: auto; }
   .mobile-menu a { padding: 10px 6px; font-size: 15px; color: #0A0C29; text-decoration: none; border-bottom: 1px solid #F5F6FF; cursor: pointer; }
   .mobile-menu a.active { color: #4F46E5; font-weight: 600; }
   .mobile-menu .btn { margin-top: 10px; height: 46px; }
@@ -802,4 +812,4 @@ main > div > .sec:last-child:not([style*="background"]) { padding-bottom: 0; }
 .pt-tool-link:hover { border-color: #C7C9F5 !important; box-shadow: 0 8px 22px rgba(10,12,41,.07); }
 
 /* buttons rendered as links (Next.js <Link>) must not inherit anchor underlines */
-a.btn, a.plan-btn, a.pt-btn { text-decoration: none; }
+a.btn, a.plan-btn, a.pt-btn, a.nav-btn { text-decoration: none; }

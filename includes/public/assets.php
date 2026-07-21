@@ -36,5 +36,13 @@ function blueworx_enqueue_public_assets() {
 		array( 'blueworx-fonts' ),
 		blueworx_get_admin_asset_version( 'assets/css/public.css' )
 	);
+
+	wp_enqueue_script(
+		'blueworx-public-nav',
+		BLUEWORX_LABS_URL . 'assets/js/public-nav.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/public-nav.js' ),
+		true
+	);
 }
 add_action( 'wp_enqueue_scripts', 'blueworx_enqueue_public_assets' );

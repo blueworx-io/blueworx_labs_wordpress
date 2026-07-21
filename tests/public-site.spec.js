@@ -56,6 +56,31 @@ test.describe('Public site', () => {
     await expect(page.locator('main > div')).toHaveCount(1);
   });
 
+  test('navigation renders and marks the current page', async ({ page }) => {
+    // WHY THIS TEST EXISTS: templates/parts/nav.php ports Nav.tsx's active-state
+    // logic (exact match for "/", prefix match otherwise) and its asymmetric
+    // two-bar hamburger. A regression here silently breaks "where am I" for
+    // every visitor, on every page.
+    await page.goto(cacheBust('/'));
+    await expect(page.locator('nav .nav-links a[href="/"]')).toHaveClass(/active/);
+    await expect(page.locator('nav .hamburger span')).toHaveCount(2);
+  });
+
+  test('the mobile menu opens and closes', async ({ page }) => {
+    // WHY THIS TEST EXISTS: templates/parts/nav.php renders .mobile-menu as a
+    // sibling of <nav> that is always present in the DOM (unlike the source,
+    // which only mounts it while open) so assets/js/public-nav.js can toggle
+    // it. This pins the hamburger actually driving that toggle end to end.
+    await page.setViewportSize({ width: 900, height: 800 });
+    await page.goto(cacheBust('/'));
+
+    await expect(page.locator('.mobile-menu')).toBeHidden();
+    await page.locator('.hamburger').click();
+    await expect(page.locator('.mobile-menu')).toBeVisible();
+    await page.locator('.hamburger').click();
+    await expect(page.locator('.mobile-menu')).toBeHidden();
+  });
+
   test('the CTA band and footer render on every page', async ({ page }) => {
     // WHY THIS TEST EXISTS: CtaBand.tsx/Footer.tsx are ported as a single
     // template part (templates/parts/footer.php) that home.php already calls

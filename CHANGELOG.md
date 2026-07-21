@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.22.0] - 2026-07-21
+
+### Added
+- **Site navigation.** `templates/parts/nav.php` and `assets/js/public-nav.js`
+  port `Nav.tsx`: the logo, primary links (Home, Services, Toolbox with its
+  mega panel, Pricing, About Us with its dropdown, AI Powered), the CTA pair,
+  and the mobile hamburger menu. Active-state matching is exact for `/` and
+  prefix-based otherwise. Because a plain document cannot mount an element on
+  hover the way React does, the mega panel, the About Us dropdown and the
+  mobile menu are all rendered unconditionally and toggled with an `.open`
+  class instead — `public-nav.js` opens each dropdown immediately on
+  `mouseenter` and closes it after a 300ms grace period on `mouseleave` (two
+  independent timers, matching the source's `megaT`/`aboutT` refs), so moving
+  the cursor from a trigger into its panel does not snap it shut. The same
+  file also ports the source's rAF-throttled hide-on-scroll-down /
+  reveal-on-scroll-up behaviour (`nav-scrolled` past 8px, `nav-hidden` past
+  160px while moving down more than 4px, suppressed while the mobile menu is
+  open) and the mobile menu's body scroll lock, keeping `aria-expanded` in
+  sync with the hamburger's real state. `includes/public/assets.php` enqueues
+  the new script; `assets/css/public.css` gains the `.mega-panel`/
+  `.about-panel` rules the always-present markup needs plus
+  `text-decoration: none` on the sign-in links (rendered as `<a>` here, `<span>`
+  in the source).
+
 ## [1.21.1] - 2026-07-21
 
 ### Fixed
