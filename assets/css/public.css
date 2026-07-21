@@ -110,8 +110,8 @@ nav.nav-scrolled { background: rgba(255,255,255,.78); box-shadow: 0 10px 34px rg
 .eyebrow::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #4F46E5; animation: thPulse 2.4s ease-in-out infinite; flex-shrink: 0; }
 .h1 { font-family: 'Helvetica Neue',var(--font-sora),sans-serif; font-weight: 700; font-size: 66px; line-height: 1.04; letter-spacing: -2.4px; color: var(--ink); }
 .h2 { font-family: 'Helvetica Neue',var(--font-sora),sans-serif; font-weight: 700; font-size: 47px; line-height: 1.1; letter-spacing: -1.6px; color: var(--ink); }
-.h1, .h2, h3, h4 { text-wrap: balance; }
-.lead, p, .ttext, .plan-desc, .fd-sub { text-wrap: pretty; }
+.h1, .h2, .bw-page h3, .bw-page h4 { text-wrap: balance; }
+.lead, .bw-page p, .ttext, .plan-desc, .fd-sub { text-wrap: pretty; }
 .lead { font-size: 20px; line-height: 1.66; color: var(--muted); letter-spacing: -.01em; }
 .sec { padding: 116px var(--gut); }
 .center-head { max-width: 660px; margin: 0 auto; text-align: center; }

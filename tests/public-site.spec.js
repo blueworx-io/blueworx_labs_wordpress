@@ -5,20 +5,10 @@ import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
 import { test, isPlaceholder, cacheBust, login, ADMIN_USER, ADMIN_PASS } from './helpers.js';
 
-// HTML element names that could plausibly appear as a bare CSS selector in
-// this stylesheet. Used to recognise a rule whose entire selector list is
-// nothing but element type selectors, with no scoping class anywhere in it.
-const HTML_ELEMENTS = new Set([
-  'a', 'abbr', 'address', 'article', 'aside', 'audio', 'b', 'blockquote',
-  'body', 'button', 'canvas', 'caption', 'cite', 'code', 'dd', 'del', 'dfn',
-  'div', 'dl', 'dt', 'em', 'fieldset', 'figcaption', 'figure', 'footer',
-  'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hr', 'html',
-  'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li',
-  'main', 'mark', 'nav', 'object', 'ol', 'optgroup', 'option', 'p', 'pre',
-  'q', 'samp', 'section', 'select', 'small', 'span', 'strong', 'sub',
-  'summary', 'sup', 'table', 'tbody', 'td', 'textarea', 'tfoot', 'th',
-  'thead', 'time', 'tr', 'ul', 'video',
-]);
+// A keyframe step ("0%", "100%", "from", "to") is the one kind of bare-looking
+// prelude this file legitimately needs — it is never a document element and
+// never needs .bw-page scoping.
+const isKeyframeStop = (branch) => branch === 'from' || branch === 'to' || /^\d+(\.\d+)?%$/.test(branch);
 
 test.describe('Public site', () => {
   test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No real WordPress target configured.');
@@ -63,9 +53,13 @@ test.describe('Public stylesheet scoping', () => {
     // A bare `nav { ... }` does not just style the plugin's own nav; it
     // silently restyles the admin bar and every `<nav>` the active theme
     // renders (the worst instance found here gave a theme's own nav a full
-    // 96px sticky reskin). This test fails the build the moment a future
-    // edit reintroduces a rule like that, instead of waiting for someone to
-    // notice a corrupted admin bar or theme in production.
+    // 96px sticky reskin). A later miss (h3/h4/p hiding inside mixed
+    // selector lists like `.h1, .h2, h3, h4`) showed that checking whether
+    // the WHOLE rule is unscoped isn't enough — a single bare part in an
+    // otherwise-scoped list still reaches every matching element in the
+    // document. This test fails the build the moment a future edit
+    // reintroduces either shape, instead of waiting for someone to notice a
+    // corrupted admin bar or theme in production.
     // Resolved relative to this file (not process.cwd()) so the test works
     // regardless of which directory `playwright test` is invoked from.
     const css = readFileSync(new URL('../assets/css/public.css', import.meta.url), 'utf8')
@@ -78,27 +72,33 @@ test.describe('Public stylesheet scoping', () => {
     // Walk every "<selector>{" occurrence in the file, including ones
     // nested inside @media blocks (the responsive `nav { ... }` variant of
     // this bug lived inside one). @keyframes/@media preludes are skipped
-    // because they start with "@"; keyframe step selectors (from/to/0%/etc)
-    // are skipped because they never match a known HTML element name.
+    // wholesale because they start with "@"; a stray custom-property line
+    // is skipped defensively in case one is ever captured as a "prelude".
     const rulePattern = /([^{}]+)\{/g;
     let match;
     while ((match = rulePattern.exec(css)) !== null) {
       const prelude = match[1].trim();
-      if (!prelude || prelude.startsWith('@')) {
+      if (!prelude || prelude.startsWith('@') || prelude.startsWith('--')) {
         continue;
       }
 
+      // Inspect every comma-separated part of the selector list on its own
+      // — not just whether the list as a whole is unscoped — so a bare
+      // element hiding among scoped classes (e.g. `.h1, .h2, h3, h4`) can't
+      // slip past by riding along with `.h1`/`.h2`.
       const branches = prelude.split(',').map((branch) => branch.trim());
-      // Flag only rules where EVERY comma-separated selector is a bare,
-      // unqualified element name (no class, id, combinator, or pseudo
-      // anywhere) — i.e. a rule with zero scoping that applies to every
-      // matching element in the whole document.
-      const isFullyUnscoped =
-        branches.length > 0 &&
-        branches.every((branch) => HTML_ELEMENTS.has(branch));
-
-      if (isFullyUnscoped) {
-        violations.push(prelude);
+      for (const branch of branches) {
+        if (!branch || isKeyframeStop(branch)) {
+          continue;
+        }
+        // A branch is scoped the moment it carries a class, id, or pseudo
+        // qualifier anywhere in it — `.bw-page nav`, `a.btn`, `:root`, and
+        // `.h1` are all fine. A branch with none of those characters is a
+        // bare element selector with zero scoping.
+        const isScoped = /[.#:]/.test(branch);
+        if (!isScoped) {
+          violations.push(`${prelude}  (bare part: "${branch}")`);
+        }
       }
     }
 

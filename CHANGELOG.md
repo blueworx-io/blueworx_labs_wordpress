@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.18.3] - 2026-07-21
+
+### Fixed
+- **Two more bare element selectors survived the 1.18.2 scoping pass by
+  hiding inside mixed selector lists.** `.h1, .h2, h3, h4 { text-wrap:
+  balance; }` and `.lead, p, .ttext, .plan-desc, .fd-sub { text-wrap:
+  pretty; }` each carried a bare `h3`/`h4`/`p` alongside already-scoped
+  classes — the bare `p` in particular restyled every paragraph the active
+  theme rendered. Both rules are now `.h1, .h2, .bw-page h3, .bw-page h4`
+  and `.lead, .bw-page p, .ttext, .plan-desc, .fd-sub`. The regression test
+  in `tests/public-site.spec.js` only flagged rules that were entirely
+  bare, which is exactly why these survived it; it now inspects every
+  comma-separated part of every selector list and flags any bare part on
+  its own.
+
 ## [1.18.2] - 2026-07-21
 
 ### Fixed
