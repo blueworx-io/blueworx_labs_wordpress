@@ -4,7 +4,26 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.22.0] - 2026-07-21
+## [1.23.0] - 2026-07-21
+
+### Fixed
+- **Site Protection could be left ON after the public-site test suite ran.**
+  `tests/public-site.spec.js`'s "a plugin-owned public page stays reachable
+  while logged out with Site Protection on" test restored its two mutated
+  toggles (`blueworx_frontend_protection_enabled` and the `site_protection`
+  feature flag) as one monolithic `finally` block sharing a single Save
+  Changes click — unlike the other two Site Protection tests in the same
+  file, which already used the `restoreAll()` helper (introduced for exactly
+  this) to isolate independent restore steps. If the first toggle's restore
+  threw (e.g. a `.notice-success` assertion timing out), the second toggle
+  was never set back and Save was never clicked, leaving Site Protection ON
+  for the rest of the suite — and for a real visitor — since the top-level
+  feature flag gates all frontend/backend enforcement. That test's cleanup
+  now uses `restoreAll()` with two independent, self-contained round trips
+  (matching the other two tests), so a failure restoring one toggle can
+  never skip restoring the other.
+
+### Added
 
 ### Added
 - **Site navigation.** `templates/parts/nav.php` and `assets/js/public-nav.js`

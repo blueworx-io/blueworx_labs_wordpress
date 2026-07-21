@@ -43,6 +43,84 @@ async function restoreAll(steps) {
   }
 }
 
+/**
+ * Reads the currently active theme's slug directly off /wp-admin/themes.php.
+ *
+ * There is no data-slug attribute on the server-rendered `.theme` markup to
+ * read (that only exists in the JS search-results template) — but the
+ * "Theme Details" button's id is rendered server-side as `"{$slug}-action"`
+ * (wp-admin/themes.php: `$aria_action = $theme['id'] . '-action';`), so the
+ * slug is recovered from there instead.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @return {Promise<string>}
+ */
+async function activeThemeSlug(page) {
+  const id = await page.locator('.theme.active button.more-details').getAttribute('id');
+  expect(id, 'the currently active theme must be identifiable on themes.php').toBeTruthy();
+  return id.replace(/-action$/, '');
+}
+
+/**
+ * Picks an installed, inactive, activatable theme to switch to — preferring
+ * twentytwentyfour/twentytwentyfive (bundled on this harness) but falling
+ * back to whatever else is actually installed, rather than assuming a
+ * specific theme exists on every install this plugin might land on.
+ *
+ * Must be called on /wp-admin/themes.php.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} excludeSlug Slug to never pick (the currently active theme).
+ * @return {Promise<string>}
+ */
+async function pickAlternateThemeSlug(page, excludeSlug) {
+  const hrefs = await page
+    .locator('a.activate')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('href')).filter(Boolean));
+
+  const slugs = hrefs
+    .map((href) => {
+      const match = href.match(/[?&]stylesheet=([^&]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
+    })
+    .filter((slug) => slug && slug !== excludeSlug);
+
+  const preferred = ['twentytwentyfour', 'twentytwentyfive'].find((slug) => slugs.includes(slug));
+  const picked = preferred || slugs[0];
+  expect(picked, 'themes.php must offer at least one other installed theme to switch to').toBeTruthy();
+  return picked;
+}
+
+/**
+ * Logs in and activates the given theme via /wp-admin/themes.php — the same
+ * screen an administrator would use.
+ *
+ * Navigates straight to the matching "Activate" link's own href (which
+ * already carries the required nonce) rather than clicking it: that button
+ * lives under an `opacity: 0` hover overlay (wp-admin/css/themes.css) that
+ * would add nothing but flakiness to drive via a real click.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} slug Theme stylesheet slug to activate.
+ */
+async function switchTheme(page, slug) {
+  await login(page);
+  await page.goto(cacheBust('/wp-admin/themes.php'));
+
+  const hrefs = await page
+    .locator('a.activate')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('href')).filter(Boolean));
+  const activateHref = hrefs.find((href) => {
+    const match = href.match(/[?&]stylesheet=([^&]+)/);
+    return match && decodeURIComponent(match[1]) === slug;
+  });
+  expect(activateHref, `no inactive, activatable theme found for slug "${slug}"`).toBeTruthy();
+
+  await page.goto(activateHref);
+  await page.goto(cacheBust('/wp-admin/themes.php'));
+  expect(await activeThemeSlug(page), `theme "${slug}" must be active after switching`).toBe(slug);
+}
+
 test.describe('Public site', () => {
   test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No real WordPress target configured.');
 
@@ -54,6 +132,110 @@ test.describe('Public site', () => {
     // wp_head must still run or other plugins and the admin bar break.
     await expect(page.locator('head link[href*="public.css"]')).toHaveCount(1);
     await expect(page.locator('main > div')).toHaveCount(1);
+  });
+
+  test('renders identically regardless of the active theme', async ({ page, browser }) => {
+    // THE CLAIM UNDER TEST: blueworx_public_document_open()/_close() (see
+    // includes/public/render.php) emit the whole document themselves and
+    // deliberately never call get_header()/get_footer(), so which theme is
+    // active must have zero effect on what a visitor sees. Hosting is not
+    // fixed — the owner uploads this plugin to a WordPress install whose
+    // theme is unknown — so this is the one test that actually proves that,
+    // rather than assuming it. If this fails, STOP: fix the architecture
+    // (most likely get_header() crept in, or the active theme is enqueueing
+    // something that reaches the plugin's own markup), do not weaken this
+    // assertion to make it pass.
+    //
+    // .bw-page is the class blueworx_public_document_open() puts on <body>
+    // itself (not a wrapper div), so its innerHTML is everything the plugin
+    // and WordPress core print between <body> and </body> — nav, main,
+    // footer, and wp_footer(). Nothing in templates/parts/nav.php,
+    // templates/pages/home.php or templates/parts/footer.php embeds a
+    // nonce, a timestamp, or a cache-busting query string (the one dynamic
+    // value, the copyright year via gmdate('Y'), cannot change between two
+    // requests made moments apart in the same test), so no content
+    // normalisation is applied to the captured HTML itself — an exact match
+    // is the real bar.
+    //
+    // NORMALISED INSTEAD (two things, neither of them this plugin's markup):
+    //
+    // 1. Login state. `page` is the one session that logs in to drive
+    //    wp-admin (switching the theme requires it), so both .bw-page
+    //    captures are taken through a SEPARATE, always-logged-out browser
+    //    context/page — matching the pattern `browser.newContext()` already
+    //    uses elsewhere in this file for the same reason. First attempt
+    //    without this proved it necessary: capturing "after" on the
+    //    logged-in `page` showed the admin bar appearing and WordPress
+    //    core's speculative-loading <script type="speculationrules">
+    //    disappearing — both gated on login state, not on the active theme,
+    //    which would have made a login artifact look like a
+    //    theme-independence failure.
+    //
+    // 2. The active theme's own directory path, but ONLY inside that same
+    //    <script type="speculationrules"> tag. wp-includes/speculative-loading.php
+    //    is hooked unconditionally to `wp_footer` by WordPress core itself
+    //    (wp-includes/default-filters.php: add_action('wp_footer',
+    //    'wp_print_speculation_rules')) on every WP 6.8+ install, and its
+    //    prefetch-exclusion list is built from get_stylesheet_directory_uri()/
+    //    get_template_directory_uri() — i.e. it is BY DESIGN meant to name
+    //    whichever theme happens to be active, on every front-end page of the
+    //    site (a plain blog post shows this exact same before/after diff on a
+    //    theme switch). That is WordPress core behaviour, wholly unrelated to
+    //    blueworx_public_document_open()/_close() or this plugin's routing —
+    //    not get_header() creeping in, not the theme overriding the plugin's
+    //    own styles — so only the theme path inside that one script tag is
+    //    normalised, not the innerHTML wholesale. Nothing this plugin
+    //    actually owns (nav, footer, CTA band, the document shell itself)
+    //    ever emits a `/wp-content/themes/` path, so this narrow substitution
+    //    cannot hide a genuine theme leak anywhere else in .bw-page.
+    const normaliseThemePath = (html) =>
+      html.replace(
+        /(<script type="speculationrules">)([\s\S]*?)(<\/script>)/,
+        (match, open, body, close) =>
+          open + body.replace(/\/wp-content\/themes\/[^/"\\]+/g, '/wp-content/themes/__ACTIVE_THEME__') + close
+      );
+
+    const beforeContext = await browser.newContext();
+    const beforePage = await beforeContext.newPage();
+    await beforePage.goto(cacheBust('/'));
+    const before = normaliseThemePath(await beforePage.locator('.bw-page').innerHTML());
+    await beforeContext.close();
+
+    await login(page);
+    await page.goto(cacheBust('/wp-admin/themes.php'));
+    const originalSlug = await activeThemeSlug(page);
+    const alternateSlug = await pickAlternateThemeSlug(page, originalSlug);
+
+    try {
+      await switchTheme(page, alternateSlug);
+
+      const afterContext = await browser.newContext();
+      const afterPage = await afterContext.newPage();
+      await afterPage.goto(cacheBust('/'));
+      const after = normaliseThemePath(await afterPage.locator('.bw-page').innerHTML());
+      await afterContext.close();
+
+      expect(
+        after,
+        `the plugin's .bw-page output must be identical whether "${originalSlug}" or ` +
+          `"${alternateSlug}" is the active theme — any difference means theme output is ` +
+          'leaking into a page the plugin is supposed to own outright'
+      ).toBe(before);
+    } finally {
+      // This test mutates global site state (the active theme), so it must
+      // restore the original theme even if the assertion above throws.
+      // restoreAll() (used elsewhere in this file for the same reason) runs
+      // every cleanup step to completion and re-throws collected errors
+      // afterwards, so a cleanup failure is never silently swallowed.
+      await restoreAll([
+        [
+          'restore original theme',
+          async () => {
+            await switchTheme(page, originalSlug);
+          },
+        ],
+      ]);
+    }
   });
 
   test('navigation renders and marks the current page', async ({ page }) => {
@@ -248,18 +430,41 @@ test.describe('Public site', () => {
 
       await loggedOutContext.close();
     } finally {
-      // Restore both toggles even if an assertion above failed, so this test
-      // never leaves the site inaccessible for the rest of the suite or a
-      // real visitor.
-      await page.goto(cacheBust(settingsPath));
-      await page
-        .locator('input[name="blueworx_frontend_protection_enabled"]')
-        .setChecked(frontendWasChecked);
-      await page
-        .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
-        .setChecked(featureWasChecked);
-      await page.getByRole('button', { name: 'Save Changes' }).click();
-      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      // Restore both toggles independently — two unrelated pieces of
+      // mutated state — so a throw restoring one (e.g. the .notice-success
+      // assertion timing out, or a setChecked() actionability timeout) can
+      // never skip restoring the other. Previously this ran as one
+      // monolithic sequence sharing a single Save Changes click: if the
+      // frontend-toggle step threw, the site_protection toggle was never
+      // set back and Save was never clicked, leaving Site Protection ON for
+      // the rest of the suite (and any real visitor) — exactly the
+      // "left on" leak this restructure closes. Any errors are collected
+      // and re-thrown together so a genuine cleanup failure still fails
+      // this test loudly instead of being swallowed.
+      await restoreAll([
+        [
+          'restore frontend protection toggle',
+          async () => {
+            await page.goto(cacheBust(settingsPath));
+            await page
+              .locator('input[name="blueworx_frontend_protection_enabled"]')
+              .setChecked(frontendWasChecked);
+            await page.getByRole('button', { name: 'Save Changes' }).click();
+            await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+          },
+        ],
+        [
+          'restore site_protection feature toggle',
+          async () => {
+            await page.goto(cacheBust(settingsPath));
+            await page
+              .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
+              .setChecked(featureWasChecked);
+            await page.getByRole('button', { name: 'Save Changes' }).click();
+            await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+          },
+        ],
+      ]);
     }
   });
 
