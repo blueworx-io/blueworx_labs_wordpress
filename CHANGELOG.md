@@ -4,6 +4,100 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.16.4] - 2026-07-21
+
+### Fixed
+- **Two tests that could never have caught a regression.**
+  - The critical-CSS assertion used `toContainText` on a `<style>` element.
+    A `<style>` renders no text, so it always saw `""` — the assertion could not
+    pass regardless of the CSS. Now asserts on `textContent`.
+  - The unmapped-menu test demanded exactly one Custom Content group, which only
+    exists when a third-party plugin registers a top-level menu. It therefore
+    tracked what happened to be installed rather than the plugin's behaviour, and
+    failed on a clean site where rendering no group is correct. Now asserts the
+    invariant (never more than one) and keeps the real guard: Site holds only
+    mapped core menus.
+- **A third bug the above was masking.** That test's Site-group allowlist never
+  included `nav-menus.php`, even though 1.15.0 deliberately promoted Menus into
+  the Site group. The line could not fail because the assertion before it always
+  threw first.
+
+### Changed
+- `retries: 1` in the Playwright config. The local harness serves WordPress from
+  PHP's single-threaded built-in server, and a sign-in occasionally times out
+  under load. One retry absorbs that; a genuine failure still fails twice and is
+  reported as failed rather than flaky.
+
+### Notes
+- Full suite against the harness: 41 passed, 2 skipped, 1 flaky, 0 failed.
+- Fixes #37.
+
+## [1.16.3] - 2026-07-21
+
+### Fixed
+- **Sidebar rows are a uniform height again.** A row carrying a count badge
+  rendered 1px taller than one without. `.wp-menu-name` is a flex container, so
+  the row is as tall as its tallest item — and the badge's `line-height: 1.5`
+  plus `2px` vertical padding came to 20.5px against the label's 18.2px line box.
+  The badge is now a fixed 18px box with centred content, which cannot drive the
+  row height. Visually it is a slightly smaller pill; the rows are level.
+
+### Notes
+- Found by #24's harness. Fixes #36.
+
+## [1.16.2] - 2026-07-21
+
+### Security
+- **The CORS allowlist now actually restricts origins.** WordPress core echoes
+  any `Origin` back with `Access-Control-Allow-Credentials: true` on REST routes.
+  Core's handler ran first and this plugin's allowlist only ever *declined to add*
+  headers — it never removed core's — so any site could make credentialed
+  cross-origin calls to `blueworx/v1` and `wp/v2` and read the responses. That
+  matters here because the refresh cookie is deliberately `SameSite=None`.
+  Core's handler is now removed and replaced, so a disallowed origin receives no
+  `Access-Control-Allow-Origin` at all.
+- **Fails closed.** An empty allowlist now denies every cross-origin caller
+  instead of effectively allowing everyone.
+- `Vary: Origin` is sent whether or not the origin is allowed, so a shared cache
+  cannot serve one origin's response to another.
+
+### Changed
+- CORS now covers `wp/v2` as well as `blueworx/v1`, because the headless
+  front-end reads content bodies from `wp/v2` and simply removing core's handler
+  would otherwise have broken it. Namespaces are filterable via
+  `blueworx_headless_cors_namespaces`.
+- Allowed responses now also send `X-WP-Nonce` in `Access-Control-Allow-Headers`
+  and expose `X-WP-Total`, `X-WP-TotalPages` and `Link`, matching what core used
+  to provide so pagination keeps working.
+
+### Notes
+- **Breaking for other REST namespaces.** Third-party namespaces outside
+  `blueworx/v1` and `wp/v2` no longer receive CORS headers, since core's
+  permissive handler is gone. Add them via the filter if an integration needs
+  them — deliberately opt-in rather than open by default.
+- Found by #24's harness the first time the suite ran for real. Fixes #35.
+
+## [1.16.1] - 2026-07-21
+
+### Changed
+- **CI now actually tests this plugin.** `ci.yml` switches to
+  `use_local_wordpress: true`, so each run provisions a disposable WordPress on
+  the runner (PHP + SQLite, no Docker) and tests against that instead of a
+  placeholder staging URL. Also passes `wp_login_path: admin_login`, because this
+  plugin moves the login screen off `wp-login.php` and every admin spec would
+  otherwise fail at the sign-in step.
+- Removed `allow_zero_tests`. It was a suppressed alarm added in 1.15.1 to keep
+  the repo unblocked; with a real test target the gate can do its job.
+- `.wp-test/` added to `.gitignore` — it holds a full WordPress tree.
+
+### Notes
+- For context on what this changes: the suite had been skipping **all 40 tests**
+  in CI since it was written, reporting green while asserting nothing. Running it
+  for real surfaced #35, #36 and #37.
+- Run the same instance locally:
+  `node ../bluegroup_core_foundation/scripts/wp-test-env.mjs up --plugin .`
+  See `docs/wordpress-test-harness.md` in the foundation.
+
 ## [1.16.0] - 2026-07-20
 
 ### Added

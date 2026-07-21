@@ -66,7 +66,7 @@ Headless** in wp-admin, except secrets, which are `wp-config.php` constants only
 
 | Setting | Default | The frontend depends on it for |
 |---------|---------|-------------------------------|
-| **Allowed origins** | *(empty)* | CORS. **Must contain the exact frontend origin** (scheme + host, no trailing slash) or the browser blocks every credentialed call. |
+| **Allowed origins** | *(empty)* | CORS. **Must contain the exact frontend origin** (scheme + host, no trailing slash) or the browser blocks every credentialed call. Applies to `wp/v2` as well as `blueworx/v1` — an empty list denies both. |
 | **Frontend URL** | *(empty)* | Base for links in verification / password-reset emails (`/verify?token=`, `/reset-password?token=`). Set it to the deployed frontend origin. |
 | **Registration mode** | `closed` | `/account/register` returns `403` while `closed`. Set to `open` or `invite` to allow sign-up. |
 | **Email verification required** | `on` | When on, new accounts must confirm email before `/auth/login` succeeds (`403 blueworx_email_unverified`). |

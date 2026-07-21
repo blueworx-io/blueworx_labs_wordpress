@@ -4,15 +4,11 @@ jobs:
   guardrails:
     uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@main
     with:
-      preview_url: https://staging.placeholder.blueworx.io
       plugin_slug: blueworx-labs-wordpress
-      # TEMPORARY — remove with issue #24.
-      #
-      # preview_url above is a placeholder, so every spec skips itself and this
-      # project's CI asserts nothing. The foundation now fails a run that
-      # executes zero tests; without this flag that failure would block all
-      # unrelated work here while the test-host decision is still open.
-      #
-      # This is not a passing test suite. It is a suppressed alarm.
-      allow_zero_tests: true
+      # Provision a disposable WordPress on the runner rather than pointing at a
+      # staging host. See docs/wordpress-test-harness.md in the foundation.
+      use_local_wordpress: true
+      # This plugin moves the login screen off wp-login.php, which 301s away.
+      # Without this every admin spec fails at the sign-in step.
+      wp_login_path: admin_login
     secrets: inherit

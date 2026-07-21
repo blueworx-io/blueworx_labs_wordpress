@@ -985,15 +985,25 @@ div.error {
 }
 
 /* ─── Sidebar: count badges ─── */
+/* The badge is a flex item of .wp-menu-name, so the row is as tall as the
+   tallest of (label line box, badge). The label's is 18.2px, so the badge is
+   given a fixed 18px box — line-height plus padding previously came to 20.5px
+   and made every badged row 1px taller than its neighbours. Keep the height
+   below the label's line box; do not swap it back for padding + line-height. */
 .bw-badge {
+	align-items: center;
 	background: rgba(255, 255, 255, .08);
 	border-radius: 9999px;
 	color: rgba(255, 255, 255, .55);
+	display: inline-flex;
 	font-size: 11px;
 	font-weight: 600;
-	line-height: 1.5;
+	height: 18px;
+	justify-content: center;
+	line-height: 1;
 	margin-left: auto;
-	padding: 2px 8px;
+	min-width: 18px;
+	padding: 0 6px;
 }
 
 #adminmenu li.current .bw-badge,
