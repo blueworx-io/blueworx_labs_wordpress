@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.18.0] - 2026-07-21
+
+### Added
+- **Public front-end module skeleton.** New `includes/public/*.php` layer
+  (bootstrap, pages, render, assets, helpers) and a `templates/` directory,
+  gated behind a new `public_site` feature flag under **BlueWorx →
+  Enhancements → Appearance**. Nothing renders yet — this lays the groundwork
+  for the plugin to serve its own marketing site independently of the active
+  theme. On by default, matching the "absent option means enabled" convention
+  so a fresh install ships ready.
+- `templates/` added to the release zip allowlist (`scripts/build-zip.mjs`) so
+  the module has somewhere to ship its markup once later tasks populate it.
+
 ## [1.17.0] - 2026-07-21
 
 ### Added

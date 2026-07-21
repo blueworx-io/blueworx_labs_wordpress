@@ -110,6 +110,12 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'appearance',
 			'detail'      => null,
 		),
+		'public_site'           => array(
+			'label'       => __( 'BlueWorx public site', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Renders the BlueWorx marketing site from this plugin, independently of the active theme. Turn off to hand the front end back to WordPress.', 'blueworx-labs-wordpress' ),
+			'section'     => 'appearance',
+			'detail'      => null,
+		),
 	);
 }
 
