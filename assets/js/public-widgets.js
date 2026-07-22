@@ -49,7 +49,72 @@
 	}
 
 	function initPricingCalc() {
-		// Body added in Task 2.
+		var root = document.querySelector( '[data-widget="pricing-calc"]' );
+		if ( ! root ) {
+			return;
+		}
+		var out = root.querySelector( '[data-testid="calc-total"]' );
+		var base = { essential: 200, growth: 500, advanced: 750 };
+		var state = { support: 'growth', updates: 2, sites: 1, hosting: true };
+
+		function clamp( v, min, max ) {
+			return Math.max( min, Math.min( max, v ) );
+		}
+		function render() {
+			var total = base[ state.support ] + ( state.updates - 1 ) * 60 + ( state.sites - 1 ) * 120 + ( state.hosting ? 40 : 0 );
+			if ( out ) {
+				out.textContent = '$' + total;
+			}
+		}
+
+		var opts = root.querySelectorAll( '.opt-row .opt' );
+		for ( var i = 0; i < opts.length; i++ ) {
+			( function ( opt ) {
+				opt.addEventListener( 'click', function () {
+					state.support = opt.getAttribute( 'data-support' );
+					for ( var j = 0; j < opts.length; j++ ) {
+						opts[ j ].className = 'opt';
+					}
+					opt.className = 'opt on';
+					render();
+				} );
+			}( opts[ i ] ) );
+		}
+
+		var steppers = root.querySelectorAll( '.stepper' );
+		for ( var s = 0; s < steppers.length; s++ ) {
+			( function ( stepper ) {
+				var field = stepper.getAttribute( 'data-field' );
+				var min = parseInt( stepper.getAttribute( 'data-min' ), 10 );
+				var max = parseInt( stepper.getAttribute( 'data-max' ), 10 );
+				var value = stepper.querySelector( 'b' );
+				var buttons = stepper.querySelectorAll( 'button' );
+				function change( delta ) {
+					state[ field ] = clamp( state[ field ] + delta, min, max );
+					if ( value ) {
+						value.textContent = state[ field ];
+					}
+					render();
+				}
+				buttons[ 0 ].addEventListener( 'click', function () {
+					change( -1 );
+				} );
+				buttons[ 1 ].addEventListener( 'click', function () {
+					change( 1 );
+				} );
+			}( steppers[ s ] ) );
+		}
+
+		var hosting = root.querySelector( '.toggle-pill' );
+		if ( hosting ) {
+			hosting.addEventListener( 'click', function () {
+				state.hosting = ! state.hosting;
+				hosting.className = state.hosting ? 'toggle-pill on' : 'toggle-pill';
+				hosting.setAttribute( 'aria-pressed', state.hosting ? 'true' : 'false' );
+				render();
+			} );
+		}
+		render();
 	}
 
 	function initSavingsCalc() {

@@ -151,8 +151,43 @@ blueworx_public_part( 'parts/nav.php' );
 				<h2 class="h2"><?php esc_html_e( 'Pricing calculator', 'blueworx-labs-wordpress' ); ?></h2>
 				<p class="lead"><?php esc_html_e( 'Estimate your monthly investment. Adjust the options to match your needs.', 'blueworx-labs-wordpress' ); ?></p>
 			</div>
-			<div class="bw-plan3-placeholder" data-widget="pricing-calc">
-				<p><?php esc_html_e( 'Pricing calculator — coming soon.', 'blueworx-labs-wordpress' ); ?></p>
+			<div class="calc" data-widget="pricing-calc">
+				<div class="calc-panel">
+					<div class="calc-field">
+						<label><?php esc_html_e( 'Support level', 'blueworx-labs-wordpress' ); ?></label>
+						<div class="opt-row">
+							<button type="button" class="opt" data-support="essential"><?php esc_html_e( 'Essential', 'blueworx-labs-wordpress' ); ?></button>
+							<button type="button" class="opt on" data-support="growth"><?php esc_html_e( 'Growth', 'blueworx-labs-wordpress' ); ?></button>
+							<button type="button" class="opt" data-support="advanced"><?php esc_html_e( 'Advanced', 'blueworx-labs-wordpress' ); ?></button>
+						</div>
+					</div>
+					<div class="calc-field">
+						<label><?php esc_html_e( 'Update packs per year', 'blueworx-labs-wordpress' ); ?></label>
+						<div class="stepper" data-field="updates" data-min="1" data-max="6">
+							<button type="button" aria-label="<?php esc_attr_e( 'Fewer update packs', 'blueworx-labs-wordpress' ); ?>">&minus;</button>
+							<b>2</b>
+							<button type="button" aria-label="<?php esc_attr_e( 'More update packs', 'blueworx-labs-wordpress' ); ?>">+</button>
+						</div>
+					</div>
+					<div class="calc-field">
+						<label><?php esc_html_e( 'Number of websites', 'blueworx-labs-wordpress' ); ?></label>
+						<div class="stepper" data-field="sites" data-min="1" data-max="5">
+							<button type="button" aria-label="<?php esc_attr_e( 'Fewer websites', 'blueworx-labs-wordpress' ); ?>">&minus;</button>
+							<b>1</b>
+							<button type="button" aria-label="<?php esc_attr_e( 'More websites', 'blueworx-labs-wordpress' ); ?>">+</button>
+						</div>
+					</div>
+					<div class="calc-field" style="display:flex;align-items:center;justify-content:space-between">
+						<label style="margin:0"><?php esc_html_e( 'Managed hosting add-on', 'blueworx-labs-wordpress' ); ?></label>
+						<button type="button" class="toggle-pill on" aria-label="<?php esc_attr_e( 'Managed hosting add-on', 'blueworx-labs-wordpress' ); ?>" aria-pressed="true"></button>
+					</div>
+				</div>
+				<div class="calc-out">
+					<div class="cl"><?php esc_html_e( 'Estimated total', 'blueworx-labs-wordpress' ); ?></div>
+					<div class="cv" data-testid="calc-total">$600</div>
+					<div class="cp"><?php esc_html_e( 'per month', 'blueworx-labs-wordpress' ); ?></div>
+					<a href="<?php echo esc_url( home_url( '/contact' ) ); ?>" class="btn btn-brand btn-md" style="width:100%;text-decoration:none"><?php esc_html_e( 'Get this plan', 'blueworx-labs-wordpress' ); ?></a>
+				</div>
 			</div>
 		</section>
 
