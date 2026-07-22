@@ -45,6 +45,14 @@
 	 * the cursor can travel from the trigger link down into the panel
 	 * without the panel disappearing under it.
 	 *
+	 * Keyboard users get the same behaviour via focusin/focusout on the
+	 * whole wrapper: Tabbing onto the trigger link opens the panel exactly
+	 * like a hover does (reusing the same open()/scheduleClose() and the
+	 * same CLOSE_DELAY timer), and it only schedules closing once focus has
+	 * actually left the wrapper entirely (checked via focusout's
+	 * relatedTarget) — Tabbing from the trigger into one of the panel's own
+	 * links must not close the panel out from under that link.
+	 *
 	 * @param {Element} nav The <nav> element.
 	 */
 	function initDropdowns( nav ) {
@@ -59,15 +67,15 @@
 
 			var closeTimer = null;
 
-			trigger.addEventListener( 'mouseenter', function () {
+			function open() {
 				if ( closeTimer ) {
 					clearTimeout( closeTimer );
 					closeTimer = null;
 				}
 				panel.classList.add( 'open' );
-			} );
+			}
 
-			trigger.addEventListener( 'mouseleave', function () {
+			function scheduleClose() {
 				if ( closeTimer ) {
 					clearTimeout( closeTimer );
 				}
@@ -75,6 +83,17 @@
 					panel.classList.remove( 'open' );
 					closeTimer = null;
 				}, CLOSE_DELAY );
+			}
+
+			trigger.addEventListener( 'mouseenter', open );
+			trigger.addEventListener( 'mouseleave', scheduleClose );
+
+			trigger.addEventListener( 'focusin', open );
+			trigger.addEventListener( 'focusout', function ( event ) {
+				if ( trigger.contains( event.relatedTarget ) ) {
+					return;
+				}
+				scheduleClose();
 			} );
 		} );
 	}

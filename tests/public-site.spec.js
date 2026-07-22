@@ -296,6 +296,46 @@ test.describe('Public site', () => {
     await expect(page.locator('.mobile-menu')).toBeHidden();
   });
 
+  test('the Toolbox mega panel opens on keyboard focus, not just mouse hover', async ({ page }) => {
+    // WHY THIS TEST EXISTS: initDropdowns() (assets/js/public-nav.js) only
+    // opened the mega panel / About Us dropdown on mouseenter/mouseleave, so
+    // a keyboard-only visitor tabbing through the nav could never reach
+    // either panel's links — a real, if not currently content-hiding,
+    // keyboard-access gap. focusin/focusout handlers (mirrored by
+    // ":focus-within" in assets/css/public.css as a CSS-only fallback) now
+    // open it the same way a hover does.
+    await page.goto(cacheBust('/'));
+
+    const panel = page.locator('.mega-panel');
+    await expect(panel).toBeHidden();
+
+    // Tab through the nav until the Toolbox trigger link itself is focused,
+    // rather than hard-coding a Tab count that would silently drift if the
+    // nav's link order ever changes.
+    const toolboxTrigger = page.locator('.nav-drop[data-nav-drop="mega"] > a');
+    for (let i = 0; i < 20; i += 1) {
+      const isFocused = await toolboxTrigger.evaluate((el) => el === document.activeElement);
+      if (isFocused) {
+        break;
+      }
+      await page.keyboard.press('Tab');
+    }
+    await expect(toolboxTrigger).toBeFocused();
+
+    await expect(panel, 'focusing the Toolbox trigger must open its mega panel').toBeVisible();
+
+    // Tabbing forward from the trigger lands inside the panel itself (its
+    // first link) — the panel must stay open, not close out from under the
+    // link the user just tabbed onto.
+    await page.keyboard.press('Tab');
+    await expect(panel, 'tabbing into the panel\'s own links must not close it').toBeVisible();
+
+    // Tabbing all the way past the panel's contents onto an unrelated
+    // element must close it again.
+    await page.locator('a[href$="/pricing"]').first().focus();
+    await expect(panel, 'moving focus away from the dropdown entirely must close its panel').toBeHidden();
+  });
+
   test('the CTA band and footer render on every page', async ({ page }) => {
     // WHY THIS TEST EXISTS: CtaBand.tsx/Footer.tsx are ported as a single
     // template part (templates/parts/footer.php) that home.php already calls

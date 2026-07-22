@@ -92,12 +92,16 @@ nav.nav-scrolled { background: rgba(255,255,255,.78); box-shadow: 0 10px 34px rg
 /* Toolbox mega panel + About Us dropdown (Nav.tsx). Unlike the React source,
    which mounts these only while open, templates/parts/nav.php renders both
    unconditionally and assets/js/public-nav.js toggles ".open" — so the panel
-   has to be hidden by CSS rather than by not existing. */
+   has to be hidden by CSS rather than by not existing. ":focus-within" on
+   the shared ".nav-drop" wrapper reveals the panel for keyboard users too —
+   Tab onto the trigger link, or onto any link already inside the panel,
+   keeps it open without depending on public-nav.js's focusin/focusout
+   handlers having already run. */
 .nav-drop { position: relative; }
 .mega-panel { display: none; position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%); width: 760px; background: #0A0C29; border-radius: 20px; box-shadow: 0 30px 70px rgba(10,12,41,.35); padding: 28px; grid-template-columns: 1fr 1fr; gap: 6px 18px; z-index: 60; }
-.mega-panel.open { display: grid; }
+.mega-panel.open, .nav-drop:focus-within .mega-panel { display: grid; }
 .about-panel { display: none; position: absolute; top: calc(100% + 10px); left: 0; min-width: 160px; background: #0A0C29; border-radius: 14px; box-shadow: 0 20px 50px rgba(10,12,41,.3); padding: 8px; z-index: 60; }
-.about-panel.open { display: block; }
+.about-panel.open, .nav-drop:focus-within .about-panel { display: block; }
 
 /* ===== buttons ===== */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: none; cursor: pointer; font-family: var(--font-sora), sans-serif; font-weight: 600; letter-spacing: -.01em; border-radius: 13px; transition: background .22s ease, color .22s ease, box-shadow .28s ease, transform .28s cubic-bezier(.2,.7,.2,1); white-space: nowrap; }
