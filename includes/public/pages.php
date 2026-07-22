@@ -75,10 +75,74 @@ function blueworx_public_install_pages() {
 	// "/" only becomes an owned page once the front page is actually pointed
 	// at the plugin's home page — see blueworx_public_is_owned_request_path()
 	// for why that condition matters at init time as well.
-	if ( isset( $map['home'] ) ) {
-		update_option( 'show_on_front', 'page' );
-		update_option( 'page_on_front', (int) $map['home'] );
+	if ( ! isset( $map['home'] ) ) {
+		return;
 	}
+
+	$existing_front_id   = (int) get_option( 'page_on_front' );
+	$owns_existing_front = $existing_front_id && in_array( $existing_front_id, array_map( 'intval', $map ), true );
+
+	// Never overwrite a homepage the site owner (or another plugin) already
+	// has configured. This only takes over the front page when it is unset,
+	// or already pointed at a page this plugin itself owns (e.g. a prior
+	// activation) — never a genuine, pre-existing homepage on a live site.
+	// The owner can still reach the BlueWorx home page directly at its
+	// "/home" slug.
+	if ( $existing_front_id && ! $owns_existing_front ) {
+		return;
+	}
+
+	// Snapshot the site's prior front-page configuration exactly once so
+	// deactivation (blueworx_public_restore_prior_front(), registered in the
+	// main plugin file) can hand it back. add_option() is a no-op when this
+	// already exists, so a later re-activation can never overwrite the
+	// genuine original with this plugin's own 'page' / Home-page values.
+	add_option(
+		'blueworx_public_prior_front',
+		array(
+			'show_on_front' => get_option( 'show_on_front' ),
+			'page_on_front' => $existing_front_id,
+		)
+	);
+
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', (int) $map['home'] );
+}
+
+/**
+ * Hands the front page back to whatever it pointed at before this plugin
+ * took it over, on deactivation.
+ *
+ * Only acts when blueworx_public_prior_front (written once by
+ * blueworx_public_install_pages() the first time it takes over the front
+ * page) exists AND the front page is still actually pointed at this
+ * plugin's Home page — if the site owner (or another plugin) has since
+ * pointed the front page elsewhere, that change is respected and left
+ * alone rather than clobbered.
+ *
+ * @return void
+ */
+function blueworx_public_restore_prior_front() {
+	$prior = get_option( 'blueworx_public_prior_front', false );
+
+	if ( ! is_array( $prior ) || ! array_key_exists( 'show_on_front', $prior ) || ! array_key_exists( 'page_on_front', $prior ) ) {
+		return;
+	}
+
+	$map     = (array) get_option( 'blueworx_public_page_ids', array() );
+	$home_id = isset( $map['home'] ) ? (int) $map['home'] : 0;
+
+	$still_owns_front = $home_id
+		&& 'page' === get_option( 'show_on_front' )
+		&& $home_id === (int) get_option( 'page_on_front' );
+
+	if ( ! $still_owns_front ) {
+		return;
+	}
+
+	update_option( 'show_on_front', $prior['show_on_front'] );
+	update_option( 'page_on_front', $prior['page_on_front'] );
+	delete_option( 'blueworx_public_prior_front' );
 }
 
 /**

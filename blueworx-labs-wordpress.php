@@ -78,7 +78,24 @@ function blueworx_public_activate() {
 	}
 }
 
+/**
+ * Hands the front page back to whatever it pointed at before this plugin
+ * took it over, if it still owns it. See blueworx_public_restore_prior_front()
+ * (includes/public/pages.php) for the full precondition — kept alongside the
+ * plugin's other per-concern deactivation/activation callbacks below, rather
+ * than folded into the headless REST layer, so this module's lifecycle logic
+ * stays self-contained under includes/public/.
+ *
+ * @return void
+ */
+function blueworx_public_deactivate() {
+	if ( function_exists( 'blueworx_public_restore_prior_front' ) ) {
+		blueworx_public_restore_prior_front();
+	}
+}
+
 register_activation_hook( __FILE__, 'blueworx_headless_install' );
 register_activation_hook( __FILE__, 'blueworx_client_roles_maybe_ensure' );
 register_activation_hook( __FILE__, 'blueworx_public_activate' );
 register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );
+register_deactivation_hook( __FILE__, 'blueworx_public_deactivate' );

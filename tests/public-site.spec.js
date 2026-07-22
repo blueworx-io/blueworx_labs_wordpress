@@ -1086,6 +1086,175 @@ test.describe('Public page ownership resolution (blueworx_public_current_templat
   });
 });
 
+/**
+ * Runs a scenario against the real blueworx_public_install_pages() and
+ * blueworx_public_restore_prior_front() (includes/public/pages.php) with a
+ * tiny in-memory options store standing in for get_option/update_option/
+ * add_option/delete_option — entirely outside WordPress.
+ *
+ * WHY HERMETIC RATHER THAN BROWSER-DRIVEN: blueworx_public_restore_prior_front()
+ * only runs on the WordPress deactivation hook, which the browser harness has
+ * no way to trigger without deactivating the plugin for the whole suite —
+ * breaking every other test that depends on it being active. That is
+ * "awkward through the browser harness" in exactly the sense the brief for
+ * this fix anticipated, and this environment has no WP-CLI available to
+ * drive activate/deactivate outside the browser either (see
+ * scripts/wp-test-env.mjs — a plain PHP built-in server plus a one-shot
+ * install bootstrap, no wp-cli). A hermetic PHP-level test is therefore the
+ * only practical option, exactly as resolveOwnedTemplate() above documents
+ * for a different function in this same file. This harness seeds a plain
+ * PHP array as the "options table", stubs just the four option functions
+ * plus the handful of post-lookup functions blueworx_public_install_pages()
+ * calls when a mapped page already exists (get_post_type/get_post_status —
+ * every scenario below pre-populates the map so that branch is always
+ * taken, and get_page_by_path()/wp_insert_post() are deliberately left
+ * unstubbed so a scenario that needed them fails loudly rather than
+ * silently passing), requires the real production file, runs the given PHP
+ * body against it, and returns the final options table as JSON.
+ *
+ * @param {Record<string, unknown>} initialOptions Seeded "options table".
+ * @param {string} body PHP statements to run after pages.php loads.
+ * @return {Record<string, unknown>} The options table after `body` runs.
+ */
+function runPagesLifecyclePhp(initialOptions, body) {
+  const workDir = mkdtempSync(join(tmpdir(), 'bw-pages-lifecycle-test-'));
+
+  try {
+    const bwPath = `${workDir.replace(/\\/g, '/')}/`;
+    const pagesPhp = PAGES_PHP.replace(/\\/g, '/');
+
+    const script = `<?php
+define( 'ABSPATH', '${bwPath}' );
+
+$GLOBALS['__bw_options'] = json_decode( '${JSON.stringify(initialOptions)}', true );
+
+function get_option( $name, $default = false ) {
+	return array_key_exists( $name, $GLOBALS['__bw_options'] ) ? $GLOBALS['__bw_options'][ $name ] : $default;
+}
+function update_option( $name, $value ) {
+	$GLOBALS['__bw_options'][ $name ] = $value;
+	return true;
+}
+function add_option( $name, $value ) {
+	if ( array_key_exists( $name, $GLOBALS['__bw_options'] ) ) {
+		return false;
+	}
+	$GLOBALS['__bw_options'][ $name ] = $value;
+	return true;
+}
+function delete_option( $name ) {
+	unset( $GLOBALS['__bw_options'][ $name ] );
+	return true;
+}
+
+function get_post_type( $id ) { return 'page'; }
+function get_post_status( $id ) { return 'publish'; }
+
+function __( $text, $domain = 'default' ) { return $text; }
+function apply_filters( $tag, $value ) { return $value; }
+function add_filter( $tag, $callback, $priority = 10 ) { /* no-op */ }
+
+require '${pagesPhp}';
+
+${body}
+
+echo json_encode( $GLOBALS['__bw_options'] );
+`;
+
+    const scriptPath = join(workDir, 'harness.php');
+    writeFileSync(scriptPath, script);
+
+    return JSON.parse(execFileSync('php', [scriptPath], { encoding: 'utf8' }).trim());
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+// Deliberately outside the "Public site" describe above: it needs neither a
+// browser nor a live WordPress target, so it must never be skipped by the
+// isPlaceholder / ADMIN_USER / ADMIN_PASS gate that guards the rest of this
+// file.
+test.describe('Front-page takeover lifecycle (blueworx_public_install_pages, blueworx_public_restore_prior_front)', () => {
+  test('install does not overwrite an existing, non-owned homepage', () => {
+    // THE DEFECT: blueworx_public_install_pages() used to unconditionally
+    // overwrite show_on_front/page_on_front on every activation, silently
+    // replacing the owner's real, existing homepage on a live site.
+    const options = runPagesLifecyclePhp(
+      { blueworx_public_page_ids: { home: 111 }, page_on_front: 999, show_on_front: 'posts' },
+      'blueworx_public_install_pages();'
+    );
+
+    expect(options.show_on_front, 'a homepage this plugin does not own must not be overwritten').toBe('posts');
+    expect(options.page_on_front, 'page_on_front must not be overwritten').toBe(999);
+    expect(
+      options.blueworx_public_prior_front,
+      'nothing was taken over, so no prior-front snapshot should exist'
+    ).toBeUndefined();
+  });
+
+  test('install takes over an unset front page and snapshots the prior value exactly once', () => {
+    // Fresh-install shape: no front page configured yet. Activation must
+    // still take over the front page (existing behaviour/tests depend on
+    // this), but must snapshot the pre-takeover state first, and a second
+    // install call (re-activation) must not clobber that snapshot with its
+    // own already-taken-over values.
+    const options = runPagesLifecyclePhp(
+      { blueworx_public_page_ids: { home: 111 }, page_on_front: 0, show_on_front: 'posts' },
+      'blueworx_public_install_pages(); blueworx_public_install_pages();'
+    );
+
+    expect(options.show_on_front, 'the front page must be taken over').toBe('page');
+    expect(options.page_on_front, 'the front page must point at the Home page').toBe(111);
+    expect(
+      options.blueworx_public_prior_front,
+      'the ORIGINAL pre-takeover state must be preserved across a second install call, not overwritten with this plugin\'s own values'
+    ).toEqual({ show_on_front: 'posts', page_on_front: 0 });
+  });
+
+  test('deactivation restores the prior front page when this plugin still owns it', () => {
+    const options = runPagesLifecyclePhp(
+      {
+        blueworx_public_prior_front: { show_on_front: 'posts', page_on_front: 0 },
+        blueworx_public_page_ids: { home: 111 },
+        show_on_front: 'page',
+        page_on_front: 111,
+      },
+      'blueworx_public_restore_prior_front();'
+    );
+
+    expect(options.show_on_front, 'the prior show_on_front must be restored').toBe('posts');
+    expect(options.page_on_front, 'the prior page_on_front must be restored').toBe(0);
+    expect(
+      options.blueworx_public_prior_front,
+      'the snapshot must be deleted once restored'
+    ).toBeUndefined();
+  });
+
+  test('deactivation does not clobber a front page the user pointed elsewhere in the meantime', () => {
+    // THE DEFECT THIS GUARDS AGAINST: if the site owner (or another plugin)
+    // repoints the front page away from this plugin's Home page before
+    // deactivation runs, restoring the old snapshot over that would clobber
+    // a deliberate, unrelated change — so restoration must only happen while
+    // the front page is STILL this plugin's Home page.
+    const options = runPagesLifecyclePhp(
+      {
+        blueworx_public_prior_front: { show_on_front: 'posts', page_on_front: 0 },
+        blueworx_public_page_ids: { home: 111 },
+        show_on_front: 'page',
+        page_on_front: 222,
+      },
+      'blueworx_public_restore_prior_front();'
+    );
+
+    expect(options.show_on_front, 'a front page the user repointed must be left alone').toBe('page');
+    expect(options.page_on_front, 'a front page the user repointed must be left alone').toBe(222);
+    expect(
+      options.blueworx_public_prior_front,
+      'the snapshot must be left in place when restoration does not happen'
+    ).toEqual({ show_on_front: 'posts', page_on_front: 0 });
+  });
+});
+
 const HELPERS_PUBLIC_PHP = fileURLToPath(new URL('../includes/public/helpers-public.php', import.meta.url));
 
 /**
