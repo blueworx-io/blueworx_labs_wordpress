@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.29.0] - 2026-07-22
+
+### Added
+- **Contact page (`templates/pages/contact.php`)**, registered as `contact`, rendering
+  the five sections from `app/contact/page.tsx`: a centered 780px tech-hero with two
+  status pills, the contact grid (form column + illustration), the dark contact-cards
+  band (call / WhatsApp / email), a static FAQ section, and testimonials.
+- **Contact form as a shortcode.** The form column renders the shortcode named by the
+  `blueworx_contact_form_shortcode` option (also filterable) — and only that single
+  configured value is passed to `do_shortcode()`, never arbitrary input, so it can never
+  be coerced into running another shortcode. Empty by default, in which case a clearly
+  labelled placeholder stands in. This is the forms-as-shortcodes approach: point the
+  option at a form plugin's shortcode to show the form.
+- The FAQ list renders as native `<details>` (fully functional with no JavaScript) until
+  Plan 3 upgrades it to the animated accordion.
+- `tests/marketing-contact.spec.js` — hero, contact grid, three cards, five `<details>`
+  FAQs, testimonials, the placeholder-when-unconfigured behaviour, and that Contact
+  (not a nav item) marks nothing active.
+
 ## [1.28.0] - 2026-07-22
 
 ### Added
