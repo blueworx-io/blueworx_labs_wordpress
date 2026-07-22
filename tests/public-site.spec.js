@@ -195,16 +195,41 @@ test.describe('Public site', () => {
           open + body.replace(/\/wp-content\/themes\/[^/"\\]+/g, '/wp-content/themes/__ACTIVE_THEME__') + close
       );
 
-    const beforeContext = await browser.newContext();
-    const beforePage = await beforeContext.newPage();
-    await beforePage.goto(cacheBust('/'));
-    const before = normaliseThemePath(await beforePage.locator('.bw-page').innerHTML());
-    await beforeContext.close();
+    // The .bw-page innerHTML comparison above cannot see anything in <head>
+    // or on <body> itself, so it would miss a theme stylesheet leaking in
+    // even though the plugin's own DOM stays byte-identical — exactly what
+    // blueworx_public_dequeue_theme_styles() (includes/public/assets.php)
+    // now prevents. WordPress renders an enqueued stylesheet's handle as
+    // "<handle>-css" for a <link> or "<handle>-inline-css" for a small,
+    // auto-inlined <style> block (this environment's bundled theme's own
+    // stylesheet is small enough to be auto-inlined) — every default
+    // WordPress theme since Twenty Ten registers its own stylesheet under
+    // the handle "<theme-slug>-style", so this checks for both possible
+    // element ids built from that handle.
+    async function assertNoThemeStylesheet(targetPage, themeSlug) {
+      const found = await targetPage.evaluate((slug) => {
+        const ids = [`${slug}-style-css`, `${slug}-style-inline-css`];
+        return ids.filter((id) => document.getElementById(id) !== null);
+      }, themeSlug);
+
+      expect(
+        found,
+        `the active theme's own stylesheet (handle "${themeSlug}-style") must not reach a page ` +
+          'this plugin owns outright — only the plugin\'s own stylesheets may appear in <head>'
+      ).toEqual([]);
+    }
 
     await login(page);
     await page.goto(cacheBust('/wp-admin/themes.php'));
     const originalSlug = await activeThemeSlug(page);
     const alternateSlug = await pickAlternateThemeSlug(page, originalSlug);
+
+    const beforeContext = await browser.newContext();
+    const beforePage = await beforeContext.newPage();
+    await beforePage.goto(cacheBust('/'));
+    const before = normaliseThemePath(await beforePage.locator('.bw-page').innerHTML());
+    await assertNoThemeStylesheet(beforePage, originalSlug);
+    await beforeContext.close();
 
     try {
       await switchTheme(page, alternateSlug);
@@ -213,6 +238,7 @@ test.describe('Public site', () => {
       const afterPage = await afterContext.newPage();
       await afterPage.goto(cacheBust('/'));
       const after = normaliseThemePath(await afterPage.locator('.bw-page').innerHTML());
+      await assertNoThemeStylesheet(afterPage, alternateSlug);
       await afterContext.close();
 
       expect(

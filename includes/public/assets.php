@@ -46,3 +46,42 @@ function blueworx_enqueue_public_assets() {
 	);
 }
 add_action( 'wp_enqueue_scripts', 'blueworx_enqueue_public_assets' );
+
+/**
+ * Dequeues the active theme's own front-end stylesheet on plugin-owned
+ * pages, so a theme with bare-element or `!important` rules cannot visibly
+ * change a page this plugin renders even though the `.bw-page` DOM never
+ * changes.
+ *
+ * Deliberately narrow: only the theme's own stylesheet handle(s) are
+ * removed — get_stylesheet() . '-style' (and, for a child theme,
+ * get_template() . '-style' for the parent) is the convention every default
+ * WordPress theme since Twenty Ten uses for its main style.css, and it is
+ * what a from-scratch block theme like Twenty Twenty-Five/Twenty
+ * Twenty-Four registers too. Nothing else is touched: nothing enqueued by
+ * OTHER plugins is dequeued, so their front-end CSS still loads on a page
+ * that genuinely needs it — only the theme's own visual styling is removed.
+ * Hooked late (priority 100) so it runs after the theme itself (and other
+ * plugins) have had a chance to enqueue on the normal wp_enqueue_scripts
+ * priority.
+ *
+ * @return void
+ */
+function blueworx_public_dequeue_theme_styles() {
+	if ( ! blueworx_public_is_owned_page() ) {
+		return;
+	}
+
+	$handles = array_unique(
+		array(
+			get_stylesheet() . '-style',
+			get_template() . '-style',
+		)
+	);
+
+	foreach ( $handles as $handle ) {
+		wp_dequeue_style( $handle );
+		wp_deregister_style( $handle );
+	}
+}
+add_action( 'wp_enqueue_scripts', 'blueworx_public_dequeue_theme_styles', 100 );
