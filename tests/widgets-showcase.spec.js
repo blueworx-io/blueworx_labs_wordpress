@@ -39,3 +39,19 @@ test.describe('Showcase — AI pipeline', () => {
     await expect(shell.locator('.ai-pipe-step').first()).toHaveText(/Brief/);
   });
 });
+
+test.describe('Showcase — feature tabs', () => {
+  test.skip(isPlaceholder, 'No real WordPress target configured.');
+
+  test('switching tabs swaps the panel heading', async ({ page }) => {
+    await page.goto('/');
+    const root = page.locator('[data-widget="feature-tabs"]');
+    await expect(root.locator('.af-text h2')).toHaveText('Support Guides');
+
+    await root.locator('.tab-bar .tab', { hasText: 'Toolbox' }).click();
+    await expect(root.locator('.af-text h2')).toHaveText('Digital Toolbox');
+
+    await root.locator('.tab-bar .tab', { hasText: 'Hosting' }).click();
+    await expect(root.locator('.af-text h2')).toHaveText('Website Hosting');
+  });
+});

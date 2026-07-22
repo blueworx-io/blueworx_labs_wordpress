@@ -206,12 +206,98 @@
 		}, 1300 );
 	}
 
+	function initFeatureTabs() {
+		var root = document.querySelector( '[data-widget="feature-tabs"]' );
+		if ( ! root ) {
+			return;
+		}
+		var tabs = root.querySelectorAll( '.tab-bar .tab' );
+		var legs = root.querySelectorAll( '.af-legend .af-leg' );
+		var chart = root.querySelector( '.af-chart' );
+		if ( ! tabs.length || ! chart ) {
+			return;
+		}
+		var xs = [ 0, 65, 130, 195, 260, 325, 390, 455, 520 ];
+		var areaEl = chart.querySelector( '.af-area' );
+		var lineEl = chart.querySelector( '.af-line' );
+		var dotEl = chart.querySelector( '.af-dot' );
+		var stops = chart.querySelectorAll( '#afGrad stop' );
+		var head = root.querySelector( '.af-text h2' );
+		var desc = root.querySelector( '.af-text p' );
+		var cta = root.querySelector( '.af-text a' );
+
+		function select( idx ) {
+			var tab = tabs[ idx ];
+			var pts = tab.getAttribute( 'data-pts' ).split( ' ' );
+			var color = tab.getAttribute( 'data-color' );
+			var d = '';
+			var minY = Infinity;
+			var dotI = 0;
+			var i;
+			for ( i = 0; i < pts.length; i++ ) {
+				var y = parseFloat( pts[ i ] );
+				d += ( i ? 'L' : 'M' ) + xs[ i ] + ',' + y + ( i === pts.length - 1 ? '' : ' ' );
+				if ( y < minY ) {
+					minY = y;
+					dotI = i;
+				}
+			}
+			if ( lineEl ) {
+				lineEl.setAttribute( 'd', d );
+				lineEl.setAttribute( 'stroke', color );
+			}
+			if ( areaEl ) {
+				areaEl.setAttribute( 'd', d + ' L520,210 L0,210 Z' );
+			}
+			if ( dotEl ) {
+				dotEl.setAttribute( 'cx', xs[ dotI ] );
+				dotEl.setAttribute( 'cy', minY );
+				dotEl.setAttribute( 'stroke', color );
+			}
+			for ( i = 0; i < stops.length; i++ ) {
+				stops[ i ].setAttribute( 'stop-color', color );
+			}
+			for ( i = 0; i < tabs.length; i++ ) {
+				tabs[ i ].className = i === idx ? 'tab on' : 'tab off';
+			}
+			for ( i = 0; i < legs.length; i++ ) {
+				legs[ i ].className = i === idx ? 'af-leg on' : 'af-leg off';
+			}
+			if ( head ) {
+				head.textContent = tab.getAttribute( 'data-heading' );
+			}
+			if ( desc ) {
+				desc.textContent = tab.getAttribute( 'data-desc' );
+			}
+			if ( cta && cta.firstChild ) {
+				cta.firstChild.nodeValue = tab.getAttribute( 'data-cta' ) + ' ';
+			}
+		}
+
+		var t;
+		for ( t = 0; t < tabs.length; t++ ) {
+			( function ( idx ) {
+				tabs[ idx ].addEventListener( 'click', function () {
+					select( idx );
+				} );
+			}( t ) );
+		}
+		for ( t = 0; t < legs.length; t++ ) {
+			( function ( idx ) {
+				legs[ idx ].addEventListener( 'click', function () {
+					select( idx );
+				} );
+			}( t ) );
+		}
+	}
+
 	function init() {
 		initBillingToggle();
 		initPricingCalc();
 		initSavingsCalc();
 		initFaqAccordion();
 		initAiPipeline();
+		initFeatureTabs();
 	}
 
 	if ( 'loading' === document.readyState ) {
