@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.25.0] - 2026-07-22
+
+Task 1 of the marketing-pages migration (`marketing-pages`): the content data
+layer every marketing page template will draw from, plus web-sized bundled
+images. No page markup yet — see later releases for the pages themselves.
+
+### Added
+
+- **Content data layer (`includes/public/content.php`).** Six accessors —
+  `blueworx_content_tools()`, `blueworx_content_tool( $slug )`,
+  `blueworx_content_solo_prices()`, `blueworx_content_toolbox_plans()`,
+  `blueworx_content_retainer_plans()`, `blueworx_content_faqs()`,
+  `blueworx_content_reviews()` — port the marketing site's copy and pricing
+  (12 Toolbox tools with 6 features each, solo prices, subscription and
+  retainer plans, pricing FAQs, homepage reviews) verbatim from the front-end
+  design export's `lib/data.ts`. Each accessor's return value is filterable
+  via `apply_filters( 'blueworx_content_<name>', $array )` so a later cycle
+  can override the content without editing this file. The source's `btn`
+  raw-CSS-class field is dropped from plan data — templates choose their own
+  button classes.
+- **Bundled, web-sized marketing images** (`assets/img/`):
+  `about-illustration.jpg`, `contact-illustration.jpg`, `hero-image.png`,
+  `feature-image-1..4.png`, `fig-collab.png`. Resized to a 1600px max long
+  edge (never upscaled) and recompressed with `sharp-cli` (a one-shot `npx`
+  tool, not an added dependency); every file ships under 160KB, versus up to
+  1.5MB in the source export.
+
 ## [1.24.1] - 2026-07-22
 
 ### Security
