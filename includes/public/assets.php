@@ -44,6 +44,14 @@ function blueworx_enqueue_public_assets() {
 		blueworx_get_admin_asset_version( 'assets/js/public-nav.js' ),
 		true
 	);
+
+	wp_enqueue_script(
+		'blueworx-public-widgets',
+		BLUEWORX_LABS_URL . 'assets/js/public-widgets.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/public-widgets.js' ),
+		true
+	);
 }
 add_action( 'wp_enqueue_scripts', 'blueworx_enqueue_public_assets' );
 

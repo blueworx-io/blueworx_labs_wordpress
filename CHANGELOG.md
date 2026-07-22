@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.34.0] - 2026-07-22
+
+### Added
+- Plan 3a: interactive billing toggle, pricing calculator and savings calculator (progressive enhancement).
+
 ## [1.33.0] - 2026-07-22
 
 ### Added
