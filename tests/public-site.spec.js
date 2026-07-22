@@ -1327,6 +1327,19 @@ function add_filter( $tag, $callback, $priority = 10 ) { /* no-op */ }
 // content.php, and leaves the lifecycle scenarios unaffected.
 function blueworx_content_tools() { return array(); }
 
+// Page-creation stubs: blueworx_public_pages() returns eight top-level pages, so
+// blueworx_public_install_pages() reaches the create branch for every slug the
+// seeded map does not already hold (the scenarios below seed only 'home'). These
+// let the create path run without a real WordPress — get_page_by_path() finds no
+// existing page, wp_insert_post() hands back incrementing ids, and neither the
+// WP_Post match nor is_wp_error() short-circuits. The lifecycle assertions only
+// read show_on_front / page_on_front / prior_front, all keyed off the seeded
+// 'home' id, so these created ids never affect the outcome.
+if ( ! class_exists( 'WP_Post' ) ) { class WP_Post {} }
+function get_page_by_path( \$slug ) { return null; }
+function wp_insert_post( \$args ) { static \$id = 1000; return ++\$id; }
+function is_wp_error( \$thing ) { return false; }
+
 require '${pagesPhp}';
 
 ${body}
