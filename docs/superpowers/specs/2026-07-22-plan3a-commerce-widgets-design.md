@@ -33,7 +33,9 @@ the billing-toggle behaviour shared with `components/PlanCards`/`Plans.tsx`.
   honours the house accessibility rule (full keyboard access, readable without JS).
 - **content.php stays the single source of content.** The savings calculator's tool list
   and solo prices come from `blueworx_content_tools()` and `blueworx_content_solo_prices()`,
-  handed to JS via `wp_localize_script`. No tool data is duplicated in JS.
+  rendered by PHP into each row as `data-price` attributes. JS reads those attributes back
+  off the DOM — no tool data is duplicated in JS and no `wp_localize_script` is needed
+  (the rendered HTML is the single source at runtime too).
 - **No new dependencies, no CSS work.** Every class these widgets use is already in
   `assets/css/public.css` (verified: `.calc`, `.calc-panel`, `.stepper`, `.toggle-pill`,
   `.sv-tools`, `.bill-toggle`, `.plan-price`). Vanilla ES5 only, consistent with
@@ -54,18 +56,17 @@ the billing-toggle behaviour shared with `components/PlanCards`/`Plans.tsx`.
 ### Enqueue: `includes/public/assets.php`
 - Register/enqueue `blueworx-public-widgets` (`assets/js/public-widgets.js`), footer,
   version via `blueworx_get_admin_asset_version()`, in `blueworx_enqueue_public_assets()`
-  alongside the existing nav script (owned pages only).
-- `wp_localize_script( 'blueworx-public-widgets', 'blueworxWidgets', array( 'tools' =>
-  [ {slug,name,domain} × 12 ], 'soloPrices' => { slug: int }, 'faviconBase' =>
-  BLUEWORX_LABS_URL . 'assets/img/tools/' ) )`. Only the fields the savings calc needs —
-  not the full 6-feature tool arrays.
+  alongside the existing nav script (owned pages only). No `wp_localize_script` — every
+  value the widgets need is rendered into the DOM by PHP (see below) and read back by JS.
 
-### Data shapes handed to JS
-- `blueworxWidgets.tools`: array of `{ slug, name, domain }` in registry order (from
-  `blueworx_content_tools()`).
-- `blueworxWidgets.soloPrices`: `{ slug: int }` (from `blueworx_content_solo_prices()`).
-- `blueworxWidgets.faviconBase`: string, so JS builds `faviconBase + slug + '.png'` —
-  bundled favicons only, never Google.
+### Data in the DOM (no JS-side data duplication)
+- Savings calc: each tool row carries `data-slug`, `data-price` (its solo price from
+  `blueworx_content_solo_prices()`), and `data-on="1"`. JS sums `data-price` over rows with
+  `data-on="1"`. Favicons are the bundled `assets/img/tools/<slug>.png` rendered by PHP.
+- Billing toggle: reads the existing `data-price-m` / `data-price-a` / `data-sub-m` /
+  `data-sub-a` on `.plan-price` / its `<em>`.
+- Pricing calc: rate constants (`BASE`, +60, +120, +40) are calc rules, not content —
+  they live in the JS; the current control values are read from the DOM.
 
 ## Widget details
 
