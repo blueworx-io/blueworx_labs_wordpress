@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.28.0] - 2026-07-22
+
+### Added
+- **Services page (`templates/pages/services.php`)**, registered as `services` in
+  `blueworx_public_pages()`, rendering all five sections from `app/services/page.tsx`:
+  a two-column tech-hero with a metrics glass-card, Service 01 (four feature cards plus
+  the bespoke hand-authored analytics/browser panel with its `#fsg` gradient sparkline,
+  ported verbatim), How It Works (proc-grid part), the dark Service 02 section listing
+  the Digital Toolbox tools with **bundled** favicons (`assets/img/tools/`, no Google
+  requests), and testimonials. Reuses the `tech-hero`, `glass-card`, `proc-grid` and
+  `testimonials` parts; the analytics panel and two-column layout are composed inline.
+- `tests/marketing-services.spec.js` — asserts the two-column hero, the `#fsg` sparkline,
+  the four process steps, plugin-hosted (not Google) tool favicons, and the active nav link.
+
 ## [1.27.0] - 2026-07-22
 
 Task 3 of the marketing-pages migration (`marketing-pages`): the About page.

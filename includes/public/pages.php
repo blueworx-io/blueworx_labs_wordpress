@@ -31,6 +31,10 @@ function blueworx_public_pages() {
 				'title'    => __( 'About', 'blueworx-labs-wordpress' ),
 				'template' => 'pages/about.php',
 			),
+			'services' => array(
+				'title'    => __( 'Services', 'blueworx-labs-wordpress' ),
+				'template' => 'pages/services.php',
+			),
 		)
 	);
 }
