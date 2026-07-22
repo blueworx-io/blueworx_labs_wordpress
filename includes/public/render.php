@@ -32,6 +32,7 @@ function blueworx_public_document_open( $args = array() ) {
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class( 'bw-page ' . $body_class ); ?>>
+	<?php wp_body_open(); ?>
 	<?php
 }
 
@@ -47,6 +48,25 @@ function blueworx_public_document_close() {
 </html>
 	<?php
 }
+
+/**
+ * Guarantees a <title> tag is always emitted on a plugin-rendered page.
+ *
+ * wp_head() only prints a <title> (via core's _wp_render_title_tag()) when
+ * the active theme has opted in with add_theme_support( 'title-tag' ). This
+ * plugin's own pages must not depend on that theme seam — the whole point
+ * of the public layer is that its output is identical regardless of the
+ * active theme — so it declares the support itself instead of relying on
+ * the theme to. This file is only required when the public_site feature is
+ * on (includes/public/bootstrap.php), so this is already gated to exactly
+ * when the public layer is active.
+ *
+ * @return void
+ */
+function blueworx_public_ensure_title_tag_support() {
+	add_theme_support( 'title-tag' );
+}
+add_action( 'after_setup_theme', 'blueworx_public_ensure_title_tag_support' );
 
 /**
  * Renders a template part with scoped variables.
