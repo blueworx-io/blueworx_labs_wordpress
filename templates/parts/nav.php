@@ -187,7 +187,7 @@ $blueworx_nav_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 					>
 						<div style="width:38px;height:38px;border-radius:10px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">
 							<img
-								src="<?php echo esc_url( 'https://www.google.com/s2/favicons?domain=' . rawurlencode( $blueworx_nav_tool['domain'] ) . '&sz=64' ); ?>"
+								src="<?php echo esc_url( BLUEWORX_LABS_URL . 'assets/img/tools/' . $blueworx_nav_tool['slug'] . '.png' ); ?>"
 								alt="<?php echo esc_attr( $blueworx_nav_tool['name'] ); ?>"
 								style="width:22px;height:22px;object-fit:contain"
 							/>

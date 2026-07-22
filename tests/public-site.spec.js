@@ -373,6 +373,35 @@ test.describe('Public site', () => {
     expect(response.status(), 'the plugin logo asset must load successfully').toBe(200);
   });
 
+  test('toolbox favicons are bundled by the plugin, not fetched from Google', async ({ page }) => {
+    // WHY THIS TEST EXISTS: templates/parts/nav.php previously rendered each
+    // toolbox tool's logo via https://www.google.com/s2/favicons?domain=... —
+    // 12 third-party requests to Google on every single page load, a GDPR
+    // exposure and a hard dependency the plan otherwise deliberately avoids
+    // (fonts are self-hosted for exactly this reason). The 12 favicons are
+    // now bundled at assets/img/tools/<slug>.png and served from
+    // BLUEWORX_LABS_URL instead.
+    await page.goto(cacheBust('/'));
+
+    const toolImages = page.locator('.mega-panel .mega-item img');
+    await expect(toolImages, 'the mega panel must list all 12 toolbox tools').toHaveCount(12);
+
+    const srcs = await toolImages.evaluateAll((els) => els.map((el) => el.getAttribute('src')));
+
+    for (const src of srcs) {
+      expect(src, 'no toolbox favicon may be fetched from Google').not.toMatch(/google\.com/);
+      expect(
+        src,
+        'every toolbox favicon must be served from the plugin\'s own bundled assets'
+      ).toMatch(/\/wp-content\/plugins\/blueworx-labs-wordpress\/assets\/img\/tools\/[^/]+\.png$/);
+    }
+
+    // Confirm at least one actually loads — a naive "src is set" check would
+    // pass even for a broken path.
+    const response = await page.request.get(srcs[0]);
+    expect(response.status(), 'a bundled toolbox favicon must load successfully').toBe(200);
+  });
+
   test('the public_site feature is registered and on by default', async ({ page }) => {
     await login(page);
     await page.goto(cacheBust('/wp-admin/admin.php?page=blueworx-labs-wordpress'));
