@@ -118,7 +118,51 @@
 	}
 
 	function initSavingsCalc() {
-		// Body added in Task 3.
+		var root = document.querySelector( '[data-widget="savings-calc"]' );
+		if ( ! root ) {
+			return;
+		}
+		var hostingCost = 30;
+		var toolboxCost = 30;
+		var rows = root.querySelectorAll( '.sv-row' );
+		var soloOut = root.querySelector( '[data-testid="solo-total"]' );
+		var saveOut = root.querySelector( '[data-testid="savings-line"]' );
+
+		function group( n ) {
+			return String( n ).replace( /\B(?=(\d{3})+(?!\d))/g, ',' );
+		}
+		function render() {
+			var solo = hostingCost;
+			for ( var i = 0; i < rows.length; i++ ) {
+				if ( '1' === rows[ i ].getAttribute( 'data-on' ) ) {
+					solo += parseInt( rows[ i ].getAttribute( 'data-price' ), 10 );
+				}
+			}
+			var save = Math.max( 0, solo - toolboxCost );
+			if ( soloOut ) {
+				soloOut.textContent = solo;
+			}
+			if ( saveOut ) {
+				saveOut.textContent = 'You save $' + group( save ) + '/mo · $' + group( save * 12 ) + '/yr';
+			}
+		}
+
+		for ( var i = 0; i < rows.length; i++ ) {
+			( function ( row ) {
+				var pill = row.querySelector( '.toggle-pill' );
+				if ( ! pill ) {
+					return;
+				}
+				pill.addEventListener( 'click', function () {
+					var on = '1' === row.getAttribute( 'data-on' );
+					row.setAttribute( 'data-on', on ? '0' : '1' );
+					pill.className = on ? 'toggle-pill' : 'toggle-pill on';
+					pill.setAttribute( 'aria-pressed', on ? 'false' : 'true' );
+					render();
+				} );
+			}( rows[ i ] ) );
+		}
+		render();
 	}
 
 	function init() {

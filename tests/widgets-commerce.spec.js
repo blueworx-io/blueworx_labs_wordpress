@@ -57,3 +57,21 @@ test.describe('Commerce widgets — pricing calculator', () => {
     await expect(updates.locator('b')).toHaveText('6'); // max 6
   });
 });
+
+test.describe('Commerce widgets — savings calculator', () => {
+  test.skip(isPlaceholder, 'No real WordPress target configured.');
+
+  test('default totals and per-tool recompute', async ({ page }) => {
+    await page.goto('/toolbox');
+    const solo = page.locator('[data-testid="solo-total"]');
+    const save = page.locator('[data-testid="savings-line"]');
+
+    await expect(solo).toHaveText('190');                       // sum 160 + 30 hosting
+    await expect(save).toHaveText('You save $160/mo · $1,920/yr'); // 190 - 30
+
+    // Toggle SureCart ($19) off.
+    await page.locator('.sv-row[data-slug="surecart"] .toggle-pill').click();
+    await expect(solo).toHaveText('171');                       // 190 - 19
+    await expect(save).toHaveText('You save $141/mo · $1,692/yr'); // 171 - 30
+  });
+});
