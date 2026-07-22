@@ -4,6 +4,54 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.24.0] - 2026-07-22
+
+Final pre-merge fix wave for the public front-end layer (`public-rendering-foundation`).
+
+### Security
+
+- **Site Protection could be bypassed on "/" via a content-selecting query var.** Once
+  activation points the front page at the plugin's Home page, `blueworx_public_is_owned_request_path()`
+  (`includes/public/pages.php`) exempted path `/` from Site Protection unconditionally — but
+  WordPress still honours query vars on `/`, so `/?p=<id>`, `/?s=<term>`, `/?feed=rss2`, `/?cat=1`
+  etc. shared that same "owned" path and were exempted right along with it, letting a logged-out
+  request reach WordPress's normal query handling instead of the 403 wall (a full content leak for
+  search results and feeds). The exemption now checks the request's query string against
+  WordPress's own content-selecting public query vars (`p`, `page_id`, `s`, `feed`, `cat`, `tag`,
+  `author`, `paged`, `post_type`, `preview`, …) and refuses the exemption if any are present.
+
+### Fixed
+
+- **Activation could silently replace the site owner's existing homepage, with no way back.**
+  `blueworx_public_install_pages()` overwrote `show_on_front`/`page_on_front` on every activation
+  with no memory of the prior value. It now skips the takeover entirely when the front page is
+  already pointed at a page this plugin does not own, snapshots the prior value once when it does
+  take over (`blueworx_public_prior_front`), and a new deactivation hook restores that snapshot —
+  but only while the front page is still actually this plugin's Home page. `uninstall.php` also now
+  removes `blueworx_public_prior_front` and `blueworx_public_page_ids`.
+
+### Theme independence
+
+- `wp_body_open()` is now called on every plugin-rendered page, so analytics/tag-manager/
+  cookie-consent/skip-link plugins that hook it keep working.
+- The plugin now declares `add_theme_support( 'title-tag' )` itself, so `<title>` output no longer
+  depends on whether the active theme opted in.
+- The active theme's own front-end stylesheet is now dequeued/deregistered on plugin-owned pages,
+  so a theme with bare-element or `!important` rules can no longer visibly change the plugin's
+  pages. The theme-independence test now also asserts no theme stylesheet element is present in
+  `<head>` on an owned page.
+
+### Fixed
+
+- **`templates/parts/nav.php` hrefs pointed outside the site on a subdirectory WordPress install.**
+  Every nav link and the logo now build their href with `home_url()`, matching `footer.php`.
+- **12 third-party requests to Google on every page load.** `templates/parts/nav.php` rendered each
+  toolbox tool's logo via `https://www.google.com/s2/favicons?domain=...`. The 12 favicons are now
+  bundled at `assets/img/tools/<slug>.png` and served from the plugin itself.
+- **The Toolbox mega panel and About Us dropdown were keyboard-unreachable.**
+  `assets/js/public-nav.js` only opened either panel on `mouseenter`/`mouseleave`. `focusin`/
+  `focusout` handlers (plus a `:focus-within` CSS fallback) now open them for keyboard users too.
+
 ## [1.23.0] - 2026-07-21
 
 ### Fixed
