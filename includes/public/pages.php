@@ -187,13 +187,19 @@ function blueworx_public_is_owned_page() {
  *   (fresh install, before activation has run).
  *
  * An owned marketing page is always a clean-path request — it never
- * legitimately carries a content-selecting query var (?p=, ?s=, ?feed=, …).
- * WordPress still honours those on "/" once show_on_front=page, so without
- * this guard `/?p=123`, `/?s=secret` etc. would all resolve to the same
- * owned path as "/" and be exempted from Site Protection right along with
- * it — leaking drafts, arbitrary posts, search results and feeds to
- * logged-out visitors. If any such query var is present, the request is not
- * an eligible clean owned-page request, regardless of its path.
+ * legitimately carries any query var beyond harmless tracking/analytics
+ * params. This is deliberately an ALLOWLIST, not a denylist of known
+ * content-selecting query vars: a denylist must anticipate every dangerous
+ * key up front and reliably falls behind (it previously missed
+ * `category_name` — the slug form of `cat` — `taxonomy`/`term`, `rest_route`
+ * (which reaches this code because REST_REQUEST is not yet defined this
+ * early at `init` priority 1), `attachment`, `embed` and `post_format`, each
+ * of which let a logged-out request reach real content or the REST API
+ * right through the "/" exemption). An allowlist only has to name the small,
+ * fixed set of keys that are safe, and anything else — known or not — is
+ * refused by default. If any query parameter present is not on the
+ * allowlist, the request is not an eligible clean owned-page request,
+ * regardless of its path.
  *
  * @return bool True when the request path belongs to this plugin.
  */
@@ -205,35 +211,29 @@ function blueworx_public_is_owned_request_path() {
 	$query_string = isset( $_SERVER['QUERY_STRING'] ) ? (string) wp_unslash( $_SERVER['QUERY_STRING'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 	if ( '' !== $query_string ) {
-		$content_selecting_vars = array(
-			'p',
-			'page_id',
-			'attachment_id',
-			's',
-			'feed',
-			'cat',
-			'tag',
-			'tag_id',
-			'author',
-			'author_name',
-			'year',
-			'monthnum',
-			'day',
-			'm',
-			'w',
-			'paged',
-			'post_type',
-			'name',
-			'pagename',
-			'page',
-			'preview',
-			'preview_id',
+		// Tracking/analytics params only — never a key that can select
+		// content. Filterable so a site with a genuine need can extend it,
+		// but the default stays strict; this is not the place to add a
+		// content-selecting key back in.
+		$allowed_query_params = (array) apply_filters(
+			'blueworx_public_allowed_query_params',
+			array(
+				'utm_source',
+				'utm_medium',
+				'utm_campaign',
+				'utm_term',
+				'utm_content',
+				'fbclid',
+				'gclid',
+				'mc_cid',
+				'mc_eid',
+			)
 		);
 
 		$query_vars = array();
 		wp_parse_str( $query_string, $query_vars );
 
-		if ( array_intersect_key( array_flip( $content_selecting_vars ), $query_vars ) ) {
+		if ( array_diff_key( $query_vars, array_flip( $allowed_query_params ) ) ) {
 			return false;
 		}
 	}

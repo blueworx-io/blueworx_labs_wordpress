@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
-import { test, isPlaceholder, cacheBust, login, baseURL, ADMIN_USER, ADMIN_PASS } from './helpers.js';
+import { test, isPlaceholder, cacheBust, cacheBustExempt, login, baseURL, ADMIN_USER, ADMIN_PASS } from './helpers.js';
 
 // A keyframe step ("0%", "100%", "from", "to") is the one kind of bare-looking
 // prelude this file legitimately needs — it is never a document element and
@@ -523,7 +523,11 @@ test.describe('Public site', () => {
       // reachable even though the frontend Site Protection gate is now on.
       const loggedOutContext = await browser.newContext();
       const loggedOutPage = await loggedOutContext.newPage();
-      const response = await loggedOutPage.goto(cacheBust(homeUrl));
+      // cacheBustExempt(), not cacheBust(): this request must stay recognised
+      // as a clean owned-page request by the query allowlist (pages.php) —
+      // see that helper's doc comment for why plain cacheBust() would trip
+      // the very exemption this assertion is pinning.
+      const response = await loggedOutPage.goto(cacheBustExempt(homeUrl));
 
       expect(
         response && response.status(),
@@ -663,10 +667,64 @@ test.describe('Public site', () => {
         'a search results page reached via "/?s=<term>" must be blocked (403) by Site Protection, not leaked through the "/" exemption'
       ).toBe(403);
 
-      const homeResponse = await loggedOutPage.goto(cacheBust('/'));
+      // The allowlist rewrite's specific regressions: category_name is the
+      // SLUG form of `cat` (every install ships an "Uncategorized" category
+      // containing every post with no category set) and was never
+      // denylisted alongside the ID form, so this leaked a full archive.
+      //
+      // Uses page.request (maxRedirects: 0) rather than page.goto(): with
+      // pretty permalinks (as this harness configures), an UNPATCHED
+      // exemption still lets this request through Site Protection, but
+      // WordPress's own redirect_canonical() then 301s it to the pretty
+      // /category/uncategorized/ URL — a path Site Protection blocks in its
+      // own right once the browser follows that redirect, which would mask
+      // the leak behind an incidental 403 and make this assertion pass
+      // whether the code is patched or not. Checking the immediate,
+      // un-followed response isolates exactly what Site Protection itself
+      // decided on the original request.
+      const categoryNameResponse = await loggedOutPage.request.get(
+        cacheBust('/?category_name=uncategorized'),
+        { maxRedirects: 0 }
+      );
+      expect(
+        categoryNameResponse.status(),
+        'a category archive reached via "/?category_name=<slug>" must be blocked (403) by Site Protection, not leaked through the "/" exemption'
+      ).toBe(403);
+
+      // rest_route reaches this code specifically because REST_REQUEST is
+      // not yet defined at `init` priority 1 (it is only set once the REST
+      // API actually bootstraps, later in the request lifecycle) — so an
+      // unpatched denylist that never listed rest_route let a logged-out
+      // request read published posts as JSON straight through the "/"
+      // exemption. No canonical redirect applies to rest_route, but this
+      // uses the same un-followed request style as category_name above for
+      // consistency and to isolate Site Protection's own decision.
+      const restRouteResponse = await loggedOutPage.request.get(
+        cacheBust('/?rest_route=/wp/v2/posts'),
+        { maxRedirects: 0 }
+      );
+      expect(
+        restRouteResponse.status(),
+        'a REST request reached via "/?rest_route=<route>" must be blocked (403) by Site Protection, not leaked through the "/" exemption'
+      ).toBe(403);
+
+      // cacheBustExempt(), not cacheBust(): see that helper's doc comment —
+      // plain cacheBust()'s own query key is not on the allowlist and would
+      // trip the very exemption these two assertions are pinning.
+      const homeResponse = await loggedOutPage.goto(cacheBustExempt('/'));
       expect(
         homeResponse && homeResponse.status(),
         'a clean "/" request must remain exempt (200) from Site Protection'
+      ).toBe(200);
+
+      // An allowlisted tracking/analytics param must not lose the
+      // exemption — the allowlist rewrite's whole point is that these
+      // common, non-content-selecting params stay usable on marketing
+      // links without falling back to Site Protection's 403 wall.
+      const utmResponse = await loggedOutPage.goto(cacheBustExempt('/?utm_source=newsletter'));
+      expect(
+        utmResponse && utmResponse.status(),
+        'a request carrying only an allowlisted tracking param ("/?utm_source=...") must remain exempt (200) from Site Protection'
       ).toBe(200);
 
       await loggedOutContext.close();
@@ -888,7 +946,10 @@ test.describe('Public site', () => {
 
       const loggedOutContext = await browser.newContext();
       const loggedOutPage = await loggedOutContext.newPage();
-      const response = await loggedOutPage.goto(cacheBust(renamedUrl));
+      // cacheBustExempt(), not cacheBust(): see that helper's doc comment —
+      // plain cacheBust()'s own query key is not on the allowlist and would
+      // trip the very exemption this assertion is pinning.
+      const response = await loggedOutPage.goto(cacheBustExempt(renamedUrl));
 
       // Site Protection gates on `init`, before WordPress's own
       // redirect_canonical() sends the front page's slug URL back to "/" —

@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.24.1] - 2026-07-22
+
+### Security
+- **Site Protection exemption converted from a denylist to an allowlist.** The
+  public marketing pages are exempt from Site Protection, which is decided at
+  `init` from the request path. The prior denylist of content-selecting query
+  vars leaked: `?category_name=`, `?taxonomy=&term=`, `?rest_route=`,
+  `?attachment=`, `?embed=` and `?post_format=` were never listed, so a
+  logged-out visitor could reach post archives and the REST API through the
+  `/` exemption. An owned marketing page never legitimately carries a
+  content-selecting query var, so the request is now exempt only when every
+  query parameter is on a strict allowlist of tracking params
+  (`utm_*`, `fbclid`, `gclid`, `mc_cid`, `mc_eid`), filterable via
+  `blueworx_public_allowed_query_params`. Anything else — known or not — is
+  gated by default.
+
 ## [1.24.0] - 2026-07-22
 
 Final pre-merge fix wave for the public front-end layer (`public-rendering-foundation`).
