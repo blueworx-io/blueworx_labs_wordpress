@@ -43,6 +43,10 @@ function blueworx_public_pages() {
 				'title'    => __( 'Work', 'blueworx-labs-wordpress' ),
 				'template' => 'pages/work.php',
 			),
+			'ai' => array(
+				'title'    => __( 'AI Powered', 'blueworx-labs-wordpress' ),
+				'template' => 'pages/ai.php',
+			),
 		)
 	);
 }

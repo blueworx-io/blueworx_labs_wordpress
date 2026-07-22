@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.31.0] - 2026-07-22
+
+### Added
+- **AI Powered page (`templates/pages/ai.php`)**, registered as `ai`, rendering the five
+  sections from `app/ai/page.tsx`: the two-column ai-hero with the Claude badge, "The Full
+  Flow", "Model Guidance" (four model cards), "Approved Stack" (ten chips) and "What We
+  Build" (five offering cards). The AiDemo and AiPipeline interactive widgets are Plan 3,
+  so labelled placeholders stand in for them. This page's `.ai-*` styles were already in
+  public.css.
+- `tests/marketing-ai.spec.js` — the Claude hero, four model cards, ten stack chips, five
+  offerings, the two Plan 3 placeholders, and the active nav link.
+
 ## [1.30.0] - 2026-07-22
 
 ### Added
