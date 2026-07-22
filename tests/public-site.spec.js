@@ -1196,6 +1196,11 @@ function get_option( $name, $default = false ) {
 function is_admin() { return false; }
 function is_page() { return true; }
 function get_queried_object() { return new WP_Post( ${postId}, '${postName}' ); }
+// blueworx_public_pages() (pages.php) now loops this to append the 12 nested
+// Toolbox tool entries (Task 9b) — irrelevant to what this harness pins
+// (top-level page ownership resolution), so a stub with no tools is enough
+// to keep pages.php loadable standalone, without content.php.
+function blueworx_content_tools() { return array(); }
 
 require '${pagesPhp}';
 
@@ -1316,6 +1321,11 @@ function get_post_status( $id ) { return 'publish'; }
 function __( $text, $domain = 'default' ) { return $text; }
 function apply_filters( $tag, $value ) { return $value; }
 function add_filter( $tag, $callback, $priority = 10 ) { /* no-op */ }
+// blueworx_public_pages() (pages.php) now loops this to append the 12 nested
+// Toolbox tool entries (Task 9b) — every scenario below is keyed to 'home'
+// only, so a stub with no tools keeps pages.php loadable standalone, without
+// content.php, and leaves the lifecycle scenarios unaffected.
+function blueworx_content_tools() { return array(); }
 
 require '${pagesPhp}';
 
