@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.30.0] - 2026-07-22
+
+### Added
+- **Work page (`templates/pages/work.php`)**, registered as `work`, rendering the four
+  sections from `app/work/page.tsx`: a two-column tech-hero with a `results.log`
+  glass-card, a `.work-grid` of six non-linked project cards (the `work-card` part in
+  plain `<div>` mode), a stats-band, and a testimonials section using Work's own three
+  testimonials and heading ("Partners Who'd Recommend Us") rather than the shared
+  homepage reviews. Reuses tech-hero, glass-card, work-card, stats-band and testimonials
+  parts throughout.
+- `tests/marketing-work.spec.js` — the two-column hero, six non-linked cards, the stats
+  band, the Work-specific testimonials, and plugin-hosted images.
+
 ## [1.29.0] - 2026-07-22
 
 ### Added
