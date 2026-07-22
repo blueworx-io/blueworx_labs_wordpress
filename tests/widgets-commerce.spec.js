@@ -75,3 +75,16 @@ test.describe('Commerce widgets — savings calculator', () => {
     await expect(save).toHaveText('You save $141/mo · $1,692/yr'); // 171 - 30
   });
 });
+
+test.describe('Commerce widgets — no-JS default state', () => {
+  test.skip(isPlaceholder, 'No real WordPress target configured.');
+
+  test('server HTML already carries the default totals', async ({ request }) => {
+    const pricing = await (await request.get('/pricing')).text();
+    expect(pricing).toContain('data-testid="calc-total">$600<');
+
+    const toolbox = await (await request.get('/toolbox')).text();
+    expect(toolbox).toContain('data-testid="solo-total">190<');
+    expect(toolbox).toContain('You save $160/mo · $1,920/yr');
+  });
+});
