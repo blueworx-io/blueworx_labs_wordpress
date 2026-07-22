@@ -55,3 +55,16 @@ test.describe('Showcase — feature tabs', () => {
     await expect(root.locator('.af-text h2')).toHaveText('Website Hosting');
   });
 });
+
+test.describe('Showcase — AI demo', () => {
+  test.skip(isPlaceholder, 'No real WordPress target configured.');
+
+  test('renders the finished demo frame in the server HTML', async ({ page, request }) => {
+    await page.goto('/ai');
+    const root = page.locator('[data-widget="ai-demo"]');
+    await expect(root.locator('.ai-typed')).toContainText('Build a booking website');
+    // Finished-frame default (present regardless of JS animation state):
+    const html = await (await request.get('/ai')).text();
+    expect(html).toContain('ai-site in');
+  });
+});

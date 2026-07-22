@@ -291,6 +291,86 @@
 		}
 	}
 
+	function initAiDemo() {
+		var root = document.querySelector( '[data-widget="ai-demo"]' );
+		if ( ! root ) {
+			return;
+		}
+		if ( window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+			return;
+		}
+		var typed = root.querySelector( '.ai-typed' );
+		var caret = root.querySelector( '.ai-caret' );
+		var codeLines = root.querySelectorAll( '.ai-code .cl' );
+		var site = root.querySelector( '.ai-site' );
+		var stages = root.querySelectorAll( '.ai-stage' );
+		if ( ! typed ) {
+			return;
+		}
+		var msg = typed.textContent;
+		var timers = [];
+
+		function clearTimers() {
+			for ( var i = 0; i < timers.length; i++ ) {
+				clearTimeout( timers[ i ] );
+			}
+			timers = [];
+		}
+		function setStage( n ) {
+			for ( var i = 0; i < stages.length; i++ ) {
+				stages[ i ].className = i <= n ? 'ai-stage on' : 'ai-stage';
+			}
+		}
+		function loop() {
+			clearTimers();
+			var t = 0;
+			var i;
+			typed.textContent = '';
+			if ( caret ) {
+				caret.style.display = '';
+			}
+			for ( i = 0; i < codeLines.length; i++ ) {
+				codeLines[ i ].className = 'cl';
+			}
+			if ( site ) {
+				site.className = 'ai-site';
+			}
+			setStage( 0 );
+			t += 450;
+			for ( i = 1; i <= msg.length; i++ ) {
+				( function ( n ) {
+					timers.push( setTimeout( function () {
+						typed.textContent = msg.slice( 0, n );
+					}, t + n * 26 ) );
+				}( i ) );
+			}
+			t += msg.length * 26 + 600;
+			timers.push( setTimeout( function () {
+				if ( caret ) {
+					caret.style.display = 'none';
+				}
+				setStage( 1 );
+			}, t ) );
+			for ( i = 1; i <= codeLines.length; i++ ) {
+				( function ( n ) {
+					timers.push( setTimeout( function () {
+						codeLines[ n - 1 ].className = 'cl in';
+					}, t + n * 140 ) );
+				}( i ) );
+			}
+			t += codeLines.length * 140 + 550;
+			timers.push( setTimeout( function () {
+				setStage( 2 );
+				if ( site ) {
+					site.className = 'ai-site in';
+				}
+			}, t ) );
+			t += 3400;
+			timers.push( setTimeout( loop, t ) );
+		}
+		loop();
+	}
+
 	function init() {
 		initBillingToggle();
 		initPricingCalc();
@@ -298,6 +378,7 @@
 		initFaqAccordion();
 		initAiPipeline();
 		initFeatureTabs();
+		initAiDemo();
 	}
 
 	if ( 'loading' === document.readyState ) {
