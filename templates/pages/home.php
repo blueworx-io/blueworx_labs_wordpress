@@ -424,30 +424,7 @@ blueworx_public_part( 'parts/nav.php' );
 			</div>
 		</section>
 
-		<section class="tbx">
-			<?php blueworx_blob( 'width:320px;height:320px;top:-100px;left:-120px;opacity:.14' ); ?>
-			<div class="tbx-head">
-				<h2 class="h2"><?php echo esc_html__( 'Do more with the BlueWorx Toolbox', 'blueworx-labs-wordpress' ); ?></h2>
-				<p><?php echo esc_html__( 'Access premium tools, reduce unnecessary costs, and run your digital operations more efficiently.', 'blueworx-labs-wordpress' ); ?></p>
-			</div>
-			<div class="tbx-grid">
-				<?php foreach ( blueworx_content_tools() as $blueworx_home_tool ) : ?>
-					<a href="<?php echo esc_url( home_url( '/toolbox/' . $blueworx_home_tool['slug'] ) ); ?>" class="tbx-card" style="text-decoration:none">
-						<div class="tbx-top">
-							<div class="tbx-logo"><img src="<?php echo esc_url( BLUEWORX_LABS_URL . 'assets/img/tools/' . $blueworx_home_tool['slug'] . '.png' ); ?>" alt="<?php echo esc_attr( $blueworx_home_tool['name'] ); ?>" loading="lazy" /></div>
-							<span class="tbx-arrow">
-								<?php
-								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static trusted markup, see $blueworx_home_arrow above.
-								echo $blueworx_home_arrow;
-								?>
-							</span>
-						</div>
-						<h4><?php echo esc_html( $blueworx_home_tool['name'] ); ?></h4>
-						<p><?php echo esc_html( $blueworx_home_tool['desc'] ); ?></p>
-					</a>
-				<?php endforeach; ?>
-			</div>
-		</section>
+		<?php blueworx_public_part( 'parts/toolbox-grid.php' ); ?>
 
 		<?php
 		blueworx_public_part(

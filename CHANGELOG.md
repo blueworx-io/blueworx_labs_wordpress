@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.32.0] - 2026-07-22
+
+### Added
+- **Pricing page (`templates/pages/pricing.php`)** and **Toolbox archive page
+  (`templates/pages/toolbox.php`)**, registered as `pricing` and `toolbox`. Both render a
+  `.pb-tall` hero with the billing toggle, the plan cards (via a new shared `plan-cards`
+  part, pulled up to overlap the hero), the logos band, a feature comparison table, a
+  calculator, and a static FAQ — Toolbox additionally has the `#savings` section and the
+  toolbox grid.
+- **`plan-cards` template part** — renders the plan grid from a plans array, each card
+  carrying `data-price-m` / `data-price-a` so Plan 3 can swap monthly/annual prices; the
+  button class is derived from the plan's `feat` flag (dark vs outline). Billing toggle
+  and calculators are Plan 3 widgets: the toggle renders its real `.bill-toggle` markup
+  (Monthly selected), the calculators render labelled placeholders.
+- **`toolbox-grid` template part**, extracted from the home page's inline toolbox band so
+  Home and Toolbox share one implementation (Home refactored to use it).
+- `tests/marketing-plans.spec.js` — plan cards, price data attributes, comparison tables,
+  the billing toggle, the calculator placeholders, the toolbox grid, and active nav links.
+
 ## [1.31.0] - 2026-07-22
 
 ### Added
