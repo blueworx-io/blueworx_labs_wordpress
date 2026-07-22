@@ -186,11 +186,32 @@
 		}
 	}
 
+	function initAiPipeline() {
+		var shell = document.querySelector( '[data-widget="ai-pipeline"]' );
+		if ( ! shell ) {
+			return;
+		}
+		var steps = shell.querySelectorAll( '.ai-pipe-step' );
+		if ( ! steps.length ) {
+			return;
+		}
+		if ( window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+			return;
+		}
+		var active = 0;
+		setInterval( function () {
+			steps[ active ].className = 'ai-pipe-step';
+			active = ( active + 1 ) % steps.length;
+			steps[ active ].className = 'ai-pipe-step on';
+		}, 1300 );
+	}
+
 	function init() {
 		initBillingToggle();
 		initPricingCalc();
 		initSavingsCalc();
 		initFaqAccordion();
+		initAiPipeline();
 	}
 
 	if ( 'loading' === document.readyState ) {

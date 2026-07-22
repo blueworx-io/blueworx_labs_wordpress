@@ -27,3 +27,15 @@ test.describe('Showcase — FAQ accordion', () => {
     await expect(items.nth(0)).not.toHaveAttribute('open', '');
   });
 });
+
+test.describe('Showcase — AI pipeline', () => {
+  test.skip(isPlaceholder, 'No real WordPress target configured.');
+
+  test('renders six steps with exactly one active by default', async ({ page }) => {
+    await page.goto('/ai');
+    const shell = page.locator('[data-widget="ai-pipeline"]');
+    await expect(shell.locator('.ai-pipe-step')).toHaveCount(6);
+    await expect(shell.locator('.ai-pipe-step.on')).toHaveCount(1);
+    await expect(shell.locator('.ai-pipe-step').first()).toHaveText(/Brief/);
+  });
+});

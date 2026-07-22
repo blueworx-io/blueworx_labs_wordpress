@@ -176,8 +176,69 @@ blueworx_public_part( 'parts/nav.php' );
 				<h2 class="h2"><?php esc_html_e( 'From Brief to Deploy, One Continuous Flow', 'blueworx-labs-wordpress' ); ?></h2>
 				<p class="lead"><?php esc_html_e( 'A repeatable pipeline where the right Claude model handles each stage, and every change ships through review, tests and version control.', 'blueworx-labs-wordpress' ); ?></p>
 			</div>
-			<div class="bw-plan3-placeholder" data-widget="ai-pipeline">
-				<p><?php esc_html_e( 'Pipeline visualisation — coming soon.', 'blueworx-labs-wordpress' ); ?></p>
+			<?php
+			$blueworx_ai_pipe_steps = array(
+				array(
+					'n'     => '01',
+					'icon'  => 'doc',
+					'title' => __( 'Brief', 'blueworx-labs-wordpress' ),
+					'desc'  => __( 'Your goal becomes a scoped brief with in-scope, out-of-scope and acceptance criteria.', 'blueworx-labs-wordpress' ),
+					'model' => __( 'Claude Opus', 'blueworx-labs-wordpress' ),
+				),
+				array(
+					'n'     => '02',
+					'icon'  => 'workflow',
+					'title' => __( 'Plan', 'blueworx-labs-wordpress' ),
+					'desc'  => __( 'The brief becomes GitHub Milestones and scoped Issues, one per screen or feature.', 'blueworx-labs-wordpress' ),
+					'model' => __( 'Claude Sonnet', 'blueworx-labs-wordpress' ),
+				),
+				array(
+					'n'     => '03',
+					'icon'  => 'palette',
+					'title' => __( 'Design', 'blueworx-labs-wordpress' ),
+					'desc'  => __( 'Screens designed on your design system, then handed off to build.', 'blueworx-labs-wordpress' ),
+					'model' => __( 'Claude Opus', 'blueworx-labs-wordpress' ),
+				),
+				array(
+					'n'     => '04',
+					'icon'  => 'code',
+					'title' => __( 'Build', 'blueworx-labs-wordpress' ),
+					'desc'  => __( 'Each Issue built on its own branch, following our recipe book and standards.', 'blueworx-labs-wordpress' ),
+					'model' => __( 'Claude Sonnet', 'blueworx-labs-wordpress' ),
+				),
+				array(
+					'n'     => '05',
+					'icon'  => 'shield',
+					'title' => __( 'Review', 'blueworx-labs-wordpress' ),
+					'desc'  => __( 'Automated checks, Playwright tests and code review gate every pull request.', 'blueworx-labs-wordpress' ),
+					'model' => __( 'Claude Sonnet', 'blueworx-labs-wordpress' ),
+				),
+				array(
+					'n'     => '06',
+					'icon'  => 'zap',
+					'title' => __( 'Deploy', 'blueworx-labs-wordpress' ),
+					'desc'  => __( 'Merged and shipped to Netlify, WordPress or standalone, versioned and logged.', 'blueworx-labs-wordpress' ),
+					'model' => __( 'Automated', 'blueworx-labs-wordpress' ),
+				),
+			);
+			?>
+			<div class="ai-pipe-shell" data-widget="ai-pipeline">
+				<div class="ai-pipe-glow"></div>
+				<div class="ai-pipe-status">
+					<span><span class="dotp"></span><?php esc_html_e( 'Live Pipeline', 'blueworx-labs-wordpress' ); ?></span>
+					<span><?php esc_html_e( 'Brief → Deploy', 'blueworx-labs-wordpress' ); ?></span>
+				</div>
+				<div class="ai-pipe">
+					<?php foreach ( $blueworx_ai_pipe_steps as $blueworx_ai_pipe_i => $blueworx_ai_pipe_step ) : ?>
+						<div class="<?php echo 0 === $blueworx_ai_pipe_i ? 'ai-pipe-step on' : 'ai-pipe-step'; ?>">
+							<span class="pn"><?php echo esc_html( $blueworx_ai_pipe_step['n'] ); ?></span>
+							<div class="pic"><?php blueworx_icon( $blueworx_ai_pipe_step['icon'] ); ?></div>
+							<h4><?php echo esc_html( $blueworx_ai_pipe_step['title'] ); ?></h4>
+							<p><?php echo esc_html( $blueworx_ai_pipe_step['desc'] ); ?></p>
+							<span class="model"><?php echo esc_html( $blueworx_ai_pipe_step['model'] ); ?></span>
+						</div>
+					<?php endforeach; ?>
+				</div>
 			</div>
 		</section>
 
