@@ -97,7 +97,12 @@ function blueworx_intercept_requests() {
 		return;
 	}
 
-	if ( $sp_frontend ) {
+	// Lets a request-level exemption (e.g. a plugin-owned public page) opt out
+	// of the frontend gate even when Site Protection is on. Unhooked, this is
+	// a no-op: $protected is simply $sp_frontend.
+	$protected = apply_filters( 'blueworx_site_protection_applies', $sp_frontend );
+
+	if ( $protected ) {
 		if ( ! is_user_logged_in() ) {
 			blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-labs-wordpress' ) );
 		}

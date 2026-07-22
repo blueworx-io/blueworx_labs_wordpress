@@ -4,6 +4,323 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.24.1] - 2026-07-22
+
+### Security
+- **Site Protection exemption converted from a denylist to an allowlist.** The
+  public marketing pages are exempt from Site Protection, which is decided at
+  `init` from the request path. The prior denylist of content-selecting query
+  vars leaked: `?category_name=`, `?taxonomy=&term=`, `?rest_route=`,
+  `?attachment=`, `?embed=` and `?post_format=` were never listed, so a
+  logged-out visitor could reach post archives and the REST API through the
+  `/` exemption. An owned marketing page never legitimately carries a
+  content-selecting query var, so the request is now exempt only when every
+  query parameter is on a strict allowlist of tracking params
+  (`utm_*`, `fbclid`, `gclid`, `mc_cid`, `mc_eid`), filterable via
+  `blueworx_public_allowed_query_params`. Anything else — known or not — is
+  gated by default.
+
+## [1.24.0] - 2026-07-22
+
+Final pre-merge fix wave for the public front-end layer (`public-rendering-foundation`).
+
+### Security
+
+- **Site Protection could be bypassed on "/" via a content-selecting query var.** Once
+  activation points the front page at the plugin's Home page, `blueworx_public_is_owned_request_path()`
+  (`includes/public/pages.php`) exempted path `/` from Site Protection unconditionally — but
+  WordPress still honours query vars on `/`, so `/?p=<id>`, `/?s=<term>`, `/?feed=rss2`, `/?cat=1`
+  etc. shared that same "owned" path and were exempted right along with it, letting a logged-out
+  request reach WordPress's normal query handling instead of the 403 wall (a full content leak for
+  search results and feeds). The exemption now checks the request's query string against
+  WordPress's own content-selecting public query vars (`p`, `page_id`, `s`, `feed`, `cat`, `tag`,
+  `author`, `paged`, `post_type`, `preview`, …) and refuses the exemption if any are present.
+
+### Fixed
+
+- **Activation could silently replace the site owner's existing homepage, with no way back.**
+  `blueworx_public_install_pages()` overwrote `show_on_front`/`page_on_front` on every activation
+  with no memory of the prior value. It now skips the takeover entirely when the front page is
+  already pointed at a page this plugin does not own, snapshots the prior value once when it does
+  take over (`blueworx_public_prior_front`), and a new deactivation hook restores that snapshot —
+  but only while the front page is still actually this plugin's Home page. `uninstall.php` also now
+  removes `blueworx_public_prior_front` and `blueworx_public_page_ids`.
+
+### Theme independence
+
+- `wp_body_open()` is now called on every plugin-rendered page, so analytics/tag-manager/
+  cookie-consent/skip-link plugins that hook it keep working.
+- The plugin now declares `add_theme_support( 'title-tag' )` itself, so `<title>` output no longer
+  depends on whether the active theme opted in.
+- The active theme's own front-end stylesheet is now dequeued/deregistered on plugin-owned pages,
+  so a theme with bare-element or `!important` rules can no longer visibly change the plugin's
+  pages. The theme-independence test now also asserts no theme stylesheet element is present in
+  `<head>` on an owned page.
+
+### Fixed
+
+- **`templates/parts/nav.php` hrefs pointed outside the site on a subdirectory WordPress install.**
+  Every nav link and the logo now build their href with `home_url()`, matching `footer.php`.
+- **12 third-party requests to Google on every page load.** `templates/parts/nav.php` rendered each
+  toolbox tool's logo via `https://www.google.com/s2/favicons?domain=...`. The 12 favicons are now
+  bundled at `assets/img/tools/<slug>.png` and served from the plugin itself.
+- **The Toolbox mega panel and About Us dropdown were keyboard-unreachable.**
+  `assets/js/public-nav.js` only opened either panel on `mouseenter`/`mouseleave`. `focusin`/
+  `focusout` handlers (plus a `:focus-within` CSS fallback) now open them for keyboard users too.
+
+## [1.23.0] - 2026-07-21
+
+### Fixed
+- **Site Protection could be left ON after the public-site test suite ran.**
+  `tests/public-site.spec.js`'s "a plugin-owned public page stays reachable
+  while logged out with Site Protection on" test restored its two mutated
+  toggles (`blueworx_frontend_protection_enabled` and the `site_protection`
+  feature flag) as one monolithic `finally` block sharing a single Save
+  Changes click — unlike the other two Site Protection tests in the same
+  file, which already used the `restoreAll()` helper (introduced for exactly
+  this) to isolate independent restore steps. If the first toggle's restore
+  threw (e.g. a `.notice-success` assertion timing out), the second toggle
+  was never set back and Save was never clicked, leaving Site Protection ON
+  for the rest of the suite — and for a real visitor — since the top-level
+  feature flag gates all frontend/backend enforcement. That test's cleanup
+  now uses `restoreAll()` with two independent, self-contained round trips
+  (matching the other two tests), so a failure restoring one toggle can
+  never skip restoring the other.
+
+### Added
+
+### Added
+- **Site navigation.** `templates/parts/nav.php` and `assets/js/public-nav.js`
+  port `Nav.tsx`: the logo, primary links (Home, Services, Toolbox with its
+  mega panel, Pricing, About Us with its dropdown, AI Powered), the CTA pair,
+  and the mobile hamburger menu. Active-state matching is exact for `/` and
+  prefix-based otherwise. Because a plain document cannot mount an element on
+  hover the way React does, the mega panel, the About Us dropdown and the
+  mobile menu are all rendered unconditionally and toggled with an `.open`
+  class instead — `public-nav.js` opens each dropdown immediately on
+  `mouseenter` and closes it after a 300ms grace period on `mouseleave` (two
+  independent timers, matching the source's `megaT`/`aboutT` refs), so moving
+  the cursor from a trigger into its panel does not snap it shut. The same
+  file also ports the source's rAF-throttled hide-on-scroll-down /
+  reveal-on-scroll-up behaviour (`nav-scrolled` past 8px, `nav-hidden` past
+  160px while moving down more than 4px, suppressed while the mobile menu is
+  open) and the mobile menu's body scroll lock, keeping `aria-expanded` in
+  sync with the hamburger's real state. `includes/public/assets.php` enqueues
+  the new script; `assets/css/public.css` gains the `.mega-panel`/
+  `.about-panel` rules the always-present markup needs plus
+  `text-decoration: none` on the sign-in links (rendered as `<a>` here, `<span>`
+  in the source).
+
+## [1.21.1] - 2026-07-21
+
+### Fixed
+- **Footer logo depended on the active theme.** `templates/parts/footer.php`
+  resolved the logo via `get_theme_mod( 'custom_logo' )` — a per-theme
+  Customizer setting that changes or vanishes on theme switch, undermining
+  the public layer's core guarantee that output is identical regardless of
+  which theme is active. The plugin now bundles its own brand asset at
+  `assets/img/logo.png` (matching what the source front-end ships at
+  `/assets/logo.png`), served via `BLUEWORX_LABS_URL`, with the same
+  `filter:brightness(0) invert(1)` treatment and the same graceful
+  site-name text fallback if the bundled file is ever absent. The
+  `get_theme_mod()` call is removed entirely.
+
+## [1.21.0] - 2026-07-21
+
+### Added
+- **Shared public helpers: icons and decorative blobs, plus the CTA band and
+  footer template part.** `blueworx_icon()` and `blueworx_blob()`
+  (`includes/public/helpers-public.php`) port the 21 inline SVG icons and the
+  decorative background blobs from the front-end design's `lib/icons.ts` and
+  `CtaBand.tsx`. The icon renderer wraps every `<svg>` in a `<span
+  data-ic="...">` sized to fill it at 100% — the span is what `public.css`
+  sizes at ten separate selectors, so a bare `<svg>` would collapse icon
+  sizing sitewide. `templates/parts/footer.php` ports `CtaBand.tsx` and
+  `Footer.tsx`: the CTA band renders as a sibling of `<main>`, before the
+  footer, on every page; the footer reproduces the source's `.fb`/`.fcol`
+  /`.fnews`/`.fbot` structure, keeping the social and Blog/Resources/Careers
+  links as non-links (no `href` in the source) and the newsletter form inert
+  (markup only, no handler — a form plugin shortcode replaces it later).
+  `home.php`'s existing call to `blueworx_public_part( 'parts/footer.php' )`
+  now resolves.
+
+## [1.20.1] - 2026-07-21
+
+### Fixed
+- **Fragile test cleanup in `tests/public-site.spec.js`.** Two tests
+  (`"/" is not exempt from Site Protection when show_on_front is not a
+  plugin-owned page` and the slug-collision test) restored multiple
+  independent pieces of mutated global state — Site Protection toggles,
+  show_on_front/page_on_front, and page slugs — as sequential steps inside a
+  single `finally` block. A throw partway through (e.g. a `.notice-success`
+  assertion timing out) skipped every restore step after it, risking the site
+  root being left serving the posts index or a page stuck on a temporary
+  slug for the rest of the suite and any real visitor. A new `restoreAll()`
+  helper runs each restore step in isolation via its own try/catch,
+  collecting errors and re-throwing them together at the end, so every
+  mutated piece of state is restored regardless of which step fails, while a
+  genuine cleanup failure still fails the test loudly. Applied to both named
+  tests plus the sibling `a renamed plugin-owned page stays exempt from Site
+  Protection` test, which had the same underlying fragility despite already
+  ordering its restores correctly.
+
+## [1.20.0] - 2026-07-21
+
+### Added
+- **Theme-independent document shell and template routing.** The public site
+  now renders its own complete HTML document — `blueworx_public_document_open()`
+  / `blueworx_public_document_close()` (`includes/public/render.php`) call
+  `wp_head()` / `wp_footer()` but deliberately never `get_header()` /
+  `get_footer()`, so the site looks identical no matter which theme is active
+  or where it ends up hosted. `template_include` is now hooked
+  (`blueworx_public_template()` in `includes/public/pages.php`) to hand
+  rendering of owned pages to the plugin's own templates, and a
+  `templates/pages/home.php` placeholder (via the new `blueworx_public_part()`
+  helper) is the first template to actually render. Activation now also
+  points `show_on_front` / `page_on_front` at the Home page, so `/` is
+  WordPress's actual front page rather than the default posts index.
+
+## [1.19.3] - 2026-07-21
+
+### Fixed
+- **Slug-collision hijack in `blueworx_public_current_template()`.** After a
+  rename, the map's `home` key keeps pointing at the renamed page's ID. If a
+  different, unrelated page later takes the now-free `home` slug, its ID is
+  not in the map, so `array_search()` fails and the code fell back to
+  matching the static registry purely by slug — rendering the plugin's Home
+  template over a page it does not own. The fallback now only resolves by
+  slug when the map has no entry for that slug at all; if the slug is
+  already claimed by a different mapped ID, the page is correctly reported as
+  not owned. The fresh-install path (no map entry yet) is unaffected.
+
+## [1.19.2] - 2026-07-21
+
+### Fixed
+- **The two ownership checks could disagree.** `blueworx_public_is_owned_request_path()`
+  (init-time, drives the Site Protection exemption) and
+  `blueworx_public_is_owned_page()` (query-time, drives rendering and asset
+  enqueue) were meant to describe the same notion of "owned", but the
+  path-based check had two gaps:
+  - It unconditionally treated `/` as owned. `/` only becomes an owned page
+    once WordPress's front page is pointed at one of the plugin's pages
+    (Task 4) — until then it's WordPress's default posts index, and
+    exempting it from Site Protection weakened the gate at the site root.
+    Now `/` counts as owned only when `show_on_front` is `'page'` and
+    `page_on_front` is one of the IDs in `blueworx_public_page_ids`.
+  - It compared the request path against the plugin's *static* slugs, so
+    renaming an owned page's slug kept the query-time check correct but made
+    the path check — and so the Site Protection exemption — stop recognising
+    it, wp_die()-ing a real visitor to a page the plugin still owns. Now the
+    path check resolves each mapped page's slug via `get_post_field()`
+    (falling back to the static slug only for a page not yet in the map),
+    matching how `blueworx_public_current_template()` already resolves
+    renames at query time.
+
+  Site Protection's default behaviour is unchanged — only which requests are
+  exempt from it. Added two tests to `tests/public-site.spec.js` covering
+  both gaps.
+
+## [1.19.1] - 2026-07-21
+
+### Fixed
+- **Site Protection exemption ran before the query.** The exemption that keeps
+  plugin-owned public pages reachable when Site Protection is on is hooked to
+  `blueworx_site_protection_applies`, which fires from
+  `blueworx_intercept_requests()` on `init` priority 1 — before the main
+  WordPress query has run. The exemption previously called
+  `blueworx_public_is_owned_page()`, which depends on `is_page()` /
+  `get_queried_object()`; both are unreliable that early and always reported
+  "not a page", so the exemption never fired. Turning Site Protection on
+  would have `wp_die()`'d every logged-out visitor to the plugin's own
+  marketing pages. Added `blueworx_public_is_owned_request_path()`, an
+  `init`-safe check that compares the normalized request path against the
+  plugin's page registry (mirroring `blueworx_is_custom_login_request_path()`
+  in `includes/login-security.php`), and pointed the exemption at it.
+  `blueworx_public_is_owned_page()` is unchanged and remains correct for its
+  existing query-time callers.
+
+## [1.19.0] - 2026-07-21
+
+### Added
+- **Plugin-owned page registry.** `blueworx_public_pages()` declares the pages
+  this plugin renders (slug ⇒ title/template — one entry, `home`, for now);
+  `blueworx_public_install_pages()` creates a real WordPress Page for each one
+  on activation so menus, SEO plugins, and later content editing all work
+  normally. Idempotent and safe to run on every activation: pages are matched
+  by their previously-stored ID first, then by slug, so a page the user has
+  renamed or moved is recognised rather than duplicated.
+- **Page-ownership lookup for later rendering.** `blueworx_public_is_owned_page()`
+  and `blueworx_public_current_template()` resolve the current request against
+  the registry to an absolute template path (or `null`), which `template_include`
+  will use in a later task to take over rendering from the active theme.
+  `includes/public/assets.php` now gates its stylesheet enqueue on this real
+  ownership check instead of the `is_front_page()` placeholder from 1.18.1.
+
+### Security
+- **Site Protection now exempts plugin-owned public pages.** Site Protection's
+  frontend gate (`includes/login-security.php`) can `wp_die()` logged-out
+  visitors — appropriate for a site still in progress, but it would also take
+  down the deliberately-public marketing pages this plugin renders. A new
+  `blueworx_site_protection_applies` filter (applied only around that gate, no
+  other behaviour changed) lets `blueworx_public_exempt_from_site_protection()`
+  exclude owned pages from the block. Unhooked — i.e. with `public_site` off —
+  this is a no-op and Site Protection behaves exactly as before.
+
+## [1.18.3] - 2026-07-21
+
+### Fixed
+- **Two more bare element selectors survived the 1.18.2 scoping pass by
+  hiding inside mixed selector lists.** `.h1, .h2, h3, h4 { text-wrap:
+  balance; }` and `.lead, p, .ttext, .plan-desc, .fd-sub { text-wrap:
+  pretty; }` each carried a bare `h3`/`h4`/`p` alongside already-scoped
+  classes — the bare `p` in particular restyled every paragraph the active
+  theme rendered. Both rules are now `.h1, .h2, .bw-page h3, .bw-page h4`
+  and `.lead, .bw-page p, .ttext, .plan-desc, .fd-sub`. The regression test
+  in `tests/public-site.spec.js` only flagged rules that were entirely
+  bare, which is exactly why these survived it; it now inspects every
+  comma-separated part of every selector list and flags any bare part on
+  its own.
+
+## [1.18.2] - 2026-07-21
+
+### Fixed
+- **`assets/css/public.css` leaked bare element selectors document-wide.**
+  The stylesheet was ported from a standalone front-end where it owned the
+  whole document, and was scoped to `.bw-page` for the `*` reset and `body`
+  rule — but five bare element selectors (`img`, `button`, `nav` twice
+  including its responsive variant, `footer`) were missed and still matched
+  document-wide. In WordPress that restyled the admin bar and the active
+  theme's own markup — worst of all, a theme's `<nav>` picked up a full
+  96px sticky reskin. All five are now scoped under `.bw-page`. Added a
+  regression test (`tests/public-site.spec.js`) that reads the stylesheet
+  from disk and fails if any unscoped bare element selector reappears.
+
+## [1.18.1] - 2026-07-21
+
+### Added
+- **Public asset pipeline.** `assets/css/public.css` ports the headless
+  front-end's `globals.css` (marketing sections only — the client portal and
+  auth forms stay out of scope), scoped under `.bw-page` so its reset can't
+  reach the admin bar or block styles. `blueworx_enqueue_public_assets()`
+  enqueues it alongside the existing self-hosted font stylesheet on
+  `wp_enqueue_scripts`, versioned via the existing asset-version helper so a
+  CSS change reaches visitors immediately instead of waiting on a stale
+  browser cache. Gated on `is_front_page()` until Task 3 adds real page-
+  ownership detection.
+
+## [1.18.0] - 2026-07-21
+
+### Added
+- **Public front-end module skeleton.** New `includes/public/*.php` layer
+  (bootstrap, pages, render, assets, helpers) and a `templates/` directory,
+  gated behind a new `public_site` feature flag under **BlueWorx →
+  Enhancements → Appearance**. Nothing renders yet — this lays the groundwork
+  for the plugin to serve its own marketing site independently of the active
+  theme. On by default, matching the "absent option means enabled" convention
+  so a fresh install ships ready.
+- `templates/` added to the release zip allowlist (`scripts/build-zip.mjs`) so
+  the module has somewhere to ship its markup once later tasks populate it.
+
 ## [1.17.0] - 2026-07-21
 
 ### Added
