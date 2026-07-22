@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.25.1] - 2026-07-22
+
+### Changed
+- Re-encoded the photographic marketing images as JPEG instead of palette-quantised
+  PNG. The 64-colour quantisation used to hit the size target left visible dithering
+  speckle on `feature-image-2` (flagged in review). The five photographic feature
+  images (`feature-image-1..4`, `fig-collab`) now ship as clean mozjpeg at ~82 quality,
+  each well under target and totalling ~450KB rather than the PNGs' larger, dithered
+  output. Their filenames change from `.png` to `.jpg`; `hero-image.png` stays PNG
+  (it carries transparency).
+
 ## [1.25.0] - 2026-07-22
 
 Task 1 of the marketing-pages migration (`marketing-pages`): the content data
