@@ -35,18 +35,21 @@ $blueworx_contact_cards = array(
 		'title' => __( 'Give us a call', 'blueworx-labs-wordpress' ),
 		'sub'   => __( 'Mon–Fri from 8am to 5pm.', 'blueworx-labs-wordpress' ),
 		'link'  => '+00 (704) 555-0127',
+		'href'  => 'tel:+007045550127',
 	),
 	array(
 		'icon'  => 'chat',
 		'title' => __( 'Send us a WhatsApp', 'blueworx-labs-wordpress' ),
 		'sub'   => __( 'Speak to our friendly team.', 'blueworx-labs-wordpress' ),
 		'link'  => '+00 (704) 555-0127',
+		'href'  => 'https://wa.me/007045550127',
 	),
 	array(
 		'icon'  => 'mail',
 		'title' => __( 'Email us here', 'blueworx-labs-wordpress' ),
 		'sub'   => __( 'Let us know how we can help.', 'blueworx-labs-wordpress' ),
 		'link'  => 'info@blueworx.com',
+		'href'  => 'mailto:info@blueworx.com',
 	),
 );
 
@@ -117,7 +120,7 @@ blueworx_public_part( 'parts/nav.php' );
 						<div class="cc-ic"><?php blueworx_icon( $blueworx_contact_card['icon'] ); ?></div>
 						<h4><?php echo esc_html( $blueworx_contact_card['title'] ); ?></h4>
 						<p><?php echo esc_html( $blueworx_contact_card['sub'] ); ?></p>
-						<a><?php echo esc_html( $blueworx_contact_card['link'] ); ?></a>
+						<a href="<?php echo esc_url( $blueworx_contact_card['href'] ); ?>"<?php echo 0 === strpos( $blueworx_contact_card['href'], 'https://' ) ? ' rel="noopener"' : ''; ?>><?php echo esc_html( $blueworx_contact_card['link'] ); ?></a>
 					</div>
 				<?php endforeach; ?>
 			</div>
