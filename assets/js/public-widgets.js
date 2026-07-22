@@ -165,10 +165,32 @@
 		render();
 	}
 
+	function initFaqAccordion() {
+		var lists = document.querySelectorAll( '.faq-list' );
+		for ( var i = 0; i < lists.length; i++ ) {
+			( function ( list ) {
+				var items = list.querySelectorAll( 'details.faq-item' );
+				for ( var j = 0; j < items.length; j++ ) {
+					items[ j ].addEventListener( 'toggle', function () {
+						if ( ! this.open ) {
+							return;
+						}
+						for ( var k = 0; k < items.length; k++ ) {
+							if ( items[ k ] !== this && items[ k ].open ) {
+								items[ k ].open = false;
+							}
+						}
+					} );
+				}
+			}( lists[ i ] ) );
+		}
+	}
+
 	function init() {
 		initBillingToggle();
 		initPricingCalc();
 		initSavingsCalc();
+		initFaqAccordion();
 	}
 
 	if ( 'loading' === document.readyState ) {
