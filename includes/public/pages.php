@@ -122,12 +122,57 @@ function blueworx_public_is_owned_page() {
  *   slug from blueworx_public_pages() only for a page not yet in the map
  *   (fresh install, before activation has run).
  *
+ * An owned marketing page is always a clean-path request — it never
+ * legitimately carries a content-selecting query var (?p=, ?s=, ?feed=, …).
+ * WordPress still honours those on "/" once show_on_front=page, so without
+ * this guard `/?p=123`, `/?s=secret` etc. would all resolve to the same
+ * owned path as "/" and be exempted from Site Protection right along with
+ * it — leaking drafts, arbitrary posts, search results and feeds to
+ * logged-out visitors. If any such query var is present, the request is not
+ * an eligible clean owned-page request, regardless of its path.
+ *
  * @return bool True when the request path belongs to this plugin.
  */
 function blueworx_public_is_owned_request_path() {
 	$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	$path        = strtolower( (string) wp_parse_url( sanitize_text_field( $request_uri ), PHP_URL_PATH ) );
 	$path        = '/' . trim( $path, '/' );
+
+	$query_string = isset( $_SERVER['QUERY_STRING'] ) ? (string) wp_unslash( $_SERVER['QUERY_STRING'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+	if ( '' !== $query_string ) {
+		$content_selecting_vars = array(
+			'p',
+			'page_id',
+			'attachment_id',
+			's',
+			'feed',
+			'cat',
+			'tag',
+			'tag_id',
+			'author',
+			'author_name',
+			'year',
+			'monthnum',
+			'day',
+			'm',
+			'w',
+			'paged',
+			'post_type',
+			'name',
+			'pagename',
+			'page',
+			'preview',
+			'preview_id',
+		);
+
+		$query_vars = array();
+		wp_parse_str( $query_string, $query_vars );
+
+		if ( array_intersect_key( array_flip( $content_selecting_vars ), $query_vars ) ) {
+			return false;
+		}
+	}
 
 	$home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
 	$home_path = '/' . trim( strtolower( (string) $home_path ), '/' );

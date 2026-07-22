@@ -468,6 +468,150 @@ test.describe('Public site', () => {
     }
   });
 
+  test('a draft post is not exempt from Site Protection via a query-var request to "/"', async ({
+    page,
+    browser,
+  }) => {
+    // WHY THIS TEST EXISTS: blueworx_public_is_owned_request_path() keyed the
+    // Site Protection exemption on the request PATH only. Once activation
+    // points show_on_front/page_on_front at the plugin's Home page, path "/"
+    // is "owned" — but WordPress still honours query vars on "/", so
+    // "/?p=<id>", "/?s=<term>" etc. have the exact same path as "/" and were
+    // exempted right along with it, letting a logged-out request reach
+    // WordPress's normal query handling instead of being stopped at the 403
+    // wall. For a search results page that means the content actually
+    // renders (200) to a logged-out visitor — the exact thing Site
+    // Protection exists to prevent. A draft post is included too even though
+    // WordPress's own core privacy rules already 404 it for anonymous
+    // visitors regardless of this bug (a draft never renders, fixed or not)
+    // — what the fix changes for a draft is WHERE that request is stopped:
+    // unpatched, it bypasses Site Protection's wall and falls through to
+    // WordPress's own 404; patched, Site Protection's 403 wall stops it
+    // first, before WordPress's own query even runs. A clean "/" must stay
+    // exempt (200) throughout.
+    await login(page);
+
+    // Create a real draft post via the block editor. The dashboard's Quick
+    // Draft widget is hidden by default when the BlueWorx admin theme
+    // feature is on (includes/admin-theme.php), so it is not a reliable
+    // target here; Ctrl+S is used instead of clicking "Save draft" because
+    // that button can sit under the BlueWorx admin topbar depending on
+    // viewport/scroll state, which is unrelated to what this test guards.
+    const draftTitle = `bw-critical1-draft-${Date.now()}`;
+    await page.goto(cacheBust('/wp-admin/post-new.php'));
+
+    const welcomeDialog = page.getByRole('dialog', { name: 'Welcome to the editor' });
+    if (await welcomeDialog.count()) {
+      await welcomeDialog.getByRole('button', { name: 'Close' }).click();
+    }
+
+    const titleField = page
+      .locator('iframe[name="editor-canvas"]')
+      .contentFrame()
+      .getByRole('textbox', { name: 'Add title' });
+    await expect(titleField).toBeVisible();
+    await titleField.fill(draftTitle);
+
+    await page.keyboard.press('Control+s');
+    // The "Draft saved." snackbar is transient and can disappear before this
+    // assertion runs; the URL swapping to post.php?post=<id> on save is the
+    // durable signal that the auto-draft became a real draft.
+    await page.waitForURL(/\/wp-admin\/post\.php\?post=\d+&action=edit/);
+
+    const draftId = new URL(page.url()).searchParams.get('post');
+    expect(draftId, 'the draft post ID must be extractable from the editor URL after saving').toBeTruthy();
+
+    const settingsPath = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+    await page.goto(cacheBust(settingsPath));
+
+    const siteProtectionToggle = page.locator(
+      'input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]'
+    );
+    const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
+    const featureWasChecked = await siteProtectionToggle.isChecked();
+    const frontendWasChecked = await frontendToggle.isChecked();
+
+    try {
+      if (!featureWasChecked) {
+        await siteProtectionToggle.setChecked(true);
+      }
+      await frontendToggle.setChecked(true);
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+
+      const loggedOutContext = await browser.newContext();
+      const loggedOutPage = await loggedOutContext.newPage();
+
+      const draftResponse = await loggedOutPage.goto(cacheBust(`/?p=${draftId}`));
+      expect(
+        draftResponse && draftResponse.status(),
+        'a draft post reached via "/?p=<id>" must be blocked (403) by Site Protection, not leaked through the "/" exemption'
+      ).toBe(403);
+
+      // Also cover a query var that WordPress's own privacy rules do NOT
+      // hide from anonymous visitors (unlike a draft, which 404s for a
+      // logged-out request with or without this bug — WP core itself
+      // refuses to serve draft content to a visitor who cannot read_post
+      // it). A search results page renders normally for anyone, so this is
+      // the assertion that catches actual leaked content, not just a
+      // differing error code.
+      const searchResponse = await loggedOutPage.goto(cacheBust('/?s=test'));
+      expect(
+        searchResponse && searchResponse.status(),
+        'a search results page reached via "/?s=<term>" must be blocked (403) by Site Protection, not leaked through the "/" exemption'
+      ).toBe(403);
+
+      const homeResponse = await loggedOutPage.goto(cacheBust('/'));
+      expect(
+        homeResponse && homeResponse.status(),
+        'a clean "/" request must remain exempt (200) from Site Protection'
+      ).toBe(200);
+
+      await loggedOutContext.close();
+    } finally {
+      // Restore the toggles and delete the draft independently — two
+      // unrelated pieces of mutated state — so a throw restoring one can
+      // never skip the other, matching restoreAll()'s use elsewhere in this
+      // file.
+      await restoreAll([
+        [
+          'restore Site Protection toggles',
+          async () => {
+            await page.goto(cacheBust(settingsPath));
+            await page
+              .locator('input[name="blueworx_frontend_protection_enabled"]')
+              .setChecked(frontendWasChecked);
+            await page
+              .locator('input.blueworx-feature-toggle[data-blueworx-feature="site_protection"]')
+              .setChecked(featureWasChecked);
+            await page.getByRole('button', { name: 'Save Changes' }).click();
+            await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+          },
+        ],
+        [
+          'delete the draft post',
+          async () => {
+            await page.goto(cacheBust('/wp-admin/edit.php?post_status=draft&post_type=post'));
+            const row = page.locator('#the-list tr', { hasText: draftTitle });
+            await row.hover();
+            const trashLink = row.locator('.row-actions .trash a');
+            await expect(trashLink, 'the draft must expose a Trash row action').toHaveCount(1);
+            // page.goto() the row action's own href directly rather than
+            // clicking it — a clicked same-origin link navigation here has
+            // been observed to hang Playwright's post-click "waiting for
+            // scheduled navigations to finish" step in this environment,
+            // whereas driving the exact same URL via goto() completes
+            // immediately and performs the identical nonce-verified trash
+            // action.
+            const trashHref = await trashLink.getAttribute('href');
+            expect(trashHref, 'the Trash row action must expose a nonced href').toBeTruthy();
+            await page.goto(trashHref);
+          },
+        ],
+      ]);
+    }
+  });
+
   test('"/" is not exempt from Site Protection when show_on_front is not a plugin-owned page', async ({
     page,
     browser,
