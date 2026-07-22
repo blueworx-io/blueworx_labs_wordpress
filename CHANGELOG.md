@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.27.0] - 2026-07-22
+
+Task 3 of the marketing-pages migration (`marketing-pages`): the About page.
+
+### Added
+
+- **About page (`templates/pages/about.php`)**, registered as `about` in
+  `blueworx_public_pages()`, rendering all five sections from
+  `app/about/page.tsx` in source order: a centered tech-hero, "Why BlueWorx"
+  (`.af-wrap about-why`, copy column + four plain svc-card parts), a
+  stats-band part (5.0★ Google Rating, 82+ Projects Completed, 100k + Revenue
+  Handled, 2K + Toolbox Value), "Our Team" (three team-card blocks — no
+  shared part exists for these, so they stay inline), and "Client Success
+  Stories" (three linked work-card parts on a tinted background). 100%
+  static, entirely composed from existing template parts.
+
 ## [1.26.1] - 2026-07-22
 
 ### Changed

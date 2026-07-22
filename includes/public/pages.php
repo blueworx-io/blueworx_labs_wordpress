@@ -23,9 +23,13 @@ function blueworx_public_pages() {
 	return (array) apply_filters(
 		'blueworx_public_pages',
 		array(
-			'home' => array(
+			'home'  => array(
 				'title'    => __( 'Home', 'blueworx-labs-wordpress' ),
 				'template' => 'pages/home.php',
+			),
+			'about' => array(
+				'title'    => __( 'About', 'blueworx-labs-wordpress' ),
+				'template' => 'pages/about.php',
 			),
 		)
 	);
