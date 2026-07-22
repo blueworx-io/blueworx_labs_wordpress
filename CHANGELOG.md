@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.26.0] - 2026-07-22
+
+Task 2 of the marketing-pages migration (`marketing-pages`): the real Home
+page plus the shared template parts every later marketing page will reuse.
+
+### Added
+
+- **Home page (`templates/pages/home.php`)** replaces the Plan 1 stub,
+  rendering all nine sections from `app/page.tsx` in source order: the
+  home-hero (bespoke timeline glass-card visual + scrolling service ticker),
+  "What We Do" (`.svc2`, two svc-card parts), the logos band, Selected Work
+  (three work-card parts), a labelled FeatureTabs placeholder (Plan 3), How
+  We Work (a proc-grid part), the Ongoing Partnership split section, the
+  Toolbox band (driven by `blueworx_content_tools()`), and testimonials (a
+  testimonials part fed `blueworx_content_reviews()`).
+- **Eight shared template parts (`templates/parts/`)** so Tasks 3–9 reuse
+  rather than duplicate: `tech-hero`, `glass-card`, `proc-grid`, `work-card`,
+  `stats-band`, `testimonials`, `logos-band`, `svc-card`. Each takes a
+  documented `$vars` contract designed around every known source usage, not
+  just Home's — e.g. `work-card` renders a `<div>` instead of an `<a>` when no
+  `href` is given (Work's plain, non-linked project cards), and `tech-hero`
+  supports both the centered layout (About) and a `centered => false` mode a
+  two-column hero (Services, Work) composes around.
+- **FeatureTabs placeholder.** A `.bw-plan3-placeholder[data-widget="feature-tabs"]`
+  static block stands in for the Plan 3 interactive widget so the page stays
+  whole; Plan 3 replaces it with the real component.
+- `tests/marketing-home.spec.js` — asserts the home-hero, `.svc2`, `.proc-grid`,
+  the Toolbox band's 12 bundled-favicon cards, the Ongoing Partnership split
+  section, and the testimonials all render, and that the FeatureTabs region
+  renders the labelled placeholder rather than an empty gap.
+
 ## [1.25.1] - 2026-07-22
 
 ### Changed
