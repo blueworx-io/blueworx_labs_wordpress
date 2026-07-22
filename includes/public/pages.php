@@ -134,7 +134,7 @@ function blueworx_public_restore_prior_front() {
 
 	$still_owns_front = $home_id
 		&& 'page' === get_option( 'show_on_front' )
-		&& $home_id === (int) get_option( 'page_on_front' );
+		&& (int) get_option( 'page_on_front' ) === $home_id;
 
 	if ( ! $still_owns_front ) {
 		return;

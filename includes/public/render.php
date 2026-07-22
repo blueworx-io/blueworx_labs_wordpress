@@ -52,7 +52,7 @@ function blueworx_public_document_close() {
 /**
  * Guarantees a <title> tag is always emitted on a plugin-rendered page.
  *
- * wp_head() only prints a <title> (via core's _wp_render_title_tag()) when
+ * WordPress only prints a <title> (via core's _wp_render_title_tag()) when
  * the active theme has opted in with add_theme_support( 'title-tag' ). This
  * plugin's own pages must not depend on that theme seam — the whole point
  * of the public layer is that its output is identical regardless of the
