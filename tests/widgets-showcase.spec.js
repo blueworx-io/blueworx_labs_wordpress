@@ -72,3 +72,16 @@ test.describe('Showcase — AI demo', () => {
     expect(first.startsWith('// booking.tsx')).toBeTruthy();
   });
 });
+
+test.describe('Showcase — no-JS default state', () => {
+  test.skip(isPlaceholder, 'No real WordPress target configured.');
+
+  test('server HTML carries the finished/default widget states', async ({ request }) => {
+    const home = await (await request.get('/')).text();
+    expect(home).toContain('Support Guides');           // feature-tabs default panel
+
+    const ai = await (await request.get('/ai')).text();
+    expect(ai).toContain('ai-pipe-step on');            // pipeline step 1 active
+    expect(ai).toContain('ai-site in');                 // ai-demo finished frame
+  });
+});
