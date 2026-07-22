@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.33.0] - 2026-07-22
+
+### Added
+- **Tool-detail pages (`templates/pages/single-tool.php`)**, registered at `/toolbox/<slug>`
+  for all 12 Toolbox tools — completing Task 9. `blueworx_public_pages()` now generates the
+  12 nested entries from `blueworx_content_tools()` (keyed by full path, e.g.
+  `toolbox/surecart`), rather than hand-transcribing them, so the tool list stays a single
+  source of truth. `blueworx_public_install_pages()` creates them as real, nested WordPress
+  Pages (`post_parent` set from the already-mapped `toolbox` page) on activation, idempotently.
+  Each page renders a two-column hero (breadcrumb, badge, heading, tagline, CTAs, a
+  `glass-card` with the bundled 58px favicon, an optional "Popular" pill, and the tool's 6
+  features as check rows), a `#tool-why` section repeating those 6 features as `.svc` cards,
+  and a related-tools grid (first 4 other tools) via the shared `toolbox-grid` part.
+- New `blueworx_public_current_page()` accessor (`includes/public/pages.php`) — returns the
+  matched page-registry entry for the current request, factored out of
+  `blueworx_public_current_template()` so a template can read its own registry data (e.g. the
+  tool slug `single-tool.php` needs) without re-deriving ID→slug→registry resolution itself,
+  and without reading the queried post's own (rename-able) `post_name`.
+- `tests/marketing-single-tool.spec.js` — the toolbox archive still rendering 12 cards, a
+  popular tool's name/tagline/pill/6-features-twice, a non-popular tool showing no pill, an
+  unknown slug 404ing, and the Site Protection exemption reaching a nested tool page.
+
+### Fixed
+- **Site Protection exemption for nested pages** (`blueworx_public_is_owned_request_path()`).
+  The allowlist previously built each owned page's base path from
+  `get_post_field( 'post_name', $id )` — the page's own bare slug (e.g. `surecart`), which is
+  wrong for a page nested under `/toolbox/` and would have silently dropped the exemption for
+  every tool page the moment Site Protection was turned on. It now uses `get_page_uri()`,
+  which returns the full hierarchical path (`toolbox/surecart`), with the registry key itself
+  (already a full path) as the pre-activation fallback.
+
 ## [1.32.0] - 2026-07-22
 
 ### Added
