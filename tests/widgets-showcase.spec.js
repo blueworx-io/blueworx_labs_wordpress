@@ -66,5 +66,9 @@ test.describe('Showcase — AI demo', () => {
     // Finished-frame default (present regardless of JS animation state):
     const html = await (await request.get('/ai')).text();
     expect(html).toContain('ai-site in');
+    // .ai-code .cl uses white-space: pre-wrap, so a stray newline/tab between
+    // the div and its span renders as a visible leading blank line/indent.
+    const first = await root.locator('.ai-code .cl').first().textContent();
+    expect(first.startsWith('// booking.tsx')).toBeTruthy();
   });
 });
