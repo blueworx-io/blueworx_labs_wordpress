@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.26.1] - 2026-07-22
+
+### Changed
+- `tech-hero` template part: the centered variant now accepts `max_width` (default
+  820, About's value) and `extra_class` (e.g. `pb-tall`). Review found it hardcoded
+  About's exact pixel values, which Contact (780px) and Pricing (`pb-tall`) could not
+  reuse — they would have had to bypass the shared part. Backward-compatible; the
+  defaults reproduce About's hero unchanged.
+
 ## [1.26.0] - 2026-07-22
 
 Task 2 of the marketing-pages migration (`marketing-pages`): the real Home

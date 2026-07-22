@@ -23,6 +23,10 @@
  * - lead             (string, optional) The `.lead` paragraph beneath the
  *                     heading.
  * - centered         (bool, optional) Default true. See above.
+ * - max_width        (int, optional) Centered mode only. Inner max width in px.
+ *                     Default 820 (About). Contact uses 780.
+ * - extra_class      (string, optional) Centered mode only. Extra class(es) on
+ *                     the `<section>`, e.g. "pb-tall" for Pricing's taller hero.
  * - cta              (array, optional) List of array( label, href, class )
  *                     rendered as buttons after the lead.
  * - meta             (array, optional) List of plain label strings rendered
@@ -43,6 +47,8 @@ $blueworx_th_lead      = isset( $lead ) ? (string) $lead : '';
 $blueworx_th_centered  = ! isset( $centered ) || (bool) $centered;
 $blueworx_th_cta       = isset( $cta ) && is_array( $cta ) ? $cta : array();
 $blueworx_th_meta      = isset( $meta ) && is_array( $meta ) ? $meta : array();
+$blueworx_th_maxw      = isset( $max_width ) ? (int) $max_width : 820;
+$blueworx_th_extra     = isset( $extra_class ) ? trim( (string) $extra_class ) : '';
 
 // Builds the heading markup once, wrapping `title_highlight` (when it is an
 // actual substring of the title) in the `.tech-grad` gradient span. Built
@@ -61,8 +67,8 @@ if ( '' !== $blueworx_th_highlight && false !== strpos( $blueworx_th_title, $blu
 
 if ( $blueworx_th_centered ) :
 	?>
-	<section class="tech-hero" style="text-align:center;padding-bottom:72px">
-		<div class="tech-inner" style="max-width:820px;margin:0 auto">
+	<section class="tech-hero<?php echo '' === $blueworx_th_extra ? '' : ' ' . esc_attr( $blueworx_th_extra ); ?>" style="text-align:center;padding-bottom:72px">
+		<div class="tech-inner" style="max-width:<?php echo (int) $blueworx_th_maxw; ?>px;margin:0 auto">
 <?php endif; ?>
 			<?php if ( '' !== $blueworx_th_badge ) : ?>
 				<div class="tech-badge"<?php echo $blueworx_th_centered ? ' style="margin-bottom:22px"' : ''; ?>><span class="dot"></span><?php echo esc_html( $blueworx_th_badge ); ?></div>
