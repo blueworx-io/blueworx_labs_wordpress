@@ -270,7 +270,14 @@ test.describe('Public site', () => {
     // two-bar hamburger. A regression here silently breaks "where am I" for
     // every visitor, on every page.
     await page.goto(cacheBust('/'));
-    await expect(page.locator('nav .nav-links a[href="/"]')).toHaveClass(/active/);
+
+    // The Home link must resolve via home_url('/'), not a bare "/" — on a
+    // subdirectory WordPress install (example.com/blog/) a bare root-relative
+    // href points outside the site entirely, which is exactly what
+    // footer.php already avoids and nav.php previously did not.
+    const homeLink = page.locator('nav .nav-links a', { hasText: 'Home' });
+    await expect(homeLink).toHaveAttribute('href', `${baseURL}/`);
+    await expect(homeLink).toHaveClass(/active/);
     await expect(page.locator('nav .hamburger span')).toHaveCount(2);
   });
 

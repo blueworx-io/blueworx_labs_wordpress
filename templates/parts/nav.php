@@ -11,11 +11,14 @@
  * That is the one deliberate structural difference from the source; markup
  * order and every class name otherwise match it exactly.
  *
- * Hrefs are root-relative ("/services", not home_url( '/services' )),
- * matching the source's own <Link href="/services"> paths verbatim — the
- * source assumes a root-domain deployment and this port carries that same
- * assumption forward rather than inventing per-page routing that does not
- * exist yet (Plan 2 owns the real marketing pages these links target).
+ * Every internal href is built with home_url( '/services' ) etc. (matching
+ * templates/parts/footer.php), not a bare "/services" — the source's own
+ * <Link href="/services"> paths assume a root-domain deployment, but on a
+ * subdirectory WordPress install (example.com/blog/) a bare root-relative
+ * href points outside the site entirely. blueworx_public_nav_active_class()
+ * still compares against the home-relative $blueworx_nav_path built below,
+ * so active-state matching is unaffected by the subdirectory prefix either
+ * way.
  *
  * @package BlueWorxLabs
  */
@@ -159,7 +162,7 @@ $blueworx_nav_logo_path = BLUEWORX_LABS_PATH . 'assets/img/logo.png';
 $blueworx_nav_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 ?>
 <nav>
-	<a class="nav-logo" href="<?php echo esc_url( '/' ); ?>">
+	<a class="nav-logo" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 		<?php if ( file_exists( $blueworx_nav_logo_path ) ) : ?>
 			<img src="<?php echo esc_url( $blueworx_nav_logo_url ); ?>" alt="<?php echo esc_attr__( 'BlueWorx', 'blueworx-labs-wordpress' ); ?>" />
 		<?php else : ?>
@@ -167,18 +170,18 @@ $blueworx_nav_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 		<?php endif; ?>
 	</a>
 	<div class="nav-links">
-		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/' ); ?>"><?php echo esc_html__( 'Home', 'blueworx-labs-wordpress' ); ?></a>
-		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/services', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/services' ); ?>"><?php echo esc_html__( 'Services', 'blueworx-labs-wordpress' ); ?></a>
+		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php echo esc_html__( 'Home', 'blueworx-labs-wordpress' ); ?></a>
+		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/services', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/services' ) ); ?>"><?php echo esc_html__( 'Services', 'blueworx-labs-wordpress' ); ?></a>
 
 		<div class="nav-drop" data-nav-drop="mega">
-			<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/toolbox', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/toolbox' ); ?>">
+			<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/toolbox', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/toolbox' ) ); ?>">
 				<?php echo esc_html__( 'Toolbox', 'blueworx-labs-wordpress' ); ?>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 12 15 18 9" /></svg>
 			</a>
 			<div class="mega-panel">
 				<?php foreach ( $blueworx_nav_tools as $blueworx_nav_tool ) : ?>
 					<a
-						href="<?php echo esc_url( '/toolbox/' . $blueworx_nav_tool['slug'] ); ?>"
+						href="<?php echo esc_url( home_url( '/toolbox/' . $blueworx_nav_tool['slug'] ) ); ?>"
 						class="mega-item"
 						style="display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:12px;"
 					>
@@ -202,7 +205,7 @@ $blueworx_nav_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 				<?php endforeach; ?>
 				<div style="grid-column:1 / -1;border-top:1px solid rgba(255,255,255,.1);margin-top:8px;padding-top:16px;display:flex;justify-content:space-between;align-items:center">
 					<span style="font-size:13px;color:rgba(255,255,255,.5)"><?php echo esc_html__( '12 tools, one subscription.', 'blueworx-labs-wordpress' ); ?></span>
-					<a href="<?php echo esc_url( '/toolbox' ); ?>" style="font-size:14px;font-weight:600;color:#A5A7FF;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none">
+					<a href="<?php echo esc_url( home_url( '/toolbox' ) ); ?>" style="font-size:14px;font-weight:600;color:#A5A7FF;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none">
 						<?php echo esc_html__( 'Browse the full Toolbox', 'blueworx-labs-wordpress' ); ?>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
 					</a>
@@ -210,17 +213,17 @@ $blueworx_nav_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 			</div>
 		</div>
 
-		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/pricing', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/pricing' ); ?>"><?php echo esc_html__( 'Pricing', 'blueworx-labs-wordpress' ); ?></a>
+		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/pricing', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/pricing' ) ); ?>"><?php echo esc_html__( 'Pricing', 'blueworx-labs-wordpress' ); ?></a>
 
 		<div class="nav-drop" data-nav-drop="about">
-			<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/about', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/about' ); ?>">
+			<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/about', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/about' ) ); ?>">
 				<?php echo esc_html__( 'About Us', 'blueworx-labs-wordpress' ); ?>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 12 15 18 9" /></svg>
 			</a>
 			<div class="about-panel">
 				<a
 					class="<?php echo esc_attr( blueworx_public_nav_active_class( '/work', $blueworx_nav_path ) ); ?>"
-					href="<?php echo esc_url( '/work' ); ?>"
+					href="<?php echo esc_url( home_url( '/work' ) ); ?>"
 					style="display:block;padding:10px 14px;color:#fff;font-size:14.5px;font-weight:500;border-radius:8px;text-decoration:none"
 				>
 					<?php echo esc_html__( 'Work', 'blueworx-labs-wordpress' ); ?>
@@ -228,34 +231,34 @@ $blueworx_nav_logo_url  = BLUEWORX_LABS_URL . 'assets/img/logo.png';
 			</div>
 		</div>
 
-		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/ai', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/ai' ); ?>" style="gap:7px"><?php echo esc_html__( 'AI Powered', 'blueworx-labs-wordpress' ); ?><span class="nav-tag tag-light"><?php echo esc_html__( 'New', 'blueworx-labs-wordpress' ); ?></span></a>
+		<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/ai', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/ai' ) ); ?>" style="gap:7px"><?php echo esc_html__( 'AI Powered', 'blueworx-labs-wordpress' ); ?><span class="nav-tag tag-light"><?php echo esc_html__( 'New', 'blueworx-labs-wordpress' ); ?></span></a>
 	</div>
 	<div class="nav-cta">
-		<a class="nav-sign-in" href="<?php echo esc_url( '/portal' ); ?>"><?php echo esc_html__( 'Client Login', 'blueworx-labs-wordpress' ); ?></a>
-		<a class="nav-btn" href="<?php echo esc_url( '/pricing' ); ?>">
+		<a class="nav-sign-in" href="<?php echo esc_url( home_url( '/portal' ) ); ?>"><?php echo esc_html__( 'Client Login', 'blueworx-labs-wordpress' ); ?></a>
+		<a class="nav-btn" href="<?php echo esc_url( home_url( '/pricing' ) ); ?>">
 			<?php echo esc_html__( 'Get a Quote', 'blueworx-labs-wordpress' ); ?>
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
 		</a>
 	</div>
-	<a class="nav-sign-in-mobile" href="<?php echo esc_url( '/portal' ); ?>"><?php echo esc_html__( 'Client Login', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="nav-sign-in-mobile" href="<?php echo esc_url( home_url( '/portal' ) ); ?>"><?php echo esc_html__( 'Client Login', 'blueworx-labs-wordpress' ); ?></a>
 	<button class="hamburger" aria-label="<?php echo esc_attr__( 'Toggle menu', 'blueworx-labs-wordpress' ); ?>" aria-expanded="false">
 		<span></span>
 		<span></span>
 	</button>
 </nav>
 <div class="mobile-menu">
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/' ); ?>"><?php echo esc_html__( 'Home', 'blueworx-labs-wordpress' ); ?></a>
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/services', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/services' ); ?>"><?php echo esc_html__( 'Services', 'blueworx-labs-wordpress' ); ?></a>
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/toolbox', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/toolbox' ); ?>"><?php echo esc_html__( 'Toolbox', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php echo esc_html__( 'Home', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/services', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/services' ) ); ?>"><?php echo esc_html__( 'Services', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/toolbox', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/toolbox' ) ); ?>"><?php echo esc_html__( 'Toolbox', 'blueworx-labs-wordpress' ); ?></a>
 	<div style="display:flex;flex-direction:column;gap:0;padding-left:12px;border-left:2px solid rgba(79,70,229,.15);margin:0 0 4px">
 		<?php foreach ( $blueworx_nav_tools as $blueworx_nav_tool ) : ?>
-			<a href="<?php echo esc_url( '/toolbox/' . $blueworx_nav_tool['slug'] ); ?>" style="font-size:13.5px;padding:8px 8px"><?php echo esc_html( $blueworx_nav_tool['name'] ); ?></a>
+			<a href="<?php echo esc_url( home_url( '/toolbox/' . $blueworx_nav_tool['slug'] ) ); ?>" style="font-size:13.5px;padding:8px 8px"><?php echo esc_html( $blueworx_nav_tool['name'] ); ?></a>
 		<?php endforeach; ?>
 	</div>
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/pricing', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/pricing' ); ?>"><?php echo esc_html__( 'Pricing', 'blueworx-labs-wordpress' ); ?></a>
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/about', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/about' ); ?>"><?php echo esc_html__( 'About Us', 'blueworx-labs-wordpress' ); ?></a>
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/work', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/work' ); ?>" style="font-size:13.5px;padding-left:24px"><?php echo esc_html__( 'Work', 'blueworx-labs-wordpress' ); ?></a>
-	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/ai', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( '/ai' ); ?>"><?php echo esc_html__( 'AI Powered', 'blueworx-labs-wordpress' ); ?><span class="nav-tag tag-light"><?php echo esc_html__( 'New', 'blueworx-labs-wordpress' ); ?></span></a>
-	<a href="<?php echo esc_url( '/portal' ); ?>"><?php echo esc_html__( 'Client Login', 'blueworx-labs-wordpress' ); ?></a>
-	<a class="btn btn-brand btn-md" href="<?php echo esc_url( '/pricing' ); ?>"><?php echo esc_html__( 'Get a Quote', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/pricing', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/pricing' ) ); ?>"><?php echo esc_html__( 'Pricing', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/about', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/about' ) ); ?>"><?php echo esc_html__( 'About Us', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/work', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/work' ) ); ?>" style="font-size:13.5px;padding-left:24px"><?php echo esc_html__( 'Work', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="<?php echo esc_attr( blueworx_public_nav_active_class( '/ai', $blueworx_nav_path ) ); ?>" href="<?php echo esc_url( home_url( '/ai' ) ); ?>"><?php echo esc_html__( 'AI Powered', 'blueworx-labs-wordpress' ); ?><span class="nav-tag tag-light"><?php echo esc_html__( 'New', 'blueworx-labs-wordpress' ); ?></span></a>
+	<a href="<?php echo esc_url( home_url( '/portal' ) ); ?>"><?php echo esc_html__( 'Client Login', 'blueworx-labs-wordpress' ); ?></a>
+	<a class="btn btn-brand btn-md" href="<?php echo esc_url( home_url( '/pricing' ) ); ?>"><?php echo esc_html__( 'Get a Quote', 'blueworx-labs-wordpress' ); ?></a>
 </div>
