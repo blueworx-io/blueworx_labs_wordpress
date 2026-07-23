@@ -7,41 +7,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
-import { test, isPlaceholder, cacheBust, cacheBustExempt, login, baseURL, ADMIN_USER, ADMIN_PASS } from './helpers.js';
+import { test, isPlaceholder, cacheBust, cacheBustExempt, login, baseURL, ADMIN_USER, ADMIN_PASS, restoreAll } from './helpers.js';
 
 // A keyframe step ("0%", "100%", "from", "to") is the one kind of bare-looking
 // prelude this file legitimately needs — it is never a document element and
 // never needs .bw-page scoping.
 const isKeyframeStop = (branch) => branch === 'from' || branch === 'to' || /^\d+(\.\d+)?%$/.test(branch);
-
-/**
- * Runs a set of state-restoring cleanup steps to completion, one after
- * another, even if an earlier step throws — so a failure restoring one
- * piece of mutated global state (e.g. a `.notice-success` assertion timing
- * out) can never skip restoring another, unrelated piece of state.
- *
- * Every step still runs regardless of earlier failures, but a genuine
- * cleanup failure is never swallowed: each step's error is collected and,
- * once all steps have been attempted, re-thrown together so the test still
- * fails loudly and visibly.
- *
- * @param {Array<[string, () => Promise<void>]>} steps  [label, step] pairs.
- */
-async function restoreAll(steps) {
-  const errors = [];
-  for (const [label, step] of steps) {
-    try {
-      await step();
-    } catch (error) {
-      errors.push(`${label}: ${error && error.message ? error.message : String(error)}`);
-    }
-  }
-  if (errors.length > 0) {
-    throw new Error(
-      `Cleanup failed for ${errors.length} of ${steps.length} restore step(s):\n${errors.join('\n')}`
-    );
-  }
-}
 
 /**
  * Reads the currently active theme's slug directly off /wp-admin/themes.php.
@@ -1284,7 +1255,7 @@ test.describe('Public page ownership resolution (blueworx_public_current_templat
  * @param {string} body PHP statements to run after pages.php loads.
  * @return {Record<string, unknown>} The options table after `body` runs.
  */
-function runPagesLifecyclePhp(initialOptions, body) {
+function runPagesLifecyclePhp(initialOptions, body, tools = []) {
   const workDir = mkdtempSync(join(tmpdir(), 'bw-pages-lifecycle-test-'));
 
   try {
@@ -1321,11 +1292,12 @@ function get_post_status( $id ) { return 'publish'; }
 function __( $text, $domain = 'default' ) { return $text; }
 function apply_filters( $tag, $value ) { return $value; }
 function add_filter( $tag, $callback, $priority = 10 ) { /* no-op */ }
-// blueworx_public_pages() (pages.php) now loops this to append the 12 nested
-// Toolbox tool entries (Task 9b) — every scenario below is keyed to 'home'
-// only, so a stub with no tools keeps pages.php loadable standalone, without
-// content.php, and leaves the lifecycle scenarios unaffected.
-function blueworx_content_tools() { return array(); }
+// blueworx_public_pages() (pages.php) now loops this to append the nested
+// Toolbox tool entries (Task 9b). Most scenarios below are keyed to 'home'
+// only, so the default empty stub keeps pages.php loadable standalone, without
+// content.php; the parent-repair scenario passes a tool so a "toolbox/<slug>"
+// child entry exists.
+function blueworx_content_tools() { return json_decode( '${JSON.stringify(tools)}', true ); }
 
 // Page-creation stubs: blueworx_public_pages() returns eight top-level pages, so
 // blueworx_public_install_pages() reaches the create branch for every slug the
@@ -1339,6 +1311,21 @@ if ( ! class_exists( 'WP_Post' ) ) { class WP_Post {} }
 function get_page_by_path( \$slug ) { return null; }
 function wp_insert_post( \$args ) { static \$id = 1000; return ++\$id; }
 function is_wp_error( \$thing ) { return false; }
+
+// Parent-repair stubs: wp_get_post_parent_id() reads a seeded "__parents" map
+// (id => current parent id) so a scenario can hand a child a stale parent, and
+// wp_update_post() records each call under "__updates" so the test can assert
+// the repair fired with the right ID/post_parent.
+function wp_get_post_parent_id( \$id ) {
+	return isset( \$GLOBALS['__bw_options']['__parents'][ \$id ] ) ? (int) \$GLOBALS['__bw_options']['__parents'][ \$id ] : 0;
+}
+function wp_update_post( \$args ) {
+	if ( ! isset( \$GLOBALS['__bw_options']['__updates'] ) ) {
+		\$GLOBALS['__bw_options']['__updates'] = array();
+	}
+	\$GLOBALS['__bw_options']['__updates'][] = \$args;
+	return isset( \$args['ID'] ) ? \$args['ID'] : 0;
+}
 
 require '${pagesPhp}';
 
@@ -1438,6 +1425,55 @@ test.describe('Front-page takeover lifecycle (blueworx_public_install_pages, blu
       options.blueworx_public_prior_front,
       'the snapshot must be left in place when restoration does not happen'
     ).toEqual({ show_on_front: 'posts', page_on_front: 0 });
+  });
+
+  test('re-activation repairs a tool page whose Toolbox parent was recreated with a new id', () => {
+    // THE DEFECT THIS GUARDS AGAINST: if the Toolbox parent page is trashed and
+    // recreated with a new id, an existing child tool page keeps pointing at the
+    // old parent — breaking its /toolbox/<slug> permalink and the Site
+    // Protection path check (get_page_uri() walks the parent chain). A later
+    // activation must reset the child's post_parent to the live Toolbox id.
+    const options = runPagesLifecyclePhp(
+      {
+        // Every registry slug is already mapped + published, so nothing is
+        // (re)created; the child 'toolbox/surecart' (id 14) carries a STALE
+        // parent (99) while the live Toolbox page is id 12.
+        blueworx_public_page_ids: {
+          home: 5, about: 6, services: 7, contact: 8, work: 9,
+          ai: 10, pricing: 11, toolbox: 12, 'toolbox/surecart': 14,
+        },
+        __parents: { 14: 99 },
+        show_on_front: 'page',
+        page_on_front: 5,
+      },
+      'blueworx_public_install_pages();',
+      [{ slug: 'surecart', name: 'SureCart' }]
+    );
+
+    const updates = options.__updates || [];
+    expect(updates, 'exactly one page-parent repair must fire').toHaveLength(1);
+    expect(updates[0].ID, 'the repaired page is the surecart tool page').toBe(14);
+    expect(updates[0].post_parent, 'its parent is reset to the live Toolbox id').toBe(12);
+  });
+
+  test('re-activation leaves a tool page alone when its parent is already correct', () => {
+    // The repair must be surgical: a child already pointing at the live Toolbox
+    // id must not be rewritten (no needless wp_update_post churn on every boot).
+    const options = runPagesLifecyclePhp(
+      {
+        blueworx_public_page_ids: {
+          home: 5, about: 6, services: 7, contact: 8, work: 9,
+          ai: 10, pricing: 11, toolbox: 12, 'toolbox/surecart': 14,
+        },
+        __parents: { 14: 12 },
+        show_on_front: 'page',
+        page_on_front: 5,
+      },
+      'blueworx_public_install_pages();',
+      [{ slug: 'surecart', name: 'SureCart' }]
+    );
+
+    expect(options.__updates, 'no repair should fire when the parent is already correct').toBeUndefined();
   });
 });
 

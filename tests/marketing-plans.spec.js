@@ -7,7 +7,7 @@ import { test, isPlaceholder, cacheBust } from './helpers.js';
 test.describe('Marketing pricing page', () => {
   test.skip(isPlaceholder, 'No real WordPress target configured.');
 
-  test('renders three plan cards, comparison table, calculator placeholder and FAQ', async ({
+  test('renders three plan cards, comparison table, the pricing calculator and FAQ', async ({
     page,
   }) => {
     await page.goto(cacheBust('/pricing/'));
@@ -37,7 +37,7 @@ test.describe('Marketing pricing page', () => {
 test.describe('Marketing toolbox page', () => {
   test.skip(isPlaceholder, 'No real WordPress target configured.');
 
-  test('renders plan cards, comparison, savings placeholder, FAQ and the tool grid', async ({
+  test('renders plan cards, comparison, the savings calculator, FAQ and the tool grid', async ({
     page,
   }) => {
     await page.goto(cacheBust('/toolbox/'));

@@ -178,3 +178,28 @@ export async function login(page) {
     throw new Error(`Login failed via ${LOGIN_PATH}. ${error.trim()}`.trim());
   }
 }
+
+/**
+ * Runs a set of state-restoring cleanup steps to completion, one after another,
+ * even if an earlier step throws — so a failure restoring one piece of mutated
+ * global state can never skip restoring another, unrelated piece. Every step is
+ * attempted; collected errors are re-thrown together at the end so a genuine
+ * cleanup failure still fails the test loudly rather than being swallowed.
+ *
+ * @param {Array<[string, () => Promise<void>]>} steps [label, step] pairs.
+ */
+export async function restoreAll(steps) {
+  const errors = [];
+  for (const [label, step] of steps) {
+    try {
+      await step();
+    } catch (error) {
+      errors.push(`${label}: ${error && error.message ? error.message : String(error)}`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(
+      `Cleanup failed for ${errors.length} of ${steps.length} restore step(s):\n${errors.join('\n')}`
+    );
+  }
+}
