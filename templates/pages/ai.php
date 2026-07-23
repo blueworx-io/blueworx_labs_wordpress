@@ -3,14 +3,15 @@
  * AI Powered page template.
  *
  * Ported from app/ai/page.tsx's five sections, in source order: the ai-hero
- * (two-column, Claude badge + copy, with the AiDemo widget replaced by a Plan 3
- * placeholder), "The Full Flow" (AiPipeline, also a Plan 3 placeholder), "Model
- * Guidance" (a dark section of four model cards), "Approved Stack" (ten chips),
- * and "What We Build" (five offering cards on a dark section).
+ * (two-column, Claude badge + copy, with the AiDemo widget), "The Full Flow"
+ * (the AiPipeline widget), "Model Guidance" (a dark section of four model
+ * cards), "Approved Stack" (ten chips), and "What We Build" (five offering
+ * cards on a dark section).
  *
- * AiDemo and AiPipeline are Plan 3 interactive widgets; until then a labelled
- * placeholder stands in for each so the page is whole. Everything else is
- * static. This page's `.ai-*` styles are already in public.css.
+ * AiDemo and AiPipeline are the Plan 3b interactive widgets, rendered by PHP in
+ * a complete finished state and enhanced by assets/js/public-widgets.js
+ * (progressive enhancement; both honour prefers-reduced-motion). Everything
+ * else is static. This page's `.ai-*` styles are already in public.css.
  *
  * The <main><div> wrapper is required, not stylistic: globals.css targets
  * `main > div > .sec:last-child` to zero the final section's bottom padding.
