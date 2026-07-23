@@ -4,6 +4,208 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.33.0] - 2026-07-22
+
+### Added
+- **Tool-detail pages (`templates/pages/single-tool.php`)**, registered at `/toolbox/<slug>`
+  for all 12 Toolbox tools — completing Task 9. `blueworx_public_pages()` now generates the
+  12 nested entries from `blueworx_content_tools()` (keyed by full path, e.g.
+  `toolbox/surecart`), rather than hand-transcribing them, so the tool list stays a single
+  source of truth. `blueworx_public_install_pages()` creates them as real, nested WordPress
+  Pages (`post_parent` set from the already-mapped `toolbox` page) on activation, idempotently.
+  Each page renders a two-column hero (breadcrumb, badge, heading, tagline, CTAs, a
+  `glass-card` with the bundled 58px favicon, an optional "Popular" pill, and the tool's 6
+  features as check rows), a `#tool-why` section repeating those 6 features as `.svc` cards,
+  and a related-tools grid (first 4 other tools) via the shared `toolbox-grid` part.
+- New `blueworx_public_current_page()` accessor (`includes/public/pages.php`) — returns the
+  matched page-registry entry for the current request, factored out of
+  `blueworx_public_current_template()` so a template can read its own registry data (e.g. the
+  tool slug `single-tool.php` needs) without re-deriving ID→slug→registry resolution itself,
+  and without reading the queried post's own (rename-able) `post_name`.
+- `tests/marketing-single-tool.spec.js` — the toolbox archive still rendering 12 cards, a
+  popular tool's name/tagline/pill/6-features-twice, a non-popular tool showing no pill, an
+  unknown slug 404ing, and the Site Protection exemption reaching a nested tool page.
+
+### Fixed
+- **Site Protection exemption for nested pages** (`blueworx_public_is_owned_request_path()`).
+  The allowlist previously built each owned page's base path from
+  `get_post_field( 'post_name', $id )` — the page's own bare slug (e.g. `surecart`), which is
+  wrong for a page nested under `/toolbox/` and would have silently dropped the exemption for
+  every tool page the moment Site Protection was turned on. It now uses `get_page_uri()`,
+  which returns the full hierarchical path (`toolbox/surecart`), with the registry key itself
+  (already a full path) as the pre-activation fallback.
+
+## [1.32.0] - 2026-07-22
+
+### Added
+- **Pricing page (`templates/pages/pricing.php`)** and **Toolbox archive page
+  (`templates/pages/toolbox.php`)**, registered as `pricing` and `toolbox`. Both render a
+  `.pb-tall` hero with the billing toggle, the plan cards (via a new shared `plan-cards`
+  part, pulled up to overlap the hero), the logos band, a feature comparison table, a
+  calculator, and a static FAQ — Toolbox additionally has the `#savings` section and the
+  toolbox grid.
+- **`plan-cards` template part** — renders the plan grid from a plans array, each card
+  carrying `data-price-m` / `data-price-a` so Plan 3 can swap monthly/annual prices; the
+  button class is derived from the plan's `feat` flag (dark vs outline). Billing toggle
+  and calculators are Plan 3 widgets: the toggle renders its real `.bill-toggle` markup
+  (Monthly selected), the calculators render labelled placeholders.
+- **`toolbox-grid` template part**, extracted from the home page's inline toolbox band so
+  Home and Toolbox share one implementation (Home refactored to use it).
+- `tests/marketing-plans.spec.js` — plan cards, price data attributes, comparison tables,
+  the billing toggle, the calculator placeholders, the toolbox grid, and active nav links.
+
+## [1.31.0] - 2026-07-22
+
+### Added
+- **AI Powered page (`templates/pages/ai.php`)**, registered as `ai`, rendering the five
+  sections from `app/ai/page.tsx`: the two-column ai-hero with the Claude badge, "The Full
+  Flow", "Model Guidance" (four model cards), "Approved Stack" (ten chips) and "What We
+  Build" (five offering cards). The AiDemo and AiPipeline interactive widgets are Plan 3,
+  so labelled placeholders stand in for them. This page's `.ai-*` styles were already in
+  public.css.
+- `tests/marketing-ai.spec.js` — the Claude hero, four model cards, ten stack chips, five
+  offerings, the two Plan 3 placeholders, and the active nav link.
+
+## [1.30.0] - 2026-07-22
+
+### Added
+- **Work page (`templates/pages/work.php`)**, registered as `work`, rendering the four
+  sections from `app/work/page.tsx`: a two-column tech-hero with a `results.log`
+  glass-card, a `.work-grid` of six non-linked project cards (the `work-card` part in
+  plain `<div>` mode), a stats-band, and a testimonials section using Work's own three
+  testimonials and heading ("Partners Who'd Recommend Us") rather than the shared
+  homepage reviews. Reuses tech-hero, glass-card, work-card, stats-band and testimonials
+  parts throughout.
+- `tests/marketing-work.spec.js` — the two-column hero, six non-linked cards, the stats
+  band, the Work-specific testimonials, and plugin-hosted images.
+
+## [1.29.0] - 2026-07-22
+
+### Added
+- **Contact page (`templates/pages/contact.php`)**, registered as `contact`, rendering
+  the five sections from `app/contact/page.tsx`: a centered 780px tech-hero with two
+  status pills, the contact grid (form column + illustration), the dark contact-cards
+  band (call / WhatsApp / email), a static FAQ section, and testimonials.
+- **Contact form as a shortcode.** The form column renders the shortcode named by the
+  `blueworx_contact_form_shortcode` option (also filterable) — and only that single
+  configured value is passed to `do_shortcode()`, never arbitrary input, so it can never
+  be coerced into running another shortcode. Empty by default, in which case a clearly
+  labelled placeholder stands in. This is the forms-as-shortcodes approach: point the
+  option at a form plugin's shortcode to show the form.
+- The FAQ list renders as native `<details>` (fully functional with no JavaScript) until
+  Plan 3 upgrades it to the animated accordion.
+- `tests/marketing-contact.spec.js` — hero, contact grid, three cards, five `<details>`
+  FAQs, testimonials, the placeholder-when-unconfigured behaviour, and that Contact
+  (not a nav item) marks nothing active.
+
+## [1.28.0] - 2026-07-22
+
+### Added
+- **Services page (`templates/pages/services.php`)**, registered as `services` in
+  `blueworx_public_pages()`, rendering all five sections from `app/services/page.tsx`:
+  a two-column tech-hero with a metrics glass-card, Service 01 (four feature cards plus
+  the bespoke hand-authored analytics/browser panel with its `#fsg` gradient sparkline,
+  ported verbatim), How It Works (proc-grid part), the dark Service 02 section listing
+  the Digital Toolbox tools with **bundled** favicons (`assets/img/tools/`, no Google
+  requests), and testimonials. Reuses the `tech-hero`, `glass-card`, `proc-grid` and
+  `testimonials` parts; the analytics panel and two-column layout are composed inline.
+- `tests/marketing-services.spec.js` — asserts the two-column hero, the `#fsg` sparkline,
+  the four process steps, plugin-hosted (not Google) tool favicons, and the active nav link.
+
+## [1.27.0] - 2026-07-22
+
+Task 3 of the marketing-pages migration (`marketing-pages`): the About page.
+
+### Added
+
+- **About page (`templates/pages/about.php`)**, registered as `about` in
+  `blueworx_public_pages()`, rendering all five sections from
+  `app/about/page.tsx` in source order: a centered tech-hero, "Why BlueWorx"
+  (`.af-wrap about-why`, copy column + four plain svc-card parts), a
+  stats-band part (5.0★ Google Rating, 82+ Projects Completed, 100k + Revenue
+  Handled, 2K + Toolbox Value), "Our Team" (three team-card blocks — no
+  shared part exists for these, so they stay inline), and "Client Success
+  Stories" (three linked work-card parts on a tinted background). 100%
+  static, entirely composed from existing template parts.
+
+## [1.26.1] - 2026-07-22
+
+### Changed
+- `tech-hero` template part: the centered variant now accepts `max_width` (default
+  820, About's value) and `extra_class` (e.g. `pb-tall`). Review found it hardcoded
+  About's exact pixel values, which Contact (780px) and Pricing (`pb-tall`) could not
+  reuse — they would have had to bypass the shared part. Backward-compatible; the
+  defaults reproduce About's hero unchanged.
+
+## [1.26.0] - 2026-07-22
+
+Task 2 of the marketing-pages migration (`marketing-pages`): the real Home
+page plus the shared template parts every later marketing page will reuse.
+
+### Added
+
+- **Home page (`templates/pages/home.php`)** replaces the Plan 1 stub,
+  rendering all nine sections from `app/page.tsx` in source order: the
+  home-hero (bespoke timeline glass-card visual + scrolling service ticker),
+  "What We Do" (`.svc2`, two svc-card parts), the logos band, Selected Work
+  (three work-card parts), a labelled FeatureTabs placeholder (Plan 3), How
+  We Work (a proc-grid part), the Ongoing Partnership split section, the
+  Toolbox band (driven by `blueworx_content_tools()`), and testimonials (a
+  testimonials part fed `blueworx_content_reviews()`).
+- **Eight shared template parts (`templates/parts/`)** so Tasks 3–9 reuse
+  rather than duplicate: `tech-hero`, `glass-card`, `proc-grid`, `work-card`,
+  `stats-band`, `testimonials`, `logos-band`, `svc-card`. Each takes a
+  documented `$vars` contract designed around every known source usage, not
+  just Home's — e.g. `work-card` renders a `<div>` instead of an `<a>` when no
+  `href` is given (Work's plain, non-linked project cards), and `tech-hero`
+  supports both the centered layout (About) and a `centered => false` mode a
+  two-column hero (Services, Work) composes around.
+- **FeatureTabs placeholder.** A `.bw-plan3-placeholder[data-widget="feature-tabs"]`
+  static block stands in for the Plan 3 interactive widget so the page stays
+  whole; Plan 3 replaces it with the real component.
+- `tests/marketing-home.spec.js` — asserts the home-hero, `.svc2`, `.proc-grid`,
+  the Toolbox band's 12 bundled-favicon cards, the Ongoing Partnership split
+  section, and the testimonials all render, and that the FeatureTabs region
+  renders the labelled placeholder rather than an empty gap.
+
+## [1.25.1] - 2026-07-22
+
+### Changed
+- Re-encoded the photographic marketing images as JPEG instead of palette-quantised
+  PNG. The 64-colour quantisation used to hit the size target left visible dithering
+  speckle on `feature-image-2` (flagged in review). The five photographic feature
+  images (`feature-image-1..4`, `fig-collab`) now ship as clean mozjpeg at ~82 quality,
+  each well under target and totalling ~450KB rather than the PNGs' larger, dithered
+  output. Their filenames change from `.png` to `.jpg`; `hero-image.png` stays PNG
+  (it carries transparency).
+
+## [1.25.0] - 2026-07-22
+
+Task 1 of the marketing-pages migration (`marketing-pages`): the content data
+layer every marketing page template will draw from, plus web-sized bundled
+images. No page markup yet — see later releases for the pages themselves.
+
+### Added
+
+- **Content data layer (`includes/public/content.php`).** Six accessors —
+  `blueworx_content_tools()`, `blueworx_content_tool( $slug )`,
+  `blueworx_content_solo_prices()`, `blueworx_content_toolbox_plans()`,
+  `blueworx_content_retainer_plans()`, `blueworx_content_faqs()`,
+  `blueworx_content_reviews()` — port the marketing site's copy and pricing
+  (12 Toolbox tools with 6 features each, solo prices, subscription and
+  retainer plans, pricing FAQs, homepage reviews) verbatim from the front-end
+  design export's `lib/data.ts`. Each accessor's return value is filterable
+  via `apply_filters( 'blueworx_content_<name>', $array )` so a later cycle
+  can override the content without editing this file. The source's `btn`
+  raw-CSS-class field is dropped from plan data — templates choose their own
+  button classes.
+- **Bundled, web-sized marketing images** (`assets/img/`):
+  `about-illustration.jpg`, `contact-illustration.jpg`, `hero-image.png`,
+  `feature-image-1..4.png`, `fig-collab.png`. Resized to a 1600px max long
+  edge (never upscaled) and recompressed with `sharp-cli` (a one-shot `npx`
+  tool, not an added dependency); every file ships under 160KB, versus up to
+  1.5MB in the source export.
+
 ## [1.24.1] - 2026-07-22
 
 ### Security

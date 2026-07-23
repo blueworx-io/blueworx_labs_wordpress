@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once BLUEWORX_LABS_PATH . 'includes/public/helpers-public.php';
+require_once BLUEWORX_LABS_PATH . 'includes/public/content.php';
 require_once BLUEWORX_LABS_PATH . 'includes/public/pages.php';
 require_once BLUEWORX_LABS_PATH . 'includes/public/render.php';
 require_once BLUEWORX_LABS_PATH . 'includes/public/assets.php';

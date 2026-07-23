@@ -1196,6 +1196,11 @@ function get_option( $name, $default = false ) {
 function is_admin() { return false; }
 function is_page() { return true; }
 function get_queried_object() { return new WP_Post( ${postId}, '${postName}' ); }
+// blueworx_public_pages() (pages.php) now loops this to append the 12 nested
+// Toolbox tool entries (Task 9b) — irrelevant to what this harness pins
+// (top-level page ownership resolution), so a stub with no tools is enough
+// to keep pages.php loadable standalone, without content.php.
+function blueworx_content_tools() { return array(); }
 
 require '${pagesPhp}';
 
@@ -1316,6 +1321,24 @@ function get_post_status( $id ) { return 'publish'; }
 function __( $text, $domain = 'default' ) { return $text; }
 function apply_filters( $tag, $value ) { return $value; }
 function add_filter( $tag, $callback, $priority = 10 ) { /* no-op */ }
+// blueworx_public_pages() (pages.php) now loops this to append the 12 nested
+// Toolbox tool entries (Task 9b) — every scenario below is keyed to 'home'
+// only, so a stub with no tools keeps pages.php loadable standalone, without
+// content.php, and leaves the lifecycle scenarios unaffected.
+function blueworx_content_tools() { return array(); }
+
+// Page-creation stubs: blueworx_public_pages() returns eight top-level pages, so
+// blueworx_public_install_pages() reaches the create branch for every slug the
+// seeded map does not already hold (the scenarios below seed only 'home'). These
+// let the create path run without a real WordPress — get_page_by_path() finds no
+// existing page, wp_insert_post() hands back incrementing ids, and neither the
+// WP_Post match nor is_wp_error() short-circuits. The lifecycle assertions only
+// read show_on_front / page_on_front / prior_front, all keyed off the seeded
+// 'home' id, so these created ids never affect the outcome.
+if ( ! class_exists( 'WP_Post' ) ) { class WP_Post {} }
+function get_page_by_path( \$slug ) { return null; }
+function wp_insert_post( \$args ) { static \$id = 1000; return ++\$id; }
+function is_wp_error( \$thing ) { return false; }
 
 require '${pagesPhp}';
 

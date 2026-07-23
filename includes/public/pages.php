@@ -20,15 +20,58 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array Slug => array( title, template ).
  */
 function blueworx_public_pages() {
-	return (array) apply_filters(
-		'blueworx_public_pages',
-		array(
-			'home' => array(
-				'title'    => __( 'Home', 'blueworx-labs-wordpress' ),
-				'template' => 'pages/home.php',
-			),
-		)
+	$pages = array(
+		'home'     => array(
+			'title'    => __( 'Home', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/home.php',
+		),
+		'about'    => array(
+			'title'    => __( 'About', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/about.php',
+		),
+		'services' => array(
+			'title'    => __( 'Services', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/services.php',
+		),
+		'contact'  => array(
+			'title'    => __( 'Contact', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/contact.php',
+		),
+		'work'     => array(
+			'title'    => __( 'Work', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/work.php',
+		),
+		'ai'       => array(
+			'title'    => __( 'AI Powered', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/ai.php',
+		),
+		'pricing'  => array(
+			'title'    => __( 'Pricing', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/pricing.php',
+		),
+		'toolbox'  => array(
+			'title'    => __( 'Toolbox', 'blueworx-labs-wordpress' ),
+			'template' => 'pages/toolbox.php',
+		),
 	);
+
+	// One entry per Toolbox tool, keyed by its FULL hierarchical path
+	// ("toolbox/<slug>") so get_page_by_path() (blueworx_public_install_pages())
+	// resolves it natively and the registry stays the single source of truth —
+	// content.php's 12 tools are never hand-transcribed here. content.php is
+	// required before this file in includes/public/bootstrap.php, so
+	// blueworx_content_tools() is available wherever this function runs (init,
+	// query time, activation).
+	foreach ( blueworx_content_tools() as $blueworx_tool ) {
+		$pages[ 'toolbox/' . $blueworx_tool['slug'] ] = array(
+			'title'    => $blueworx_tool['name'],
+			'template' => 'pages/single-tool.php',
+			'slug'     => $blueworx_tool['slug'], // Child post_name.
+			'parent'   => 'toolbox', // Registry key of the parent page.
+		);
+	}
+
+	return (array) apply_filters( 'blueworx_public_pages', $pages );
 }
 
 /**
@@ -48,6 +91,8 @@ function blueworx_public_install_pages() {
 			continue;
 		}
 
+		// For a nested entry $slug is already the hierarchical path
+		// ("toolbox/surecart"), which get_page_by_path() resolves natively.
 		$existing = get_page_by_path( $slug );
 
 		if ( $existing instanceof WP_Post ) {
@@ -55,12 +100,22 @@ function blueworx_public_install_pages() {
 			continue;
 		}
 
+		// A nested entry's own post_name is its child slug ("surecart"), not
+		// the full path key, and its post_parent comes from the already-mapped
+		// parent — toolbox is listed before its children above and $map is
+		// written as this loop goes, so the parent ID exists by the time a
+		// child is reached. A top-level entry has neither key and behaves
+		// exactly as before (post_name = $slug, post_parent = 0).
+		$blueworx_post_name   = isset( $page['slug'] ) ? $page['slug'] : $slug;
+		$blueworx_post_parent = ( isset( $page['parent'] ) && isset( $map[ $page['parent'] ] ) ) ? (int) $map[ $page['parent'] ] : 0;
+
 		$id = wp_insert_post(
 			array(
 				'post_type'    => 'page',
 				'post_status'  => 'publish',
 				'post_title'   => $page['title'],
-				'post_name'    => $slug,
+				'post_name'    => $blueworx_post_name,
+				'post_parent'  => $blueworx_post_parent,
 				'post_content' => '',
 			)
 		);
@@ -181,10 +236,12 @@ function blueworx_public_is_owned_page() {
  *   actually been pointed at a mapped page (`show_on_front` = 'page' and
  *   `page_on_front` is one of the IDs in blueworx_public_page_ids) — not
  *   unconditionally, since "/" is WordPress's own posts index until then.
- * - Slugs are resolved from the stored ID map (get_post_field()), so a page
- *   the admin has renamed is still recognised, falling back to the static
- *   slug from blueworx_public_pages() only for a page not yet in the map
- *   (fresh install, before activation has run).
+ * - Bases are resolved from the stored ID map via get_page_uri() (the full
+ *   hierarchical path, e.g. "toolbox/surecart" for a nested tool page, or
+ *   just "about" for a top-level one), so a page the admin has renamed —
+ *   or moved — is still recognised, falling back to the registry KEY itself
+ *   (already the full path) only for a page not yet in the map (fresh
+ *   install, before activation has run).
  *
  * An owned marketing page is always a clean-path request — it never
  * legitimately carries any query var beyond harmless tracking/analytics
@@ -255,22 +312,30 @@ function blueworx_public_is_owned_request_path() {
 	}
 
 	foreach ( array_keys( blueworx_public_pages() ) as $slug ) {
-		$current_slug = $slug;
+		// The registry key IS the full path already ("toolbox/surecart" or
+		// "about"), so it is the correct fallback base as-is for a page not
+		// yet in the map (fresh install, before activation).
+		$current_path = $slug;
 
-		// get_post_field() is a direct post lookup, safe at `init` (unlike
-		// is_page(), it is not a query conditional). Resolving through the
-		// map means a rename is still recognised, matching
+		// get_page_uri() is a direct get_post() lookup that walks the parent
+		// chain, safe at `init` (unlike is_page(), it is not a query
+		// conditional) — and, critically, returns the full hierarchical URI
+		// ("toolbox/surecart"), not the bare post_name get_post_field() would
+		// return ("surecart"), which would build the wrong, top-level-shaped
+		// base and silently drop the Site Protection exemption for every
+		// nested tool page. Resolving through the map means a rename (or a
+		// move) is still recognised, matching
 		// blueworx_public_current_template()'s query-time resolution.
 		if ( isset( $map[ $slug ] ) ) {
-			$actual_slug = get_post_field( 'post_name', (int) $map[ $slug ] );
+			$actual_path = get_page_uri( (int) $map[ $slug ] );
 
-			if ( $actual_slug ) {
-				$current_slug = $actual_slug;
+			if ( $actual_path ) {
+				$current_path = $actual_path;
 			}
 		}
 
-		$bases[] = $home_path . '/' . $current_slug;
-		$bases[] = $home_path . '/index.php/' . $current_slug;
+		$bases[] = $home_path . '/' . $current_path;
+		$bases[] = $home_path . '/index.php/' . $current_path;
 	}
 
 	foreach ( array_unique( $bases ) as $base ) {
@@ -286,11 +351,21 @@ function blueworx_public_is_owned_request_path() {
 }
 
 /**
- * Absolute path to the template for the current request, or null.
+ * The registry entry (blueworx_public_pages() array) matching the current
+ * request, or null when the current request is not one of this plugin's
+ * owned pages.
  *
- * @return string|null Template path.
+ * QUERY-TIME ONLY — same constraint as blueworx_public_is_owned_page(), see
+ * its docblock. Factored out of blueworx_public_current_template() (which now
+ * calls this) so a template — e.g. single-tool.php — can get its own registry
+ * entry (and, from it, a rename-robust identity such as the `slug` field)
+ * without needing to redo the ID→slug→registry resolution itself, and without
+ * ever reading get_queried_object()->post_name directly, which a rename would
+ * make stale.
+ *
+ * @return array|null The matched registry entry, or null.
  */
-function blueworx_public_current_template() {
+function blueworx_public_current_page() {
 	if ( is_admin() || ! is_page() ) {
 		return null;
 	}
@@ -313,7 +388,10 @@ function blueworx_public_current_template() {
 	// page's ID will not be in the map (so array_search fails) but its slug
 	// still collides with the map entry. Falling through to the static
 	// registry in that case would render the plugin's template over a page
-	// it does not own.
+	// it does not own. This holds unchanged for a nested entry: the registry
+	// key is the full path ("toolbox/surecart"), so an unrelated top-level
+	// page whose own (bare) post_name happens to read "surecart" never
+	// matches that key and correctly falls through to null below.
 	if ( false === $slug ) {
 		$candidate_slug = $post->post_name;
 
@@ -324,11 +402,22 @@ function blueworx_public_current_template() {
 		$slug = $candidate_slug;
 	}
 
-	if ( ! isset( $pages[ $slug ] ) ) {
+	return isset( $pages[ $slug ] ) ? $pages[ $slug ] : null;
+}
+
+/**
+ * Absolute path to the template for the current request, or null.
+ *
+ * @return string|null Template path.
+ */
+function blueworx_public_current_template() {
+	$page = blueworx_public_current_page();
+
+	if ( null === $page ) {
 		return null;
 	}
 
-	$path = BLUEWORX_LABS_PATH . 'templates/' . $pages[ $slug ]['template'];
+	$path = BLUEWORX_LABS_PATH . 'templates/' . $page['template'];
 
 	return file_exists( $path ) ? $path : null;
 }
