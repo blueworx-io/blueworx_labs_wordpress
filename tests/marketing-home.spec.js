@@ -50,23 +50,26 @@ test.describe('Marketing home page', () => {
     await expect(testimonials.first().locator('.tname')).not.toBeEmpty();
   });
 
-  test('the FeatureTabs region renders a labelled placeholder, not a broken widget', async ({ page }) => {
+  test('the FeatureTabs region renders the real interactive widget', async ({ page }) => {
     await page.goto(cacheBust('/'));
 
-    // FeatureTabs is a Plan 3 interactive widget, explicitly out of scope —
-    // this pins that the page still renders a clearly-labelled static
-    // placeholder in its place rather than an empty gap or broken markup.
-    const placeholder = page.locator('main > div > .bw-plan3-placeholder[data-widget="feature-tabs"]');
-    await expect(placeholder).toHaveCount(1);
-    await expect(placeholder).not.toBeEmpty();
+    // FeatureTabs became a real Plan 3b widget (progressive enhancement) — this
+    // pins that the page renders the interactive section (tab bar + default
+    // Support panel) in its place, not an empty gap or a leftover placeholder.
+    const widget = page.locator('main > div > [data-widget="feature-tabs"]');
+    await expect(widget).toHaveCount(1);
+    await expect(widget.locator('.tab-bar .tab')).toHaveCount(3);
+    await expect(widget.locator('.af-text h2')).toHaveText('Support Guides');
 
-    // It must sit between Selected Work and How We Work, matching the
-    // source's section order in app/page.tsx.
+    // It must sit in the section flow between Selected Work and How We Work,
+    // matching the source's order in app/page.tsx.
     const sections = await page.locator('main > div > *').evaluateAll((els) =>
-      els.map((el) => (el.matches('.bw-plan3-placeholder') ? 'placeholder' : el.className))
+      els.map((el) => (el.matches('[data-widget="feature-tabs"]') ? 'feature-tabs' : el.className))
     );
-    const placeholderIndex = sections.indexOf('placeholder');
-    expect(placeholderIndex, 'the FeatureTabs placeholder must be present in the section flow').toBeGreaterThan(-1);
+    expect(
+      sections.indexOf('feature-tabs'),
+      'the FeatureTabs widget must be present in the section flow'
+    ).toBeGreaterThan(-1);
   });
 
   test('the Toolbox band lists all 12 tools with bundled favicons', async ({ page }) => {

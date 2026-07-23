@@ -16,7 +16,7 @@ test.describe('Marketing AI page', () => {
     await expect(page.locator('.ai-off-grid .fc')).toHaveCount(5);
   });
 
-  test('the AiDemo and AiPipeline widgets render Plan 3 placeholders', async ({ page }) => {
+  test('the AiDemo and AiPipeline interactive widgets render', async ({ page }) => {
     await page.goto(cacheBust('/ai/'));
     await expect(page.locator('[data-widget="ai-demo"]')).toBeVisible();
     await expect(page.locator('[data-widget="ai-pipeline"]')).toBeVisible();

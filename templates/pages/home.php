@@ -341,16 +341,111 @@ blueworx_public_part( 'parts/nav.php' );
 
 		<?php
 		/*
-		 * FeatureTabs is a Plan 3 interactive widget (tabbed feature
-		 * showcase driven by client-side JS) — out of scope here. This
-		 * static, clearly-labelled placeholder keeps the page whole and the
-		 * section rhythm intact until Plan 3 mounts the real widget in its
-		 * place.
+		 * FeatureTabs (Plan 3b): a client-side tabbed analytics showcase.
+		 * PHP renders the full Support-tab default (markup, chart path,
+		 * legend); assets/js/public-widgets.js's initFeatureTabs() reads
+		 * each tab button's data-* attributes to recompute the SVG line
+		 * chart and swap the heading/desc/CTA/legend on click. Tab data
+		 * ported verbatim from FeatureTabs.tsx's AF/LEGEND arrays.
 		 */
+		$blueworx_home_feature_tabs = array(
+			array(
+				'label'   => __( 'Support', 'blueworx-labs-wordpress' ),
+				'heading' => __( 'Support Guides', 'blueworx-labs-wordpress' ),
+				'desc'    => __( 'Get ahead by accessing our dedicated support guides, designed to give you an edge.', 'blueworx-labs-wordpress' ),
+				'cta'     => __( 'View Guides', 'blueworx-labs-wordpress' ),
+				'color'   => '#4F46E5',
+				'pts'     => '150 118 138 82 110 64 96 74 88',
+				'value'   => '120,456',
+			),
+			array(
+				'label'   => __( 'Toolbox', 'blueworx-labs-wordpress' ),
+				'heading' => __( 'Digital Toolbox', 'blueworx-labs-wordpress' ),
+				'desc'    => __( 'Access a curated set of tools that power your website, automations, and integrations, all set up, managed, and maintained for you.', 'blueworx-labs-wordpress' ),
+				'cta'     => __( 'View Toolbox', 'blueworx-labs-wordpress' ),
+				'color'   => '#A5A7FF',
+				'pts'     => '120 96 112 60 84 46 72 54 62',
+				'value'   => '245,877',
+			),
+			array(
+				'label'   => __( 'Hosting', 'blueworx-labs-wordpress' ),
+				'heading' => __( 'Website Hosting', 'blueworx-labs-wordpress' ),
+				'desc'    => __( 'Remove the headache of WordPress hosting with our high-performance hosting supported by integrated growth & security functionality.', 'blueworx-labs-wordpress' ),
+				'cta'     => __( 'View Hosting', 'blueworx-labs-wordpress' ),
+				'color'   => '#3686F7',
+				'pts'     => '168 150 158 128 146 120 136 126 142',
+				'value'   => '78,987',
+			),
+		);
 		?>
-		<div class="bw-plan3-placeholder" data-widget="feature-tabs">
-			<p><?php echo esc_html__( 'Interactive feature showcase — coming soon.', 'blueworx-labs-wordpress' ); ?></p>
-		</div>
+		<section class="features-dark" data-widget="feature-tabs">
+			<div class="blob" style="width:360px;height:360px;top:-120px;right:-120px;opacity:.14"></div>
+			<div class="fd-header">
+				<h2 class="h2"><?php echo esc_html__( 'One Platform. Every Tool. Real Results.', 'blueworx-labs-wordpress' ); ?></h2>
+				<p class="fd-sub"><?php echo esc_html__( 'Every BlueWorx build ships on a managed platform with tools, hosting, and support included, so your site keeps performing long after launch.', 'blueworx-labs-wordpress' ); ?></p>
+			</div>
+			<div class="tab-bar">
+				<?php foreach ( $blueworx_home_feature_tabs as $blueworx_home_ft_i => $blueworx_home_ft_tab ) : ?>
+					<button
+						type="button"
+						class="tab <?php echo 0 === $blueworx_home_ft_i ? 'on' : 'off'; ?>"
+						data-tab="<?php echo esc_attr( $blueworx_home_ft_i ); ?>"
+						data-heading="<?php echo esc_attr( $blueworx_home_ft_tab['heading'] ); ?>"
+						data-desc="<?php echo esc_attr( $blueworx_home_ft_tab['desc'] ); ?>"
+						data-cta="<?php echo esc_attr( $blueworx_home_ft_tab['cta'] ); ?>"
+						data-color="<?php echo esc_attr( $blueworx_home_ft_tab['color'] ); ?>"
+						data-value="<?php echo esc_attr( $blueworx_home_ft_tab['value'] ); ?>"
+						data-pts="<?php echo esc_attr( $blueworx_home_ft_tab['pts'] ); ?>"
+					><?php echo esc_html( $blueworx_home_ft_tab['label'] ); ?></button>
+				<?php endforeach; ?>
+			</div>
+			<div class="af-wrap">
+				<div class="af-panel">
+					<div class="af-panel-head">
+						<h4><?php echo esc_html__( 'Quick Analytics', 'blueworx-labs-wordpress' ); ?></h4>
+						<span class="af-range">
+							<?php echo esc_html__( 'All time', 'blueworx-labs-wordpress' ); ?>
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" /></svg>
+						</span>
+					</div>
+					<div class="af-legend">
+						<?php foreach ( $blueworx_home_feature_tabs as $blueworx_home_ft_i => $blueworx_home_ft_tab ) : ?>
+							<div class="af-leg <?php echo 0 === $blueworx_home_ft_i ? 'on' : 'off'; ?>">
+								<small><i style="background:<?php echo esc_attr( $blueworx_home_ft_tab['color'] ); ?>"></i><?php echo esc_html( $blueworx_home_ft_tab['label'] ); ?></small>
+								<b><?php echo esc_html( $blueworx_home_ft_tab['value'] ); ?></b>
+							</div>
+						<?php endforeach; ?>
+					</div>
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static trusted markup: the Support-tab default chart, built from the $blueworx_home_feature_tabs constants above.
+					echo '<svg class="af-chart" viewBox="0 0 520 210" preserveAspectRatio="none">
+						<defs>
+							<linearGradient id="afGrad" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stop-color="#4F46E5" stop-opacity="0.16" />
+								<stop offset="100%" stop-color="#4F46E5" stop-opacity="0" />
+							</linearGradient>
+						</defs>
+						<line x1="0" y1="52" x2="520" y2="52" stroke="#EFEFF0" stroke-width="1" />
+						<line x1="0" y1="104" x2="520" y2="104" stroke="#EFEFF0" stroke-width="1" />
+						<line x1="0" y1="156" x2="520" y2="156" stroke="#EFEFF0" stroke-width="1" />
+						<path class="af-area" d="M0,150 L65,118 L130,138 L195,82 L260,110 L325,64 L390,96 L455,74 L520,88 L520,210 L0,210 Z" fill="url(#afGrad)" />
+						<path class="af-line" d="M0,150 L65,118 L130,138 L195,82 L260,110 L325,64 L390,96 L455,74 L520,88" fill="none" stroke="#4F46E5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+						<circle class="af-dot" cx="325" cy="64" r="5" fill="#fff" stroke="#4F46E5" stroke-width="3" />
+					</svg>';
+					?>
+				</div>
+				<div class="af-text">
+					<h2 class="h2" style="font-size:34px;margin-bottom:14px;color:#fff"><?php echo esc_html( $blueworx_home_feature_tabs[0]['heading'] ); ?></h2>
+					<p class="lead" style="font-size:17px;margin-bottom:28px;color:rgba(255,255,255,.66)"><?php echo esc_html( $blueworx_home_feature_tabs[0]['desc'] ); ?></p>
+					<a class="btn btn-brand btn-md" href="<?php echo esc_url( home_url( '/toolbox' ) ); ?>"><?php echo esc_html( $blueworx_home_feature_tabs[0]['cta'] ); ?>
+						<?php
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static trusted markup, see $blueworx_home_arrow above.
+						echo $blueworx_home_arrow;
+						?>
+					</a>
+				</div>
+			</div>
+		</section>
 
 		<section class="sec" style="padding-bottom:80px">
 			<div class="center-head" style="margin-bottom:40px">

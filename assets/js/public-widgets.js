@@ -165,10 +165,220 @@
 		render();
 	}
 
+	function initFaqAccordion() {
+		var lists = document.querySelectorAll( '.faq-list' );
+		for ( var i = 0; i < lists.length; i++ ) {
+			( function ( list ) {
+				var items = list.querySelectorAll( 'details.faq-item' );
+				for ( var j = 0; j < items.length; j++ ) {
+					items[ j ].addEventListener( 'toggle', function () {
+						if ( ! this.open ) {
+							return;
+						}
+						for ( var k = 0; k < items.length; k++ ) {
+							if ( items[ k ] !== this && items[ k ].open ) {
+								items[ k ].open = false;
+							}
+						}
+					} );
+				}
+			}( lists[ i ] ) );
+		}
+	}
+
+	function initAiPipeline() {
+		var shell = document.querySelector( '[data-widget="ai-pipeline"]' );
+		if ( ! shell ) {
+			return;
+		}
+		var steps = shell.querySelectorAll( '.ai-pipe-step' );
+		if ( ! steps.length ) {
+			return;
+		}
+		if ( window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+			return;
+		}
+		var active = 0;
+		setInterval( function () {
+			steps[ active ].className = 'ai-pipe-step';
+			active = ( active + 1 ) % steps.length;
+			steps[ active ].className = 'ai-pipe-step on';
+		}, 1300 );
+	}
+
+	function initFeatureTabs() {
+		var root = document.querySelector( '[data-widget="feature-tabs"]' );
+		if ( ! root ) {
+			return;
+		}
+		var tabs = root.querySelectorAll( '.tab-bar .tab' );
+		var legs = root.querySelectorAll( '.af-legend .af-leg' );
+		var chart = root.querySelector( '.af-chart' );
+		if ( ! tabs.length || ! chart ) {
+			return;
+		}
+		var xs = [ 0, 65, 130, 195, 260, 325, 390, 455, 520 ];
+		var areaEl = chart.querySelector( '.af-area' );
+		var lineEl = chart.querySelector( '.af-line' );
+		var dotEl = chart.querySelector( '.af-dot' );
+		var stops = chart.querySelectorAll( '#afGrad stop' );
+		var head = root.querySelector( '.af-text h2' );
+		var desc = root.querySelector( '.af-text p' );
+		var cta = root.querySelector( '.af-text a' );
+
+		function select( idx ) {
+			var tab = tabs[ idx ];
+			var pts = tab.getAttribute( 'data-pts' ).split( ' ' );
+			var color = tab.getAttribute( 'data-color' );
+			var d = '';
+			var minY = Infinity;
+			var dotI = 0;
+			var i;
+			for ( i = 0; i < pts.length; i++ ) {
+				var y = parseFloat( pts[ i ] );
+				d += ( i ? 'L' : 'M' ) + xs[ i ] + ',' + y + ( i === pts.length - 1 ? '' : ' ' );
+				if ( y < minY ) {
+					minY = y;
+					dotI = i;
+				}
+			}
+			if ( lineEl ) {
+				lineEl.setAttribute( 'd', d );
+				lineEl.setAttribute( 'stroke', color );
+			}
+			if ( areaEl ) {
+				areaEl.setAttribute( 'd', d + ' L520,210 L0,210 Z' );
+			}
+			if ( dotEl ) {
+				dotEl.setAttribute( 'cx', xs[ dotI ] );
+				dotEl.setAttribute( 'cy', minY );
+				dotEl.setAttribute( 'stroke', color );
+			}
+			for ( i = 0; i < stops.length; i++ ) {
+				stops[ i ].setAttribute( 'stop-color', color );
+			}
+			for ( i = 0; i < tabs.length; i++ ) {
+				tabs[ i ].className = i === idx ? 'tab on' : 'tab off';
+			}
+			for ( i = 0; i < legs.length; i++ ) {
+				legs[ i ].className = i === idx ? 'af-leg on' : 'af-leg off';
+			}
+			if ( head ) {
+				head.textContent = tab.getAttribute( 'data-heading' );
+			}
+			if ( desc ) {
+				desc.textContent = tab.getAttribute( 'data-desc' );
+			}
+			if ( cta && cta.firstChild ) {
+				cta.firstChild.nodeValue = tab.getAttribute( 'data-cta' ) + ' ';
+			}
+		}
+
+		var t;
+		for ( t = 0; t < tabs.length; t++ ) {
+			( function ( idx ) {
+				tabs[ idx ].addEventListener( 'click', function () {
+					select( idx );
+				} );
+			}( t ) );
+		}
+		for ( t = 0; t < legs.length; t++ ) {
+			( function ( idx ) {
+				legs[ idx ].addEventListener( 'click', function () {
+					select( idx );
+				} );
+			}( t ) );
+		}
+	}
+
+	function initAiDemo() {
+		var root = document.querySelector( '[data-widget="ai-demo"]' );
+		if ( ! root ) {
+			return;
+		}
+		if ( window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+			return;
+		}
+		var typed = root.querySelector( '.ai-typed' );
+		var caret = root.querySelector( '.ai-caret' );
+		var codeLines = root.querySelectorAll( '.ai-code .cl' );
+		var site = root.querySelector( '.ai-site' );
+		var stages = root.querySelectorAll( '.ai-stage' );
+		if ( ! typed ) {
+			return;
+		}
+		var msg = typed.textContent;
+		var timers = [];
+
+		function clearTimers() {
+			for ( var i = 0; i < timers.length; i++ ) {
+				clearTimeout( timers[ i ] );
+			}
+			timers = [];
+		}
+		function setStage( n ) {
+			for ( var i = 0; i < stages.length; i++ ) {
+				stages[ i ].className = i <= n ? 'ai-stage on' : 'ai-stage';
+			}
+		}
+		function loop() {
+			clearTimers();
+			var t = 0;
+			var i;
+			typed.textContent = '';
+			if ( caret ) {
+				caret.style.display = '';
+			}
+			for ( i = 0; i < codeLines.length; i++ ) {
+				codeLines[ i ].className = 'cl';
+			}
+			if ( site ) {
+				site.className = 'ai-site';
+			}
+			setStage( 0 );
+			t += 450;
+			for ( i = 1; i <= msg.length; i++ ) {
+				( function ( n ) {
+					timers.push( setTimeout( function () {
+						typed.textContent = msg.slice( 0, n );
+					}, t + n * 26 ) );
+				}( i ) );
+			}
+			t += msg.length * 26 + 600;
+			timers.push( setTimeout( function () {
+				if ( caret ) {
+					caret.style.display = 'none';
+				}
+				setStage( 1 );
+			}, t ) );
+			for ( i = 1; i <= codeLines.length; i++ ) {
+				( function ( n ) {
+					timers.push( setTimeout( function () {
+						codeLines[ n - 1 ].className = 'cl in';
+					}, t + n * 140 ) );
+				}( i ) );
+			}
+			t += codeLines.length * 140 + 550;
+			timers.push( setTimeout( function () {
+				setStage( 2 );
+				if ( site ) {
+					site.className = 'ai-site in';
+				}
+			}, t ) );
+			t += 3400;
+			timers.push( setTimeout( loop, t ) );
+		}
+		loop();
+	}
+
 	function init() {
 		initBillingToggle();
 		initPricingCalc();
 		initSavingsCalc();
+		initFaqAccordion();
+		initAiPipeline();
+		initFeatureTabs();
+		initAiDemo();
 	}
 
 	if ( 'loading' === document.readyState ) {

@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.35.0] - 2026-07-22
+
+### Added
+- Plan 3b showcase widgets (progressive enhancement, `prefers-reduced-motion` aware):
+  interactive Home feature tabs (SVG chart swap), the AI-page animated AI demo
+  (prompt → code → site loop) and the cycling AI pipeline console, plus a single-open
+  FAQ accordion enhancement on the Contact/Pricing/Toolbox pages.
+
+### Fixed
+- Accessibility: the Contact page's phone/WhatsApp/email cards are now real, focusable
+  links (`tel:` / `https://wa.me/` / `mailto:`) instead of inert `<a>` elements.
+
 ## [1.34.0] - 2026-07-22
 
 ### Added
