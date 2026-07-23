@@ -111,27 +111,6 @@ export function cacheBust(path) {
 }
 
 /**
- * Like cacheBust(), for a request that must ALSO stay recognised as a clean,
- * owned-page request by blueworx_public_is_owned_request_path()'s query
- * allowlist (includes/public/pages.php) — e.g. asserting a plugin-owned page
- * stays exempt (200) from Site Protection. cacheBust()'s own "bw_test_nocache"
- * key is deliberately NOT on that allowlist (only a handful of tracking
- * params are), so appending it would trip the very check the request is
- * trying to pin, gating a request that should be exempt. This reuses
- * "utm_content" — one of the allowlisted tracking params — with a unique
- * value instead, so the request still defeats the cache without adding a
- * disqualifying key.
- *
- * @param {string} path Path to bust.
- * @return {string} Path with a unique, allowlisted query arg.
- */
-export function cacheBustExempt(path) {
-  bustCounter += 1;
-  const unique = `${process.pid}-${bustCounter}-${Math.random().toString(36).slice(2, 10)}`;
-  return `${path}${path.includes('?') ? '&' : '?'}utm_content=bw-test-${unique}`;
-}
-
-/**
  * Logs into wp-admin, and throws if it did not work.
  *
  * The previous per-spec helper did `goto('/wp-admin/')` and filled the form only

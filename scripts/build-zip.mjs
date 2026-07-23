@@ -9,7 +9,7 @@ const SLUG = 'blueworx-labs-wordpress';
 const DIST = 'dist';
 
 // Runtime files/dirs that ship inside the plugin folder.
-const REQUIRED = ['blueworx-labs-wordpress.php', 'uninstall.php', 'readme.txt', 'includes', 'assets', 'templates'];
+const REQUIRED = ['blueworx-labs-wordpress.php', 'uninstall.php', 'readme.txt', 'includes', 'assets'];
 const OPTIONAL = ['languages'];
 const INCLUDE = [...REQUIRED, ...OPTIONAL];
 
@@ -35,9 +35,6 @@ for (const entry of INCLUDE) {
     }
     continue; // OPTIONAL entries skip silently
   }
-  // templates/ currently ships only a .gitkeep placeholder — dot:false would
-  // silently match nothing and drop the directory from the zip entirely.
-  const dot = 'templates' === entry;
-  archive.glob(entry.includes('.') ? entry : `${entry}/**/*`, { dot }, { prefix: `${SLUG}/` });
+  archive.glob(entry.includes('.') ? entry : `${entry}/**/*`, {}, { prefix: `${SLUG}/` });
 }
 await archive.finalize();
