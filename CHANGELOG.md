@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.36.0] - 2026-07-23
+
+### Removed
+- **The public marketing site.** All front-end rendering — `includes/public/`
+  (bootstrap, pages, render, assets, content, helpers), the entire `templates/`
+  tree (9 page templates + 13 parts), the marketing-only assets
+  (`assets/css/public.css`, `assets/js/public-nav.js`,
+  `assets/js/public-widgets.js`, `assets/img/`), and the marketing/public
+  Playwright specs — has been removed. This reverts the plugin to a pure
+  enhancement plugin (site hardening, cache refresh, admin/profile
+  enhancements, and the headless REST layer).
+- The `public_site` feature toggle (`includes/features.php`) and its activation
+  (`blueworx_public_activate` — page install) / deactivation
+  (`blueworx_public_deactivate` — front-page restore) hooks in the main plugin
+  file.
+- `uninstall.php` no longer deletes `blueworx_public_prior_front` /
+  `blueworx_public_page_ids` (those options belong to the marketing plugin now).
+- `templates/` dropped from the release-zip allowlist (`scripts/build-zip.mjs`),
+  and the now-unused `cacheBustExempt()` test helper removed.
+
+The marketing site now lives in its own standalone plugin, `blueworx-site`
+(BlueWorx | Site), in the `bluegroup_project_blueworx` repo. `blueworx-fonts.css`
+and `assets/fonts/` are retained here — the admin theme uses them.
+
 ## [1.35.1] - 2026-07-23
 
 ### Fixed
