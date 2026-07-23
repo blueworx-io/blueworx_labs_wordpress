@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.35.1] - 2026-07-23
+
+### Fixed
+- Activation now repairs a Toolbox tool page whose parent link went stale (e.g.
+  the Toolbox page was trashed and recreated with a new ID), so its
+  `/toolbox/<slug>` permalink and the Site Protection path check keep working.
+
+### Changed (internal)
+- Consolidated the `restoreAll()` test helper into `tests/helpers.js` (was
+  duplicated across specs), added a robust test that the AI-pipeline console
+  cycles when motion is allowed, and corrected stale "placeholder" test titles
+  that now describe the real Plan 3 widgets.
+
 ## [1.35.0] - 2026-07-22
 
 ### Added

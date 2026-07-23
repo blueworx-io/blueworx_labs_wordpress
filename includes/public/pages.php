@@ -87,7 +87,31 @@ function blueworx_public_install_pages() {
 	$map = (array) get_option( 'blueworx_public_page_ids', array() );
 
 	foreach ( blueworx_public_pages() as $slug => $page ) {
+		// A nested entry's own post_name is its child slug ("surecart"), not
+		// the full path key, and its post_parent comes from the already-mapped
+		// parent — toolbox is listed before its children above and $map is
+		// written as this loop goes, so the parent ID exists by the time a
+		// child is reached. A top-level entry has neither key and behaves
+		// exactly as before (post_name = $slug, post_parent = 0).
+		$blueworx_post_name   = isset( $page['slug'] ) ? $page['slug'] : $slug;
+		$blueworx_post_parent = ( isset( $page['parent'] ) && isset( $map[ $page['parent'] ] ) ) ? (int) $map[ $page['parent'] ] : 0;
+
 		if ( isset( $map[ $slug ] ) && 'page' === get_post_type( $map[ $slug ] ) && 'trash' !== get_post_status( $map[ $slug ] ) ) {
+			// Repair a nested page whose parent link has gone stale — e.g. the
+			// Toolbox parent was trashed and recreated with a new ID on a later
+			// activation. Left alone, the child keeps pointing at the old
+			// parent and its /toolbox/<slug> permalink (and the Site Protection
+			// path check, which resolves via get_page_uri()) breaks. Only a
+			// child whose parent has actually moved is rewritten; a top-level
+			// page ($blueworx_post_parent === 0) is never touched here.
+			if ( $blueworx_post_parent && (int) wp_get_post_parent_id( $map[ $slug ] ) !== $blueworx_post_parent ) {
+				wp_update_post(
+					array(
+						'ID'          => (int) $map[ $slug ],
+						'post_parent' => $blueworx_post_parent,
+					)
+				);
+			}
 			continue;
 		}
 
@@ -99,15 +123,6 @@ function blueworx_public_install_pages() {
 			$map[ $slug ] = $existing->ID;
 			continue;
 		}
-
-		// A nested entry's own post_name is its child slug ("surecart"), not
-		// the full path key, and its post_parent comes from the already-mapped
-		// parent — toolbox is listed before its children above and $map is
-		// written as this loop goes, so the parent ID exists by the time a
-		// child is reached. A top-level entry has neither key and behaves
-		// exactly as before (post_name = $slug, post_parent = 0).
-		$blueworx_post_name   = isset( $page['slug'] ) ? $page['slug'] : $slug;
-		$blueworx_post_parent = ( isset( $page['parent'] ) && isset( $map[ $page['parent'] ] ) ) ? (int) $map[ $page['parent'] ] : 0;
 
 		$id = wp_insert_post(
 			array(

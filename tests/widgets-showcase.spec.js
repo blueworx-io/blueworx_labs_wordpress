@@ -38,6 +38,20 @@ test.describe('Showcase — AI pipeline', () => {
     await expect(shell.locator('.ai-pipe-step.on')).toHaveCount(1);
     await expect(shell.locator('.ai-pipe-step').first()).toHaveText(/Brief/);
   });
+
+  test('advances the active step over time when motion is allowed', async ({ page }) => {
+    // The shared fixture forces prefers-reduced-motion: reduce (so the other
+    // specs assert only the static finished frame). Opt back in here to prove
+    // the cycling actually runs: the active step must move off Brief within a
+    // few 1.3s cycles, and exactly one step stays active throughout. The 6s
+    // timeout is ~4 intervals of slack, so this is not a tight timing race.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto('/ai');
+    const shell = page.locator('[data-widget="ai-pipeline"]');
+    await expect(shell.locator('.ai-pipe-step.on')).toHaveText(/Brief/);
+    await expect(shell.locator('.ai-pipe-step.on')).not.toHaveText(/Brief/, { timeout: 6000 });
+    await expect(shell.locator('.ai-pipe-step.on')).toHaveCount(1);
+  });
 });
 
 test.describe('Showcase — feature tabs', () => {

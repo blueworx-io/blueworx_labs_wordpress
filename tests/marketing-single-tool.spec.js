@@ -5,7 +5,7 @@
 // a bad slug 404ing, and the Site Protection exemption reaching the new
 // nested pages.
 import { expect } from '@playwright/test';
-import { test, isPlaceholder, cacheBust, cacheBustExempt, login, ADMIN_USER, ADMIN_PASS } from './helpers.js';
+import { test, isPlaceholder, cacheBust, cacheBustExempt, login, ADMIN_USER, ADMIN_PASS, restoreAll } from './helpers.js';
 
 // SureCart is the one tool with `popular => true` in
 // includes/public/content.php — its 6 features, checked both as hero
@@ -19,29 +19,6 @@ const SURECART_FEATURES = [
   'Revenue analytics',
 ];
 
-/**
- * Runs a set of state-restoring cleanup steps to completion, one after
- * another, even if an earlier step throws — mirrors the helper of the same
- * name in tests/public-site.spec.js (not exported from helpers.js, so
- * duplicated here rather than reaching across spec files).
- *
- * @param {Array<[string, () => Promise<void>]>} steps [label, step] pairs.
- */
-async function restoreAll(steps) {
-  const errors = [];
-  for (const [label, step] of steps) {
-    try {
-      await step();
-    } catch (error) {
-      errors.push(`${label}: ${error && error.message ? error.message : String(error)}`);
-    }
-  }
-  if (errors.length > 0) {
-    throw new Error(
-      `Cleanup failed for ${errors.length} of ${steps.length} restore step(s):\n${errors.join('\n')}`
-    );
-  }
-}
 
 test.describe('Marketing tool-detail pages (/toolbox/<slug>)', () => {
   test.skip(isPlaceholder, 'No real WordPress target configured.');
