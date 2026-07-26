@@ -26,7 +26,9 @@ test.describe('BlueWorx on-page translation — settings', () => {
 
     const detail = page.locator('[data-blueworx-detail="translate"]');
     await expect(detail).toBeVisible();
-    // Defaults: French, German and Spanish are the shipped target languages.
+    // Defaults: all five offered target languages are on.
+    await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]')).toBeChecked();
+    await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="zh"]')).toBeChecked();
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="fr"]')).toBeChecked();
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="de"]')).toBeChecked();
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="es"]')).toBeChecked();
@@ -40,16 +42,16 @@ test.describe('BlueWorx on-page translation — settings', () => {
     await gotoSettings(page);
     const detail = page.locator('[data-blueworx-detail="translate"]');
 
-    await detail.locator('input[name="blueworx_translate_languages[]"][value="de"]').setChecked(false);
-    await detail.locator('input[name="blueworx_translate_languages[]"][value="ja"]').setChecked(true);
+    // All five defaults are on, so persistence is exercised by unchecking one
+    // rather than toggling an unchecked box on.
+    await detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]').setChecked(false);
     await detail.locator('select[name="blueworx_translate_position"]').selectOption('top-left');
     await detail.locator('input[name="blueworx_translate_label"]').fill('Read in');
     await detail.locator('textarea[name="blueworx_translate_exclusions"]').fill('.site-brand\n  \n.sku');
     await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
 
-    await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="de"]')).not.toBeChecked();
-    await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="ja"]')).toBeChecked();
+    await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]')).not.toBeChecked();
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('top-left');
     await expect(detail.locator('input[name="blueworx_translate_label"]')).toHaveValue('Read in');
     // Blank lines are dropped; the two real selectors survive in order.
@@ -57,8 +59,7 @@ test.describe('BlueWorx on-page translation — settings', () => {
 
     await restoreAll([
       ['translation settings', async () => {
-        await detail.locator('input[name="blueworx_translate_languages[]"][value="de"]').setChecked(true);
-        await detail.locator('input[name="blueworx_translate_languages[]"][value="ja"]').setChecked(false);
+        await detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]').setChecked(true);
         await detail.locator('select[name="blueworx_translate_position"]').selectOption('bottom-right');
         await detail.locator('input[name="blueworx_translate_label"]').fill('Language');
         await detail.locator('textarea[name="blueworx_translate_exclusions"]').fill('');
@@ -84,7 +85,7 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
     expect(config.position).toBe('bottom-right');
     expect(config.label).toBe('Language');
     expect(Array.isArray(config.exclude)).toBe(true);
-    expect(config.languages.map((l) => l.code)).toEqual(['de', 'es', 'fr']);
+    expect(config.languages.map((l) => l.code)).toEqual(['ar', 'zh', 'fr', 'de', 'es']);
     expect(config.languages.every((l) => typeof l.label === 'string' && l.label.length > 0)).toBe(true);
   });
 

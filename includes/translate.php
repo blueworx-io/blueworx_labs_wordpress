@@ -39,27 +39,24 @@ function blueworx_translate_positions() {
  * language to offer "back to original", and a non-English site needs English as
  * a target.
  *
+ * Ordered by English label (Arabic, Chinese, English, French, German, Spanish),
+ * NOT by language code — do not "tidy" this back into code order. Every other
+ * function that lists languages (blueworx_translate_supported_languages(),
+ * blueworx_translate_sanitize_languages()) derives its order from this map, and
+ * the switcher menu must read alphabetically to a human, which code order does
+ * not give: "zh" sorts after "fr" and "de" by code, but Chinese sorts before
+ * both by name.
+ *
  * @return array English language names keyed by BCP-47 base tag.
  */
 function blueworx_translate_language_labels() {
 	return array(
 		'ar' => __( 'Arabic', 'blueworx-labs-wordpress' ),
-		'bn' => __( 'Bengali', 'blueworx-labs-wordpress' ),
-		'de' => __( 'German', 'blueworx-labs-wordpress' ),
-		'en' => __( 'English', 'blueworx-labs-wordpress' ),
-		'es' => __( 'Spanish', 'blueworx-labs-wordpress' ),
-		'fr' => __( 'French', 'blueworx-labs-wordpress' ),
-		'hi' => __( 'Hindi', 'blueworx-labs-wordpress' ),
-		'it' => __( 'Italian', 'blueworx-labs-wordpress' ),
-		'ja' => __( 'Japanese', 'blueworx-labs-wordpress' ),
-		'ko' => __( 'Korean', 'blueworx-labs-wordpress' ),
-		'nl' => __( 'Dutch', 'blueworx-labs-wordpress' ),
-		'pl' => __( 'Polish', 'blueworx-labs-wordpress' ),
-		'pt' => __( 'Portuguese', 'blueworx-labs-wordpress' ),
-		'ru' => __( 'Russian', 'blueworx-labs-wordpress' ),
-		'tr' => __( 'Turkish', 'blueworx-labs-wordpress' ),
-		'vi' => __( 'Vietnamese', 'blueworx-labs-wordpress' ),
 		'zh' => __( 'Chinese', 'blueworx-labs-wordpress' ),
+		'en' => __( 'English', 'blueworx-labs-wordpress' ),
+		'fr' => __( 'French', 'blueworx-labs-wordpress' ),
+		'de' => __( 'German', 'blueworx-labs-wordpress' ),
+		'es' => __( 'Spanish', 'blueworx-labs-wordpress' ),
 	);
 }
 
@@ -128,7 +125,7 @@ function blueworx_translate_sanitize_languages( $codes ) {
  * @return array Ordered list of BCP-47 base tags.
  */
 function blueworx_translate_languages() {
-	$saved = get_option( 'blueworx_translate_languages', array( 'fr', 'de', 'es' ) );
+	$saved = get_option( 'blueworx_translate_languages', array( 'ar', 'zh', 'fr', 'de', 'es' ) );
 
 	return blueworx_translate_sanitize_languages( $saved );
 }
