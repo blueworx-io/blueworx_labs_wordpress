@@ -24,6 +24,7 @@ test.describe('BlueWorx feature toggles', () => {
     await gotoSettings(page);
     await expect(page.getByRole('heading', { name: 'Security & Access' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Content' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Translation' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Notifications & Cleanup' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Performance' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Admin Menu' })).toBeVisible();

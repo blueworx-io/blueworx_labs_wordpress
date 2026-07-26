@@ -4,6 +4,43 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.37.0] - 2026-07-26
+
+### Added
+- **On-page translation** (`includes/translate.php`, `assets/js/translate-widget.js`,
+  `assets/css/translate-widget.css`) — a new `translate` feature, on by default, that
+  adds a floating language switcher to the front end and translates the page in the
+  visitor's own browser via the Chrome built-in Translator API. Replaces the Weglot
+  plugin on BlueWorx-managed sites at no recurring cost: no API key, no third-party
+  request, and no translation stored on the server.
+- A new **Translation** settings section with an inline detail panel: which of the
+  five offered languages (Arabic, Chinese, French, German, Spanish — ordered by
+  English label, all on by default, English is always the source and never offered
+  as a target) are enabled, button position (four corners), button label, and a
+  per-site "never translate" list of CSS selectors. `code`, `pre`, `textarea`,
+  `[translate="no"]` and `.notranslate` are always skipped, as is the widget itself.
+- Text nodes and the `alt`, `title`, `placeholder` and `aria-label` attributes are
+  translated; the visitor's choice is remembered in `localStorage` and re-applied on
+  later pages; returning to the original language restores every string in place with
+  no reload. Switching directly between two target languages fully restores the page
+  to the source language before re-translating into the new one, so the page is never
+  left half in one language and half in another. Content added after load (Elementor
+  popups, AJAX) is picked up by a debounced `MutationObserver`.
+- If a language fails to load (for example the on-device model download errors out),
+  the widget, the page text, `html[lang]` and the remembered language are all rolled
+  back together to the source language, so nothing is left in a mismatched state.
+- `tests/translate.spec.js` — 22 Playwright tests covering the settings panel, the
+  config payload, capability detection, translation and exclusions, restore and
+  persistence, dynamic content, keyboard operation, switching directly between target
+  languages, and a failed language load. The real on-device model cannot run in CI,
+  so the specs drive a stubbed `window.Translator`.
+
+### Notes
+- **Chrome and Edge 138 or newer only.** In any other browser the switcher renders
+  nothing at all rather than a control that cannot work.
+- **Not an SEO feature.** There are no translated URLs and no `hreflang`; crawlers see
+  the source language only. That is the deliberate trade for removing the licence cost.
+
 ## [1.36.0] - 2026-07-23
 
 ### Removed
