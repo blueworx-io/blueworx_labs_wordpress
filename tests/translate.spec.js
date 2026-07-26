@@ -387,3 +387,63 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[de] Your email');
   });
 });
+
+test.describe('BlueWorx on-page translation — dynamic content', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  test('content added after translating is translated too', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+
+    await page.evaluate(() => {
+      const late = document.createElement('p');
+      late.id = 'bw-late';
+      late.textContent = 'Loaded later';
+      document.body.appendChild(late);
+    });
+
+    await expect(page.locator('#bw-late')).toHaveText('[fr] Loaded later');
+  });
+
+  test('the observer does not re-translate its own output', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+
+    const callsAfterFirstPass = await page.evaluate(() => window.__bwTranslateCalls);
+    // Give the debounced observer more than one window to misbehave in.
+    await page.waitForTimeout(1000);
+
+    expect(await page.evaluate(() => window.__bwTranslateCalls)).toBe(callsAfterFirstPass);
+    await expect(page.locator('body')).not.toContainText('[fr] [fr]');
+  });
+
+  test('nothing is translated after returning to the source language', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="en"]').click();
+
+    await page.evaluate(() => {
+      const late = document.createElement('p');
+      late.id = 'bw-late-2';
+      late.textContent = 'Loaded later';
+      document.body.appendChild(late);
+    });
+    await page.waitForTimeout(600);
+
+    await expect(page.locator('#bw-late-2')).toHaveText('Loaded later');
+  });
+});

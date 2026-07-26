@@ -55,6 +55,13 @@
 
   var STORAGE_KEY = 'blueworxTranslateLang';
 
+  // Elementor popups and AJAX loads drop content in long after load, often in
+  // bursts. A quarter second of quiet is enough to batch a burst into one pass.
+  var OBSERVER_DEBOUNCE = 250;
+
+  var observer = null;
+  var observerTimer = null;
+
   /**
    * Reports whether this browser exposes the built-in Translator API.
    *
@@ -415,12 +422,75 @@
    */
   function applySource() {
     closeList();
+    stopObserver();
     restoreOriginals();
     state.translator = null;
+    state.targetCode = null;
     document.documentElement.lang = config.source;
     setCurrent(config.source);
     clearStoredLang();
     setBusy(false, '');
+  }
+
+  /**
+   * Stops watching for new content.
+   */
+  function stopObserver() {
+    if (observer) {
+      observer.disconnect();
+    }
+
+    if (observerTimer) {
+      window.clearTimeout(observerTimer);
+      observerTimer = null;
+    }
+  }
+
+  /**
+   * Translates whatever has appeared since the last pass.
+   *
+   * The observer is disconnected while writing, so the widget's own writes
+   * cannot queue another pass — and collectTargets() skips anything already
+   * recorded, so even a missed disconnect could not translate a translation.
+   */
+  function translatePending() {
+    observerTimer = null;
+
+    if (!state.translator || !state.targetCode) {
+      return;
+    }
+
+    var targets = collectTargets(document.body);
+
+    if (targets.length === 0) {
+      return;
+    }
+
+    stopObserver();
+    translateTargets(targets).then(function () {
+      startObserver();
+    });
+  }
+
+  /**
+   * Watches the document for content added after load.
+   */
+  function startObserver() {
+    if (!state.translator || !state.targetCode) {
+      return;
+    }
+
+    if (!observer) {
+      observer = new MutationObserver(function () {
+        if (observerTimer) {
+          window.clearTimeout(observerTimer);
+        }
+
+        observerTimer = window.setTimeout(translatePending, OBSERVER_DEBOUNCE);
+      });
+    }
+
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   /**
@@ -461,6 +531,10 @@
       })
       .then(function (translator) {
         state.translator = translator;
+        // Set early, before the pass finishes: startObserver() and
+        // translatePending() both refuse to run without it.
+        state.targetCode = code;
+        stopObserver();
 
         return translateTargets(collectTargets(document.body));
       })
@@ -469,9 +543,11 @@
         setCurrent(code);
         writeStoredLang(code);
         setBusy(false, '');
+        startObserver();
       })
       .catch(function () {
         state.translator = null;
+        state.targetCode = null;
         setBusy(false, '');
       });
   }
