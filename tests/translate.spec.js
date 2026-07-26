@@ -94,3 +94,80 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
     await expect(page.locator('link[href*="translate-widget.css"]')).toHaveCount(1);
   });
 });
+
+/**
+ * Installs a fake Translator API before any page script runs.
+ *
+ * The real API is an on-device model: it needs a supported Chrome build and a
+ * multi-megabyte download, so it cannot run in CI. The stub keeps the contract
+ * the widget depends on — availability(), create(), translate() — and marks its
+ * output so tests can assert a translation happened without knowing any
+ * language.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {{unavailable?: string[], failCreate?: boolean}} options Stub behaviour.
+ */
+async function installTranslatorStub(page, options = {}) {
+  await page.addInitScript((opts) => {
+    const unavailable = opts.unavailable || [];
+    window.__bwTranslateCalls = 0;
+    window.Translator = {
+      availability: async ({ targetLanguage }) =>
+        unavailable.includes(targetLanguage) ? 'unavailable' : 'available',
+      create: async ({ targetLanguage }) => {
+        if (opts.failCreate) {
+          throw new Error('stub refused to create');
+        }
+        return {
+          translate: async (text) => {
+            window.__bwTranslateCalls += 1;
+            return `[${targetLanguage}] ${text}`;
+          },
+        };
+      },
+    };
+  }, options);
+}
+
+test.describe('BlueWorx on-page translation — switcher UI', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  test('renders a pill in the configured corner when the API is available', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    const widget = page.locator('.blueworx-translate');
+    await expect(widget).toBeVisible();
+    await expect(widget).toHaveClass(/blueworx-translate--bottom-right/);
+
+    const toggle = page.getByRole('button', { name: /Language/ });
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const options = page.locator('.blueworx-translate__option');
+    // Five configured targets plus the source language.
+    await expect(options).toHaveCount(6);
+    await expect(options.first()).toHaveText('English');
+    await expect(options.first()).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('renders nothing when the Translator API is absent', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.locator('#blueworx-translate-root')).toHaveCount(1);
+    await expect(page.locator('.blueworx-translate')).toHaveCount(0);
+  });
+
+  test('drops a language the browser cannot translate', async ({ page }) => {
+    await installTranslatorStub(page, { unavailable: ['de'] });
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    const options = page.locator('.blueworx-translate__option');
+    await expect(options).toHaveCount(5);
+    await expect(page.locator('.blueworx-translate__option[data-lang="de"]')).toHaveCount(0);
+    await expect(page.locator('.blueworx-translate__option[data-lang="fr"]')).toHaveCount(1);
+  });
+});
