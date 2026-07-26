@@ -346,4 +346,44 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     await expect(page.locator('body')).not.toContainText('[fr]');
     expect(await page.evaluate(() => window.localStorage.getItem('blueworxTranslateLang'))).toBeNull();
   });
+
+  /**
+   * Plants known content on the page so assertions do not depend on whatever
+   * the site's front page happens to say. A local copy of the fixture used by
+   * the "translating" describe block above, since that one is not exported.
+   */
+  async function plantFixture(page) {
+    await page.evaluate(() => {
+      const box = document.createElement('div');
+      box.id = 'bw-fixture';
+      box.innerHTML =
+        '<p id="bw-text">Hello world</p>' +
+        '<img id="bw-img" alt="A photo" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" />' +
+        '<input id="bw-input" placeholder="Your email" />';
+      document.body.appendChild(box);
+    });
+  }
+
+  test('switching directly from one target language to another leaves no trace of the first', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+    await plantFixture(page);
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    await expect(page.locator('#bw-text')).toHaveText('[fr] Hello world');
+    await expect(page.locator('#bw-img')).toHaveAttribute('alt', '[fr] A photo');
+    await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[fr] Your email');
+
+    // Straight to German, without going via English first.
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="de"]').click();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    await expect(page.locator('body')).not.toContainText('[fr]');
+    await expect(page.locator('#bw-text')).toHaveText('[de] Hello world');
+    await expect(page.locator('#bw-img')).toHaveAttribute('alt', '[de] A photo');
+    await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[de] Your email');
+  });
 });

@@ -426,11 +426,24 @@
   /**
    * Translates the whole page into one language.
    *
+   * Restores the original text first when a translation is already in effect
+   * — collectTargets() only offers nodes it has not already recorded, so
+   * switching straight from one target language to another without this
+   * would leave the page a mix of both languages. A no-op the first time this
+   * runs on a page, since restoreOriginals() has nothing to undo yet.
+   *
    * @param {string} code Target language code.
    * @return {Promise} Resolves when the pass has finished.
    */
   function applyLanguage(code) {
     closeList();
+
+    if (state.translator) {
+      restoreOriginals();
+      state.translator = null;
+      state.targetCode = null;
+    }
+
     setBusy(true, config.label + '…');
 
     return Promise.resolve()
