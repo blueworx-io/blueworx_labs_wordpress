@@ -87,6 +87,7 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
     expect(Array.isArray(config.exclude)).toBe(true);
     expect(config.languages.map((l) => l.code)).toEqual(['ar', 'zh', 'fr', 'de', 'es']);
     expect(config.languages.every((l) => typeof l.label === 'string' && l.label.length > 0)).toBe(true);
+    expect(config.errorLabel).toBe("Couldn't load that language.");
   });
 
   test('the stylesheet is enqueued on the front end', async ({ page }) => {
@@ -105,15 +106,18 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
  * language.
  *
  * @param {import('@playwright/test').Page} page Playwright page.
- * @param {{unavailable?: string[], failCreate?: boolean, failTranslate?: string}} options
+ * @param {{unavailable?: string[], failCreate?: boolean, failTranslate?: string, delay?: number}} options
  *   Stub behaviour. `failTranslate`, when given, makes translate() reject for
  *   that exact input string only — every other string still resolves — so
  *   tests can exercise the per-target catch in translateTargets() without
- *   breaking the rest of a pass.
+ *   breaking the rest of a pass. `delay`, when given, makes every translate()
+ *   call wait that many milliseconds before resolving (or rejecting), so a
+ *   test can reliably catch a pass while it is still in flight.
  */
 async function installTranslatorStub(page, options = {}) {
   await page.addInitScript((opts) => {
     const unavailable = opts.unavailable || [];
+    const delay = opts.delay || 0;
     window.__bwTranslateCalls = 0;
     window.Translator = {
       availability: async ({ targetLanguage }) =>
@@ -125,6 +129,10 @@ async function installTranslatorStub(page, options = {}) {
         return {
           translate: async (text) => {
             window.__bwTranslateCalls += 1;
+
+            if (delay > 0) {
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            }
 
             if (opts.failTranslate && text === opts.failTranslate) {
               throw new Error('stub refused to translate this string');
@@ -423,6 +431,54 @@ test.describe('BlueWorx on-page translation — dynamic content', () => {
 
     expect(await page.evaluate(() => window.__bwTranslateCalls)).toBe(callsAfterFirstPass);
     await expect(page.locator('body')).not.toContainText('[fr] [fr]');
+  });
+
+  test('switching language while a background pass is still in flight leaves no stale translation', async ({ page }) => {
+    // A slow stub is required to reliably catch the debounced background pass
+    // (translatePending()) mid-flight: fast enough calls would always finish
+    // before the test could react.
+    await installTranslatorStub(page, { delay: 300 });
+    await page.goto('/');
+
+    const toggle = page.getByRole('button', { name: /Language/ });
+    await toggle.click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr', { timeout: 20000 });
+
+    const callsBeforeLate = await page.evaluate(() => window.__bwTranslateCalls);
+
+    await page.evaluate(() => {
+      const late = document.createElement('p');
+      late.id = 'bw-race';
+      late.textContent = 'Loaded later during a pass';
+      document.body.appendChild(late);
+    });
+
+    // Wait until the debounced background pass has actually started
+    // translating the new node. translate() increments the counter
+    // synchronously, before its artificial delay resolves, so this proves a
+    // worker is now genuinely in flight rather than still just debouncing.
+    await page.waitForFunction(
+      (before) => window.__bwTranslateCalls > before,
+      callsBeforeLate,
+      { timeout: 5000 }
+    );
+
+    // Switch back to the source language while that worker's translate()
+    // call is still pending.
+    await toggle.click();
+    await page.locator('.blueworx-translate__option[data-lang="en"]').click();
+
+    // Give the in-flight worker's delayed translate() call time to resolve
+    // and, pre-fix, write its stale result.
+    await page.waitForTimeout(600);
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    // The late node must never end up with a stale translation: the pass that
+    // was already resolving when the switch happened must not be allowed to
+    // write over a node that switching back to the source language just
+    // restored.
+    await expect(page.locator('#bw-race')).toHaveText('Loaded later during a pass');
   });
 
   test('nothing is translated after returning to the source language', async ({ page }) => {

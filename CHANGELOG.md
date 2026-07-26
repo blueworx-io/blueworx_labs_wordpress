@@ -11,8 +11,10 @@ versioning.
   `assets/css/translate-widget.css`) — a new `translate` feature, on by default, that
   adds a floating language switcher to the front end and translates the page in the
   visitor's own browser via the Chrome built-in Translator API. Replaces the Weglot
-  plugin on BlueWorx-managed sites at no recurring cost: no API key, no third-party
-  request, and no translation stored on the server.
+  plugin on BlueWorx-managed sites at no recurring cost: no API key, no per-page
+  translation service call, and no translation stored on the server. The first use
+  of a language pair does download an on-device model from Google in the visitor's
+  browser.
 - A new **Translation** settings section with an inline detail panel: which of the
   five offered languages (Arabic, Chinese, French, German, Spanish — ordered by
   English label, all on by default, English is always the source and never offered

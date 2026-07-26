@@ -49,7 +49,7 @@ Yes. All password reset, logout, and account confirmation flows use the custom U
 When a page or post changes, the plugin refreshes the edited content, homepage, and related listing pages. A manual **Refresh Cache Now** button is also available in **BlueWorx > Cache**.
 
 = How does the translation feature work? =
-A floating language button is added to the front end. When a visitor picks a language, their own browser translates the page using Chrome's built-in on-device translator - there is no translation service, no API key and no cost. The first use of a language downloads a small model into the browser. In browsers without that API, such as Safari and Firefox, the button does not appear. Search engines are unaffected: they still see the original language only.
+A floating language button is added to the front end. When a visitor picks a language, their own browser translates the page using Chrome's built-in on-device translator - there is no translation service, no API key and no cost. The first use of a language downloads a small model into the browser. In browsers without that API, such as Safari and Firefox, the button does not appear. Search engines are unaffected: they still see the original language only. Right-to-left languages such as Arabic are translated correctly, but the page layout itself stays left-to-right.
 
 == Development Layout ==
 

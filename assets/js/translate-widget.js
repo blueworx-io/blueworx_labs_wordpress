@@ -11,7 +11,6 @@
   var config = window.blueworxTranslate;
 
   var state = {
-    root: null,
     toggle: null,
     list: null,
     status: null,
@@ -61,6 +60,15 @@
 
   var observer = null;
   var observerTimer = null;
+
+  // Bumped every time a new pass supersedes whatever came before —
+  // applyLanguage() and applySource() both increment it. A pass in progress
+  // (translateTargets(), including one continued in the background by
+  // translatePending()) captures the value at its own start and checks it
+  // before writing each result, so a translate() call that resolves after the
+  // visitor has already switched away is discarded instead of writing a stale
+  // value onto a node whose original may no longer be recorded.
+  var generation = 0;
 
   /**
    * Reports whether this browser exposes the built-in Translator API.
@@ -297,18 +305,30 @@
    * A single failed call leaves that one string as written and the pass
    * continues: a partial translation beats a blank or reverted page.
    *
-   * @param {Array} targets Targets from collectTargets().
+   * The translator and the pass's generation are both taken as parameters
+   * rather than read from `state` inside the worker: `state.translator` can
+   * change — to a different translator, or to null — while a call started by
+   * an earlier iteration is still awaiting `translate()`. Passing them in
+   * once, at the moment the pass starts, means every worker translates with
+   * the translator this pass was given, and — via the generation check below
+   * — never writes a result after the pass it belongs to has been superseded
+   * by a newer one (a language switch via applyLanguage() or a return to the
+   * source language via applySource()).
+   *
+   * @param {Array}  targets        Targets from collectTargets().
+   * @param {Object} translator     Translator this pass must use.
+   * @param {number} passGeneration Generation this pass belongs to.
    * @return {Promise} Resolves when every target has been attempted.
    */
-  function translateTargets(targets) {
-    if (!state.translator || targets.length === 0) {
+  function translateTargets(targets, translator, passGeneration) {
+    if (!translator || targets.length === 0) {
       return Promise.resolve();
     }
 
     var next = 0;
 
     function worker() {
-      if (next >= targets.length) {
+      if (next >= targets.length || passGeneration !== generation) {
         return Promise.resolve();
       }
 
@@ -317,9 +337,17 @@
 
       return Promise.resolve()
         .then(function () {
-          return state.translator.translate(target.text);
+          return translator.translate(target.text);
         })
         .then(function (translated) {
+          // A newer pass has started since this call was issued; the node
+          // this result belongs to may already be back to its source text
+          // with no recorded original, so writing it now would strand a
+          // stale translation with no way to restore it later.
+          if (passGeneration !== generation) {
+            return;
+          }
+
           if (typeof translated === 'string' && translated !== '') {
             writeTarget(target, translated);
           }
@@ -421,6 +449,7 @@
    * Returns the page to the language it was written in.
    */
   function applySource() {
+    generation += 1;
     closeList();
     stopObserver();
     restoreOriginals();
@@ -449,14 +478,24 @@
   /**
    * Translates whatever has appeared since the last pass.
    *
-   * The observer is disconnected while writing, so the widget's own writes
-   * cannot queue another pass — and collectTargets() skips anything already
-   * recorded, so even a missed disconnect could not translate a translation.
+   * The observer is disconnected while writing. That is not to stop it from
+   * seeing the widget's own writes — the observer only watches
+   * `{ childList: true, subtree: true }`, and this pass only mutates
+   * `nodeValue` and attributes, so it could never observe its own writes
+   * anyway. What the disconnect/reconnect bracket actually prevents is a
+   * second, concurrent pass being scheduled by unrelated third-party DOM
+   * churn while this one is still writing.
    */
   function translatePending() {
     observerTimer = null;
 
-    if (!state.translator || !state.targetCode) {
+    // Captured once, up front: state.translator can be reassigned or cleared
+    // by applyLanguage()/applySource() while this pass is still running, and
+    // the pass must keep using the translator it started with (or stop
+    // writing altogether — see the generation check in translateTargets()).
+    var translator = state.translator;
+
+    if (!translator || !state.targetCode) {
       return;
     }
 
@@ -466,8 +505,23 @@
       return;
     }
 
+    var passGeneration = generation;
+
     stopObserver();
-    translateTargets(targets).then(function () {
+    // Unlike a foreground applyLanguage() pass, this one is triggered by
+    // content simply appearing on the page — but it is exactly as capable of
+    // leaving the toggle enabled mid-write, so it gets the same busy state.
+    setBusy(true, config.label + '…');
+
+    translateTargets(targets, translator, passGeneration).then(function () {
+      // A newer pass already changed the busy state and observer for
+      // whatever it is now doing; this stale continuation must not clobber
+      // either.
+      if (passGeneration !== generation) {
+        return;
+      }
+
+      setBusy(false, '');
       startObserver();
     });
   }
@@ -506,6 +560,13 @@
    * @return {Promise} Resolves when the pass has finished.
    */
   function applyLanguage(code) {
+    // Supersedes anything already running — a background translatePending()
+    // pass, or (in principle) another applyLanguage()/applySource() call —
+    // before touching anything else, so nothing started after this point can
+    // ever be mistaken for the pass this call is about to begin.
+    generation += 1;
+    var passGeneration = generation;
+
     closeList();
 
     var hadTranslation = false;
@@ -534,15 +595,23 @@
         });
       })
       .then(function (translator) {
+        if (passGeneration !== generation) {
+          return undefined;
+        }
+
         state.translator = translator;
         // Set early, before the pass finishes: startObserver() and
         // translatePending() both refuse to run without it.
         state.targetCode = code;
         stopObserver();
 
-        return translateTargets(collectTargets(document.body));
+        return translateTargets(collectTargets(document.body), translator, passGeneration);
       })
       .then(function () {
+        if (passGeneration !== generation) {
+          return;
+        }
+
         document.documentElement.lang = code;
         setCurrent(code);
         writeStoredLang(code);
@@ -550,6 +619,10 @@
         startObserver();
       })
       .catch(function () {
+        if (passGeneration !== generation) {
+          return;
+        }
+
         state.translator = null;
         state.targetCode = null;
         stopObserver();
@@ -564,7 +637,7 @@
           clearStoredLang();
         }
 
-        setBusy(false, "Couldn't load that language.");
+        setBusy(false, config.errorLabel);
       });
   }
 
@@ -704,7 +777,6 @@
     widget.appendChild(status);
     root.appendChild(widget);
 
-    state.root = widget;
     state.toggle = toggle;
     state.list = list;
     state.status = status;

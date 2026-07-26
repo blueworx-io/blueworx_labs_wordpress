@@ -125,7 +125,7 @@ function blueworx_translate_sanitize_languages( $codes ) {
  * @return array Ordered list of BCP-47 base tags.
  */
 function blueworx_translate_languages() {
-	$saved = get_option( 'blueworx_translate_languages', array( 'ar', 'zh', 'fr', 'de', 'es' ) );
+	$saved = get_option( 'blueworx_translate_languages', array_keys( blueworx_translate_supported_languages() ) );
 
 	return blueworx_translate_sanitize_languages( $saved );
 }
@@ -292,6 +292,7 @@ function blueworx_translate_config() {
 		'position'    => blueworx_translate_position(),
 		'label'       => blueworx_translate_label(),
 		'exclude'     => blueworx_translate_exclusions(),
+		'errorLabel'  => __( "Couldn't load that language.", 'blueworx-labs-wordpress' ),
 	);
 }
 
