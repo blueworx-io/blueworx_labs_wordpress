@@ -299,3 +299,51 @@ test.describe('BlueWorx on-page translation — translating', () => {
     await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[fr] Your email');
   });
 });
+
+test.describe('BlueWorx on-page translation — restore and persistence', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  test('choosing the source language restores the original text exactly', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+    const before = await page.locator('body').innerText();
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('body')).toContainText('[fr]');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="en"]').click();
+
+    await expect(page.locator('body')).not.toContainText('[fr]');
+    expect(await page.locator('body').innerText()).toBe(before);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  });
+
+  test('the chosen language is re-applied on the next page load', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('body')).toContainText('[fr]');
+
+    await page.reload();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    await expect(page.locator('body')).toContainText('[fr]');
+    await expect(page.locator('.blueworx-translate__current')).toHaveText('French');
+  });
+
+  test('a stored language that is no longer offered is discarded', async ({ page }) => {
+    await installTranslatorStub(page, { unavailable: ['fr'] });
+    await page.addInitScript(() => {
+      window.localStorage.setItem('blueworxTranslateLang', 'fr');
+    });
+    await page.goto('/');
+
+    await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+    await expect(page.locator('body')).not.toContainText('[fr]');
+    expect(await page.evaluate(() => window.localStorage.getItem('blueworxTranslateLang'))).toBeNull();
+  });
+});

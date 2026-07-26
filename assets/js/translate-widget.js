@@ -53,6 +53,8 @@
 
   var excludeSelectorCache = null;
 
+  var STORAGE_KEY = 'blueworxTranslateLang';
+
   /**
    * Reports whether this browser exposes the built-in Translator API.
    *
@@ -343,6 +345,85 @@
   }
 
   /**
+   * Reads the remembered language.
+   *
+   * Storage access is wrapped: it throws outright in a browser with cookies and
+   * site data blocked, and that must not stop the widget from working for the
+   * rest of the visit.
+   *
+   * @return {string} Stored code, or '' when there is none.
+   */
+  function readStoredLang() {
+    try {
+      return window.localStorage.getItem(STORAGE_KEY) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Remembers a language for future visits.
+   *
+   * @param {string} code Language code.
+   */
+  function writeStoredLang(code) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, code);
+    } catch {
+      // Storage unavailable; the choice simply will not survive this page.
+    }
+  }
+
+  /**
+   * Forgets the remembered language.
+   */
+  function clearStoredLang() {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Nothing to do: there is no storage to clear.
+    }
+  }
+
+  /**
+   * Puts every translated string back exactly as the page served it.
+   *
+   * In-memory and synchronous — no reload, no second model call.
+   */
+  function restoreOriginals() {
+    for (var i = touched.length - 1; i >= 0; i -= 1) {
+      var record = touched[i];
+      var entry = originals.get(record.node);
+
+      if (!entry || !Object.prototype.hasOwnProperty.call(entry, record.attr)) {
+        continue;
+      }
+
+      if (record.attr === '') {
+        record.node.nodeValue = entry[''];
+      } else {
+        record.node.setAttribute(record.attr, entry[record.attr]);
+      }
+    }
+
+    touched = [];
+    originals = new WeakMap();
+  }
+
+  /**
+   * Returns the page to the language it was written in.
+   */
+  function applySource() {
+    closeList();
+    restoreOriginals();
+    state.translator = null;
+    document.documentElement.lang = config.source;
+    setCurrent(config.source);
+    clearStoredLang();
+    setBusy(false, '');
+  }
+
+  /**
    * Translates the whole page into one language.
    *
    * @param {string} code Target language code.
@@ -373,6 +454,7 @@
       .then(function () {
         document.documentElement.lang = code;
         setCurrent(code);
+        writeStoredLang(code);
         setBusy(false, '');
       })
       .catch(function () {
@@ -475,7 +557,12 @@
 
       var code = option.getAttribute('data-lang');
 
-      if (code === config.source || code === state.targetCode) {
+      if (code === config.source) {
+        applySource();
+        return;
+      }
+
+      if (code === state.targetCode) {
         closeList();
         return;
       }
@@ -502,6 +589,20 @@
       }
 
       buildWidget(languages);
+
+      var stored = readStoredLang();
+      var offered = languages.some(function (language) {
+        return language.code === stored;
+      });
+
+      if (stored === '' || !offered) {
+        // A language that is no longer configured, or that this browser can no
+        // longer translate, must not leave the visitor stuck on a dead choice.
+        clearStoredLang();
+        return;
+      }
+
+      applyLanguage(stored);
     });
   }
 
