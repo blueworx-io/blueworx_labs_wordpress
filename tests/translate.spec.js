@@ -447,3 +447,90 @@ test.describe('BlueWorx on-page translation — dynamic content', () => {
     await expect(page.locator('#bw-late-2')).toHaveText('Loaded later');
   });
 });
+
+test.describe('BlueWorx on-page translation — keyboard and failures', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  test('the switcher is fully operable from the keyboard', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    const toggle = page.getByRole('button', { name: /Language/ });
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // Opening focuses the selected option (English). The configured target
+    // order is Arabic, Chinese, French, German, Spanish, so it takes three
+    // ArrowDown presses from English to reach French.
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.blueworx-translate__option[data-lang="fr"]')).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+  });
+
+  test('a failed language load leaves the page and the widget usable', async ({ page }) => {
+    await installTranslatorStub(page, { failCreate: true });
+    await page.goto('/');
+    const before = await page.locator('body').innerText();
+
+    const toggle = page.getByRole('button', { name: /Language/ });
+    await toggle.click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+
+    await expect(page.locator('.blueworx-translate__status')).toContainText("Couldn't load");
+    await expect(toggle).toHaveAttribute('aria-busy', 'false');
+    await expect(toggle).toBeEnabled();
+    await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+    expect(await page.locator('body').innerText()).toContain(before.slice(0, 40));
+    await expect(page.locator('html')).not.toHaveAttribute('lang', 'fr');
+  });
+
+  test('a failed switch away from an already-translated page restores the pill and html lang to the source', async ({ page }) => {
+    // A custom stub, not installTranslatorStub(): the first create() must
+    // succeed (so a restore-before-translate guard actually has something to
+    // restore) and only the second must fail.
+    await page.addInitScript(() => {
+      let createCount = 0;
+      window.Translator = {
+        availability: async () => 'available',
+        create: async ({ targetLanguage }) => {
+          createCount += 1;
+
+          if (createCount > 1) {
+            throw new Error('stub refused second create');
+          }
+
+          return {
+            translate: async (text) => `[${targetLanguage}] ${text}`,
+          };
+        },
+      };
+    });
+    await page.goto('/');
+
+    const toggle = page.getByRole('button', { name: /Language/ });
+    await toggle.click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    await expect(page.locator('.blueworx-translate__current')).toHaveText('French');
+
+    await toggle.click();
+    await page.locator('.blueworx-translate__option[data-lang="de"]').click();
+
+    await expect(page.locator('.blueworx-translate__status')).toContainText("Couldn't load");
+    // The restore already put the text back in English; the pill and
+    // html[lang] must say so too, not still claim French.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+  });
+});

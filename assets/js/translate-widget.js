@@ -508,10 +508,14 @@
   function applyLanguage(code) {
     closeList();
 
+    var hadTranslation = false;
+
     if (state.translator) {
+      stopObserver();
       restoreOriginals();
       state.translator = null;
       state.targetCode = null;
+      hadTranslation = true;
     }
 
     setBusy(true, config.label + '…');
@@ -548,8 +552,91 @@
       .catch(function () {
         state.translator = null;
         state.targetCode = null;
-        setBusy(false, '');
+        stopObserver();
+
+        if (hadTranslation) {
+          // restoreOriginals() above already put the DOM back in the source
+          // language; the pill and html[lang] must say so too, or a visitor
+          // is shown "French" over a page that reads in English.
+          document.documentElement.lang = config.source;
+          setCurrent(config.source);
+        }
+
+        setBusy(false, "Couldn't load that language.");
       });
+  }
+
+  /**
+   * Moves focus to one option, clamped to the ends of the list.
+   *
+   * @param {number} index Desired option index.
+   */
+  function focusOption(index) {
+    var options = state.list.querySelectorAll('.blueworx-translate__option');
+
+    if (options.length === 0) {
+      return;
+    }
+
+    var clamped = Math.max(0, Math.min(index, options.length - 1));
+    options[clamped].focus();
+  }
+
+  /**
+   * Returns the index of the currently focused option, or the selected one.
+   *
+   * @return {number} Option index.
+   */
+  function focusedOptionIndex() {
+    var options = state.list.querySelectorAll('.blueworx-translate__option');
+
+    for (var i = 0; i < options.length; i += 1) {
+      if (options[i] === document.activeElement) {
+        return i;
+      }
+    }
+
+    for (var j = 0; j < options.length; j += 1) {
+      if (options[j].getAttribute('aria-selected') === 'true') {
+        return j;
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * Acts on a chosen option.
+   *
+   * The toggle is disabled for the duration of an applyLanguage() pass (see
+   * setBusy()), so a keyboard selection cannot refocus it until that pass —
+   * success or failure — has finished and re-enabled it. applyLanguage()
+   * always resolves, never rejects, so .then() is reached in both cases.
+   *
+   * @param {Element} option Option element.
+   */
+  function selectOption(option) {
+    if (!option) {
+      return;
+    }
+
+    var code = option.getAttribute('data-lang');
+
+    if (code === config.source) {
+      applySource();
+      state.toggle.focus();
+      return;
+    }
+
+    if (code === state.targetCode) {
+      closeList();
+      state.toggle.focus();
+      return;
+    }
+
+    applyLanguage(code).then(function () {
+      state.toggle.focus();
+    });
   }
 
   /**
@@ -626,6 +713,7 @@
     toggle.addEventListener('click', function () {
       if (state.list.hidden) {
         openList();
+        focusOption(focusedOptionIndex());
       } else {
         closeList();
       }
@@ -637,26 +725,54 @@
       }
     });
 
-    list.addEventListener('click', function (event) {
-      var option = event.target.closest('.blueworx-translate__option');
+    toggle.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        openList();
+        focusOption(focusedOptionIndex());
+      }
+    });
 
-      if (!option) {
+    list.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        focusOption(focusedOptionIndex() + 1);
         return;
       }
 
-      var code = option.getAttribute('data-lang');
-
-      if (code === config.source) {
-        applySource();
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        focusOption(focusedOptionIndex() - 1);
         return;
       }
 
-      if (code === state.targetCode) {
+      if (event.key === 'Home') {
+        event.preventDefault();
+        focusOption(0);
+        return;
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        focusOption(Number.MAX_SAFE_INTEGER);
+        return;
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectOption(event.target.closest('.blueworx-translate__option'));
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
         closeList();
-        return;
+        state.toggle.focus();
       }
+    });
 
-      applyLanguage(code);
+    list.addEventListener('click', function (event) {
+      selectOption(event.target.closest('.blueworx-translate__option'));
     });
   }
 

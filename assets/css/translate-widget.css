@@ -134,3 +134,24 @@
 .blueworx-translate__status:empty {
   display: none;
 }
+
+.blueworx-translate__option:focus {
+  outline: 2px solid var(--bw-translate-accent);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blueworx-translate__toggle,
+  .blueworx-translate__option {
+    transition: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .blueworx-translate {
+    --bw-translate-bg: #14202e;
+    --bw-translate-fg: #f2f6fa;
+    --bw-translate-border: #33465c;
+    --bw-translate-accent: #7fb0ff;
+  }
+}
