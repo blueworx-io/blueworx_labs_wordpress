@@ -239,3 +239,95 @@ function blueworx_translate_render_detail() {
 	</p>
 	<?php
 }
+
+/**
+ * Decides whether the frontend widget should load at all.
+ *
+ * @return bool True when the feature is on, this is a frontend request, and at
+ *              least one target language is configured.
+ */
+function blueworx_translate_should_load() {
+	if ( is_admin() || ! blueworx_feature_enabled( 'translate' ) ) {
+		return false;
+	}
+
+	return array() !== blueworx_translate_languages();
+}
+
+/**
+ * Builds the config handed to the frontend script.
+ *
+ * @return array Config payload.
+ */
+function blueworx_translate_config() {
+	$labels    = blueworx_translate_language_labels();
+	$source    = blueworx_translate_source_language();
+	$languages = array();
+
+	foreach ( blueworx_translate_languages() as $code ) {
+		$languages[] = array(
+			'code'  => $code,
+			'label' => isset( $labels[ $code ] ) ? $labels[ $code ] : strtoupper( $code ),
+		);
+	}
+
+	return array(
+		'source'      => $source,
+		'sourceLabel' => isset( $labels[ $source ] ) ? $labels[ $source ] : strtoupper( $source ),
+		'languages'   => $languages,
+		'position'    => blueworx_translate_position(),
+		'label'       => blueworx_translate_label(),
+		'exclude'     => blueworx_translate_exclusions(),
+	);
+}
+
+/**
+ * Enqueues the frontend widget script and stylesheet.
+ *
+ * @return void
+ */
+function blueworx_translate_enqueue_assets() {
+	if ( ! blueworx_translate_should_load() ) {
+		return;
+	}
+
+	wp_enqueue_style(
+		'blueworx-translate-widget',
+		BLUEWORX_LABS_URL . 'assets/css/translate-widget.css',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/css/translate-widget.css' )
+	);
+
+	wp_enqueue_script(
+		'blueworx-translate-widget',
+		BLUEWORX_LABS_URL . 'assets/js/translate-widget.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/translate-widget.js' ),
+		true
+	);
+
+	wp_add_inline_script(
+		'blueworx-translate-widget',
+		'window.blueworxTranslate = ' . wp_json_encode( blueworx_translate_config() ) . ';',
+		'before'
+	);
+}
+add_action( 'wp_enqueue_scripts', 'blueworx_translate_enqueue_assets' );
+
+/**
+ * Prints the empty root the script builds the widget inside.
+ *
+ * Kept empty on purpose: a browser without the Translator API leaves it empty
+ * and invisible, so an unsupported browser shows no control at all rather than
+ * one that cannot work.
+ *
+ * @return void
+ */
+function blueworx_translate_render_root() {
+	if ( ! blueworx_translate_should_load() ) {
+		return;
+	}
+
+	echo '<div id="blueworx-translate-root"></div>';
+}
+add_action( 'wp_footer', 'blueworx_translate_render_root' );

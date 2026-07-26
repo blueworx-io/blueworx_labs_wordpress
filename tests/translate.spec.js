@@ -68,3 +68,28 @@ test.describe('BlueWorx on-page translation — settings', () => {
     ]);
   });
 });
+
+test.describe('BlueWorx on-page translation — frontend delivery', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  test('config payload and widget root are present on the front end', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.locator('#blueworx-translate-root')).toHaveCount(1);
+
+    const config = await page.evaluate(() => window.blueworxTranslate);
+    expect(config).toBeTruthy();
+    expect(config.source).toBe('en');
+    expect(config.sourceLabel).toBe('English');
+    expect(config.position).toBe('bottom-right');
+    expect(config.label).toBe('Language');
+    expect(Array.isArray(config.exclude)).toBe(true);
+    expect(config.languages.map((l) => l.code)).toEqual(['fr', 'de', 'es']);
+    expect(config.languages.every((l) => typeof l.label === 'string' && l.label.length > 0)).toBe(true);
+  });
+
+  test('the stylesheet is enqueued on the front end', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('link[href*="translate-widget.css"]')).toHaveCount(1);
+  });
+});
