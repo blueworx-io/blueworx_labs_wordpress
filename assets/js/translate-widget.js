@@ -556,10 +556,12 @@
 
         if (hadTranslation) {
           // restoreOriginals() above already put the DOM back in the source
-          // language; the pill and html[lang] must say so too, or a visitor
-          // is shown "French" over a page that reads in English.
+          // language; the pill, html[lang], and the remembered choice must
+          // all say so too, or a visitor is shown "French" over a page that
+          // reads in English — or a reload silently brings French back.
           document.documentElement.lang = config.source;
           setCurrent(config.source);
+          clearStoredLang();
         }
 
         setBusy(false, "Couldn't load that language.");
@@ -608,35 +610,35 @@
   /**
    * Acts on a chosen option.
    *
-   * The toggle is disabled for the duration of an applyLanguage() pass (see
-   * setBusy()), so a keyboard selection cannot refocus it until that pass —
-   * success or failure — has finished and re-enabled it. applyLanguage()
-   * always resolves, never rejects, so .then() is reached in both cases.
+   * Returns a promise so a keyboard caller can wait for a resulting language
+   * change to settle before deciding whether to return focus to the toggle.
+   * Deliberately does not touch focus itself: a mouse click must not have
+   * focus jerked onto the toggle once a slow download-backed pass finishes,
+   * and the toggle is disabled for the whole pass anyway (see setBusy()), so
+   * an immediate focus() call here would be a no-op even if wanted.
    *
    * @param {Element} option Option element.
+   * @return {Promise} Resolves once any resulting language change has
+   *   settled. Already resolved for the two synchronous branches.
    */
   function selectOption(option) {
     if (!option) {
-      return;
+      return Promise.resolve();
     }
 
     var code = option.getAttribute('data-lang');
 
     if (code === config.source) {
       applySource();
-      state.toggle.focus();
-      return;
+      return Promise.resolve();
     }
 
     if (code === state.targetCode) {
       closeList();
-      state.toggle.focus();
-      return;
+      return Promise.resolve();
     }
 
-    applyLanguage(code).then(function () {
-      state.toggle.focus();
-    });
+    return applyLanguage(code);
   }
 
   /**
@@ -760,7 +762,15 @@
 
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        selectOption(event.target.closest('.blueworx-translate__option'));
+        // Keyboard-only focus return: a mouse click (the list's separate
+        // click handler below) never does this. The activeElement check
+        // guards against reclaiming focus from a visitor who tabbed or
+        // clicked elsewhere while a slow, download-backed pass was running.
+        selectOption(event.target.closest('.blueworx-translate__option')).then(function () {
+          if (document.activeElement === document.body || widget.contains(document.activeElement)) {
+            state.toggle.focus();
+          }
+        });
         return;
       }
 

@@ -532,5 +532,22 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     // html[lang] must say so too, not still claim French.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+    // ...and so must the remembered choice — otherwise a reload silently
+    // brings French back even though the widget just showed English.
+    expect(await page.evaluate(() => window.localStorage.getItem('blueworxTranslateLang'))).toBeNull();
+  });
+
+  test('a mouse selection does not move focus to the toggle', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+
+    const toggle = page.getByRole('button', { name: /Language/ });
+    await toggle.click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    // Focus-return-to-toggle is a keyboard-only affordance; a pointer
+    // selection must never jerk focus onto the toggle once the pass settles.
+    await expect(toggle).not.toBeFocused();
   });
 });
