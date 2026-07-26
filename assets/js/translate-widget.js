@@ -158,7 +158,7 @@
       try {
         document.createDocumentFragment().querySelector(candidate);
         selectors.push(candidate);
-      } catch (error) {
+      } catch {
         // Malformed selector from the settings screen; skip it.
       }
     });
@@ -181,7 +181,7 @@
 
     try {
       return element.closest(excludeSelector()) !== null;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -245,7 +245,14 @@
         if (recordOriginal(node, '', node.nodeValue)) {
           targets.push({ node: node, attr: '', text: node.nodeValue });
         }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
+      } else if (node.nodeType === Node.ELEMENT_NODE && !isExcluded(node)) {
+        // The explicit isExcluded() check above (rather than relying on the
+        // walker's acceptNode filter) matters for one case: a TreeWalker
+        // never runs acceptNode() on its own root. Every descendant is
+        // already filtered by acceptNode before we see it here, but the
+        // scope element itself (document.body at every call site) is not —
+        // without this check it would translate its attributes even when
+        // excluded.
         TRANSLATABLE_ATTRS.forEach(function (attr) {
           var value = node.getAttribute(attr);
 

@@ -105,7 +105,11 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
  * language.
  *
  * @param {import('@playwright/test').Page} page Playwright page.
- * @param {{unavailable?: string[], failCreate?: boolean}} options Stub behaviour.
+ * @param {{unavailable?: string[], failCreate?: boolean, failTranslate?: string}} options
+ *   Stub behaviour. `failTranslate`, when given, makes translate() reject for
+ *   that exact input string only — every other string still resolves — so
+ *   tests can exercise the per-target catch in translateTargets() without
+ *   breaking the rest of a pass.
  */
 async function installTranslatorStub(page, options = {}) {
   await page.addInitScript((opts) => {
@@ -121,6 +125,11 @@ async function installTranslatorStub(page, options = {}) {
         return {
           translate: async (text) => {
             window.__bwTranslateCalls += 1;
+
+            if (opts.failTranslate && text === opts.failTranslate) {
+              throw new Error('stub refused to translate this string');
+            }
+
             return `[${targetLanguage}] ${text}`;
           },
         };
@@ -240,5 +249,53 @@ test.describe('BlueWorx on-page translation — translating', () => {
     // Excluded by the admin selector; the malformed selector alongside it must
     // be skipped rather than breaking the whole pass.
     await expect(page.locator('.bw-keep')).toHaveText('BlueWorx');
+  });
+
+  test('excludes the scope root itself, not just its descendants', async ({ page }) => {
+    await installTranslatorStub(page);
+    // A TreeWalker never runs acceptNode() on its own root (document.body),
+    // so a naive implementation can translate the root's own attributes even
+    // when the root is excluded. 'body' as the admin exclusion selector
+    // targets exactly that node.
+    await page.addInitScript(() => {
+      const apply = () => {
+        if (window.blueworxTranslate) {
+          window.blueworxTranslate.exclude = ['body'];
+          return true;
+        }
+        return false;
+      };
+      if (!apply()) {
+        document.addEventListener('readystatechange', apply);
+      }
+    });
+    await page.goto('/');
+    await page.evaluate(() => {
+      document.body.setAttribute('aria-label', 'Body region');
+    });
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+
+    // html[lang] flips only once the pass has finished; wait on it before
+    // asserting the body's own attribute was left alone.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    await expect(page.locator('body')).toHaveAttribute('aria-label', 'Body region');
+  });
+
+  test('a single failed translate() call leaves that string untouched and the pass continues', async ({ page }) => {
+    await installTranslatorStub(page, { failTranslate: 'Hello world' });
+    await page.goto('/');
+    await plantFixture(page);
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    // The failing string is left exactly as written...
+    await expect(page.locator('#bw-text')).toHaveText('Hello world');
+    // ...while the rest of the pass still completes.
+    await expect(page.locator('#bw-img')).toHaveAttribute('alt', '[fr] A photo');
+    await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[fr] Your email');
   });
 });
