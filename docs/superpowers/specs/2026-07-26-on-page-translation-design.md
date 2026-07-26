@@ -96,11 +96,16 @@ All four options are removed in `uninstall.php` alongside the existing cleanup.
 
 ### 3.3 Supported languages
 
-A single PHP function `blueworx_translate_supported_languages()` returns an ordered map of
-BCP-47 base tag → English label, used both to render the settings checkboxes and to validate
-what is saved:
+`blueworx_translate_language_labels()` returns the master ordered map of BCP-47 base tag →
+English label:
 
-`ar, bn, de, es, fr, hi, it, ja, ko, nl, pl, pt, ru, tr, vi, zh`
+`ar, bn, de, en, es, fr, hi, it, ja, ko, nl, pl, pt, ru, tr, vi, zh`
+
+`blueworx_translate_supported_languages()` returns that map **minus the site's own source
+language**, and is what renders the settings checkboxes and validates what is saved — a site
+can never offer its own language as a translation target. `en` is in the master map because
+the switcher needs a label for the source language when the site itself is English, and needs
+English as a target when the site is not.
 
 This is an allowlist for the settings UI, not a promise: the browser is the authority on
 what it can actually translate, and §4.2 handles a pair it declines.
@@ -113,8 +118,8 @@ the footer, and given the config via `wp_add_inline_script( ..., 'before' )` wri
 `window.blueworxTranslate` object:
 
 ```js
-{ source: 'en', languages: [ { code: 'fr', label: 'French' } ], position: 'bottom-right',
-  label: 'Language', exclude: [ '.brand' ] }
+{ source: 'en', sourceLabel: 'English', languages: [ { code: 'fr', label: 'French' } ],
+  position: 'bottom-right', label: 'Language', exclude: [ '.brand' ] }
 ```
 
 The widget root is a single empty `<div id="blueworx-translate-root">` printed on
