@@ -94,25 +94,43 @@ function blueworx_translate_supported_languages() {
 }
 
 /**
+ * Sanitises a raw list of language codes down to the validated, canonical order.
+ *
+ * Shared by blueworx_translate_languages() (read) and
+ * blueworx_translate_save_settings() (write) so the same codes are always
+ * validated the same way, and so the result is always ordered by the plugin's
+ * fixed language map rather than by whatever order the codes arrived in — the
+ * order checkboxes happen to be submitted in, or the order a value was saved
+ * in previously, never matters.
+ *
+ * @param array $codes Raw language codes.
+ * @return array Ordered list of BCP-47 base tags, in canonical order.
+ */
+function blueworx_translate_sanitize_languages( $codes ) {
+	if ( ! is_array( $codes ) ) {
+		return array();
+	}
+
+	$supported = blueworx_translate_supported_languages();
+	$sanitized = array_unique( array_map( 'sanitize_key', $codes ) );
+
+	return array_values( array_intersect( array_keys( $supported ), $sanitized ) );
+}
+
+/**
  * Gets the saved target languages.
  *
  * Validated on read as well as on write, so a value that predates a change to
  * the supported list — or one written directly to the database — cannot reach
- * the frontend.
+ * the frontend. Always returned in canonical order; see
+ * blueworx_translate_sanitize_languages().
  *
  * @return array Ordered list of BCP-47 base tags.
  */
 function blueworx_translate_languages() {
-	$saved     = get_option( 'blueworx_translate_languages', array( 'fr', 'de', 'es' ) );
-	$supported = blueworx_translate_supported_languages();
+	$saved = get_option( 'blueworx_translate_languages', array( 'fr', 'de', 'es' ) );
 
-	if ( ! is_array( $saved ) ) {
-		return array();
-	}
-
-	$codes = array_map( 'sanitize_key', $saved );
-
-	return array_values( array_intersect( array_unique( $codes ), array_keys( $supported ) ) );
+	return blueworx_translate_sanitize_languages( $saved );
 }
 
 /**
@@ -160,9 +178,8 @@ function blueworx_translate_exclusions() {
  * @return void
  */
 function blueworx_translate_save_settings( $post ) {
-	$supported = blueworx_translate_supported_languages();
-	$raw_langs = isset( $post['blueworx_translate_languages'] ) ? (array) wp_unslash( $post['blueworx_translate_languages'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below with sanitize_key and intersected against the supported allowlist.
-	$languages = array_values( array_intersect( array_unique( array_map( 'sanitize_key', $raw_langs ) ), array_keys( $supported ) ) );
+	$raw_langs = isset( $post['blueworx_translate_languages'] ) ? (array) wp_unslash( $post['blueworx_translate_languages'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below by blueworx_translate_sanitize_languages() with sanitize_key and intersected against the supported allowlist.
+	$languages = blueworx_translate_sanitize_languages( $raw_langs );
 
 	$raw_position = isset( $post['blueworx_translate_position'] ) ? sanitize_key( wp_unslash( $post['blueworx_translate_position'] ) ) : '';
 	$position     = isset( blueworx_translate_positions()[ $raw_position ] ) ? $raw_position : 'bottom-right';

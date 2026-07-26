@@ -84,7 +84,7 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
     expect(config.position).toBe('bottom-right');
     expect(config.label).toBe('Language');
     expect(Array.isArray(config.exclude)).toBe(true);
-    expect(config.languages.map((l) => l.code)).toEqual(['fr', 'de', 'es']);
+    expect(config.languages.map((l) => l.code)).toEqual(['de', 'es', 'fr']);
     expect(config.languages.every((l) => typeof l.label === 'string' && l.label.length > 0)).toBe(true);
   });
 
