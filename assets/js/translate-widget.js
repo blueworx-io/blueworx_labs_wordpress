@@ -20,6 +20,39 @@
     targetCode: null,
   };
 
+  var TRANSLATABLE_ATTRS = ['alt', 'title', 'placeholder', 'aria-label'];
+
+  // Always skipped: markup where translated text would be wrong (code, script)
+  // and the widget itself, which must never translate its own controls.
+  var BASE_EXCLUDE = [
+    'script',
+    'style',
+    'noscript',
+    'code',
+    'pre',
+    'kbd',
+    'samp',
+    'textarea',
+    '[translate="no"]',
+    '.notranslate',
+    '.blueworx-no-translate',
+    '#blueworx-translate-root',
+  ];
+
+  // Four in-flight translate() calls: enough to keep the model busy, few enough
+  // that the page fills in progressively instead of stalling on one long batch.
+  var CONCURRENCY = 4;
+
+  // node -> { '': originalText, alt: originalAlt, ... }. Weak so a node removed
+  // from the document is not pinned in memory by this map.
+  var originals = new WeakMap();
+
+  // Every recorded { node, attr } pair, in the order it was translated, so the
+  // source language can be restored without a reload.
+  var touched = [];
+
+  var excludeSelectorCache = null;
+
   /**
    * Reports whether this browser exposes the built-in Translator API.
    *
@@ -96,6 +129,249 @@
   function closeList() {
     state.list.hidden = true;
     state.toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  /**
+   * Builds the joined selector of everything that must not be translated.
+   *
+   * Admin-supplied selectors are validated one at a time and a malformed one is
+   * dropped: a typo in a site setting must not stop the rest of the page from
+   * translating.
+   *
+   * @return {string} Joined CSS selector.
+   */
+  function excludeSelector() {
+    if (excludeSelectorCache !== null) {
+      return excludeSelectorCache;
+    }
+
+    var selectors = BASE_EXCLUDE.slice();
+    var extra = Array.isArray(config.exclude) ? config.exclude : [];
+
+    extra.forEach(function (selector) {
+      var candidate = String(selector).trim();
+
+      if (candidate === '') {
+        return;
+      }
+
+      try {
+        document.createDocumentFragment().querySelector(candidate);
+        selectors.push(candidate);
+      } catch (error) {
+        // Malformed selector from the settings screen; skip it.
+      }
+    });
+
+    excludeSelectorCache = selectors.join(',');
+
+    return excludeSelectorCache;
+  }
+
+  /**
+   * Reports whether an element sits inside excluded markup.
+   *
+   * @param {Element} element Element to test.
+   * @return {boolean} True when the element must not be translated.
+   */
+  function isExcluded(element) {
+    if (!element || typeof element.closest !== 'function') {
+      return true;
+    }
+
+    try {
+      return element.closest(excludeSelector()) !== null;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Records a value's original so it can be restored later.
+   *
+   * @param {Node}   node  Text node or element.
+   * @param {string} attr  Attribute name, or '' for text content.
+   * @param {string} value Current value.
+   * @return {boolean} False when this pair was already recorded.
+   */
+  function recordOriginal(node, attr, value) {
+    var entry = originals.get(node);
+
+    if (!entry) {
+      entry = {};
+      originals.set(node, entry);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(entry, attr)) {
+      return false;
+    }
+
+    entry[attr] = value;
+    touched.push({ node: node, attr: attr });
+
+    return true;
+  }
+
+  /**
+   * Collects every not-yet-translated string within a scope.
+   *
+   * @param {Node} scope Element or document fragment to walk.
+   * @return {Array} Targets as { node, attr, text }.
+   */
+  function collectTargets(scope) {
+    var targets = [];
+    var walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode: function (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          var text = node.nodeValue;
+
+          // Whitespace, digits and punctuation are not worth a model call, and
+          // "2026" comes back unchanged at best.
+          if (!text || text.trim() === '' || !/\p{L}/u.test(text)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          return isExcluded(node.parentElement) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }
+
+        return isExcluded(node) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      },
+    });
+
+    var node = walker.currentNode;
+
+    while (node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (recordOriginal(node, '', node.nodeValue)) {
+          targets.push({ node: node, attr: '', text: node.nodeValue });
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        TRANSLATABLE_ATTRS.forEach(function (attr) {
+          var value = node.getAttribute(attr);
+
+          if (value && value.trim() !== '' && /\p{L}/u.test(value) && recordOriginal(node, attr, value)) {
+            targets.push({ node: node, attr: attr, text: value });
+          }
+        });
+      }
+
+      node = walker.nextNode();
+    }
+
+    return targets;
+  }
+
+  /**
+   * Writes a translated value back onto its node.
+   *
+   * @param {{node: Node, attr: string}} target Target record.
+   * @param {string}                     value  Translated value.
+   */
+  function writeTarget(target, value) {
+    if (target.attr === '') {
+      target.node.nodeValue = value;
+    } else {
+      target.node.setAttribute(target.attr, value);
+    }
+  }
+
+  /**
+   * Translates a list of targets, four calls in flight at a time.
+   *
+   * A single failed call leaves that one string as written and the pass
+   * continues: a partial translation beats a blank or reverted page.
+   *
+   * @param {Array} targets Targets from collectTargets().
+   * @return {Promise} Resolves when every target has been attempted.
+   */
+  function translateTargets(targets) {
+    if (!state.translator || targets.length === 0) {
+      return Promise.resolve();
+    }
+
+    var next = 0;
+
+    function worker() {
+      if (next >= targets.length) {
+        return Promise.resolve();
+      }
+
+      var target = targets[next];
+      next += 1;
+
+      return Promise.resolve()
+        .then(function () {
+          return state.translator.translate(target.text);
+        })
+        .then(function (translated) {
+          if (typeof translated === 'string' && translated !== '') {
+            writeTarget(target, translated);
+          }
+        })
+        .catch(function () {
+          // Leave this string as written and keep going.
+        })
+        .then(worker);
+    }
+
+    var workers = [];
+
+    for (var i = 0; i < CONCURRENCY; i += 1) {
+      workers.push(worker());
+    }
+
+    return Promise.all(workers);
+  }
+
+  /**
+   * Puts the pill into or out of its busy state.
+   *
+   * @param {boolean} isBusy  Whether work is in progress.
+   * @param {string}  message Status text, announced politely.
+   */
+  function setBusy(isBusy, message) {
+    state.toggle.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    state.toggle.disabled = isBusy;
+    state.status.textContent = message || '';
+  }
+
+  /**
+   * Translates the whole page into one language.
+   *
+   * @param {string} code Target language code.
+   * @return {Promise} Resolves when the pass has finished.
+   */
+  function applyLanguage(code) {
+    closeList();
+    setBusy(true, config.label + '…');
+
+    return Promise.resolve()
+      .then(function () {
+        return self.Translator.create({
+          sourceLanguage: config.source,
+          targetLanguage: code,
+          monitor: function (monitor) {
+            monitor.addEventListener('downloadprogress', function (event) {
+              var percent = Math.round((event.loaded || 0) * 100);
+              state.status.textContent = percent + '%';
+            });
+          },
+        });
+      })
+      .then(function (translator) {
+        state.translator = translator;
+
+        return translateTargets(collectTargets(document.body));
+      })
+      .then(function () {
+        document.documentElement.lang = code;
+        setCurrent(code);
+        setBusy(false, '');
+      })
+      .catch(function () {
+        state.translator = null;
+        setBusy(false, '');
+      });
   }
 
   /**
@@ -181,6 +457,23 @@
       if (!state.list.hidden && !widget.contains(event.target)) {
         closeList();
       }
+    });
+
+    list.addEventListener('click', function (event) {
+      var option = event.target.closest('.blueworx-translate__option');
+
+      if (!option) {
+        return;
+      }
+
+      var code = option.getAttribute('data-lang');
+
+      if (code === config.source || code === state.targetCode) {
+        closeList();
+        return;
+      }
+
+      applyLanguage(code);
     });
   }
 

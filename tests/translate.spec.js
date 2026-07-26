@@ -171,3 +171,74 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
     await expect(page.locator('.blueworx-translate__option[data-lang="fr"]')).toHaveCount(1);
   });
 });
+
+test.describe('BlueWorx on-page translation — translating', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  /**
+   * Plants known content on the page so assertions do not depend on whatever
+   * the site's front page happens to say. Runs after load, and the widget's
+   * mutation handling is not relied on here — the language is chosen after.
+   */
+  async function plantFixture(page) {
+    await page.evaluate(() => {
+      const box = document.createElement('div');
+      box.id = 'bw-fixture';
+      box.innerHTML =
+        '<p id="bw-text">Hello world</p>' +
+        '<p class="bw-keep">BlueWorx</p>' +
+        '<img id="bw-img" alt="A photo" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" />' +
+        '<input id="bw-input" placeholder="Your email" />' +
+        '<code id="bw-code">const x = 1;</code>' +
+        '<p id="bw-number">2026</p>';
+      document.body.appendChild(box);
+    });
+  }
+
+  test('translates text and attributes, and honours exclusions', async ({ page }) => {
+    await installTranslatorStub(page);
+    await page.goto('/');
+    await plantFixture(page);
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+
+    await expect(page.locator('#bw-text')).toHaveText('[fr] Hello world');
+    await expect(page.locator('#bw-img')).toHaveAttribute('alt', '[fr] A photo');
+    await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[fr] Your email');
+    // <code> is always excluded, and a purely numeric string is not worth a call.
+    await expect(page.locator('#bw-code')).toHaveText('const x = 1;');
+    await expect(page.locator('#bw-number')).toHaveText('2026');
+    // The widget must never translate its own controls.
+    await expect(page.getByRole('button', { name: /Language/ })).not.toContainText('[fr]');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+  });
+
+  test('never translates content inside an admin-excluded selector', async ({ page }) => {
+    await installTranslatorStub(page);
+    // The exclusion list is a site setting; inject it into the config before the
+    // widget reads it rather than round-tripping through wp-admin.
+    await page.addInitScript(() => {
+      const apply = () => {
+        if (window.blueworxTranslate) {
+          window.blueworxTranslate.exclude = ['.bw-keep', ':::not a selector:::'];
+          return true;
+        }
+        return false;
+      };
+      if (!apply()) {
+        document.addEventListener('readystatechange', apply);
+      }
+    });
+    await page.goto('/');
+    await plantFixture(page);
+
+    await page.getByRole('button', { name: /Language/ }).click();
+    await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
+
+    await expect(page.locator('#bw-text')).toHaveText('[fr] Hello world');
+    // Excluded by the admin selector; the malformed selector alongside it must
+    // be skipped rather than breaking the whole pass.
+    await expect(page.locator('.bw-keep')).toHaveText('BlueWorx');
+  });
+});
