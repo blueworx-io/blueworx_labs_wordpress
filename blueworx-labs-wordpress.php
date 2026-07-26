@@ -53,6 +53,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/disable-comments.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
 require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
+require_once BLUEWORX_LABS_PATH . 'includes/translate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 
 // Headless REST layer (auth, accounts, content, CORS, revalidation, proxies).

@@ -203,6 +203,9 @@ function blueworx_save_feature_settings() {
 	// Client Roles detail: allow Content Editors to delete users.
 	update_option( 'blueworx_client_editor_can_delete_users', isset( $_POST['blueworx_client_editor_can_delete_users'] ) ? '1' : '0' );
 
+	// Translation detail: languages, position, label and exclusions.
+	blueworx_translate_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler; the callee sanitizes every field.
+
 	// Re-sync role capabilities to match the current toggle + delete setting.
 	blueworx_client_roles_maybe_ensure();
 
@@ -361,6 +364,11 @@ function blueworx_render_feature_detail( $key ) {
 			</label>
 		</p>
 		<?php
+		return;
+	}
+
+	if ( 'translate' === $key ) {
+		blueworx_translate_render_detail();
 		return;
 	}
 

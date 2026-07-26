@@ -24,6 +24,7 @@ function blueworx_get_feature_sections() {
 	return array(
 		'security'      => __( 'Security & Access', 'blueworx-labs-wordpress' ),
 		'content'       => __( 'Content', 'blueworx-labs-wordpress' ),
+		'translation'   => __( 'Translation', 'blueworx-labs-wordpress' ),
 		'notifications' => __( 'Notifications & Cleanup', 'blueworx-labs-wordpress' ),
 		'performance'   => __( 'Performance', 'blueworx-labs-wordpress' ),
 		'admin_menu'    => __( 'Admin Menu', 'blueworx-labs-wordpress' ),
@@ -73,6 +74,12 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Adds excerpt support to Pages, the same way Posts already have it.', 'blueworx-labs-wordpress' ),
 			'section'     => 'content',
 			'detail'      => null,
+		),
+		'translate'             => array(
+			'label'       => __( 'On-page translation', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Adds a floating language button that translates the page on the visitor\'s own device. Chrome and Edge only; no effect on search engines.', 'blueworx-labs-wordpress' ),
+			'section'     => 'translation',
+			'detail'      => 'translate',
 		),
 		'emails'                => array(
 			'label'       => __( 'Email notifications reduced', 'blueworx-labs-wordpress' ),

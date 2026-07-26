@@ -23,3 +23,8 @@ foreach ( array( 'blueworx_client_owner', 'blueworx_client_dev', 'blueworx_clien
 
 delete_option( 'blueworx_client_roles_signature' );
 delete_option( 'blueworx_client_editor_can_delete_users' );
+
+delete_option( 'blueworx_translate_languages' );
+delete_option( 'blueworx_translate_position' );
+delete_option( 'blueworx_translate_label' );
+delete_option( 'blueworx_translate_exclusions' );
