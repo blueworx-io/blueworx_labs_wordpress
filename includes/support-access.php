@@ -140,6 +140,11 @@ function blueworx_support_role_slug() {
  * gates screen rendering on the same capabilities it gates writes on. The
  * read-only guarantee comes from the request-layer block, not from this list.
  *
+ * unfiltered_html is included alongside the file/plugin/theme editing
+ * capabilities because it is onward access by another route: raw script
+ * saved into post or page content executes later, in a real administrator's
+ * browser, when they view it.
+ *
  * @return array Capability names.
  */
 function blueworx_support_removed_caps() {
@@ -147,6 +152,7 @@ function blueworx_support_removed_caps() {
 		'edit_files',
 		'edit_plugins',
 		'edit_themes',
+		'unfiltered_html',
 		'install_plugins',
 		'install_themes',
 		'update_plugins',
