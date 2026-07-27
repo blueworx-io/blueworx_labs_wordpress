@@ -21,6 +21,62 @@ if ( ! defined( 'ABSPATH' ) ) {
 const BLUEWORX_SUPPORT_WINDOW = 86400;
 
 /**
+ * Failed key attempts allowed before a caller is locked out.
+ */
+const BLUEWORX_SUPPORT_MAX_FAILURES = 5;
+
+/**
+ * Lockout duration in seconds.
+ */
+const BLUEWORX_SUPPORT_LOCKOUT = 900;
+
+/**
+ * Gets the throttle transient key for the calling address.
+ *
+ * The address is hashed, not stored raw: the throttle must not turn into an
+ * incidental log of who tried.
+ *
+ * @return string Transient key.
+ */
+function blueworx_support_throttle_key() {
+	$ip = isset( $_SERVER['REMOTE_ADDR'] )
+		? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
+		: 'unknown';
+
+	return 'blueworx_support_fail_' . md5( $ip );
+}
+
+/**
+ * Whether the calling address is currently locked out.
+ *
+ * @return bool True when further attempts must be refused.
+ */
+function blueworx_support_is_throttled() {
+	return (int) get_transient( blueworx_support_throttle_key() ) >= BLUEWORX_SUPPORT_MAX_FAILURES;
+}
+
+/**
+ * Records a failed key attempt.
+ *
+ * @return void
+ */
+function blueworx_support_record_failure() {
+	$key   = blueworx_support_throttle_key();
+	$count = (int) get_transient( $key ) + 1;
+
+	set_transient( $key, $count, BLUEWORX_SUPPORT_LOCKOUT );
+}
+
+/**
+ * Clears the failure counter after a successful authentication.
+ *
+ * @return void
+ */
+function blueworx_support_clear_failures() {
+	delete_transient( blueworx_support_throttle_key() );
+}
+
+/**
  * Whether a key currently exists for this site.
  *
  * @return bool True when a key hash is stored.
@@ -362,10 +418,20 @@ function blueworx_support_handle_login() {
 
 	$key = sanitize_text_field( wp_unslash( $_GET['blueworx_support_login'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
+	if ( blueworx_support_is_throttled() ) {
+		blueworx_support_log_event( 'login_throttled' );
+		wp_die(
+			esc_html__( 'Too many attempts. Try again later.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+			array( 'response' => 429 )
+		);
+	}
+
 	if ( ! blueworx_feature_enabled( 'support_access' )
 		|| ! blueworx_support_access_open()
 		|| ! blueworx_support_verify_key( $key )
 	) {
+		blueworx_support_record_failure();
 		blueworx_support_log_event( 'login_refused' );
 		wp_die(
 			esc_html__( 'Support access is not available.', 'blueworx-labs-wordpress' ),
@@ -384,6 +450,8 @@ function blueworx_support_handle_login() {
 		);
 	}
 
+	blueworx_support_clear_failures();
+
 	wp_set_current_user( $user->ID );
 	wp_set_auth_cookie( $user->ID, false );
 	blueworx_support_log_event( 'login' );
@@ -391,7 +459,47 @@ function blueworx_support_handle_login() {
 	wp_safe_redirect( admin_url() );
 	exit;
 }
-add_action( 'init', 'blueworx_support_handle_login', 1 );
+// Priority 0: this MUST run before blueworx_intercept_requests()
+// (includes/login-security.php, also hooked on init at priority 1). At equal
+// priority, intercept_requests runs first — required earlier in
+// blueworx-labs-wordpress.php — and Site Protection's frontend check would
+// wp_die() a logged-out key request before this handler ever ran, so the key
+// could never be exchanged. Do not "tidy" this back to priority 1.
+add_action( 'init', 'blueworx_support_handle_login', 0 );
+
+/**
+ * Exempts the support account from Site Protection's role allow-list.
+ *
+ * Site Protection (includes/login-security.php) only admits users whose role
+ * is on the operator's selected list for the area, and the support role is
+ * never on that list by default. Without this, a successful key exchange
+ * would be logged in only to be immediately thrown back out of wp-admin by
+ * backend protection, and a logged-out visitor could never reach the frontend
+ * key-exchange URL at all while frontend protection is on.
+ *
+ * Scope is deliberately narrow: this only ever returns true when the current
+ * user IS the support account (blueworx_support_is_support_user()); every
+ * other user's own $has_role result passes through unchanged, so Site
+ * Protection is not weakened for anyone else. It also does not touch the
+ * access-window check — that gate lives entirely in
+ * blueworx_support_handle_login() and runs before the support user is ever
+ * logged in, so a key presented while the window is shut is still refused
+ * before this filter is reached.
+ *
+ * @param bool   $has_role Whether the user's own roles satisfy $area's allow-list.
+ * @param string $area     'frontend' or 'backend'.
+ * @return bool
+ */
+function blueworx_support_exempt_from_site_protection( $has_role, $area ) {
+	unset( $area );
+
+	if ( blueworx_support_is_support_user() ) {
+		return true;
+	}
+
+	return $has_role;
+}
+add_filter( 'blueworx_site_protection_role_check', 'blueworx_support_exempt_from_site_protection', 10, 2 );
 
 /**
  * Renders the support access console panel.

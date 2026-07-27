@@ -1,4 +1,4 @@
-import { test, expect, baseURL, isPlaceholder, login } from './helpers.js';
+import { test, expect, baseURL, isPlaceholder, login, restoreAll } from './helpers.js';
 
 test.describe('Support access — key lifecycle', () => {
   test.skip(isPlaceholder, 'No real site configured');
@@ -71,5 +71,137 @@ test.describe('Support access — key lifecycle', () => {
     await page.waitForTimeout(1000);
     await page.goto('/wp-admin/users.php');
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+  });
+
+  test('browser key login still works when Site Protection is on', async ({ page, context }) => {
+    const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+
+    const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
+    const backendToggle = page.locator('input[name="blueworx_backend_protection_enabled"]');
+    const frontendSelect = page.locator('select[name="blueworx_frontend_protection_roles[]"]');
+    const backendSelect = page.locator('select[name="blueworx_backend_protection_roles[]"]');
+
+    // Capture the operator's original Site Protection configuration so it can
+    // be restored exactly, whatever it was, even if this test fails partway
+    // through — leaving the harness protected would break every later test.
+    const original = {
+      frontendEnabled: await frontendToggle.isChecked(),
+      backendEnabled: await backendToggle.isChecked(),
+      frontendRoles: await frontendSelect.evaluate((el) => Array.from(el.selectedOptions).map((o) => o.value)),
+      backendRoles: await backendSelect.evaluate((el) => Array.from(el.selectedOptions).map((o) => o.value)),
+    };
+
+    let key = '';
+
+    try {
+      // Turn both areas on, allow-listing only "administrator" — deliberately
+      // NOT the support role — so the exemption under test is the support
+      // account's identity, not an accidental role-list match.
+      await frontendToggle.setChecked(true);
+      await backendToggle.setChecked(true);
+      await frontendSelect.selectOption(['administrator']);
+      await backendSelect.selectOption(['administrator']);
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+
+      await page.goto(SETTINGS_PATH);
+      await page.getByRole('button', { name: 'Generate key' }).click();
+      key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+
+      // Re-navigate before the next click: a second click on the same DOM
+      // without an intervening goto is the headless-Chromium view-transition
+      // freeze documented in helpers.js (login()) — the click "succeeds" from
+      // Playwright's view but the server-side action never lands.
+      await page.goto(SETTINGS_PATH);
+      await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+      // A fresh, logged-out context: Site Protection must still refuse an
+      // anonymous visitor everywhere else, but the key exchange must get
+      // through on the front end, and the resulting session must not be
+      // thrown back out of wp-admin by backend protection.
+      const fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+      await fresh.close();
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto(SETTINGS_PATH);
+            if (key) {
+              await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+              await page.waitForTimeout(1000);
+            }
+          },
+        ],
+        [
+          'restore frontend protection',
+          async () => {
+            await page.goto(SETTINGS_PATH);
+            await page
+              .locator('input[name="blueworx_frontend_protection_enabled"]')
+              .setChecked(original.frontendEnabled);
+            await page
+              .locator('select[name="blueworx_frontend_protection_roles[]"]')
+              .selectOption(original.frontendRoles);
+            await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+
+            await page.goto(SETTINGS_PATH);
+            await expect(
+              page.locator('input[name="blueworx_frontend_protection_enabled"]')
+            ).toBeChecked({ checked: original.frontendEnabled });
+          },
+        ],
+        [
+          'restore backend protection',
+          async () => {
+            await page.goto(SETTINGS_PATH);
+            await page
+              .locator('input[name="blueworx_backend_protection_enabled"]')
+              .setChecked(original.backendEnabled);
+            await page
+              .locator('select[name="blueworx_backend_protection_roles[]"]')
+              .selectOption(original.backendRoles);
+            await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+
+            await page.goto(SETTINGS_PATH);
+            await expect(
+              page.locator('input[name="blueworx_backend_protection_enabled"]')
+            ).toBeChecked({ checked: original.backendEnabled });
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('repeated bad keys are locked out', async ({ page, request }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    const bad = 'f'.repeat(64);
+
+    for (let i = 0; i < 5; i += 1) {
+      await request.get(`${baseURL}/?blueworx_support_login=${bad}`);
+    }
+
+    // The real key is now refused too: the lockout is on the caller, not the key.
+    const locked = await request.get(`${baseURL}/?blueworx_support_login=${key}`);
+    expect(locked.status()).toBe(429);
+
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Revoke key' }).click();
   });
 });
