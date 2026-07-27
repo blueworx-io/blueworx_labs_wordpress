@@ -122,3 +122,157 @@ function blueworx_support_close_access() {
 	update_option( 'blueworx_support_access_until', 0 );
 	update_option( 'blueworx_support_data_until', 0 );
 }
+
+/**
+ * Gets the support role slug.
+ *
+ * @return string Role slug.
+ */
+function blueworx_support_role_slug() {
+	return 'blueworx_support';
+}
+
+/**
+ * Capabilities removed from the administrator clone.
+ *
+ * These are the operations that are destructive or that grant onward access;
+ * everything else is retained so admin screens still render, because WordPress
+ * gates screen rendering on the same capabilities it gates writes on. The
+ * read-only guarantee comes from the request-layer block, not from this list.
+ *
+ * @return array Capability names.
+ */
+function blueworx_support_removed_caps() {
+	return array(
+		'edit_files',
+		'edit_plugins',
+		'edit_themes',
+		'install_plugins',
+		'install_themes',
+		'update_plugins',
+		'update_themes',
+		'update_core',
+		'delete_plugins',
+		'delete_themes',
+		'export',
+		'import',
+		'create_users',
+		'edit_users',
+		'delete_users',
+		'promote_users',
+		'remove_users',
+	);
+}
+
+/**
+ * Builds the support role's capability map from the live administrator role.
+ *
+ * @return array Capability map (cap => true).
+ */
+function blueworx_support_build_caps() {
+	$base = get_role( 'administrator' );
+	$caps = ( $base && is_array( $base->capabilities ) ) ? $base->capabilities : array();
+
+	foreach ( blueworx_support_removed_caps() as $cap ) {
+		unset( $caps[ $cap ] );
+	}
+
+	$caps['read'] = true;
+
+	return $caps;
+}
+
+/**
+ * Provisions the support role and user.
+ *
+ * Called only when a key is generated: a site that never uses support access
+ * never carries a dormant account. The user's password is set to a value no
+ * input can hash to, so the account cannot be signed into with a password at
+ * all — the key is the only way in.
+ *
+ * @return int User ID, or 0 on failure.
+ */
+function blueworx_support_ensure_account() {
+	global $wpdb;
+
+	remove_role( blueworx_support_role_slug() );
+	add_role(
+		blueworx_support_role_slug(),
+		__( 'BlueWorx Support (read-only)', 'blueworx-labs-wordpress' ),
+		blueworx_support_build_caps()
+	);
+
+	$user = get_user_by( 'login', 'blueworx_support' );
+
+	if ( $user instanceof WP_User ) {
+		$user->set_role( blueworx_support_role_slug() );
+		$user_id = (int) $user->ID;
+	} else {
+		$user_id = wp_insert_user(
+			array(
+				'user_login'   => 'blueworx_support',
+				'user_pass'    => wp_generate_password( 64, true, true ),
+				'user_email'   => 'support+' . wp_generate_password( 8, false ) . '@blueworx.invalid',
+				'display_name' => __( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+				'role'         => blueworx_support_role_slug(),
+			)
+		);
+
+		if ( is_wp_error( $user_id ) ) {
+			return 0;
+		}
+
+		$user_id = (int) $user_id;
+	}
+
+	// Make the password unusable. '!' is not a valid hash, so wp_check_password()
+	// can never match it, whatever is submitted. This is why there is no
+	// credential to leak, phish or rotate.
+	$wpdb->update( $wpdb->users, array( 'user_pass' => '!' ), array( 'ID' => $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	clean_user_cache( $user_id );
+
+	return $user_id;
+}
+
+/**
+ * Deletes the support user and role.
+ *
+ * @return void
+ */
+function blueworx_support_remove_account() {
+	$user = get_user_by( 'login', 'blueworx_support' );
+
+	if ( $user instanceof WP_User ) {
+		if ( ! function_exists( 'wp_delete_user' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+
+		wp_delete_user( $user->ID );
+	}
+
+	remove_role( blueworx_support_role_slug() );
+}
+
+/**
+ * Gets the support user.
+ *
+ * @return WP_User|null Support user, or null when it does not exist.
+ */
+function blueworx_support_get_user() {
+	$user = get_user_by( 'login', 'blueworx_support' );
+
+	return $user instanceof WP_User ? $user : null;
+}
+
+/**
+ * Whether the current request is running as the support user.
+ *
+ * @return bool True for the support account.
+ */
+function blueworx_support_is_support_user() {
+	$user = wp_get_current_user();
+
+	return $user instanceof WP_User
+		&& $user->exists()
+		&& 'blueworx_support' === $user->user_login;
+}
