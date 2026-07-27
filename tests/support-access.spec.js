@@ -184,6 +184,59 @@ test.describe('Support access — key lifecycle', () => {
     }
   });
 
+  test('the support account cannot write', async ({ page, context }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    try {
+      const fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      // Reading is fine.
+      const read = await anon.goto(`${baseURL}/wp-admin/options-general.php`);
+      expect(read.status()).toBe(200);
+
+      // Every write path is refused.
+      for (const path of ['/wp-admin/options.php', '/wp-admin/admin-ajax.php', '/wp-admin/admin-post.php']) {
+        const posted = await anon.request.post(`${baseURL}${path}`, { data: { probe: '1' } });
+        expect(posted.status(), `POST ${path}`).toBe(403);
+      }
+
+      const rest = await anon.request.post(`${baseURL}/wp-json/wp/v2/posts`, { data: { title: 'nope' } });
+      expect(rest.status()).toBe(403);
+
+      await fresh.close();
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('an administrator can still write while the support feature is active', async ({ page }) => {
+    // Proves the write block is scoped to the support account only — an
+    // administrator's own POSTs must keep working exactly as before.
+    await login(page);
+    await page.goto('/wp-admin/options-general.php');
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(page.getByText(/Settings saved/i)).toBeVisible();
+  });
+
   test('repeated bad keys are locked out', async ({ page, request }) => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');

@@ -410,6 +410,72 @@ function blueworx_support_log_event( $type ) {
 }
 
 /**
+ * Rejects every non-read request made by the support account.
+ *
+ * This — not the capability set — is what makes the account read-only.
+ * Third-party plugins routinely write through their own AJAX and REST endpoints
+ * without checking a meaningful capability, so a rule that depends on plugin
+ * authors behaving correctly is not a safety model. A method-level block does
+ * not.
+ *
+ * Known gap, documented in the console: a plugin that writes in response to a
+ * GET request is not caught here.
+ *
+ * @return void
+ */
+function blueworx_support_block_writes() {
+	if ( ! blueworx_support_is_support_user() ) {
+		return;
+	}
+
+	$method = isset( $_SERVER['REQUEST_METHOD'] )
+		? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) )
+		: 'GET';
+
+	if ( in_array( $method, array( 'GET', 'HEAD' ), true ) ) {
+		return;
+	}
+
+	blueworx_support_log_event( 'blocked_write' );
+
+	wp_die(
+		esc_html__( 'BlueWorx support access is read-only.', 'blueworx-labs-wordpress' ),
+		esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+		array( 'response' => 403 )
+	);
+}
+add_action( 'init', 'blueworx_support_block_writes', 0 );
+
+/**
+ * Second net: refuses non-read REST requests from the support account.
+ *
+ * @param mixed           $result  Pre-dispatch result.
+ * @param WP_REST_Server  $server  Server instance.
+ * @param WP_REST_Request $request Current request.
+ * @return mixed Untouched result, or a WP_Error for a write.
+ */
+function blueworx_support_block_rest_writes( $result, $server, $request ) {
+	unset( $server );
+
+	if ( ! blueworx_support_is_support_user() ) {
+		return $result;
+	}
+
+	if ( in_array( strtoupper( $request->get_method() ), array( 'GET', 'HEAD' ), true ) ) {
+		return $result;
+	}
+
+	blueworx_support_log_event( 'blocked_write' );
+
+	return new WP_Error(
+		'blueworx_support_read_only',
+		__( 'BlueWorx support access is read-only.', 'blueworx-labs-wordpress' ),
+		array( 'status' => 403 )
+	);
+}
+add_filter( 'rest_pre_dispatch', 'blueworx_support_block_rest_writes', 10, 3 );
+
+/**
  * Signs the support user in from a key in the query string.
  *
  * Sets a session cookie only (no "remember me"), so the browser never keeps a
