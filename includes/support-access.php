@@ -282,3 +282,119 @@ function blueworx_support_is_support_user() {
 		&& $user->exists()
 		&& 'blueworx_support' === $user->user_login;
 }
+
+/**
+ * Raw key to display once, for the request that generated it.
+ *
+ * @var string
+ */
+$GLOBALS['blueworx_support_new_key'] = '';
+
+/**
+ * Processes the support panel's form submissions.
+ *
+ * @return void
+ */
+function blueworx_support_handle_actions() {
+	if ( ! blueworx_feature_enabled( 'support_access' ) || ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$action = isset( $_POST['blueworx_support_action'] )
+		? sanitize_key( wp_unslash( $_POST['blueworx_support_action'] ) )
+		: '';
+
+	if ( '' === $action ) {
+		return;
+	}
+
+	check_admin_referer( 'blueworx_support_panel', 'blueworx_support_nonce' );
+
+	if ( 'generate' === $action ) {
+		$GLOBALS['blueworx_support_new_key'] = blueworx_support_generate_key();
+		blueworx_support_ensure_account();
+		blueworx_support_log_event( 'key_generated' );
+		return;
+	}
+
+	if ( 'revoke' === $action ) {
+		blueworx_support_revoke_key();
+		blueworx_support_remove_account();
+		blueworx_support_log_event( 'key_revoked' );
+		return;
+	}
+
+	if ( 'toggle' === $action ) {
+		if ( blueworx_support_access_open() ) {
+			blueworx_support_close_access();
+			blueworx_support_log_event( 'access_closed' );
+		} else {
+			$with_data = ! empty( $_POST['blueworx_support_with_data'] );
+			blueworx_support_open_access( $with_data );
+			blueworx_support_log_event( $with_data ? 'data_opened' : 'access_opened' );
+		}
+	}
+}
+add_action( 'admin_init', 'blueworx_support_handle_actions' );
+
+/**
+ * Records an audit event. Body implemented in Task 7.
+ *
+ * @param string $type Event type.
+ * @return void
+ */
+function blueworx_support_log_event( $type ) {
+	unset( $type );
+}
+
+/**
+ * Renders the support access console panel.
+ *
+ * This panel's controls live inside the enhancements page's single outer
+ * <form> (see blueworx_render_enhancements_page()) rather than a <form> of
+ * their own — nesting a second <form> there would be invalid HTML, and
+ * browsers respond by hoisting these fields into the outer form anyway,
+ * which posts to admin-post.php and redirects before the freshly generated
+ * key can ever be rendered. Each submit button instead carries its own
+ * formaction/formmethod so it posts straight back to this page, where
+ * blueworx_support_handle_actions() (on admin_init) runs and the panel
+ * re-renders in the same request. The nonce field uses its own name so it
+ * cannot collide with the outer form's "_wpnonce" field.
+ *
+ * @return void
+ */
+function blueworx_support_render_panel() {
+	$self_url = admin_url( 'admin.php?page=blueworx-labs-wordpress' );
+	?>
+	<?php if ( '' !== $GLOBALS['blueworx_support_new_key'] ) : ?>
+		<p><strong><?php esc_html_e( 'Copy this key now — it is not shown again.', 'blueworx-labs-wordpress' ); ?></strong></p>
+		<code data-testid="bw-support-key"><?php echo esc_html( $GLOBALS['blueworx_support_new_key'] ); ?></code>
+	<?php endif; ?>
+
+	<?php wp_nonce_field( 'blueworx_support_panel', 'blueworx_support_nonce' ); ?>
+	<?php if ( blueworx_support_has_key() ) : ?>
+		<label>
+			<input type="checkbox" name="blueworx_support_with_data" value="1" />
+			<?php esc_html_e( 'Also allow access to personal data for this session', 'blueworx-labs-wordpress' ); ?>
+		</label>
+		<button type="submit" name="blueworx_support_action" value="toggle" class="button" formaction="<?php echo esc_url( $self_url ); ?>" formmethod="post">
+			<?php
+			echo blueworx_support_access_open()
+				? esc_html__( 'Close support access', 'blueworx-labs-wordpress' )
+				: esc_html__( 'Allow support access for 24 hours', 'blueworx-labs-wordpress' );
+			?>
+		</button>
+		<button type="submit" name="blueworx_support_action" value="revoke" class="button" formaction="<?php echo esc_url( $self_url ); ?>" formmethod="post">
+			<?php esc_html_e( 'Revoke key', 'blueworx-labs-wordpress' ); ?>
+		</button>
+	<?php else : ?>
+		<button type="submit" name="blueworx_support_action" value="generate" class="button button-primary" formaction="<?php echo esc_url( $self_url ); ?>" formmethod="post">
+			<?php esc_html_e( 'Generate key', 'blueworx-labs-wordpress' ); ?>
+		</button>
+	<?php endif; ?>
+
+	<p class="description">
+		<?php esc_html_e( 'Read-only is enforced by rejecting every write request from this account. A plugin that writes data in response to a plain page load is not caught by that rule, so only open this window when you have asked BlueWorx to look at something.', 'blueworx-labs-wordpress' ); ?>
+	</p>
+	<?php
+}

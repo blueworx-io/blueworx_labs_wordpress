@@ -352,6 +352,11 @@ function blueworx_render_feature_detail( $key ) {
 		return;
 	}
 
+	if ( 'support_access' === $key ) {
+		blueworx_support_render_panel();
+		return;
+	}
+
 	if ( 'application_passwords' === $key ) {
 		?>
 		<p>
