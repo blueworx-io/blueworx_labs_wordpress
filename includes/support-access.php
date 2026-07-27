@@ -348,6 +348,52 @@ function blueworx_support_log_event( $type ) {
 }
 
 /**
+ * Signs the support user in from a key in the query string.
+ *
+ * Sets a session cookie only (no "remember me"), so the browser never keeps a
+ * long-lived credential for this account.
+ *
+ * @return void
+ */
+function blueworx_support_handle_login() {
+	if ( ! isset( $_GET['blueworx_support_login'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return;
+	}
+
+	$key = sanitize_text_field( wp_unslash( $_GET['blueworx_support_login'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+	if ( ! blueworx_feature_enabled( 'support_access' )
+		|| ! blueworx_support_access_open()
+		|| ! blueworx_support_verify_key( $key )
+	) {
+		blueworx_support_log_event( 'login_refused' );
+		wp_die(
+			esc_html__( 'Support access is not available.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+			array( 'response' => 403 )
+		);
+	}
+
+	$user = blueworx_support_get_user();
+
+	if ( ! $user instanceof WP_User ) {
+		wp_die(
+			esc_html__( 'Support access is not available.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+			array( 'response' => 403 )
+		);
+	}
+
+	wp_set_current_user( $user->ID );
+	wp_set_auth_cookie( $user->ID, false );
+	blueworx_support_log_event( 'login' );
+
+	wp_safe_redirect( admin_url() );
+	exit;
+}
+add_action( 'init', 'blueworx_support_handle_login', 1 );
+
+/**
  * Renders the support access console panel.
  *
  * This panel's controls live inside the enhancements page's single outer
