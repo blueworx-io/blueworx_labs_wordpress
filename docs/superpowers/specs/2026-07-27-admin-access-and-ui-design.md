@@ -44,9 +44,13 @@ Registry entry `support_access` in `includes/features.php`, section `security`.
 
 #### 1.1 Account provisioning
 
-A single managed user `blueworx_support` and role `blueworx_support`, provisioned on
-activation and re-ensured on upgrade, following the existing
+A single managed user `blueworx_support` and role `blueworx_support`, provisioned **when the
+key is first generated** and deleted when the key is revoked, following the existing
 `blueworx_client_roles_ensure()` signature pattern in `includes/client-roles.php`.
+
+Provisioning is deliberately *not* done on activation: a site that never uses support access
+should never carry a dormant account holding administrator-adjacent capabilities. The account
+exists only for as long as a key exists.
 
 Role is built by cloning the live `administrator` role and removing:
 
@@ -141,8 +145,10 @@ With `blueworx_support_data_until` unset or lapsed, the support account is denie
 
 Denial is a 403, not a redirect, so it is unambiguous in a transcript.
 
-As a backstop for any user data that surfaces incidentally, the email column on the users
-list is masked for this account regardless.
+No field-level masking is implemented anywhere, including as a backstop. An earlier draft
+masked the users-list email column, but that rule can never fire usefully: with data access
+off the screen is already denied, and with it on the mask would defeat the opt-in the operator
+just gave. Denial is the whole mechanism.
 
 Opting in is a separate console checkbox, valid for the same 24-hour window and logged
 distinctly. The default state of every site is no data access.
