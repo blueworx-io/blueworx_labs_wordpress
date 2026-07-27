@@ -321,6 +321,9 @@ function blueworx_support_removed_caps() {
 		'edit_files',
 		'edit_plugins',
 		'edit_themes',
+		// Raw script saved into content executes later in a real administrator's
+		// browser — onward access by another route.
+		'unfiltered_html',
 		'install_plugins',
 		'install_themes',
 		'update_plugins',
