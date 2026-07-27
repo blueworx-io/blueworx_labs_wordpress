@@ -578,11 +578,11 @@ function blueworx_support_handle_actions() {
 add_action( 'admin_init', 'blueworx_support_handle_actions' );
 ```
 
-`blueworx_support_log_event()` lands in Task 7. Until then, add this stub immediately so the calls above do not fatal — Task 7 replaces the body:
+`blueworx_support_log_event()` lands in Task 8. Until then, add this stub immediately so the calls above do not fatal — Task 8 replaces the body:
 
 ```php
 /**
- * Records an audit event. Body implemented in Task 7.
+ * Records an audit event. Body implemented in Task 8.
  *
  * @param string $type Event type.
  * @return void
