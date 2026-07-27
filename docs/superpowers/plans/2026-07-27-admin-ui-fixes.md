@@ -643,7 +643,11 @@ git commit -m "feat: profile spacing pass and back-to-users breadcrumb"
 
 WordPress already renders the sessions control ("Log Out Everywhere Else") in the Account Management section, so it needs moving and styling, not building.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the tests**
+
+The first is a **regression guard**, not a red-then-green test: it pins the "moves, never
+clones" invariant, so it passes today and must keep passing after every change in Group C.
+The second is the red test for this task.
 
 ```js
 test('saving the profile still persists a change', async ({ page }) => {
@@ -677,9 +681,10 @@ test('a delete card appears when editing another user', async ({ page }) => {
 
 The first test is the invariant guard. It must pass unchanged after every task in Group C.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run both to confirm the expected starting state**
 
-Expected: the save test PASSES already (the invariant holds today — keep it green), the delete-card test FAILS.
+Expected: the save guard PASSES (the invariant holds today — keep it green), the delete-card
+test FAILS with `.bw-profile-danger` not found.
 
 - [ ] **Step 3: Write minimal implementation**
 

@@ -38,7 +38,10 @@ npx playwright test tests/support-access.spec.js
 node ../bluegroup_core_foundation/scripts/wp-test-env.mjs down --dir .wp-test
 ```
 
-Re-provision (`down` then `up`) after any change to plugin bootstrap or activation hooks — the harness copies the plugin in at `up` time.
+The harness **symlinks** the repo into `wp-content/plugins`, so PHP, CSS and JS edits are live
+immediately — no re-provision between tasks. Only a change to the plugin's activation hooks
+needs the plugin deactivated and reactivated in wp-admin; nothing in this plan does that,
+since the support account is provisioned on key generation rather than on activation.
 
 Specs import `test` from `./helpers.js`, **never** from `@playwright/test` — see the long comment in `tests/helpers.js` explaining the headless view-transition freeze.
 
@@ -267,7 +270,12 @@ git commit -m "feat: support access key storage and feature registration"
   - `blueworx_support_get_user(): WP_User|null`
   - `blueworx_support_is_support_user(): bool`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the regression guard**
+
+This is deliberately **not** a red-then-green test. It pins the property that a site with no
+key carries no support account — which is the whole reason provisioning moved off activation.
+It passes now and must still pass after Task 3 wires provisioning to key generation, where it
+would otherwise be easy to leave the account behind on revoke.
 
 Append to `tests/support-access.spec.js`:
 
@@ -279,9 +287,10 @@ test('no support account exists before a key is generated', async ({ page }) => 
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run it to confirm it passes**
 
-Expected: PASS trivially at this point (nothing creates the account yet). This test is a **guard** — it must keep passing after Task 3 wires provisioning to key generation. Record it as a regression guard, not a red test.
+Expected: PASS. If it fails, an earlier run left a support account behind — delete it before
+continuing, or every later assertion in this spec is testing dirty state.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -736,6 +745,152 @@ Expected: PASS.
 ```bash
 git add includes/support-access.php tests/support-access.spec.js
 git commit -m "feat: browser key login for the support account"
+```
+
+---
+
+### Task 4b: Throttle failed key attempts
+
+Spec §1.3 requires rate limiting. `includes/rest/rate-limit.php` cannot serve here — it is
+written for REST requests, and the browser login path is a plain front-end query arg. This task
+adds throttling that covers **both** entry points.
+
+**Files:**
+- Modify: `includes/support-access.php`
+- Test: `tests/support-access.spec.js`
+
+**Interfaces:**
+- Consumes: `blueworx_support_log_event()` (stubbed in Task 3, real in Task 8)
+- Produces:
+  - `blueworx_support_throttle_key(): string` — transient key for the caller's IP
+  - `blueworx_support_is_throttled(): bool`
+  - `blueworx_support_record_failure(): void`
+  - `blueworx_support_clear_failures(): void`
+  - Constants `BLUEWORX_SUPPORT_MAX_FAILURES` (5) and `BLUEWORX_SUPPORT_LOCKOUT` (900)
+
+Wire these into **both** `blueworx_support_handle_login()` (Task 4) and
+`blueworx_support_rest_auth()` (Task 6). Task 6 is written after this one, so its
+implementation must include the throttle check — do not leave it for later.
+
+- [ ] **Step 1: Write the failing test**
+
+```js
+test('repeated bad keys are locked out', async ({ page, request }) => {
+  await login(page);
+  await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+  await page.getByRole('button', { name: 'Generate key' }).click();
+  const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+  await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+  const bad = 'f'.repeat(64);
+
+  for (let i = 0; i < 5; i += 1) {
+    await request.get(`${baseURL}/?blueworx_support_login=${bad}`);
+  }
+
+  // The real key is now refused too: the lockout is on the caller, not the key.
+  const locked = await request.get(`${baseURL}/?blueworx_support_login=${key}`);
+  expect(locked.status()).toBe(429);
+
+  await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+  await page.getByRole('button', { name: 'Revoke key' }).click();
+});
+```
+
+Note the assertion: a correct key presented from a locked-out caller is **still** refused.
+Throttling that lets the right key through defeats itself, because the attacker's final guess
+is by definition the right one.
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Expected: FAIL — the sixth request returns 302 (a successful login), not 429.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```php
+/**
+ * Failed key attempts allowed before a caller is locked out.
+ */
+const BLUEWORX_SUPPORT_MAX_FAILURES = 5;
+
+/**
+ * Lockout duration in seconds.
+ */
+const BLUEWORX_SUPPORT_LOCKOUT = 900;
+
+/**
+ * Gets the throttle transient key for the calling address.
+ *
+ * The address is hashed, not stored raw: the throttle must not turn into an
+ * incidental log of who tried.
+ *
+ * @return string Transient key.
+ */
+function blueworx_support_throttle_key() {
+	$ip = isset( $_SERVER['REMOTE_ADDR'] )
+		? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
+		: 'unknown';
+
+	return 'blueworx_support_fail_' . md5( $ip );
+}
+
+/**
+ * Whether the calling address is currently locked out.
+ *
+ * @return bool True when further attempts must be refused.
+ */
+function blueworx_support_is_throttled() {
+	return (int) get_transient( blueworx_support_throttle_key() ) >= BLUEWORX_SUPPORT_MAX_FAILURES;
+}
+
+/**
+ * Records a failed key attempt.
+ *
+ * @return void
+ */
+function blueworx_support_record_failure() {
+	$key   = blueworx_support_throttle_key();
+	$count = (int) get_transient( $key ) + 1;
+
+	set_transient( $key, $count, BLUEWORX_SUPPORT_LOCKOUT );
+}
+
+/**
+ * Clears the failure counter after a successful authentication.
+ *
+ * @return void
+ */
+function blueworx_support_clear_failures() {
+	delete_transient( blueworx_support_throttle_key() );
+}
+```
+
+In `blueworx_support_handle_login()` (Task 4), immediately after the key is read and **before**
+any verification:
+
+```php
+	if ( blueworx_support_is_throttled() ) {
+		blueworx_support_log_event( 'login_throttled' );
+		wp_die(
+			esc_html__( 'Too many attempts. Try again later.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+			array( 'response' => 429 )
+		);
+	}
+```
+
+In the same function, call `blueworx_support_record_failure()` on the refusal branch and
+`blueworx_support_clear_failures()` immediately before `wp_set_auth_cookie()`.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add includes/support-access.php tests/support-access.spec.js
+git commit -m "feat: throttle failed support key attempts"
 ```
 
 ---
@@ -1432,6 +1587,7 @@ This is a spec requirement, not optional. Pay particular attention to the key co
 | §1.1 Account provisioning | 2, 3 (provisioning is triggered by key generation) |
 | §1.2 Hard request block | 5 |
 | §1.3 Key and access window | 1, 3 |
+| §1.3 Rate limiting | 4b |
 | §1.4 Entry points | 4 (browser), 6 (REST) |
 | §1.5 Data gating | 7 |
 | §1.6 Audit log | 8 |
@@ -1441,6 +1597,7 @@ This is a spec requirement, not optional. Pay particular attention to the key co
 
 Session termination on window close (Task 9) is not called out as its own spec section but is implied by §1.4's "the cookie is additionally invalidated when the window closes". Covered.
 
-**Rate limiting** is named in spec §1.3 and is **not** implemented by any task above. Deliberate: `includes/rest/rate-limit.php` is written for REST requests, and the browser login path is not a REST route. Task 4 should be revisited to add throttling for repeated bad keys on `?blueworx_support_login=` before merge — flagged for the security review rather than guessed at here.
+**Rate limiting** is implemented by Task 4b, covering both entry points. `rest-limit.php` was
+not reused because it is REST-only and the browser login path is a plain query arg.
 
 **Type consistency:** `blueworx_support_log_event()` is stubbed in Task 3 and implemented in Task 8 with the same one-string signature. `blueworx_support_ensure_account()` returns `int` and is only called for its side effect. Option names are identical across Tasks 1, 3, 8, 10.
