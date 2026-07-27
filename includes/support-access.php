@@ -68,7 +68,11 @@ function blueworx_support_record_failure() {
 }
 
 /**
- * Clears the failure counter after a successful authentication.
+ * Clears the failure counter for the calling address.
+ *
+ * Called after a successful key authentication, and also when an operator
+ * proven legitimate by a manage_options-gated, nonce-protected console action
+ * (generating or revoking a key) needs the lockout on their own address lifted.
  *
  * @return void
  */
@@ -369,6 +373,7 @@ function blueworx_support_handle_actions() {
 	if ( 'generate' === $action ) {
 		$GLOBALS['blueworx_support_new_key'] = blueworx_support_generate_key();
 		blueworx_support_ensure_account();
+		blueworx_support_clear_failures();
 		blueworx_support_log_event( 'key_generated' );
 		return;
 	}
@@ -376,6 +381,7 @@ function blueworx_support_handle_actions() {
 	if ( 'revoke' === $action ) {
 		blueworx_support_revoke_key();
 		blueworx_support_remove_account();
+		blueworx_support_clear_failures();
 		blueworx_support_log_event( 'key_revoked' );
 		return;
 	}
@@ -523,6 +529,19 @@ function blueworx_support_render_panel() {
 	<?php if ( '' !== $GLOBALS['blueworx_support_new_key'] ) : ?>
 		<p><strong><?php esc_html_e( 'Copy this key now — it is not shown again.', 'blueworx-labs-wordpress' ); ?></strong></p>
 		<code data-testid="bw-support-key"><?php echo esc_html( $GLOBALS['blueworx_support_new_key'] ); ?></code>
+	<?php endif; ?>
+
+	<?php if ( blueworx_support_is_throttled() ) : ?>
+		<div class="notice notice-warning inline">
+			<p>
+				<?php
+				esc_html_e(
+					'Repeated failed key attempts have temporarily blocked support access from this address. Generating or revoking a key clears this.',
+					'blueworx-labs-wordpress'
+				);
+				?>
+			</p>
+		</div>
 	<?php endif; ?>
 
 	<?php wp_nonce_field( 'blueworx_support_panel', 'blueworx_support_nonce' ); ?>

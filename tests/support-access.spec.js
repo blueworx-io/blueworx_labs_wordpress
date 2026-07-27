@@ -191,17 +191,37 @@ test.describe('Support access — key lifecycle', () => {
     const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
-    const bad = 'f'.repeat(64);
+    try {
+      const bad = 'f'.repeat(64);
 
-    for (let i = 0; i < 5; i += 1) {
-      await request.get(`${baseURL}/?blueworx_support_login=${bad}`);
+      for (let i = 0; i < 5; i += 1) {
+        await request.get(`${baseURL}/?blueworx_support_login=${bad}`);
+      }
+
+      // The real key is now refused too: the lockout is on the caller, not the key.
+      const locked = await request.get(`${baseURL}/?blueworx_support_login=${key}`);
+      expect(locked.status()).toBe(429);
+
+      // The console still shows the lockout is in effect.
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await expect(page.getByText(/temporarily blocked/i)).toBeVisible();
+    } finally {
+      // Revoking clears the throttle for this address (see
+      // blueworx_support_handle_actions()) — without this, the 900-second
+      // transient set above survives past the end of the test and locks out
+      // every later run's login attempts from 127.0.0.1.
+      await restoreAll([
+        [
+          'revoke support key and clear throttle',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click();
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await expect(page.getByText(/temporarily blocked/i)).toHaveCount(0);
     }
-
-    // The real key is now refused too: the lockout is on the caller, not the key.
-    const locked = await request.get(`${baseURL}/?blueworx_support_login=${key}`);
-    expect(locked.status()).toBe(429);
-
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-    await page.getByRole('button', { name: 'Revoke key' }).click();
   });
 });
