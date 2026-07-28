@@ -1,4 +1,23 @@
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test, expect, baseURL, isPlaceholder, login, restoreAll } from './helpers.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Forces the live BlueWorx support access window into the past, simulating
+ * natural 24-hour lapse rather than an operator clicking "Close support
+ * access". Playwright has no way to reach the database directly, so this
+ * shells out to a small PHP fixture (tests/fixtures/force-support-access-expiry.php)
+ * run against the local .wp-test harness — the only environment these specs
+ * ever execute against for real (see isPlaceholder above).
+ */
+function forceSupportAccessExpiry() {
+  const fixture = path.join(__dirname, 'fixtures', 'force-support-access-expiry.php');
+  const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+  execFileSync('php', [fixture, wpLoad], { encoding: 'utf8' });
+}
 
 test.describe('Support access — key lifecycle', () => {
   test.skip(isPlaceholder, 'No real site configured');
@@ -589,6 +608,62 @@ test.describe('Support access — key lifecycle', () => {
       await page.getByRole('button', { name: 'Close support access' }).click();
 
       // The live session is over, not merely barred from new logins.
+      const after = await anon.goto(`${baseURL}/wp-admin/options-general.php`);
+      expect(after.status()).toBe(403);
+
+      await fresh.close();
+      fresh = undefined;
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('a natural window lapse refuses a previously-working session with 403', async ({ page, context }) => {
+    // Task 9 only tested the operator explicitly clicking "Close support
+    // access". blueworx_support_access_open() re-reads the option on every
+    // call, so lapse and explicit-close are believed to be the same code
+    // path — but that belief was never exercised by a natural expiry. This
+    // forces blueworx_support_access_until into the past directly in the
+    // database, which is the only way to simulate the window lapsing on its
+    // own without waiting 24 real hours.
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      // Confirm the live session genuinely works before forcing expiry.
+      const before = await anon.goto(`${baseURL}/wp-admin/options-general.php`);
+      expect(before.status()).toBe(200);
+
+      // Simulate the window lapsing naturally — no click, no admin_init
+      // action, just the clock passing the stored expiry.
+      forceSupportAccessExpiry();
+
+      // The same session, previously working, must now be refused.
       const after = await anon.goto(`${baseURL}/wp-admin/options-general.php`);
       expect(after.status()).toBe(403);
 

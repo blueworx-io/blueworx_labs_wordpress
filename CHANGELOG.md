@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.38.0] - 2026-07-28
+
+### Added
+- BlueWorx support access: a single per-site key that opens a read-only wp-admin
+  and REST session for 24 hours, controlled by a toggle in the console. The
+  managed account has no usable password, so there is nothing to rotate.
+- Personal data is out of reach unless separately opted in for that session.
+- Audit log of every open, login, refusal and blocked write.
+
 ## [1.36.0] - 2026-07-23
 
 ### Removed
