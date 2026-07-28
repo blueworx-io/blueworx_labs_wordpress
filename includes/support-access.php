@@ -576,10 +576,19 @@ add_filter( 'blueworx_site_protection_role_check', 'blueworx_support_exempt_from
 /**
  * Resolves the support user from the access-key header.
  *
- * Runs on determine_current_user at priority 20, after the headless JWT
- * resolver (includes/rest/bootstrap.php), and follows the same rule: any
- * failure leaves $user_id untouched, so public routes and cookie or JWT
- * authentication keep working.
+ * Runs on determine_current_user at priority 21, after the headless JWT
+ * resolver (includes/rest/bootstrap.php, registered at priority 20), and
+ * follows the same rule: any failure leaves $user_id untouched, so public
+ * routes and cookie or JWT authentication keep working.
+ *
+ * Priority 21 rather than 20: this file is required before
+ * includes/rest/bootstrap.php in blueworx-labs-wordpress.php, so registering
+ * at the same priority would make this resolver run FIRST, by include order
+ * — a property no one reading either file in isolation should have to know
+ * about, and the opposite of the ordering intended here. Running after the
+ * JWT resolver is also the safer choice on its own merits: a JWT explicitly
+ * issued to a real, identified user should take precedence over a support
+ * key, not be pre-empted by it.
  *
  * determine_current_user can be invoked more than once per request, and on
  * the vast majority of requests no key header is present at all. Both facts
