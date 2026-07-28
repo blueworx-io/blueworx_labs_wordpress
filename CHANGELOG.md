@@ -4,12 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## 1.41.0
+## [1.41.0] - 2026-07-28
 
 ### Changed
 - Profile screen refinement: name fields sit in pairs, cards carry explanatory
   subtitles and a defined border, spacing follows the design system, and editing
   another user gains a back link and a delete card.
+- The profile redesign's section routing, card titles and subtitles now come
+  from translated strings rather than matching English heading text, so the
+  layout survives on non-English installs.
+
+### Fixed
+- Profile cards no longer force rows that core hides by class to display, which
+  had left "Repeat New Password" and the weak-password confirmation visible on
+  every profile page load.
 
 ## [1.36.0] - 2026-07-23
 

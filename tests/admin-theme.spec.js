@@ -504,8 +504,14 @@ test.describe('BlueWorx admin theme', () => {
   test('editing another user shows a back link to the users list', async ({ page }) => {
     await login(page);
     await page.goto('/wp-admin/users.php');
-    await page.locator('#the-list tr').first().locator('a').first().click();
 
+    // The back link only exists on user-edit.php. Core sends you to your own
+    // profile.php when you click yourself, where the link is correctly absent,
+    // so this only tests anything with a second user present.
+    const row = page.locator('#the-list tr').filter({ hasNotText: 'admin' }).first();
+    test.skip(await row.count() === 0, 'Harness has only one user');
+
+    await row.locator('a').first().click();
     await expect(page.locator('.bw-profile-back')).toBeVisible();
   });
 
@@ -532,9 +538,50 @@ test.describe('BlueWorx admin theme', () => {
     await page.goto('/wp-admin/profile.php');
     await expect(page.locator('#nickname')).toHaveValue(probe);
 
-    // Restore.
+    // Restore, and wait for the save to land so teardown cannot race it and
+    // leave the harness carrying a bw-test-* nickname into the next run.
     await page.locator('#nickname').fill(original);
     await page.locator('#bw-profile-save').click();
+    await expect(page.locator('#nickname')).toHaveValue(original);
+  });
+
+  test('every profile field stays inside the form after the restructure', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // The redesign MOVES core's markup rather than recreating it. Any control
+    // that lands outside #your-profile silently stops posting — the save test
+    // above would still pass, because it only exercises one field. This is the
+    // structural guard for all of them.
+    const inForm = await page.locator('#your-profile input, #your-profile select, #your-profile textarea').count();
+    const onPage = await page.locator('.wrap input, .wrap select, .wrap textarea').count();
+
+    // The hero and back link add only a <button> and an <a>, never a field, so
+    // every input/select/textarea under .wrap must still be inside the form.
+    expect(inForm).toBeGreaterThan(0);
+    expect(onPage).toBe(inForm);
+  });
+
+  test('the security card carries the sessions control', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // Account Management routes to the right-hand card; the "Log Out Everywhere
+    // Else" row must travel with it rather than being orphaned or dropped.
+    // Core renders this row on every own-profile view, so this is an outright
+    // assertion — no skip guard, which would let the section go missing quietly.
+    await expect(page.locator('.bw-profile-card .user-sessions-wrap')).toBeAttached();
+    await expect(page.locator('.bw-profile-card #destroy-sessions')).toBeVisible();
+  });
+
+  test('core rows hidden by class stay hidden inside the cards', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // The card grid must not out-specify core's own class-only hiding rules.
+    // Both of these are hidden until the user asks to change their password.
+    await expect(page.locator('#your-profile tr.user-pass2-wrap')).toBeHidden();
+    await expect(page.locator('#your-profile tr.pw-weak')).toBeHidden();
   });
 
   test('no bare section headings are left visible outside the cards', async ({ page }) => {

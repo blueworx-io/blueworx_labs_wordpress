@@ -1288,25 +1288,20 @@ div.error {
 	gap: 14px 16px;
 }
 
-/* Full width by default; only the explicitly paired fields share a row. */
+/* Full width by default; only the explicitly paired fields share a row.
+
+   Deliberately no `display` here. The tbody above is a grid container, so its
+   rows are blockified automatically — setting `display: block` as well would
+   out-specify core's own class-only hiding rules (`.pw-weak`, `.hide-if-js`,
+   and anything a plugin hides the same way) and force those rows visible on
+   every load. Leaving display alone lets core keep control of it. */
 .bw-profile-card .form-table tr {
-	display: block;
 	grid-column: 1 / -1;
 	margin-bottom: 0;
 }
 
 .bw-profile-card .form-table tr.bw-profile-field-half {
 	grid-column: span 1;
-}
-
-/* Core hides this row by default (`.pw-weak { display: none; }`) and only
-   reveals it via an inline style once a weak password is actually entered.
-   Our tr rule above has higher specificity than core's class-only rule, so
-   without this it wins and the row shows up on every load. Restoring
-   display:none here just re-establishes core's default; core's own inline
-   style (set by user-profile.js) still wins over both once it fires. */
-.bw-profile-card .form-table tr.pw-weak {
-	display: none;
 }
 
 @media only screen and (max-width: 782px) {

@@ -17,30 +17,51 @@
 		return;
 	}
 
-	// Section-heading text (lower-cased) -> which column the card belongs in.
-	var RIGHT_COLUMN = [ 'account management', 'account', 'security' ];
-
-	// Section-heading text (lower-cased) -> friendlier card title.
-	var RETITLE = {
-		'name': 'Profile Details',
-		'contact info': 'Contact',
-		'about yourself': 'About',
-		'about the user': 'About',
-		'account management': 'Account & Security'
-	};
+	// Canonical section keys the design cares about. The actual heading TEXT is
+	// core's, and therefore translated, so it is never matched literally here —
+	// PHP passes the translated strings in data.sections and we resolve heading
+	// text back to one of these keys via that map.
+	var RIGHT_COLUMN = [ 'accountManagement' ];
 
 	// Sections the design drops. Left in the form (hidden) so their inputs and
 	// any nonce they carry still post.
-	var DROP = [ 'personal options' ];
+	var DROP = [ 'personalOptions' ];
 
-	// Section-heading text (lower-cased) -> explanatory subtitle for the card.
-	var SUBTITLE = {
-		'name': 'How this user appears across the site.',
-		'contact info': 'Where notifications and password resets are sent.',
-		'about yourself': 'Shown on the author archive page and below posts.',
-		'about the user': 'Shown on the author archive page and below posts.',
-		'account management': 'Password and sign-in security.'
+	// English fallbacks, used only if a heading is not in data.sections — e.g. a
+	// core string that changed wording, on an English install.
+	var FALLBACK_SECTIONS = {
+		'personal options': 'personalOptions',
+		'name': 'name',
+		'contact info': 'contactInfo',
+		'about yourself': 'aboutYourself',
+		'about the user': 'aboutTheUser',
+		'account management': 'accountManagement'
 	};
+
+	// Lower-cased heading text -> canonical key, built from the translated
+	// strings first so a localised site resolves correctly, with the English
+	// fallbacks filling any gap.
+	var SECTION_KEYS = ( function () {
+		var lookup = {};
+		var key;
+
+		for ( key in FALLBACK_SECTIONS ) {
+			if ( Object.prototype.hasOwnProperty.call( FALLBACK_SECTIONS, key ) ) {
+				lookup[ key ] = FALLBACK_SECTIONS[ key ];
+			}
+		}
+
+		for ( key in data.sections || {} ) {
+			if ( Object.prototype.hasOwnProperty.call( data.sections, key ) ) {
+				lookup[ String( data.sections[ key ] ).trim().toLowerCase() ] = key;
+			}
+		}
+
+		return lookup;
+	}() );
+
+	var RETITLE = data.cardTitles || {};
+	var SUBTITLE = data.cardSubs || {};
 
 	// Fields that share a row, in pairs. Anything not listed stays full width —
 	// including fields added by other plugins, which is why this is an explicit
@@ -130,7 +151,9 @@
 
 		function startCard( heading ) {
 			var raw = heading.textContent.trim();
-			var key = raw.toLowerCase();
+			// Unrecognised sections (plugin-added, or core wording we don't map)
+			// still get a card — they just keep their own title and no subtitle.
+			var key = SECTION_KEYS[ raw.toLowerCase() ] || '';
 
 			if ( DROP.indexOf( key ) !== -1 ) {
 				currentBody = null;
@@ -168,9 +191,12 @@
 
 			if ( /^H2$/i.test( node.tagName ) ) {
 				startCard( node );
-				// The card's own title stands in for this heading; leave the
-				// original in the form (still readable by anything that expects
-				// it) but hidden, rather than moving or removing it.
+				// The card's own <h2> replaces this one at the same level, so
+				// heading order is preserved and nothing is lost to assistive
+				// tech. display:none takes the original out of the accessibility
+				// tree entirely — that is intended here, precisely because it
+				// would otherwise be announced twice. Hidden rather than removed
+				// only so we never destroy markup core might look for.
 				node.style.display = 'none';
 				return;
 			}
@@ -209,9 +235,7 @@
 			danger.className = 'bw-profile-card bw-profile-danger';
 			danger.innerHTML =
 				'<h2 class="bw-profile-card-title">' + escapeHtml( data.deleteLabel ) + '</h2>' +
-				'<p class="bw-profile-card-sub">' +
-					'Content can be reassigned to another user before deletion.' +
-				'</p>' +
+				'<p class="bw-profile-card-sub">' + escapeHtml( data.dangerSub ) + '</p>' +
 				'<a class="bw-btn bw-btn-danger" href="' + encodeURI( data.deleteUrl ) + '">' +
 					escapeHtml( data.deleteLabel ) +
 				'</a>';
