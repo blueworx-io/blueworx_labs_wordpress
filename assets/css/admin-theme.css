@@ -905,6 +905,22 @@ div.error {
 	body:not(.folded) .bw-topbar {
 		left: var(--bw-sidebar-w);
 	}
+
+	/* Core hard-codes the block/site editor skeleton's left edge to its own
+	   expanded admin-menu width (160px). Our expanded sidebar is 232px, so
+	   without this 72px of the editor — including the Undo button — renders
+	   underneath our sidebar. (Folded needs no equivalent rule: our folded
+	   width is 36px, the same value core assumes, so the two already agree.)
+	   The skeleton's right edge stays pinned at core's own right:0, so only
+	   left needs to move; width recalculates on its own. Everything else
+	   (settings sidebar, bottom bar) is a child of this element and moves
+	   with it — confirmed by measuring for any other independently
+	   fixed-positioned editor element; there is only this one. Fullscreen is
+	   excluded, matching the vertical rule above: it already correctly fills
+	   the viewport from left:0. */
+	body:not(.folded).block-editor-page:not(.is-fullscreen-mode) .interface-interface-skeleton {
+		left: var(--bw-sidebar-w);
+	}
 }
 
 @media only screen and (max-width: 1100px) {

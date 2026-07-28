@@ -484,6 +484,10 @@ test.describe('BlueWorx admin theme', () => {
   });
 
   test('the BlueWorx top bar does not cover the block editor toolbar in normal mode', async ({ page }) => {
+    // Wide enough, and above the 961px breakpoint, so the sidebar sits in its
+    // expanded (232px) state — the state where core's 160px assumption and our
+    // width disagree, which is what the horizontal assertions below cover.
+    await page.setViewportSize({ width: 1265, height: 900 });
     await login(page);
     await page.goto('/wp-admin/post-new.php');
 
@@ -500,9 +504,19 @@ test.describe('BlueWorx admin theme', () => {
     await expect(skeleton).toBeVisible();
 
     const bar = await page.locator('.bw-topbar').boundingBox();
+    const sidebar = await page.locator('#adminmenuback').boundingBox();
     const editor = await skeleton.boundingBox();
 
     expect(editor.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+
+    // Core hard-codes the skeleton's left edge to its own 160px expanded
+    // admin-menu width. Our expanded sidebar is 232px, so without the
+    // matching override the editor — including its own Undo button — renders
+    // partly underneath ours.
+    expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+
+    const undo = await page.locator('button[aria-label="Undo"]').boundingBox();
+    expect(undo.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
   });
 
   test('the BlueWorx top bar hides itself in fullscreen mode instead of covering the editor toolbar', async ({ page }) => {

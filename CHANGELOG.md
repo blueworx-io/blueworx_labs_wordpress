@@ -11,6 +11,10 @@ versioning.
   normal mode the editor's skeleton is now offset below the bar; in fullscreen
   mode the bar and brand block hide themselves instead, since fullscreen also
   overlapped and is an explicit user request to clear the chrome away.
+- The editor's controls, including Undo/Redo, were also partly hidden
+  underneath the wider BlueWorx sidebar with the menu expanded, since core
+  assumes a narrower sidebar than ours. The editor now aligns to our sidebar's
+  actual width instead.
 
 ## [1.36.0] - 2026-07-23
 
