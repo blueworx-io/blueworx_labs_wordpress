@@ -381,6 +381,115 @@ test.describe('Support access — key lifecycle', () => {
     }
   });
 
+  test('personal-data screens are denied unless data access is opened', async ({ page, context }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+
+      // Denied without the data opt-in.
+      expect((await anon.goto(`${baseURL}/wp-admin/users.php`)).status()).toBe(403);
+      expect((await anon.goto(`${baseURL}/wp-admin/edit-comments.php`)).status()).toBe(403);
+      // A non-data screen still reads fine.
+      expect((await anon.goto(`${baseURL}/wp-admin/options-general.php`)).status()).toBe(200);
+
+      // An administrator is unaffected by the gate — same screen, real session.
+      expect((await page.goto('/wp-admin/users.php')).status()).toBe(200);
+      await expect(page.locator('body.wp-admin')).toHaveCount(1);
+
+      // Re-open with data access ticked.
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.getByRole('button', { name: 'Close support access' }).click();
+      await page.getByLabel('Also allow access to personal data for this session').check();
+      await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      expect((await anon.goto(`${baseURL}/wp-admin/users.php`)).status()).toBe(200);
+      expect((await anon.goto(`${baseURL}/wp-admin/edit-comments.php`)).status()).toBe(200);
+
+      await fresh.close();
+      fresh = undefined;
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test("the support account's own profile stays reachable with data access shut", async ({ page, context }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    // The support account's own ID, read from the users list row (id="user-<ID>")
+    // while still logged in as the administrator.
+    await page.goto('/wp-admin/users.php');
+    const row = page.locator('#the-list tr', { hasText: 'blueworx_support' });
+    const rowId = await row.getAttribute('id');
+    const supportId = Number((rowId || '').replace('user-', ''));
+    expect(supportId).toBeGreaterThan(0);
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+
+      // user-edit.php is a denied screen, but the support account's OWN
+      // profile (its own user_id) must still be reachable even with data
+      // access shut.
+      expect((await anon.goto(`${baseURL}/wp-admin/user-edit.php?user_id=${supportId}`)).status()).toBe(200);
+
+      // Someone ELSE's profile, addressed explicitly by user_id, is still denied.
+      const otherId = supportId === 1 ? supportId + 1 : 1;
+      expect((await anon.goto(`${baseURL}/wp-admin/user-edit.php?user_id=${otherId}`)).status()).toBe(403);
+
+      await fresh.close();
+      fresh = undefined;
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
   test('repeated bad REST key headers are locked out too', async ({ page, request }) => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');

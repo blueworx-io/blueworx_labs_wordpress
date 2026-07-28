@@ -410,6 +410,114 @@ function blueworx_support_log_event( $type ) {
 }
 
 /**
+ * Admin screens denied to the support account without data access.
+ *
+ * @return array $pagenow values.
+ */
+function blueworx_support_denied_screens() {
+	/**
+	 * Filters the screens hidden from support access.
+	 *
+	 * Lets a site add the data screens of a plugin this list does not know about.
+	 *
+	 * @param array $screens $pagenow values.
+	 */
+	return (array) apply_filters(
+		'blueworx_support_denied_screens',
+		array( 'users.php', 'user-edit.php', 'edit-comments.php', 'export.php' )
+	);
+}
+
+/**
+ * REST route prefixes denied to the support account without data access.
+ *
+ * @return array Route prefixes.
+ */
+function blueworx_support_denied_routes() {
+	/**
+	 * Filters the REST routes hidden from support access.
+	 *
+	 * @param array $routes Route prefixes.
+	 */
+	return (array) apply_filters(
+		'blueworx_support_denied_routes',
+		array( '/wp/v2/users', '/wp/v2/comments', '/blueworx/v1/account', '/blueworx/v1/surecart' )
+	);
+}
+
+/**
+ * Denies personal-data admin screens unless data access is open.
+ *
+ * A 403 rather than a redirect, so the refusal is unambiguous.
+ *
+ * @return void
+ */
+function blueworx_support_gate_data_screens() {
+	global $pagenow;
+
+	if ( ! blueworx_support_is_support_user() || blueworx_support_data_open() ) {
+		return;
+	}
+
+	if ( ! in_array( (string) $pagenow, blueworx_support_denied_screens(), true ) ) {
+		return;
+	}
+
+	// The account's own profile is reachable; other users' are not.
+	if ( 'user-edit.php' === $pagenow ) {
+		$target = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( $target === get_current_user_id() ) {
+			return;
+		}
+	}
+
+	wp_die(
+		esc_html__( 'This screen holds personal data and is not available to BlueWorx support access.', 'blueworx-labs-wordpress' ),
+		esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+		array( 'response' => 403 )
+	);
+}
+// Priority 0: some features (e.g. includes/disable-comments.php) install their
+// own admin_init handler that redirects or exits before reaching this file's
+// default-priority position, which would let a denied screen escape as a
+// redirect-to-200 rather than the 403 required here. Running first means this
+// denial always wins over another feature's own admin_init handling of the
+// same screen.
+add_action( 'admin_init', 'blueworx_support_gate_data_screens', 0 );
+
+/**
+ * Denies personal-data REST routes unless data access is open.
+ *
+ * @param mixed           $result  Pre-dispatch result.
+ * @param WP_REST_Server  $server  Server instance.
+ * @param WP_REST_Request $request Current request.
+ * @return mixed Untouched result, or a WP_Error.
+ */
+function blueworx_support_gate_data_routes( $result, $server, $request ) {
+	unset( $server );
+
+	if ( ! blueworx_support_is_support_user() || blueworx_support_data_open() ) {
+		return $result;
+	}
+
+	$route = (string) $request->get_route();
+
+	foreach ( blueworx_support_denied_routes() as $prefix ) {
+		if ( 0 === strpos( $route, $prefix ) ) {
+			return new WP_Error(
+				'blueworx_support_no_data',
+				__( 'This route returns personal data and is not available to BlueWorx support access.', 'blueworx-labs-wordpress' ),
+				array( 'status' => 403 )
+			);
+		}
+	}
+
+	return $result;
+}
+add_filter( 'rest_pre_dispatch', 'blueworx_support_gate_data_routes', 11, 3 );
+
+/**
  * Rejects every non-read request made by the support account.
  *
  * This — not the capability set — is what makes the account read-only.
