@@ -335,6 +335,26 @@ function blueworx_support_remove_account() {
 }
 
 /**
+ * Tears support access down when the plugin is deactivated.
+ *
+ * uninstall.php already handles a full removal, but deactivation left the
+ * near-administrator account standing with nothing protecting it: the
+ * read-only guarantee is the request-layer block in this file, and with the
+ * plugin switched off that block does not run at all. The account and role go
+ * first, and the key goes with them because it addresses an account that no
+ * longer exists — leaving a live key hash behind would only misreport the
+ * console's state on reactivation.
+ *
+ * Registered on register_deactivation_hook in blueworx-labs-wordpress.php.
+ *
+ * @return void
+ */
+function blueworx_support_on_deactivate() {
+	blueworx_support_remove_account();
+	blueworx_support_revoke_key();
+}
+
+/**
  * Gets the support user.
  *
  * @return WP_User|null Support user, or null when it does not exist.
@@ -903,11 +923,22 @@ function blueworx_support_handle_login() {
 		);
 	}
 
-	if ( ! blueworx_feature_enabled( 'support_access' )
-		|| ! blueworx_support_access_open()
-		|| ! blueworx_support_verify_key( $key )
-	) {
+	// A failure is recorded only when the key itself is wrong. A CORRECT key
+	// presented while the feature is off or the window is shut says nothing
+	// about the caller being an attacker, and counting it meant an operator
+	// testing their own valid key could lock themselves out of the window they
+	// were about to open.
+	if ( ! blueworx_support_verify_key( $key ) ) {
 		blueworx_support_record_failure();
+		blueworx_support_log_event( 'login_refused' );
+		wp_die(
+			esc_html__( 'Support access is not available.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+			array( 'response' => 403 )
+		);
+	}
+
+	if ( ! blueworx_feature_enabled( 'support_access' ) || ! blueworx_support_access_open() ) {
 		blueworx_support_log_event( 'login_refused' );
 		wp_die(
 			esc_html__( 'Support access is not available.', 'blueworx-labs-wordpress' ),
@@ -1104,6 +1135,35 @@ function blueworx_support_render_panel() {
 				?>
 			</p>
 		</div>
+	<?php endif; ?>
+
+	<?php if ( blueworx_support_access_open() ) : ?>
+		<?php
+		$blueworx_support_until = (int) get_option( 'blueworx_support_access_until', 0 );
+
+		// date_i18n() expects a timestamp that ALREADY carries the site's UTC
+		// offset and renders it as-is; the stored expiry is a plain UTC
+		// timestamp, so the offset is added here. Without this the panel would
+		// report the closing time in UTC while labelling it as local. wp_date()
+		// would do this properly on its own but only exists from WordPress 5.3,
+		// and this plugin still supports 5.0.
+		$blueworx_support_until_local = $blueworx_support_until + (int) ( (float) get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS );
+		?>
+		<p data-testid="bw-support-expiry">
+			<strong>
+				<?php
+				printf(
+					/* translators: 1: closing date and time, 2: human-readable time remaining, e.g. "3 hours". */
+					esc_html__( 'Support access is open until %1$s (%2$s remaining).', 'blueworx-labs-wordpress' ),
+					esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $blueworx_support_until_local ) ),
+					esc_html( human_time_diff( time(), $blueworx_support_until ) )
+				);
+				?>
+			</strong>
+			<?php if ( blueworx_support_data_open() ) : ?>
+				<br /><?php esc_html_e( 'Personal-data access is also open for this window.', 'blueworx-labs-wordpress' ); ?>
+			<?php endif; ?>
+		</p>
 	<?php endif; ?>
 
 	<?php wp_nonce_field( 'blueworx_support_panel', 'blueworx_support_nonce' ); ?>
