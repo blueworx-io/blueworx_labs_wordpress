@@ -822,6 +822,31 @@ div.error {
 	#adminmenu {
 		margin-top: 0;
 	}
+
+	/* The block and site editors render a fixed full-app skeleton anchored to
+	   core's admin-bar height (32px). The BlueWorx bar is 60px and sits above it
+	   in the stacking order, so without this the bar paints straight over the
+	   editor's own toolbar and its controls cannot be clicked. The site editor
+	   uses the same skeleton class and is covered by the same rule. */
+	body.block-editor-page:not(.is-fullscreen-mode) .interface-interface-skeleton {
+		top: var(--bw-topbar-h);
+	}
+
+	/* Fullscreen mode is an explicit user action meaning "get the chrome out of
+	   my way" — and measurement showed it overlaps too (skeleton top 0 vs bar
+	   bottom 60, worse than normal mode's 32 vs 60). Our top bar and brand block
+	   are chrome the editor doesn't know about, so reserving space for them here
+	   would fight the user's intent instead of honouring it. The fix is to
+	   remove our chrome from the equation entirely and leave the skeleton at
+	   top:0 where the editor puts it, rather than trying to squeeze it below a
+	   bar it has no concept of. #adminmenuback/#adminmenuwrap are not included
+	   here: WordPress's own fullscreen CSS already collapses them to 0 width in
+	   this mode, so no charcoal strip is left stranded behind the hidden brand
+	   block. */
+	body.is-fullscreen-mode .bw-topbar,
+	body.is-fullscreen-mode .bw-brand {
+		display: none;
+	}
 }
 
 /* Full-width sidebar only when the menu is expanded. */

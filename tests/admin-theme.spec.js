@@ -482,4 +482,53 @@ test.describe('BlueWorx admin theme', () => {
     const anchorBackground = await anchor.evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(transparent).not.toContain(anchorBackground);
   });
+
+  test('the BlueWorx top bar does not cover the block editor toolbar in normal mode', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    // Leave fullscreen if WordPress remembered it on — this test asserts the
+    // normal-mode offset, so asserting in fullscreen would test the wrong state.
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    const bar = await page.locator('.bw-topbar').boundingBox();
+    const editor = await skeleton.boundingBox();
+
+    expect(editor.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+  });
+
+  test('the BlueWorx top bar hides itself in fullscreen mode instead of covering the editor toolbar', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    // Force fullscreen on — this test asserts the fullscreen-mode behaviour, so
+    // it must not depend on whatever state WordPress remembered for this user.
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (!select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    // Our chrome is gone rather than reserved-for: the bar isn't just moved out
+    // of the way, it isn't there to cover anything.
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+    await expect(page.locator('.bw-brand')).toBeHidden();
+
+    // The editor's own toolbar (undo/redo/inserter) sits at the very top of the
+    // skeleton in fullscreen — confirm nothing of ours still covers it.
+    const editor = await skeleton.boundingBox();
+    expect(editor.y).toBe(0);
+  });
 });

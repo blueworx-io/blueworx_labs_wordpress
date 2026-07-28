@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## 1.39.0
+
+### Fixed
+- The BlueWorx admin top bar no longer covers the block editor's toolbar. In
+  normal mode the editor's skeleton is now offset below the bar; in fullscreen
+  mode the bar and brand block hide themselves instead, since fullscreen also
+  overlapped and is an explicit user request to clear the chrome away.
+
 ## [1.36.0] - 2026-07-23
 
 ### Removed
