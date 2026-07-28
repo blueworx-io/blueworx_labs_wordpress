@@ -857,11 +857,18 @@ add_filter( 'blueworx_site_protection_role_check', 'blueworx_support_exempt_from
  * is off or the window is shut, since in that case the key was never even
  * checked and nothing is known about whether it was right or wrong.
  *
+ * A successful authentication is logged as a "rest_auth" event (spec §1.6).
+ * Without it a key used purely over REST left no trace at all in the audit log
+ * this feature's accountability rests on. It uses its own static guard, for the
+ * same reason as the failure counter: determine_current_user can fire more than
+ * once per request and must not produce two entries for one caller.
+ *
  * @param int|false $user_id User ID resolved so far.
  * @return int|false Resolved user ID.
  */
 function blueworx_support_rest_auth( $user_id ) {
 	static $failure_recorded = false;
+	static $success_logged   = false;
 
 	if ( ! empty( $user_id ) ) {
 		return $user_id;
@@ -896,6 +903,11 @@ function blueworx_support_rest_auth( $user_id ) {
 	}
 
 	blueworx_support_clear_failures();
+
+	if ( ! $success_logged ) {
+		blueworx_support_log_event( 'rest_auth' );
+		$success_logged = true;
+	}
 
 	return (int) $user->ID;
 }
