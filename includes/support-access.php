@@ -474,20 +474,172 @@ function blueworx_support_denied_screens() {
 }
 
 /**
+ * Whether WooCommerce is present on this site.
+ *
+ * @return bool True when WooCommerce is loaded.
+ */
+function blueworx_support_woocommerce_active() {
+	return class_exists( 'WooCommerce' ) || defined( 'WC_PLUGIN_FILE' );
+}
+
+/**
+ * Whether SureCart is present on this site.
+ *
+ * @return bool True when SureCart is loaded.
+ */
+function blueworx_support_surecart_active() {
+	return class_exists( 'SureCart' ) || defined( 'SURECART_PLUGIN_FILE' );
+}
+
+/**
+ * Admin page slugs (admin.php?page=…) denied without data access.
+ *
+ * The support role is a clone of the LIVE administrator role, so it inherits
+ * manage_woocommerce and its equivalents from whatever commerce plugin the
+ * client runs. Those screens are not $pagenow values — they hang off
+ * admin.php?page= — so they need matching of their own, or orders and
+ * customers stay fully readable with data access OFF (spec §1.5).
+ *
+ * Only screens of a plugin that is actually present are listed, so the console
+ * never refuses a page the site does not have.
+ *
+ * @return array Page slugs.
+ */
+function blueworx_support_denied_admin_pages() {
+	$pages = array();
+
+	if ( blueworx_support_woocommerce_active() ) {
+		// HPOS order tables. Order-type variants are addressed as
+		// wc-orders--shop_subscription, so this list is prefix-matched.
+		$pages[] = 'wc-orders';
+	}
+
+	if ( blueworx_support_surecart_active() ) {
+		$pages[] = 'sc-orders';
+		$pages[] = 'sc-customers';
+		$pages[] = 'sc-subscriptions';
+	}
+
+	/**
+	 * Filters the admin.php page slugs hidden from support access.
+	 *
+	 * Matched as prefixes, so "wc-orders" also covers "wc-orders--<type>".
+	 *
+	 * @param array $pages Page slugs.
+	 */
+	return (array) apply_filters( 'blueworx_support_denied_admin_pages', $pages );
+}
+
+/**
+ * Post types (edit.php?post_type=…) denied without data access.
+ *
+ * Covers the legacy, pre-HPOS WooCommerce order table, which is a normal post
+ * list screen rather than a page slug.
+ *
+ * @return array Post type keys.
+ */
+function blueworx_support_denied_post_types() {
+	$types = array();
+
+	if ( blueworx_support_woocommerce_active() ) {
+		$types[] = 'shop_order';
+		$types[] = 'shop_subscription';
+	}
+
+	/**
+	 * Filters the post types hidden from support access.
+	 *
+	 * @param array $types Post type keys.
+	 */
+	return (array) apply_filters( 'blueworx_support_denied_post_types', $types );
+}
+
+/**
  * REST route prefixes denied to the support account without data access.
  *
  * @return array Route prefixes.
  */
 function blueworx_support_denied_routes() {
+	$routes = array( '/wp/v2/users', '/wp/v2/comments', '/blueworx/v1/account', '/blueworx/v1/surecart' );
+
+	// The same commerce data, reachable over REST rather than through a screen.
+	if ( blueworx_support_woocommerce_active() ) {
+		$routes[] = '/wc/v3/orders';
+		$routes[] = '/wc/v3/customers';
+		$routes[] = '/wc-analytics/orders';
+		$routes[] = '/wc-analytics/customers';
+	}
+
+	if ( blueworx_support_surecart_active() ) {
+		$routes[] = '/surecart/v1/orders';
+		$routes[] = '/surecart/v1/customers';
+	}
+
 	/**
 	 * Filters the REST routes hidden from support access.
 	 *
 	 * @param array $routes Route prefixes.
 	 */
-	return (array) apply_filters(
-		'blueworx_support_denied_routes',
-		array( '/wp/v2/users', '/wp/v2/comments', '/blueworx/v1/account', '/blueworx/v1/surecart' )
-	);
+	return (array) apply_filters( 'blueworx_support_denied_routes', $routes );
+}
+
+/**
+ * Whether the screen being requested holds personal data.
+ *
+ * Three shapes of screen are matched, because the data screens this feature
+ * has to withhold are not all addressed the same way: plain $pagenow values
+ * (users.php), page slugs behind admin.php (WooCommerce and SureCart order and
+ * customer tables), and post-type list tables behind edit.php (the legacy
+ * WooCommerce order table).
+ *
+ * @return bool True when the screen must be refused.
+ */
+function blueworx_support_screen_is_denied() {
+	global $pagenow;
+
+	$screen = (string) $pagenow;
+
+	if ( in_array( $screen, blueworx_support_denied_screens(), true ) ) {
+		// The account's own profile is reachable; other users' are not.
+		if ( 'user-edit.php' === $screen ) {
+			$target = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+			return $target !== get_current_user_id();
+		}
+
+		return true;
+	}
+
+	if ( 'admin.php' === $screen ) {
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		foreach ( blueworx_support_denied_admin_pages() as $prefix ) {
+			if ( '' !== $page && 0 === strpos( $page, (string) $prefix ) ) {
+				return true;
+			}
+		}
+
+		// WooCommerce Analytics is one SPA behind a single page slug, so the
+		// customers report is addressed by its path rather than its own slug.
+		// Only that path is refused; the rest of the app stays diagnosable.
+		if ( 'wc-admin' === $page ) {
+			$path = isset( $_GET['path'] ) ? sanitize_text_field( wp_unslash( $_GET['path'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+			if ( 0 === strpos( $path, '/customers' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	if ( 'edit.php' === $screen ) {
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		return '' !== $post_type && in_array( $post_type, blueworx_support_denied_post_types(), true );
+	}
+
+	return false;
 }
 
 /**
@@ -498,23 +650,12 @@ function blueworx_support_denied_routes() {
  * @return void
  */
 function blueworx_support_gate_data_screens() {
-	global $pagenow;
-
 	if ( ! blueworx_support_is_support_user() || blueworx_support_data_open() ) {
 		return;
 	}
 
-	if ( ! in_array( (string) $pagenow, blueworx_support_denied_screens(), true ) ) {
+	if ( ! blueworx_support_screen_is_denied() ) {
 		return;
-	}
-
-	// The account's own profile is reachable; other users' are not.
-	if ( 'user-edit.php' === $pagenow ) {
-		$target = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		if ( $target === get_current_user_id() ) {
-			return;
-		}
 	}
 
 	wp_die(
