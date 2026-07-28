@@ -569,4 +569,95 @@ test.describe('Support access — key lifecycle', () => {
       await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
     }
   });
+
+  test('closing the window logs out a live support session', async ({ page, context }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.getByRole('button', { name: 'Close support access' }).click();
+
+      // The live session is over, not merely barred from new logins.
+      const after = await anon.goto(`${baseURL}/wp-admin/options-general.php`);
+      expect(after.status()).toBe(403);
+
+      await fresh.close();
+      fresh = undefined;
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('closing the window does not touch an administrator session', async ({ page, context }) => {
+    // The enforcement must be scoped to the support account only — an
+    // administrator's own session must survive a window close untouched.
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.getByRole('button', { name: 'Close support access' }).click();
+
+      // The window closing must not log the operator's own admin session out.
+      const still = await page.goto('/wp-admin/options-general.php');
+      expect(still.status()).toBe(200);
+      await expect(page.locator('body.wp-admin')).toHaveCount(1);
+
+      await fresh.close();
+      fresh = undefined;
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
 });

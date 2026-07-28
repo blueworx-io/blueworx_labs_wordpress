@@ -614,6 +614,37 @@ function blueworx_support_block_rest_writes( $result, $server, $request ) {
 add_filter( 'rest_pre_dispatch', 'blueworx_support_block_rest_writes', 10, 3 );
 
 /**
+ * Ends any support session once the window is shut or lapsed.
+ *
+ * The toggle would otherwise only bar new logins, leaving an already-open
+ * session running for as long as its cookie lasted.
+ *
+ * @return void
+ */
+function blueworx_support_enforce_window() {
+	if ( ! blueworx_support_is_support_user() || blueworx_support_access_open() ) {
+		return;
+	}
+
+	wp_destroy_current_session();
+	wp_clear_auth_cookie();
+	wp_set_current_user( 0 );
+	blueworx_support_log_event( 'access_expired' );
+
+	wp_die(
+		esc_html__( 'The BlueWorx support window has closed.', 'blueworx-labs-wordpress' ),
+		esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+		array( 'response' => 403 )
+	);
+}
+// Priority 2: runs after blueworx_support_handle_login() (priority 0), which
+// sets the current user and only ever runs while the window is open, so this
+// check never fires on the login request itself. It also runs after
+// blueworx_support_block_writes() (priority 0), so a session already found
+// stale here is destroyed before that handler would otherwise inspect it.
+add_action( 'init', 'blueworx_support_enforce_window', 2 );
+
+/**
  * Signs the support user in from a key in the query string.
  *
  * Sets a session cookie only (no "remember me"), so the browser never keeps a
