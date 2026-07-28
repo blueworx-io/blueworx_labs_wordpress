@@ -400,13 +400,43 @@ function blueworx_support_handle_actions() {
 add_action( 'admin_init', 'blueworx_support_handle_actions' );
 
 /**
- * Records an audit event. Body implemented in Task 7.
+ * Records an audit event, keeping the most recent 100.
+ *
+ * The log is what makes the access window verifiable rather than merely
+ * claimed, so it records refusals as well as successes.
  *
  * @param string $type Event type.
  * @return void
  */
 function blueworx_support_log_event( $type ) {
-	unset( $type );
+	$log = get_option( 'blueworx_support_log', array() );
+
+	if ( ! is_array( $log ) ) {
+		$log = array();
+	}
+
+	$ip = isset( $_SERVER['REMOTE_ADDR'] )
+		? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
+		: '';
+
+	$log[] = array(
+		'type' => sanitize_key( $type ),
+		'time' => time(),
+		'ip'   => $ip,
+	);
+
+	update_option( 'blueworx_support_log', array_slice( $log, -100 ) );
+}
+
+/**
+ * Gets the audit log, newest first.
+ *
+ * @return array Log entries.
+ */
+function blueworx_support_get_log() {
+	$log = get_option( 'blueworx_support_log', array() );
+
+	return is_array( $log ) ? array_reverse( $log ) : array();
 }
 
 /**
@@ -823,5 +853,16 @@ function blueworx_support_render_panel() {
 	<p class="description">
 		<?php esc_html_e( 'Read-only is enforced by rejecting every write request from this account. A plugin that writes data in response to a plain page load is not caught by that rule, so only open this window when you have asked BlueWorx to look at something.', 'blueworx-labs-wordpress' ); ?>
 	</p>
+
+	<h3><?php esc_html_e( 'Audit log', 'blueworx-labs-wordpress' ); ?></h3>
+	<ul data-testid="bw-support-log">
+		<?php foreach ( blueworx_support_get_log() as $entry ) : ?>
+			<li>
+				<code><?php echo esc_html( $entry['type'] ); ?></code>
+				<?php echo esc_html( date_i18n( 'Y-m-d H:i', (int) $entry['time'] ) ); ?>
+				<?php echo esc_html( $entry['ip'] ); ?>
+			</li>
+		<?php endforeach; ?>
+	</ul>
 	<?php
 }

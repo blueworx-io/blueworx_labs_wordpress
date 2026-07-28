@@ -531,4 +531,42 @@ test.describe('Support access — key lifecycle', () => {
       await expect(page.getByText(/temporarily blocked/i)).toHaveCount(0);
     }
   });
+
+  test('the audit log records opening, login and a blocked write', async ({ page, context }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    try {
+      const fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await anon.request.post(`${baseURL}/wp-admin/admin-post.php`, { data: { probe: '1' } });
+      await fresh.close();
+
+      // The log persists across earlier tests, so this only asserts these
+      // events are present, not that the log started empty.
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      const log = page.locator('[data-testid="bw-support-log"]');
+      await expect(log).toContainText('access_opened');
+      await expect(log).toContainText('login');
+      await expect(log).toContainText('blocked_write');
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
 });
