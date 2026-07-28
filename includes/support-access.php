@@ -517,6 +517,70 @@ function blueworx_support_gate_data_screens() {
 add_action( 'admin_init', 'blueworx_support_gate_data_screens', 0 );
 
 /**
+ * Admin screens whose "action" parameter activates or deactivates code.
+ *
+ * @return array $pagenow values.
+ */
+function blueworx_support_activation_screens() {
+	return array( 'plugins.php', 'themes.php' );
+}
+
+/**
+ * Denies plugin and theme activation actions to the support account.
+ *
+ * activate_plugins and switch_themes are deliberately retained on the support
+ * role: activate_plugins is what gates VIEWING plugins.php, and reading the
+ * plugin list is one of the primary diagnostics this feature exists to enable.
+ * But WordPress activates or deactivates a SINGLE plugin through a nonce'd GET
+ * link (plugins.php?action=activate&plugin=…&_wpnonce=…) — only the bulk
+ * actions are POSTed — and themes.php?action=activate&stylesheet=… behaves the
+ * same way. The account can render plugins.php, harvest its own valid nonces
+ * from that page and follow the link, so the read-only write block (which only
+ * refuses non-GET methods) never sees it.
+ *
+ * The action is therefore blocked here while the read is left intact: any
+ * request to one of these screens carrying an action parameter is refused.
+ * Both "action" and "action2" are checked because WordPress submits the bottom
+ * bulk-action selector under the second name, and '-1' — WordPress's "no action
+ * selected" value — is treated as no action at all.
+ *
+ * @return void
+ */
+function blueworx_support_gate_activation_actions() {
+	global $pagenow;
+
+	if ( ! blueworx_support_is_support_user() ) {
+		return;
+	}
+
+	if ( ! in_array( (string) $pagenow, blueworx_support_activation_screens(), true ) ) {
+		return;
+	}
+
+	foreach ( array( 'action', 'action2' ) as $param ) {
+		$value = isset( $_GET[ $param ] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			? sanitize_text_field( wp_unslash( $_GET[ $param ] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			: '';
+
+		if ( '' === $value || '-1' === $value ) {
+			continue;
+		}
+
+		blueworx_support_log_event( 'blocked_write' );
+
+		wp_die(
+			esc_html__( 'BlueWorx support access is read-only: plugins and themes cannot be activated or deactivated.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
+			array( 'response' => 403 )
+		);
+	}
+}
+// Priority 0, for the same reason as blueworx_support_gate_data_screens(): this
+// denial must win over any other feature's own admin_init handling of the same
+// screen, so it cannot escape as a redirect-to-200.
+add_action( 'admin_init', 'blueworx_support_gate_activation_actions', 0 );
+
+/**
  * Denies personal-data REST routes unless data access is open.
  *
  * @param mixed           $result  Pre-dispatch result.
