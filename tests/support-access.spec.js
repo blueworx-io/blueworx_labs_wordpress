@@ -1,7 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { test, expect, baseURL, isPlaceholder, login, restoreAll } from './helpers.js';
+import { fileURLToPath, URL } from 'node:url';
+import {
+  test,
+  expect,
+  baseURL,
+  isPlaceholder,
+  login,
+  restoreAll,
+  cacheBust,
+  LOGIN_PATH,
+} from './helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,6 +27,23 @@ function forceSupportAccessExpiry() {
   const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
   execFileSync('php', [fixture, wpLoad], { encoding: 'utf8' });
 }
+
+/**
+ * Creates or deletes an IMPOSTOR account named "blueworx_support" that does not
+ * hold the managed support role. See tests/fixtures/impostor-support-user.php —
+ * there is no UI path that produces this account reliably, so it is made
+ * directly against the local .wp-test harness.
+ *
+ * @param {'create'|'delete'} command Fixture command.
+ * @return {string} Fixture stdout — the generated password for "create".
+ */
+function impostorSupportUser(command) {
+  const fixture = path.join(__dirname, 'fixtures', 'impostor-support-user.php');
+  const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+  return execFileSync('php', [fixture, wpLoad, command], { encoding: 'utf8' }).trim();
+}
+
+const CONSOLE_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
 test.describe('Support access — key lifecycle', () => {
   test.skip(isPlaceholder, 'No real site configured');
@@ -725,6 +751,356 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('the support account can read plugins.php but cannot activate over GET', async ({
+    page,
+    context,
+  }) => {
+    // The support role keeps activate_plugins deliberately — it is what gates
+    // VIEWING plugins.php, and the plugin list is a primary diagnostic. But
+    // WordPress deactivates a single plugin through a nonce'd GET link, which
+    // the read-only write block (non-GET methods only) never saw. The account
+    // can scrape its own valid nonce off the page it is allowed to read.
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    // How many plugins are active right now, seen as the administrator.
+    await page.goto('/wp-admin/plugins.php');
+    const activeBefore = await page.locator('#the-list tr.active').count();
+    expect(activeBefore).toBeGreaterThan(0);
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      // Reading the plugin list still works — that is the whole point.
+      const list = await anon.goto(`${baseURL}/wp-admin/plugins.php`);
+      expect(list.status()).toBe(200);
+      await expect(anon.locator('#the-list')).toBeVisible();
+
+      // A real deactivate link, with a real nonce, harvested from that page.
+      const href = await anon
+        .locator('#the-list a[href*="action=deactivate"]')
+        .first()
+        .getAttribute('href');
+      expect(href, 'a deactivate link with a nonce must be present').toBeTruthy();
+      expect(href).toContain('_wpnonce=');
+
+      const attack = new URL(href, `${baseURL}/wp-admin/plugins.php`).toString();
+      const refused = await anon.goto(attack);
+      expect(refused.status(), 'GET deactivate must be refused').toBe(403);
+
+      // action2 — WordPress's bottom bulk selector — is refused as well.
+      const refusedAction2 = await anon.goto(
+        `${baseURL}/wp-admin/plugins.php?action2=deactivate-selected`
+      );
+      expect(refusedAction2.status()).toBe(403);
+
+      // "-1" is WordPress's "no action selected" value and must not be treated
+      // as an action, or the plain list screen would break.
+      const noAction = await anon.goto(`${baseURL}/wp-admin/plugins.php?action=-1&action2=-1`);
+      expect(noAction.status()).toBe(200);
+
+      // themes.php is gated on exactly the same footing.
+      const themeAttack = await anon.goto(
+        `${baseURL}/wp-admin/themes.php?action=activate&stylesheet=twentytwentyfour`
+      );
+      expect(themeAttack.status()).toBe(403);
+
+      await fresh.close();
+      fresh = undefined;
+
+      // Nothing was actually deactivated.
+      await page.goto('/wp-admin/plugins.php');
+      expect(await page.locator('#the-list tr.active').count()).toBe(activeBefore);
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('the support account cannot fire an admin_post handler over GET', async ({
+    page,
+    context,
+  }) => {
+    // check_admin_referer() reads $_REQUEST, so a nonce in the query string
+    // satisfied it and blueworx_save_feature_settings() ran on a GET — every
+    // $_POST read empty, writing '0' over every feature option and both
+    // site-protection options.
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+
+    const featureBoxes = page.locator('input.blueworx-feature-toggle');
+    const featureCount = await featureBoxes.count();
+    expect(featureCount).toBeGreaterThan(0);
+
+    const before = {};
+    for (let i = 0; i < featureCount; i += 1) {
+      const box = featureBoxes.nth(i);
+      before[await box.getAttribute('data-blueworx-feature')] = await box.isChecked();
+    }
+    const slugBefore = await page.locator('#blueworx_login_slug').inputValue();
+    expect(slugBefore.length).toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      // The support account holds manage_options and is not blocked from the
+      // console, so it can read the nonce straight off the page.
+      const consoleRead = await anon.goto(`${baseURL}${CONSOLE_PATH}`);
+      expect(consoleRead.status()).toBe(200);
+
+      const nonce = await anon
+        .locator('form[action*="admin-post.php"] input[name="_wpnonce"]')
+        .first()
+        .inputValue();
+      expect(nonce, 'the feature-settings nonce must be scrapeable').toBeTruthy();
+
+      const refused = await anon.goto(
+        `${baseURL}/wp-admin/admin-post.php?action=blueworx_save_feature_settings&_wpnonce=${nonce}`
+      );
+      expect(refused.status(), 'GET to admin-post.php must be refused').toBe(403);
+
+      await fresh.close();
+      fresh = undefined;
+
+      // And nothing was written: every feature toggle and the login slug are
+      // exactly as they were.
+      await page.goto(CONSOLE_PATH);
+      for (const [feature, wasChecked] of Object.entries(before)) {
+        await expect(
+          page.locator(`input.blueworx-feature-toggle[data-blueworx-feature="${feature}"]`),
+          `feature ${feature}`
+        ).toBeChecked({ checked: wasChecked });
+      }
+      expect(await page.locator('#blueworx_login_slug').inputValue()).toBe(slugBefore);
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('a user merely named blueworx_support gains no Site Protection exemption', async ({
+    page,
+    context,
+  }) => {
+    // blueworx_support_is_support_user() keyed on user_login alone, so any
+    // account with that login — obtainable on a site with open registration —
+    // bypassed Site Protection entirely, with no key and no window.
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+    await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+
+    await page.goto(CONSOLE_PATH);
+    const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
+    const backendToggle = page.locator('input[name="blueworx_backend_protection_enabled"]');
+    const frontendSelect = page.locator('select[name="blueworx_frontend_protection_roles[]"]');
+    const backendSelect = page.locator('select[name="blueworx_backend_protection_roles[]"]');
+
+    const original = {
+      frontendEnabled: await frontendToggle.isChecked(),
+      backendEnabled: await backendToggle.isChecked(),
+      frontendRoles: await frontendSelect.evaluate((el) =>
+        Array.from(el.selectedOptions).map((o) => o.value)
+      ),
+      backendRoles: await backendSelect.evaluate((el) =>
+        Array.from(el.selectedOptions).map((o) => o.value)
+      ),
+    };
+
+    const password = impostorSupportUser('create');
+    expect(password.length).toBeGreaterThan(0);
+
+    let fresh;
+
+    try {
+      await frontendToggle.setChecked(true);
+      await backendToggle.setChecked(true);
+      await frontendSelect.selectOption(['administrator']);
+      await backendSelect.selectOption(['administrator']);
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+
+      fresh = await context.browser().newContext();
+      const impostor = await fresh.newPage();
+      await impostor.emulateMedia({ reducedMotion: 'reduce' });
+
+      await impostor.goto(cacheBust(`${baseURL}${LOGIN_PATH}`));
+      await impostor.fill('#user_login', 'blueworx_support');
+      await impostor.fill('#user_pass', password);
+      await impostor.click('#wp-submit');
+      await impostor.waitForLoadState('domcontentloaded');
+
+      // Signed in as a subscriber — and Site Protection must treat them as one.
+      //
+      // The status alone is NOT enough to prove the fix, and this was verified
+      // by reverting the role check and re-running: with the old login-only
+      // check, blueworx_support_enforce_window() treated this account as the
+      // support account, found the window shut and destroyed its session
+      // during the login request itself — so the response was still 403, just
+      // "Please log in to view this site." from the logged-out branch. Only the
+      // message proves the refusal came from Site Protection applying this
+      // account's OWN subscriber role.
+      const backend = await impostor.goto(`${baseURL}/wp-admin/`);
+      expect(backend.status(), 'wp-admin must be refused').toBe(403);
+      await expect(impostor.locator('.wp-die-message')).toContainText(
+        'You do not have access to view this area.'
+      );
+
+      const frontend = await impostor.goto(cacheBust(`${baseURL}/`));
+      expect(frontend.status(), 'the frontend must be refused').toBe(403);
+      await expect(impostor.locator('.wp-die-message')).toContainText(
+        'You do not have access to view this area.'
+      );
+
+      await fresh.close();
+      fresh = undefined;
+    } finally {
+      await restoreAll([
+        [
+          'close impostor context',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+          },
+        ],
+        [
+          'delete the impostor account',
+          async () => {
+            impostorSupportUser('delete');
+          },
+        ],
+        [
+          'restore site protection',
+          async () => {
+            await page.goto(CONSOLE_PATH);
+            await page
+              .locator('input[name="blueworx_frontend_protection_enabled"]')
+              .setChecked(original.frontendEnabled);
+            await page
+              .locator('select[name="blueworx_frontend_protection_roles[]"]')
+              .selectOption(original.frontendRoles);
+            await page
+              .locator('input[name="blueworx_backend_protection_enabled"]')
+              .setChecked(original.backendEnabled);
+            await page
+              .locator('select[name="blueworx_backend_protection_roles[]"]')
+              .selectOption(original.backendRoles);
+            await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+
+            await page.goto(CONSOLE_PATH);
+            await expect(
+              page.locator('input[name="blueworx_frontend_protection_enabled"]')
+            ).toBeChecked({ checked: original.frontendEnabled });
+            await expect(
+              page.locator('input[name="blueworx_backend_protection_enabled"]')
+            ).toBeChecked({ checked: original.backendEnabled });
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('REST personal-data routes are denied unless data access is opened', async ({
+    page,
+    request,
+  }) => {
+    // The screen-level gate has had a test since task 7; the REST route gate
+    // (blueworx_support_gate_data_routes) never did.
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    const headers = { 'X-BlueWorx-Support-Key': key };
+
+    try {
+      const denied = await request.get(`${baseURL}/wp-json/wp/v2/users`, { headers });
+      expect(denied.status()).toBe(403);
+      expect((await denied.json()).code).toBe('blueworx_support_no_data');
+
+      const deniedComments = await request.get(`${baseURL}/wp-json/wp/v2/comments`, { headers });
+      expect(deniedComments.status()).toBe(403);
+
+      // A non-data route is unaffected: the key still authenticates.
+      const allowed = await request.get(`${baseURL}/wp-json/wp/v2/settings`, { headers });
+      expect(allowed.status()).toBe(200);
+
+      // Re-open with the personal-data opt-in ticked.
+      await page.goto(CONSOLE_PATH);
+      await page.getByRole('button', { name: 'Close support access' }).click();
+      await page.getByLabel('Also allow access to personal data for this session').check();
+      await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+      const opened = await request.get(`${baseURL}/wp-json/wp/v2/users`, { headers });
+      expect(opened.status()).toBe(200);
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key and close data access',
+          async () => {
+            await page.goto(CONSOLE_PATH);
             await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },

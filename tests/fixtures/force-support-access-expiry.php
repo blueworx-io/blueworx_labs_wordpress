@@ -20,6 +20,12 @@ if ( ! $wp_load || ! is_file( $wp_load ) ) {
 	exit( 1 );
 }
 
+// WP_CLI, before wp-load: blueworx_intercept_requests()
+// (includes/login-security.php) sees this CLI process as an anonymous visitor
+// and, whenever Site Protection is on, wp_die()s it the moment WordPress
+// finishes loading — silently, since the process still exits 0. That handler
+// skips CLI contexts, so this declares the context this really is.
+define( 'WP_CLI', true );
 define( 'WP_USE_THEMES', false );
 require $wp_load;
 
