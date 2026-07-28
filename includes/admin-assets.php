@@ -119,6 +119,15 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 							? admin_url( 'users.php' )
 							: '',
 						'backLabel'   => __( 'Back to Users', 'blueworx-labs-wordpress' ),
+						'deleteUrl'   => ( 'user-edit.php' === $hook_suffix
+							&& current_user_can( 'delete_users' )
+							&& get_current_user_id() !== $profile_user->ID )
+							? wp_nonce_url(
+								admin_url( 'users.php?action=delete&user=' . $profile_user->ID ),
+								'bulk-users'
+							)
+							: '',
+						'deleteLabel' => __( 'Delete This User', 'blueworx-labs-wordpress' ),
 					)
 				);
 			}

@@ -1311,6 +1311,29 @@ div.error {
 	font-size: 12px;
 }
 
+.bw-profile-danger {
+	border-color: rgba(255, 48, 47, .35);
+}
+
+.bw-profile-danger .bw-btn-danger {
+	display: inline-flex;
+	align-items: center;
+	border: 1px solid var(--bw-error);
+	border-radius: var(--bw-radius-btn);
+	padding: 9px 16px;
+	color: var(--bw-error);
+	background: transparent;
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.bw-profile-danger .bw-btn-danger:hover,
+.bw-profile-danger .bw-btn-danger:focus {
+	color: #fff;
+	background: var(--bw-error);
+}
+
 .bw-profile-card .form-table th,
 .bw-profile-card .form-table td {
 	display: block;

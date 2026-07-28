@@ -191,6 +191,20 @@
 
 		form.insertBefore( grid, form.firstChild );
 
+		if ( data.deleteUrl ) {
+			var danger = document.createElement( 'section' );
+			danger.className = 'bw-profile-card bw-profile-danger';
+			danger.innerHTML =
+				'<h2 class="bw-profile-card-title">' + escapeHtml( data.deleteLabel ) + '</h2>' +
+				'<p class="bw-profile-card-sub">' +
+					'Content can be reassigned to another user before deletion.' +
+				'</p>' +
+				'<a class="bw-btn bw-btn-danger" href="' + encodeURI( data.deleteUrl ) + '">' +
+					escapeHtml( data.deleteLabel ) +
+				'</a>';
+			rightCol.appendChild( danger );
+		}
+
 		if ( data.usersUrl ) {
 			var back = document.createElement( 'a' );
 			back.className = 'bw-profile-back';

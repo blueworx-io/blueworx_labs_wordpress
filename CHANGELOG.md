@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## 1.41.0
+
+### Changed
+- Profile screen refinement: name fields sit in pairs, cards carry explanatory
+  subtitles and a defined border, spacing follows the design system, and editing
+  another user gains a back link and a delete card.
+
 ## [1.36.0] - 2026-07-23
 
 ### Removed

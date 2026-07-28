@@ -514,4 +514,32 @@ test.describe('BlueWorx admin theme', () => {
     await page.goto('/wp-admin/profile.php');
     await expect(page.locator('.bw-profile-back')).toHaveCount(0);
   });
+
+  test('saving the profile still persists a change', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    const nickname = page.locator('#nickname');
+    const original = await nickname.inputValue();
+    const probe = `bw-test-${Date.now()}`;
+
+    await nickname.fill(probe);
+    await page.locator('#submit').click();
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('#nickname')).toHaveValue(probe);
+
+    // Restore.
+    await page.locator('#nickname').fill(original);
+    await page.locator('#submit').click();
+  });
+
+  test('a delete card appears when editing another user', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+    const row = page.locator('#the-list tr').filter({ hasNotText: 'admin' }).first();
+    test.skip(await row.count() === 0, 'Harness has only one user');
+
+    await row.locator('a').first().click();
+    await expect(page.locator('.bw-profile-danger')).toBeVisible();
+  });
 });
