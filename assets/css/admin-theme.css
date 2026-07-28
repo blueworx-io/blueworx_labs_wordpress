@@ -863,7 +863,13 @@ div.error {
 		margin-left: var(--bw-sidebar-w);
 	}
 
+	/* Fixed, not absolute: #adminmenuwrap's own overflow would clip an absolutely
+	   positioned fly-out (that is the bug this replaces), and plain overflow does
+	   not clip fixed descendants. The vertical offset is supplied per item by
+	   assets/js/admin-menu-flyout.js, which is the one thing fixed positioning
+	   cannot work out for itself. */
 	body:not(.folded) #adminmenu .wp-not-current-submenu .wp-submenu {
+		position: fixed;
 		left: var(--bw-sidebar-w);
 	}
 
