@@ -482,4 +482,22 @@ test.describe('BlueWorx admin theme', () => {
     const anchorBackground = await anchor.evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(transparent).not.toContain(anchorBackground);
   });
+
+  test('name fields are paired side by side on the profile screen', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    const first = await page.locator('[data-bw-field="first_name"]').boundingBox();
+    const last = await page.locator('[data-bw-field="last_name"]').boundingBox();
+
+    // Same row, different columns.
+    expect(Math.abs(first.y - last.y)).toBeLessThan(4);
+    expect(last.x).toBeGreaterThan(first.x);
+  });
+
+  test('cards carry an explanatory subtitle', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('.bw-profile-card-sub').first()).toBeVisible();
+  });
 });

@@ -33,6 +33,20 @@
 	// any nonce they carry still post.
 	var DROP = [ 'personal options' ];
 
+	// Section-heading text (lower-cased) -> explanatory subtitle for the card.
+	var SUBTITLE = {
+		'name': 'How this user appears across the site.',
+		'contact info': 'Where notifications and password resets are sent.',
+		'about yourself': 'Shown on the author archive page and below posts.',
+		'about the user': 'Shown on the author archive page and below posts.',
+		'account management': 'Password and sign-in security.'
+	};
+
+	// Fields that share a row, in pairs. Anything not listed stays full width —
+	// including fields added by other plugins, which is why this is an explicit
+	// list rather than an nth-child rule.
+	var PAIRED = [ 'first_name', 'last_name', 'nickname', 'display_name' ];
+
 	function escapeHtml( value ) {
 		return String( value == null ? '' : value ).replace( /[&<>"']/g, function ( character ) {
 			return {
@@ -122,6 +136,13 @@
 			title.textContent = RETITLE[ key ] || raw;
 			card.appendChild( title );
 
+			if ( SUBTITLE[ key ] ) {
+				var sub = document.createElement( 'p' );
+				sub.className = 'bw-profile-card-sub';
+				sub.textContent = SUBTITLE[ key ];
+				card.appendChild( sub );
+			}
+
 			var body = document.createElement( 'div' );
 			body.className = 'bw-profile-card-body';
 			card.appendChild( body );
@@ -148,6 +169,23 @@
 				// hide it but leave it in the form so any hidden input it wraps
 				// still submits. Bare hidden <input>s are left visible-less as-is.
 				node.style.display = 'none';
+			}
+		} );
+
+		// Tag each field row with the id of the input it holds, so CSS can pair
+		// specific fields without depending on their position — a plugin adding a
+		// profile field must not shuffle the pairing.
+		grid.querySelectorAll( '.form-table tr' ).forEach( function ( row ) {
+			var field = row.querySelector( 'input[id], select[id], textarea[id]' );
+
+			if ( ! field ) {
+				return;
+			}
+
+			row.setAttribute( 'data-bw-field', field.id );
+
+			if ( PAIRED.indexOf( field.id ) !== -1 ) {
+				row.classList.add( 'bw-profile-field-half' );
 			}
 		} );
 

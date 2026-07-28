@@ -1268,13 +1268,33 @@ div.error {
 	box-shadow: none;
 }
 
-.bw-profile-card .form-table tr {
-	display: block;
-	margin-bottom: 14px;
+.bw-profile-card .form-table > tbody {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px 16px;
 }
 
-.bw-profile-card .form-table tr:last-child {
+/* Full width by default; only the explicitly paired fields share a row. */
+.bw-profile-card .form-table tr {
+	display: block;
+	grid-column: 1 / -1;
 	margin-bottom: 0;
+}
+
+.bw-profile-card .form-table tr.bw-profile-field-half {
+	grid-column: span 1;
+}
+
+@media only screen and (max-width: 782px) {
+	.bw-profile-card .form-table tr.bw-profile-field-half {
+		grid-column: 1 / -1;
+	}
+}
+
+.bw-profile-card-sub {
+	margin: -8px 0 16px;
+	color: var(--bw-muted);
+	font-size: 12px;
 }
 
 .bw-profile-card .form-table th,
