@@ -333,6 +333,20 @@ function blueworx_support_get_user() {
 /**
  * Whether the current request is running as the support user.
  *
+ * Both the login AND the role are required. The login alone is not an identity
+ * claim anyone else is stopped from making: on a site with open registration a
+ * visitor could once have signed up as "blueworx_support" and, through
+ * blueworx_support_exempt_from_site_protection(), bypassed Site Protection
+ * entirely with no key and no window. Only the managed account provisioned by
+ * blueworx_support_ensure_account() holds the support role, and that role is
+ * never assignable from the users screen because create_users, edit_users and
+ * promote_users are all removed from it.
+ *
+ * The role is present in every context this function gates — including the
+ * login request itself, because blueworx_support_handle_login() resolves the
+ * account with wp_set_current_user(), which populates WP_User::$roles from the
+ * stored capabilities before any later hook runs.
+ *
  * @return bool True for the support account.
  */
 function blueworx_support_is_support_user() {
@@ -340,7 +354,8 @@ function blueworx_support_is_support_user() {
 
 	return $user instanceof WP_User
 		&& $user->exists()
-		&& 'blueworx_support' === $user->user_login;
+		&& 'blueworx_support' === $user->user_login
+		&& in_array( blueworx_support_role_slug(), (array) $user->roles, true );
 }
 
 /**
