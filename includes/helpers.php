@@ -23,8 +23,9 @@ function blueworx_redirect_home() {
 /**
  * Refuses a state-changing admin request that did not arrive as a POST.
  *
- * check_admin_referer() reads $_REQUEST, so a nonce presented in the query
- * string satisfies it just as well as one posted in a form body. Without a
+ * WordPress reads the nonce from $_REQUEST in check_admin_referer(), so one
+ * presented in the query string satisfies it just as well as one posted in a
+ * form body. Without a
  * method check an admin_post handler therefore runs happily on a plain GET —
  * every $_POST read comes back empty, and the handler writes those empty
  * values straight over real settings. Anyone who can load the screen the nonce

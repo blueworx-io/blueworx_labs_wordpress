@@ -337,7 +337,7 @@ function blueworx_support_remove_account() {
 /**
  * Tears support access down when the plugin is deactivated.
  *
- * uninstall.php already handles a full removal, but deactivation left the
+ * Uninstall already handles a full removal, but deactivation left the
  * near-administrator account standing with nothing protecting it: the
  * read-only guarantee is the request-layer block in this file, and with the
  * plugin switched off that block does not run at all. The account and role go
@@ -639,7 +639,7 @@ function blueworx_support_screen_is_denied() {
 		if ( 'user-edit.php' === $screen ) {
 			$target = isset( $_GET['user_id'] ) ? (int) $_GET['user_id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-			return $target !== get_current_user_id();
+			return get_current_user_id() !== $target;
 		}
 
 		return true;
@@ -719,8 +719,8 @@ function blueworx_support_activation_screens() {
 /**
  * Denies plugin and theme activation actions to the support account.
  *
- * activate_plugins and switch_themes are deliberately retained on the support
- * role: activate_plugins is what gates VIEWING plugins.php, and reading the
+ * The activate_plugins and switch_themes capabilities are deliberately retained
+ * on the support role: activate_plugins is what gates VIEWING plugins.php, and reading the
  * plugin list is one of the primary diagnostics this feature exists to enable.
  * But WordPress activates or deactivates a SINGLE plugin through a nonce'd GET
  * link (plugins.php?action=activate&plugin=…&_wpnonce=…) — only the bulk
