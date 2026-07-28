@@ -1299,6 +1299,16 @@ div.error {
 	grid-column: span 1;
 }
 
+/* Core hides this row by default (`.pw-weak { display: none; }`) and only
+   reveals it via an inline style once a weak password is actually entered.
+   Our tr rule above has higher specificity than core's class-only rule, so
+   without this it wins and the row shows up on every load. Restoring
+   display:none here just re-establishes core's default; core's own inline
+   style (set by user-profile.js) still wins over both once it fires. */
+.bw-profile-card .form-table tr.pw-weak {
+	display: none;
+}
+
 @media only screen and (max-width: 782px) {
 	.bw-profile-card .form-table tr.bw-profile-field-half {
 		grid-column: 1 / -1;

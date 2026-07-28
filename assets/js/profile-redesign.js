@@ -119,6 +119,15 @@
 		var submit = form.querySelector( 'p.submit' );
 		var currentBody = null;
 
+		// The native submit stays in the form and stays a real, clickable control
+		// — the hero's Save Changes button proxies it via nativeSubmit.click() —
+		// it just should not be visible now that the hero button is the one users
+		// see. Hidden (not removed, not disabled) so the programmatic click still
+		// fires the browser's native form-submit activation.
+		if ( submit ) {
+			submit.style.display = 'none';
+		}
+
 		function startCard( heading ) {
 			var raw = heading.textContent.trim();
 			var key = raw.toLowerCase();
@@ -159,6 +168,10 @@
 
 			if ( /^H2$/i.test( node.tagName ) ) {
 				startCard( node );
+				// The card's own title stands in for this heading; leave the
+				// original in the form (still readable by anything that expects
+				// it) but hidden, rather than moving or removing it.
+				node.style.display = 'none';
 				return;
 			}
 

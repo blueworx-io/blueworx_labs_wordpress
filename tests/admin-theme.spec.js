@@ -523,14 +523,37 @@ test.describe('BlueWorx admin theme', () => {
     const original = await nickname.inputValue();
     const probe = `bw-test-${Date.now()}`;
 
+    // The native #submit control is hidden by design — the hero's Save Changes
+    // button (#bw-profile-save) is what a real user clicks, and it proxies the
+    // native submit via nativeSubmit.click(). Clicking through the hero button
+    // here is what actually guards the "still saves" invariant post-redesign.
     await nickname.fill(probe);
-    await page.locator('#submit').click();
+    await page.locator('#bw-profile-save').click();
     await page.goto('/wp-admin/profile.php');
     await expect(page.locator('#nickname')).toHaveValue(probe);
 
     // Restore.
     await page.locator('#nickname').fill(original);
-    await page.locator('#submit').click();
+    await page.locator('#bw-profile-save').click();
+  });
+
+  test('no bare section headings are left visible outside the cards', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // Every original <h2> (Name, Contact Info, About Yourself, Account
+    // Management, ...) is left in the form so any nonce/markup it wraps still
+    // posts, but must be hidden — the card title stands in for it visually.
+    const strayHeadings = page.locator('#your-profile > h2');
+    const count = await strayHeadings.count();
+
+    for (let i = 0; i < count; i += 1) {
+      await expect(strayHeadings.nth(i)).toBeHidden();
+    }
+
+    // And the native submit button must not be visibly duplicating the hero's
+    // Save Changes button, even though it stays in the DOM and clickable.
+    await expect(page.locator('#your-profile p.submit')).toBeHidden();
   });
 
   test('a delete card appears when editing another user', async ({ page }) => {
