@@ -545,4 +545,50 @@ test.describe('BlueWorx admin theme', () => {
     const editor = await skeleton.boundingBox();
     expect(editor.y).toBe(0);
   });
+
+  test('the block editor toolbar clears the folded-width sidebar in the 783-960px band', async ({ page }) => {
+    // Below 961px the sidebar is always in its folded state, and folded's 36px
+    // happens to equal core's own folded admin-menu width — so this state
+    // needs no left-offset override, only pinning: a future change to
+    // --bw-sidebar-w or the breakpoints could silently break the agreement.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    const sidebar = await page.locator('#adminmenuback').boundingBox();
+    const editor = await skeleton.boundingBox();
+
+    expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  });
+
+  test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {
+    // WordPress forces site-editor.php permanently into fullscreen — there is
+    // no non-fullscreen state to test here. Our fullscreen rule is what
+    // governs it, so this documents that (non-obvious) fact and confirms our
+    // chrome disappears rather than needing its own offset rule.
+    await login(page);
+    await page.goto('/wp-admin/site-editor.php');
+
+    // The site editor can take several seconds to boot on this harness — wait
+    // on its own layout element rather than a fixed timeout.
+    const layout = page.locator('.edit-site-layout');
+    await expect(layout).toBeVisible({ timeout: 15000 });
+
+    await expect(page.locator('body')).toHaveClass(/is-fullscreen-mode/);
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+
+    const box = await layout.boundingBox();
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+  });
 });
