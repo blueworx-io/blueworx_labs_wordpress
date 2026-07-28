@@ -500,4 +500,18 @@ test.describe('BlueWorx admin theme', () => {
     await page.goto('/wp-admin/profile.php');
     await expect(page.locator('.bw-profile-card-sub').first()).toBeVisible();
   });
+
+  test('editing another user shows a back link to the users list', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+    await page.locator('#the-list tr').first().locator('a').first().click();
+
+    await expect(page.locator('.bw-profile-back')).toBeVisible();
+  });
+
+  test('own profile has no back link', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('.bw-profile-back')).toHaveCount(0);
+  });
 });

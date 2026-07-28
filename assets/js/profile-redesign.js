@@ -190,6 +190,15 @@
 		} );
 
 		form.insertBefore( grid, form.firstChild );
+
+		if ( data.usersUrl ) {
+			var back = document.createElement( 'a' );
+			back.className = 'bw-profile-back';
+			back.href = data.usersUrl;
+			back.textContent = '← ' + data.backLabel;
+			wrap.insertBefore( back, form );
+		}
+
 		wrap.insertBefore( buildHero(), form );
 
 		// The hero Save button proxies core's native submit control.

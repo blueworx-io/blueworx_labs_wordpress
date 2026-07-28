@@ -115,6 +115,10 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 						'postsUrl'    => get_author_posts_url( $profile_user->ID ),
 						'saveLabel'   => __( 'Save Changes', 'blueworx-labs-wordpress' ),
 						'viewLabel'   => __( 'View Posts', 'blueworx-labs-wordpress' ),
+						'usersUrl'    => ( 'user-edit.php' === $hook_suffix && current_user_can( 'list_users' ) )
+							? admin_url( 'users.php' )
+							: '',
+						'backLabel'   => __( 'Back to Users', 'blueworx-labs-wordpress' ),
 					)
 				);
 			}
