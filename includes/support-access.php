@@ -136,9 +136,24 @@ function blueworx_support_revoke_key() {
 /**
  * Whether the access window is currently open.
  *
+ * Turning the feature off is the operator's panic switch, so it has to end a
+ * live session and not merely bar new logins: with the check made here, every
+ * caller of this function — the login handler, the REST resolver and
+ * blueworx_support_enforce_window() — treats a disabled feature exactly as it
+ * treats a lapsed window.
+ *
+ * The console panel is unaffected: it renders inside the enhancements page
+ * regardless of the toggle, and simply offers "Allow support access for 24
+ * hours" again once the feature is off. Re-enabling runs through
+ * blueworx_save_feature_settings(), which never consults this function.
+ *
  * @return bool True when access is permitted right now.
  */
 function blueworx_support_access_open() {
+	if ( ! blueworx_feature_enabled( 'support_access' ) ) {
+		return false;
+	}
+
 	return time() < (int) get_option( 'blueworx_support_access_until', 0 );
 }
 
