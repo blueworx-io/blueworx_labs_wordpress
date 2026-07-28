@@ -277,4 +277,149 @@ test.describe('Support access — key lifecycle', () => {
       await expect(page.getByText(/temporarily blocked/i)).toHaveCount(0);
     }
   });
+
+  test('REST key header reads while open, is ignored while shut', async ({ page, request }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+
+    const headers = { 'X-BlueWorx-Support-Key': key };
+
+    try {
+      // Shut: settings route is unauthorised.
+      const shut = await request.get(`${baseURL}/wp-json/wp/v2/settings`, { headers });
+      expect(shut.status()).toBe(401);
+
+      await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+      // Open: the key authenticates and the route returns real data, not just a 200.
+      const open = await request.get(`${baseURL}/wp-json/wp/v2/settings`, { headers });
+      expect(open.status()).toBe(200);
+      const body = await open.json();
+      expect(body).toHaveProperty('title');
+      expect(typeof body.title).toBe('string');
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click();
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('REST key auth does not bypass the write block', async ({ page, request }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    const headers = { 'X-BlueWorx-Support-Key': key };
+
+    try {
+      const write = await request.post(`${baseURL}/wp-json/wp/v2/settings`, {
+        headers,
+        data: { title: 'hijacked' },
+      });
+      expect(write.status()).toBe(403);
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click();
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('anonymous REST requests without a key never count toward the lockout', async ({ page, request }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    try {
+      // No X-BlueWorx-Support-Key header at all — determine_current_user still
+      // runs (possibly more than once) for each of these, but none of them may
+      // count as a failed attempt.
+      for (let i = 0; i < 10; i += 1) {
+        await request.get(`${baseURL}/wp-json/wp/v2/settings`);
+      }
+
+      const stillOpen = await request.get(`${baseURL}/wp-json/wp/v2/settings`, {
+        headers: { 'X-BlueWorx-Support-Key': key },
+      });
+      expect(stillOpen.status()).toBe(200);
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click();
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('repeated bad REST key headers are locked out too', async ({ page, request }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    try {
+      const bad = 'f'.repeat(64);
+
+      for (let i = 0; i < 5; i += 1) {
+        await request.get(`${baseURL}/wp-json/wp/v2/settings`, {
+          headers: { 'X-BlueWorx-Support-Key': bad },
+        });
+      }
+
+      // The lockout is on the caller: the real key is refused too. The
+      // resolver never errors, so a throttled caller simply stays anonymous —
+      // the settings route then answers 401 rather than 429.
+      const locked = await request.get(`${baseURL}/wp-json/wp/v2/settings`, {
+        headers: { 'X-BlueWorx-Support-Key': key },
+      });
+      expect(locked.status()).toBe(401);
+
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await expect(page.getByText(/temporarily blocked/i)).toBeVisible();
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key and clear throttle',
+          async () => {
+            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.getByRole('button', { name: 'Revoke key' }).click();
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await expect(page.getByText(/temporarily blocked/i)).toHaveCount(0);
+    }
+  });
 });

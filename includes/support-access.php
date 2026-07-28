@@ -574,6 +574,77 @@ function blueworx_support_exempt_from_site_protection( $has_role, $area ) {
 add_filter( 'blueworx_site_protection_role_check', 'blueworx_support_exempt_from_site_protection', 10, 2 );
 
 /**
+ * Resolves the support user from the access-key header.
+ *
+ * Runs on determine_current_user at priority 20, after the headless JWT
+ * resolver (includes/rest/bootstrap.php), and follows the same rule: any
+ * failure leaves $user_id untouched, so public routes and cookie or JWT
+ * authentication keep working.
+ *
+ * determine_current_user can be invoked more than once per request, and on
+ * the vast majority of requests no key header is present at all. Both facts
+ * matter for the throttle:
+ *
+ * - The header-absent case returns immediately, before the throttle is even
+ *   consulted, so anonymous REST traffic can never contribute a failure and
+ *   can never be locked out. Only a request that actually presents a key can
+ *   reach the verification branch below.
+ * - A static guard stops a single request from recording two failures if
+ *   this filter fires more than once for it. WordPress bootstraps the whole
+ *   plugin fresh on every request in standard hosting (PHP-FPM, mod_php,
+ *   CGI), so the static re-initialises to false at the start of each request
+ *   — it only ever suppresses a second recording within the same request.
+ *
+ * A failure is recorded only when a key was presented and
+ * blueworx_support_verify_key() rejects it — not merely because the feature
+ * is off or the window is shut, since in that case the key was never even
+ * checked and nothing is known about whether it was right or wrong.
+ *
+ * @param int|false $user_id User ID resolved so far.
+ * @return int|false Resolved user ID.
+ */
+function blueworx_support_rest_auth( $user_id ) {
+	static $failure_recorded = false;
+
+	if ( ! empty( $user_id ) ) {
+		return $user_id;
+	}
+
+	if ( empty( $_SERVER['HTTP_X_BLUEWORX_SUPPORT_KEY'] ) ) {
+		return $user_id;
+	}
+
+	if ( blueworx_support_is_throttled() ) {
+		return $user_id;
+	}
+
+	if ( ! blueworx_feature_enabled( 'support_access' ) || ! blueworx_support_access_open() ) {
+		return $user_id;
+	}
+
+	$key = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_BLUEWORX_SUPPORT_KEY'] ) );
+
+	if ( ! blueworx_support_verify_key( $key ) ) {
+		if ( ! $failure_recorded ) {
+			blueworx_support_record_failure();
+			$failure_recorded = true;
+		}
+		return $user_id;
+	}
+
+	$user = blueworx_support_get_user();
+
+	if ( ! ( $user instanceof WP_User ) ) {
+		return $user_id;
+	}
+
+	blueworx_support_clear_failures();
+
+	return (int) $user->ID;
+}
+add_filter( 'determine_current_user', 'blueworx_support_rest_auth', 20 );
+
+/**
  * Renders the support access console panel.
  *
  * This panel's controls live inside the enhancements page's single outer
