@@ -651,7 +651,7 @@ function blueworx_support_rest_auth( $user_id ) {
 
 	return (int) $user->ID;
 }
-add_filter( 'determine_current_user', 'blueworx_support_rest_auth', 20 );
+add_filter( 'determine_current_user', 'blueworx_support_rest_auth', 21 );
 
 /**
  * Renders the support access console panel.
