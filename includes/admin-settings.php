@@ -65,6 +65,8 @@ add_action( 'admin_menu', 'blueworx_register_settings_page' );
  * @return void
  */
 function blueworx_save_edit_menu_page() {
+	blueworx_require_post_request();
+
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
@@ -166,6 +168,8 @@ function blueworx_get_site_protection_roles( $area ) {
  * @return void
  */
 function blueworx_save_feature_settings() {
+	blueworx_require_post_request();
+
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
