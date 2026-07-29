@@ -1271,6 +1271,79 @@ function blueworx_support_rest_auth( $user_id ) {
 add_filter( 'determine_current_user', 'blueworx_support_rest_auth', 21 );
 
 /**
+ * Builds the copy-ready Claude Code connection prompt for this site.
+ *
+ * The prompt is the paste-once alternative to explaining the connection by
+ * hand at the start of every session: it carries the site URL, the key, the
+ * two entry points, and — just as importantly — the limits, so the session
+ * reports a 403 back rather than casting around for a way past it.
+ *
+ * The key is a parameter rather than something this function fetches, because
+ * only the hash is ever stored: the raw value exists for exactly one request,
+ * the one that generated it. Every later render passes an empty string and
+ * gets a <SUPPORT-KEY> placeholder, which is the honest output — a wrong or
+ * stale key pasted into a session is worse than an obvious blank.
+ *
+ * The prompt text is deliberately not translated. Its audience is Claude Code,
+ * which is instructed in English; a localised copy would change the meaning of
+ * the rules it states.
+ *
+ * @param string $key Raw access key, or '' when it is no longer available.
+ * @return string Prompt text.
+ */
+function blueworx_support_claude_prompt( $key = '' ) {
+	$site = untrailingslashit( home_url() );
+	$key  = ( '' !== (string) $key ) ? (string) $key : '<SUPPORT-KEY>';
+
+	$login_url = home_url( '/' . blueworx_login_slug() . '/' );
+
+	$lines = array(
+		'You are connecting to a live WordPress site running the BlueWorx Labs | WordPress',
+		'Enhancements plugin. Use its Support Access path — read-only, key-gated.',
+		'',
+		'Site URL:    ' . $site,
+		'Support key: ' . $key,
+		'',
+		'How to connect',
+		'',
+		'- REST: send the key as a header on every request.',
+		'      curl -sS -H "X-Blueworx-Support-Key: ' . $key . '" "' . $site . '/wp-json/wp/v2/pages?per_page=5"',
+		'  Do not put the key in a query string you might paste into a log or an issue.',
+		'- Browser (only if you need to see a wp-admin screen): open',
+		'      ' . $site . '/?blueworx_support_login=' . $key,
+		'  It sets a session cookie and redirects to wp-admin.',
+		'',
+		'URLs you will need',
+		'',
+		'- REST index:        ' . $site . '/wp-json/',
+		'- Core content:      ' . $site . '/wp-json/wp/v2/       (posts, pages, CPTs, media)',
+		'- BlueWorx headless: ' . $site . '/wp-json/blueworx/v1/ (menus, site config, path resolution)',
+		'- BlueWorx console:  ' . $site . '/wp-admin/admin.php?page=blueworx-labs-wordpress',
+		'- /wp-login.php is blocked by this plugin. The custom login URL is ' . $login_url,
+		'  and it is for humans — you authenticate with the key above, not a password.',
+		'',
+		'Rules — respect these rather than working around them',
+		'',
+		'- READ ONLY. Every non-GET/HEAD request from this account is refused with 403 and',
+		'  logged. If a change is needed, tell me what it is and let a human make it.',
+		'- The window lasts 24 hours. When it closes, or the key is revoked, everything',
+		'  returns 403 — that is expected, not a bug. Ask me to reopen it.',
+		'- Personal data is withheld unless I opened it for this session: /wp/v2/users,',
+		'  /wp/v2/comments, /blueworx/v1/account, /blueworx/v1/surecart and the',
+		'  WooCommerce/SureCart order and customer routes return 403 blueworx_support_no_data.',
+		'  Do not attempt to reach that data another way.',
+		'- Five wrong keys lock this address out for 15 minutes. On a 403, stop and check',
+		'  with me instead of retrying with variations.',
+		'- Every use is written to an audit log I can read, including refused writes.',
+		'',
+		'Start by fetching ' . $site . '/wp-json/ to confirm the connection, then tell me what',
+		'you can see and wait for the actual task.',
+	);
+
+	return implode( "\n", $lines );
+}
+
+/**
  * Renders the support access console panel.
  *
  * This panel's controls live inside the enhancements page's single outer
@@ -1332,6 +1405,27 @@ function blueworx_support_render_panel() {
 			</strong>
 			<?php if ( blueworx_support_data_open() ) : ?>
 				<br /><?php esc_html_e( 'Personal-data access is also open for this window.', 'blueworx-labs-wordpress' ); ?>
+			<?php endif; ?>
+		</p>
+	<?php endif; ?>
+
+	<?php if ( blueworx_support_has_key() ) : ?>
+		<?php $blueworx_support_prompt = blueworx_support_claude_prompt( $GLOBALS['blueworx_support_new_key'] ); ?>
+		<p>
+			<button
+				type="button"
+				class="button"
+				data-testid="bw-support-copy-prompt"
+				data-copied-label="<?php esc_attr_e( 'Copied', 'blueworx-labs-wordpress' ); ?>"
+			><?php esc_html_e( 'Copy Claude Code prompt', 'blueworx-labs-wordpress' ); ?></button>
+		</p>
+		<?php // Holds the prompt for the copy button. Hidden rather than absent so the copy still works with the clipboard API unavailable, which is every site served over plain HTTP. ?>
+		<textarea data-testid="bw-support-prompt" readonly hidden aria-hidden="true" tabindex="-1"><?php echo esc_textarea( $blueworx_support_prompt ); ?></textarea>
+		<p class="description">
+			<?php if ( '' !== $GLOBALS['blueworx_support_new_key'] ) : ?>
+				<?php esc_html_e( 'Paste this into Claude Code and it has the key, the URLs and the limits. This is the only time the prompt carries the key itself — copy it now.', 'blueworx-labs-wordpress' ); ?>
+			<?php else : ?>
+				<?php esc_html_e( 'The key is only ever shown once, so this prompt leaves a <SUPPORT-KEY> placeholder for you to paste your saved key over. Generate a new key if you no longer have it.', 'blueworx-labs-wordpress' ); ?>
 			<?php endif; ?>
 		</p>
 	<?php endif; ?>

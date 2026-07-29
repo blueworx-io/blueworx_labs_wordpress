@@ -10,15 +10,32 @@ deliberately opened 24-hour window is in effect.
 
 ---
 
-## Before you paste
+## The short way: the copy button
 
-1. In wp-admin, go to **BlueWorx → Enhancements → BlueWorx support access**.
-2. **Generate key** if there is no key yet. The raw key is shown **once** — copy it now.
-   Only its SHA-256 hash is stored, so a lost key must be revoked and regenerated.
+**BlueWorx → Enhancements → BlueWorx support access** has a **Copy Claude Code prompt**
+button. It puts this whole prompt on your clipboard with the site URL, the custom login
+URL and the key already filled in — paste it straight into Claude Code.
+
+1. **Generate key** if there is no key yet.
+2. **Copy Claude Code prompt** — do it on the generation screen. That render is the only
+   one whose prompt carries the real key: only the SHA-256 hash is stored, so on every
+   later visit the button still works but leaves `<SUPPORT-KEY>` for you to paste your
+   saved key over. Lost the key? Revoke and generate a new one.
 3. Click **Allow support access for 24 hours**. Without an open window the key is inert
    and every request is refused with `403`, so this step is not optional.
    - Tick **Also allow access to personal data for this session** only if the work
      genuinely needs users, comments, accounts or orders. Leave it off by default.
+
+The rest of this document is the same prompt in full, for filling in by hand.
+
+---
+
+## Before you paste (by hand)
+
+1. In wp-admin, go to **BlueWorx → Enhancements → BlueWorx support access**.
+2. **Generate key** if there is no key yet. The raw key is shown **once** — copy it now.
+   Only its SHA-256 hash is stored, so a lost key must be revoked and regenerated.
+3. Open the 24-hour window as above.
 4. Fill the two placeholders in the prompt below — `<SITE-URL>` and `<SUPPORT-KEY>` —
    then paste the whole block into Claude Code.
 
