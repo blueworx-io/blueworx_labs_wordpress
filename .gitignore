@@ -12,3 +12,10 @@ playwright-report/
 .env.*
 !.env.example
 .wp-test/
+
+# Playwright MCP session output
+.playwright-mcp/
+
+# Machine-local Claude Code settings. Team policy belongs in .claude/settings.json,
+# which is tracked; anything specific to one machine goes here and is never committed.
+.claude/settings.local.json

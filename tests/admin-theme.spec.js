@@ -482,4 +482,311 @@ test.describe('BlueWorx admin theme', () => {
     const anchorBackground = await anchor.evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(transparent).not.toContain(anchorBackground);
   });
+
+  test('name fields are paired side by side on the profile screen', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    const first = await page.locator('[data-bw-field="first_name"]').boundingBox();
+    const last = await page.locator('[data-bw-field="last_name"]').boundingBox();
+
+    // Same row, different columns.
+    expect(Math.abs(first.y - last.y)).toBeLessThan(4);
+    expect(last.x).toBeGreaterThan(first.x);
+  });
+
+  test('cards carry an explanatory subtitle', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('.bw-profile-card-sub').first()).toBeVisible();
+  });
+
+  test('editing another user shows a back link to the users list', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+
+    // The back link only exists on user-edit.php. Core sends you to your own
+    // profile.php when you click yourself, where the link is correctly absent,
+    // so this only tests anything with a second user present.
+    const row = page.locator('#the-list tr').filter({ hasNotText: 'admin' }).first();
+    test.skip(await row.count() === 0, 'Harness has only one user');
+
+    await row.locator('a').first().click();
+    await expect(page.locator('.bw-profile-back')).toBeVisible();
+  });
+
+  test('own profile has no back link', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('.bw-profile-back')).toHaveCount(0);
+  });
+
+  test('saving the profile still persists a change', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    const nickname = page.locator('#nickname');
+    const original = await nickname.inputValue();
+    const probe = `bw-test-${Date.now()}`;
+
+    // The native #submit control is hidden by design — the hero's Save Changes
+    // button (#bw-profile-save) is what a real user clicks, and it proxies the
+    // native submit via nativeSubmit.click(). Clicking through the hero button
+    // here is what actually guards the "still saves" invariant post-redesign.
+    await nickname.fill(probe);
+    await page.locator('#bw-profile-save').click();
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('#nickname')).toHaveValue(probe);
+
+    // Restore, and wait for the save to land so teardown cannot race it and
+    // leave the harness carrying a bw-test-* nickname into the next run.
+    await page.locator('#nickname').fill(original);
+    await page.locator('#bw-profile-save').click();
+    await expect(page.locator('#nickname')).toHaveValue(original);
+  });
+
+  test('every profile field stays inside the form after the restructure', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // The redesign MOVES core's markup rather than recreating it. Any control
+    // that lands outside #your-profile silently stops posting — the save test
+    // above would still pass, because it only exercises one field. This is the
+    // structural guard for all of them.
+    const inForm = await page.locator('#your-profile input, #your-profile select, #your-profile textarea').count();
+    const onPage = await page.locator('.wrap input, .wrap select, .wrap textarea').count();
+
+    // The hero and back link add only a <button> and an <a>, never a field, so
+    // every input/select/textarea under .wrap must still be inside the form.
+    expect(inForm).toBeGreaterThan(0);
+    expect(onPage).toBe(inForm);
+  });
+
+  test('the security card carries the sessions control', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // Account Management routes to the right-hand card; the "Log Out Everywhere
+    // Else" row must travel with it rather than being orphaned or dropped.
+    // Core renders this row on every own-profile view, so this is an outright
+    // assertion — no skip guard, which would let the section go missing quietly.
+    await expect(page.locator('.bw-profile-card .user-sessions-wrap')).toBeAttached();
+    await expect(page.locator('.bw-profile-card #destroy-sessions')).toBeVisible();
+  });
+
+  test('core rows hidden by class stay hidden inside the cards', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // The card grid must not out-specify core's own class-only hiding rules.
+    // Both of these are hidden until the user asks to change their password.
+    await expect(page.locator('#your-profile tr.user-pass2-wrap')).toBeHidden();
+    await expect(page.locator('#your-profile tr.pw-weak')).toBeHidden();
+  });
+
+  test('no bare section headings are left visible outside the cards', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // Every original <h2> (Name, Contact Info, About Yourself, Account
+    // Management, ...) is left in the form so any nonce/markup it wraps still
+    // posts, but must be hidden — the card title stands in for it visually.
+    const strayHeadings = page.locator('#your-profile > h2');
+    const count = await strayHeadings.count();
+
+    for (let i = 0; i < count; i += 1) {
+      await expect(strayHeadings.nth(i)).toBeHidden();
+    }
+
+    // And the native submit button must not be visibly duplicating the hero's
+    // Save Changes button, even though it stays in the DOM and clickable.
+    await expect(page.locator('#your-profile p.submit')).toBeHidden();
+  });
+
+  test('a delete card appears when editing another user', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+    const row = page.locator('#the-list tr').filter({ hasNotText: 'admin' }).first();
+    test.skip(await row.count() === 0, 'Harness has only one user');
+
+    await row.locator('a').first().click();
+    await expect(page.locator('.bw-profile-danger')).toBeVisible();
+  });
+
+  test('hovering a parent menu item reveals its submenu', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Posts is not the current menu on the dashboard, so it uses the fly-out
+    // path rather than the current-item accordion.
+    const posts = page.locator('#menu-posts');
+    await posts.hover();
+
+    const submenu = posts.locator('.wp-submenu');
+    await expect(submenu).toBeVisible();
+
+    // A naive visibility check would pass even if the fly-out rendered at the
+    // wrong offset (still on-screen, just beside the wrong item, or clipped by
+    // #adminmenuwrap's scroll container). Assert it actually sits beside its
+    // own item and fully inside the viewport.
+    const submenuBox = await submenu.boundingBox();
+    const itemBox = await posts.boundingBox();
+    const viewport = page.viewportSize();
+
+    expect(submenuBox.x).toBeGreaterThan(0);
+    expect(submenuBox.y).toBeGreaterThanOrEqual(0);
+    expect(submenuBox.y + submenuBox.height).toBeLessThanOrEqual(viewport.height);
+    expect(Math.abs(submenuBox.y - itemBox.y)).toBeLessThanOrEqual(itemBox.height);
+  });
+
+  test('keyboard focus reveals the submenu too', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    await page.locator('#menu-posts > a.menu-top').focus();
+
+    const submenu = page.locator('#menu-posts .wp-submenu');
+    await expect(submenu).toBeVisible();
+
+    const submenuBox = await submenu.boundingBox();
+    const viewport = page.viewportSize();
+
+    expect(submenuBox.x).toBeGreaterThan(0);
+    expect(submenuBox.y).toBeGreaterThanOrEqual(0);
+    expect(submenuBox.y + submenuBox.height).toBeLessThanOrEqual(viewport.height);
+  });
+
+  test('a fly-out near the bottom of the sidebar flips upward', async ({ page }) => {
+    // A short viewport forces the last menu item's fly-out to overflow the
+    // viewport foot if it were positioned at the item's own top offset.
+    await page.setViewportSize({ width: 1280, height: 500 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const lastItem = page.locator('#adminmenu > li.menu-top.wp-not-current-submenu').last();
+    await lastItem.hover();
+
+    const submenu = lastItem.locator('.wp-submenu');
+    await expect(submenu).toBeVisible();
+
+    const submenuBox = await submenu.boundingBox();
+    const itemBox = await lastItem.boundingBox();
+    const viewport = page.viewportSize();
+
+    expect(submenuBox.y + submenuBox.height).toBeLessThanOrEqual(viewport.height);
+    // Proof it actually flipped rather than merely fitting: the fly-out's top
+    // is above the item's own top offset.
+    expect(submenuBox.y).toBeLessThan(itemBox.y);
+  });
+
+  test('the BlueWorx top bar does not cover the block editor toolbar in normal mode', async ({ page }) => {
+    // Wide enough, and above the 961px breakpoint, so the sidebar sits in its
+    // expanded (232px) state — the state where core's 160px assumption and our
+    // width disagree, which is what the horizontal assertions below cover.
+    await page.setViewportSize({ width: 1265, height: 900 });
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    // Leave fullscreen if WordPress remembered it on — this test asserts the
+    // normal-mode offset, so asserting in fullscreen would test the wrong state.
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    const bar = await page.locator('.bw-topbar').boundingBox();
+    const sidebar = await page.locator('#adminmenuback').boundingBox();
+    const editor = await skeleton.boundingBox();
+
+    expect(editor.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+
+    // Core hard-codes the skeleton's left edge to its own 160px expanded
+    // admin-menu width. Our expanded sidebar is 232px, so without the
+    // matching override the editor — including its own Undo button — renders
+    // partly underneath ours.
+    expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+
+    const undo = await page.locator('button[aria-label="Undo"]').boundingBox();
+    expect(undo.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  });
+
+  test('the BlueWorx top bar hides itself in fullscreen mode instead of covering the editor toolbar', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    // Force fullscreen on — this test asserts the fullscreen-mode behaviour, so
+    // it must not depend on whatever state WordPress remembered for this user.
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (!select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    // Our chrome is gone rather than reserved-for: the bar isn't just moved out
+    // of the way, it isn't there to cover anything.
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+    await expect(page.locator('.bw-brand')).toBeHidden();
+
+    // The editor's own toolbar (undo/redo/inserter) sits at the very top of the
+    // skeleton in fullscreen — confirm nothing of ours still covers it.
+    const editor = await skeleton.boundingBox();
+    expect(editor.y).toBe(0);
+  });
+
+  test('the block editor toolbar clears the folded-width sidebar in the 783-960px band', async ({ page }) => {
+    // Below 961px the sidebar is always in its folded state, and folded's 36px
+    // happens to equal core's own folded admin-menu width — so this state
+    // needs no left-offset override, only pinning: a future change to
+    // --bw-sidebar-w or the breakpoints could silently break the agreement.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    const sidebar = await page.locator('#adminmenuback').boundingBox();
+    const editor = await skeleton.boundingBox();
+
+    expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  });
+
+  test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {
+    // WordPress forces site-editor.php permanently into fullscreen — there is
+    // no non-fullscreen state to test here. Our fullscreen rule is what
+    // governs it, so this documents that (non-obvious) fact and confirms our
+    // chrome disappears rather than needing its own offset rule.
+    await login(page);
+    await page.goto('/wp-admin/site-editor.php');
+
+    // The site editor can take several seconds to boot on this harness — wait
+    // on its own layout element rather than a fixed timeout.
+    const layout = page.locator('.edit-site-layout');
+    await expect(layout).toBeVisible({ timeout: 15000 });
+
+    await expect(page.locator('body')).toHaveClass(/is-fullscreen-mode/);
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+
+    const box = await layout.boundingBox();
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+  });
 });

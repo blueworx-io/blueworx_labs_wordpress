@@ -156,7 +156,19 @@ function blueworx_current_user_has_site_protection_role( $area ) {
 		return false;
 	}
 
-	return (bool) array_intersect( blueworx_get_site_protection_allowed_roles( $area ), (array) $user->roles );
+	$has_role = (bool) array_intersect( blueworx_get_site_protection_allowed_roles( $area ), (array) $user->roles );
+
+	/**
+	 * Filters whether the current user passes the Site Protection role check.
+	 *
+	 * The support account (includes/support-access.php) is never on an
+	 * operator's allow-list by default, so it hooks this to exempt itself —
+	 * rather than this file needing to know that account exists.
+	 *
+	 * @param bool   $has_role Whether the user's own roles satisfy $area's allow-list.
+	 * @param string $area     'frontend' or 'backend'.
+	 */
+	return (bool) apply_filters( 'blueworx_site_protection_role_check', $has_role, $area );
 }
 
 /**

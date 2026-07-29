@@ -85,7 +85,10 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 				wp_enqueue_script(
 					'blueworx-labs-wordpress-profile-redesign',
 					BLUEWORX_LABS_URL . 'assets/js/profile-redesign.js',
-					array(),
+					// Depends on core's user-profile script so the restructure runs
+					// after core has bound its password/session handlers, rather than
+					// relying on incidental script order.
+					array( 'user-profile' ),
 					blueworx_get_admin_asset_version( 'assets/js/profile-redesign.js' ),
 					true
 				);
@@ -115,6 +118,51 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 						'postsUrl'    => get_author_posts_url( $profile_user->ID ),
 						'saveLabel'   => __( 'Save Changes', 'blueworx-labs-wordpress' ),
 						'viewLabel'   => __( 'View Posts', 'blueworx-labs-wordpress' ),
+						'usersUrl'    => ( 'user-edit.php' === $hook_suffix && current_user_can( 'list_users' ) )
+							? admin_url( 'users.php' )
+							: '',
+						'backLabel'   => __( 'Back to Users', 'blueworx-labs-wordpress' ),
+						'deleteUrl'   => ( 'user-edit.php' === $hook_suffix
+							&& current_user_can( 'delete_users' )
+							&& get_current_user_id() !== $profile_user->ID )
+							? wp_nonce_url(
+								admin_url( 'users.php?action=delete&user=' . $profile_user->ID ),
+								'bulk-users'
+							)
+							: '',
+						'deleteLabel' => __( 'Delete This User', 'blueworx-labs-wordpress' ),
+
+						/*
+						 * The redesign routes, retitles and drops sections by matching
+						 * core's own <h2> text. Those headings are translated, so the
+						 * script cannot match English literals — it would silently do
+						 * nothing on a non-English install. Pass core's strings through
+						 * the default textdomain instead, so each one arrives already
+						 * translated to whatever the site actually renders.
+						 */
+						'sections'    => array(
+							'personalOptions'   => __( 'Personal Options' ), // phpcs:ignore WordPress.WP.I18n.MissingArgDomain -- core string, default domain intended.
+							'name'              => __( 'Name' ), // phpcs:ignore WordPress.WP.I18n.MissingArgDomain -- core string, default domain intended.
+							'contactInfo'       => __( 'Contact Info' ), // phpcs:ignore WordPress.WP.I18n.MissingArgDomain -- core string, default domain intended.
+							'aboutYourself'     => __( 'About Yourself' ), // phpcs:ignore WordPress.WP.I18n.MissingArgDomain -- core string, default domain intended.
+							'aboutTheUser'      => __( 'About the user' ), // phpcs:ignore WordPress.WP.I18n.MissingArgDomain -- core string, default domain intended.
+							'accountManagement' => __( 'Account Management' ), // phpcs:ignore WordPress.WP.I18n.MissingArgDomain -- core string, default domain intended.
+						),
+						'cardTitles'  => array(
+							'name'              => __( 'Profile Details', 'blueworx-labs-wordpress' ),
+							'contactInfo'       => __( 'Contact', 'blueworx-labs-wordpress' ),
+							'aboutYourself'     => __( 'About', 'blueworx-labs-wordpress' ),
+							'aboutTheUser'      => __( 'About', 'blueworx-labs-wordpress' ),
+							'accountManagement' => __( 'Account & Security', 'blueworx-labs-wordpress' ),
+						),
+						'cardSubs'    => array(
+							'name'              => __( 'How this user appears across the site.', 'blueworx-labs-wordpress' ),
+							'contactInfo'       => __( 'Where notifications and password resets are sent.', 'blueworx-labs-wordpress' ),
+							'aboutYourself'     => __( 'Shown on the author archive page and below posts.', 'blueworx-labs-wordpress' ),
+							'aboutTheUser'      => __( 'Shown on the author archive page and below posts.', 'blueworx-labs-wordpress' ),
+							'accountManagement' => __( 'Password and sign-in security.', 'blueworx-labs-wordpress' ),
+						),
+						'dangerSub'   => __( 'Content can be reassigned to another user before deletion.', 'blueworx-labs-wordpress' ),
 					)
 				);
 			}
