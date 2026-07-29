@@ -4,6 +4,47 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.38.0] - 2026-07-28
+
+### Added
+- BlueWorx support access: a single per-site key that opens a read-only wp-admin
+  and REST session for 24 hours, controlled by a toggle in the console. The
+  managed account has no usable password, so there is nothing to rotate.
+- Personal data is out of reach unless separately opted in for that session.
+  This covers WooCommerce and SureCart order and customer screens as well as
+  the WordPress users, comments and export screens.
+- The console shows when an open support window closes, and how long is left.
+- Audit log of every open, login, refusal, blocked write and key-authenticated
+  REST request.
+- Turning the "BlueWorx support access" toggle off now ends a live support
+  session immediately, rather than only barring new logins.
+
+### Fixed
+- Support access could trash and permanently delete posts, pages, media and
+  categories. WordPress drives those through nonce'd GET links and GET bulk
+  forms, so the read-only block — which refused only non-GET methods — never
+  saw them. The delete capabilities are now stripped from the support role, a
+  write action arriving on any admin screen is refused by default, and the
+  destructive meta capabilities are denied outright. Reading every one of
+  those screens is unchanged.
+- Support access could read a WooCommerce order or a single comment by ID with
+  personal data access switched off. Only the list screens were denied; the
+  single-item editors behind `post.php` and `comment.php` were not.
+- Support access could deactivate or activate a plugin or theme through
+  WordPress's nonce'd GET links. Reading the plugin and theme lists is
+  unchanged; only the action is refused.
+- Every BlueWorx admin form handler now requires a POST. A nonce presented in
+  the query string previously satisfied `check_admin_referer()`, so the feature
+  settings, menu settings, cache refresh, headless settings and headless invite
+  handlers could all be triggered by a plain link — wiping settings, or minting
+  an invite token.
+- An unrelated account that merely happened to be named `blueworx_support` is
+  no longer treated as the managed support account.
+- Testing a correct key while the window is shut no longer counts toward the
+  lockout, so an operator can no longer lock themselves out with their own key.
+- Deactivating the plugin now removes the support account, role and key,
+  instead of leaving the account behind with nothing enforcing read-only.
+
 ## [1.36.0] - 2026-07-23
 
 ### Removed

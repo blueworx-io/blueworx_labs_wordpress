@@ -37,6 +37,8 @@ add_action( 'admin_menu', 'blueworx_headless_register_settings_page', 20 );
  * @return void
  */
 function blueworx_headless_save_settings() {
+	blueworx_require_post_request();
+
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}
@@ -75,6 +77,8 @@ add_action( 'admin_post_blueworx_headless_save_settings', 'blueworx_headless_sav
  */
 function blueworx_headless_generate_invite() {
 	global $wpdb;
+
+	blueworx_require_post_request();
 
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
