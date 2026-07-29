@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.41.0] - 2026-07-28
+## [1.41.0] - 2026-07-29
 
 ### Changed
 - Profile screen refinement: name fields sit in pairs, cards carry explanatory
