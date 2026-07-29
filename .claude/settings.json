@@ -28,8 +28,7 @@
       "Bash(npm test:*)",
       "Bash(npx playwright:*)",
       "Bash(node:*)",
-      "mcp__playwright",
-      "mcp__playwright__browser_run_code_unsafe"
+      "mcp__playwright__*"
     ]
   },
   "skillOverrides": {

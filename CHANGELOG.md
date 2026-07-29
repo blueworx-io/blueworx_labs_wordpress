@@ -7,6 +7,10 @@ versioning.
 ## [1.41.1] - 2026-07-29
 
 ### Changed
+- Restored the single `mcp__playwright__*` permission entry in the shared Claude
+  settings. The two lines that had replaced it granted the same access but named
+  an unsafe tool explicitly, which read as a deliberate security decision it was
+  not. Closes #58.
 - Machine-local Claude Code settings now live in an ignored
   `.claude/settings.local.json`, so a local permissions tweak can no longer ride
   into an unrelated commit. `.claude/settings.json` stays tracked for team policy.
