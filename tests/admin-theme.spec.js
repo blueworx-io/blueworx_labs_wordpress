@@ -549,6 +549,7 @@ test.describe('BlueWorx admin theme', () => {
     // Proof it actually flipped rather than merely fitting: the fly-out's top
     // is above the item's own top offset.
     expect(submenuBox.y).toBeLessThan(itemBox.y);
+  });
 
   test('the BlueWorx top bar does not cover the block editor toolbar in normal mode', async ({ page }) => {
     // Wide enough, and above the 961px breakpoint, so the sidebar sits in its
