@@ -4,7 +4,7 @@ Tags:              login, security, custom login url, hardening, cache
 Requires at least: 5.0
 Tested up to:      6.9
 Requires PHP:      8.0
-Stable tag:        1.41.1
+Stable tag:        1.42.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ BlueWorx Labs improves your WordPress site by:
 * Working reliably on both Apache and Nginx servers, including Cloudways stacks, without relying on `.htaccess` rewrite rules.
 * Refreshing Cloudways/Varnish cache when posts or pages are published, updated, restored, or deleted.
 * Disabling comments, suppressing selected admin emails, and cleaning up the user profile screen.
+* Offering visitors an on-page translation switcher that runs entirely in their own browser (Chrome and Edge 138+).
 
 The new login URL and cache refresh status are displayed in the **BlueWorx** admin menu.
 
@@ -46,6 +47,9 @@ Yes. All password reset, logout, and account confirmation flows use the custom U
 
 = How does the cache refresh work? =
 When a page or post changes, the plugin refreshes the edited content, homepage, and related listing pages. A manual **Refresh Cache Now** button is also available in **BlueWorx > Cache**.
+
+= How does the translation feature work? =
+A floating language button is added to the front end. When a visitor picks a language, their own browser translates the page using Chrome's built-in on-device translator - there is no translation service, no API key and no cost. The first use of a language downloads a small model into the browser. In browsers without that API, such as Safari and Firefox, the button does not appear. Search engines are unaffected: they still see the original language only. Right-to-left languages such as Arabic are translated correctly, but the page layout itself stays left-to-right.
 
 == Development Layout ==
 
