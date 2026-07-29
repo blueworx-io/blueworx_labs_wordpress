@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.39.0] - 2026-07-29
+
+### Fixed
+- The BlueWorx admin top bar no longer covers the block editor's toolbar. In
+  normal mode the editor's skeleton is now offset below the bar; in fullscreen
+  mode the bar and brand block hide themselves instead, since fullscreen also
+  overlapped and is an explicit user request to clear the chrome away.
+- The editor's controls, including Undo/Redo, were also partly hidden
+  underneath the wider BlueWorx sidebar with the menu expanded, since core
+  assumes a narrower sidebar than ours. The editor now aligns to our sidebar's
+  actual width instead.
+
 ## [1.38.0] - 2026-07-28
 
 ### Added
