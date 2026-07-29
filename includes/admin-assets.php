@@ -177,6 +177,18 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 			blueworx_get_admin_asset_version( 'assets/js/feature-settings.js' ),
 			true
 		);
+
+		// Only the support panel renders the copy button, and the panel only
+		// renders while the feature is on.
+		if ( blueworx_feature_enabled( 'support_access' ) ) {
+			wp_enqueue_script(
+				'blueworx-labs-wordpress-support-prompt',
+				BLUEWORX_LABS_URL . 'assets/js/support-prompt.js',
+				array(),
+				blueworx_get_admin_asset_version( 'assets/js/support-prompt.js' ),
+				true
+			);
+		}
 	}
 
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {

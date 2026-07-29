@@ -4,7 +4,7 @@ Tags:              login, security, custom login url, hardening, cache
 Requires at least: 5.0
 Tested up to:      6.9
 Requires PHP:      8.0
-Stable tag:        1.42.0
+Stable tag:        1.43.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,6 +50,9 @@ When a page or post changes, the plugin refreshes the edited content, homepage, 
 
 = How does the translation feature work? =
 A floating language button is added to the front end. When a visitor picks a language, their own browser translates the page using Chrome's built-in on-device translator - there is no translation service, no API key and no cost. The first use of a language downloads a small model into the browser. In browsers without that API, such as Safari and Firefox, the button does not appear. Search engines are unaffected: they still see the original language only. Right-to-left languages such as Arabic are translated correctly, but the page layout itself stays left-to-right.
+
+= How do I let BlueWorx (or Claude Code) look at my site? =
+Go to **BlueWorx > Enhancements > BlueWorx support access**, generate a key and open the 24-hour window. The key gives read-only wp-admin and REST access and nothing else. The same panel has a **Copy Claude Code prompt** button that puts the key, the site URLs and the access rules on your clipboard as one block to paste into Claude Code. Copy it on the screen that generates the key - that is the only time the prompt contains the key itself. `CONNECT_CLAUDE_CODE.md` in the plugin repository has the same prompt in full.
 
 == Development Layout ==
 

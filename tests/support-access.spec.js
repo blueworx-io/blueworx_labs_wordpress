@@ -1296,4 +1296,58 @@ test.describe('Support access — key lifecycle', () => {
       await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
     }
   });
+
+  test('the panel offers a one-click Claude Code prompt carrying the fresh key', async ({
+    page,
+  }) => {
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+
+    // No key, nothing to connect with: the button must not be offered at all.
+    await expect(page.locator('[data-testid="bw-support-copy-prompt"]')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Generate key' }).click();
+
+    try {
+      const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+      const prompt = await page.locator('[data-testid="bw-support-prompt"]').inputValue();
+
+      // The generation render is the ONLY moment the raw key exists, so this is
+      // the only render whose prompt can be pasted with nothing left to fill in.
+      expect(prompt).toContain(key);
+      expect(prompt).not.toContain('<SUPPORT-KEY>');
+      expect(prompt).toContain(baseURL);
+      expect(prompt).toContain('X-Blueworx-Support-Key');
+      expect(prompt).toContain('/wp-json/');
+      expect(prompt).toContain('READ ONLY');
+
+      const button = page.locator('[data-testid="bw-support-copy-prompt"]');
+      await button.click();
+      await expect(button).toHaveText('Copied');
+
+      // Copying must not submit the enhancements form it sits inside.
+      await expect(page).toHaveURL(new RegExp('page=blueworx-labs-wordpress'));
+
+      // The key is shown once. Every later render still offers the prompt, but
+      // with the key left as a placeholder rather than a wrong or stale value.
+      await page.reload();
+      const later = await page.locator('[data-testid="bw-support-prompt"]').inputValue();
+      expect(later).toContain('<SUPPORT-KEY>');
+      expect(later).not.toContain(key);
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
 });

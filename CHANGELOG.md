@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.43.0] - 2026-07-29
+
+### Added
+- **Copy Claude Code prompt** button on the support access panel
+  (`includes/support-access.php`, `assets/js/support-prompt.js`). One click puts the
+  whole connection prompt on the clipboard — site URL, custom login URL, REST bases, the
+  `X-Blueworx-Support-Key` header, the browser key-exchange URL, and the read-only,
+  24-hour-window and personal-data rules — so a session can be handed the setup in a
+  single paste. On the render that generates a key the prompt carries the real key; on
+  every later render it leaves a `<SUPPORT-KEY>` placeholder, because only the hash is
+  stored and a stale key pasted into a session is worse than an obvious blank.
+- The copy falls back to a selection copy where `navigator.clipboard` is absent, which is
+  every site served over plain HTTP, and says on the button when a copy did not happen
+  rather than reporting a success that did not occur.
+- `tests/support-access.spec.js` — covers the button being absent with no key, the
+  generated prompt carrying the fresh key and the site URL, the copy not submitting the
+  form it sits inside, and the placeholder appearing on a later render.
+
+## [1.42.1] - 2026-07-29
+
+### Added
+- `CONNECT_CLAUDE_CODE.md` — a copy-ready prompt that hands a Claude Code session
+  everything it needs to connect to a live site over Support Access: the key, the site
+  URLs, the REST header, the browser key-exchange URL, and the read-only, 24-hour-window
+  and personal-data rules. Previously the same setup had to be explained by hand at the
+  start of every session. Also a short FAQ entry in `readme.txt` pointing at it.
+  Closes #61.
+- The prompt ships with `<SITE-URL>` and `<SUPPORT-KEY>` placeholders rather than a real
+  key. A support key is a live per-site credential shown once at generation, so writing
+  one into a tracked file would commit a secret and pin the doc to a single site.
+
 ## [1.42.0] - 2026-07-29
 
 ### Added
