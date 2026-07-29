@@ -55,12 +55,20 @@ exists only for as long as a key exists.
 Role is built by cloning the live `administrator` role and removing:
 
 ```
-edit_files, edit_plugins, edit_themes,
+edit_files, edit_plugins, edit_themes, unfiltered_html,
 install_plugins, install_themes, update_plugins, update_themes, update_core,
 delete_plugins, delete_themes,
 export, import,
 create_users, edit_users, delete_users, promote_users, remove_users
 ```
+
+`unfiltered_html` is in that list because raw script saved into post content executes later in
+a real administrator's browser — onward access by a route the write-block does not describe.
+
+`activate_plugins` is deliberately **retained**, against the same reasoning applied elsewhere.
+It is the capability WordPress uses to gate *viewing* `plugins.php`, and reading the plugin list
+is one of the primary diagnostics this feature exists to enable. Activation itself requires a
+`POST`, which §1.2 refuses outright.
 
 `list_users` is retained (viewing the user list is a legitimate diagnostic need, and the
 screen itself is separately gated — see Data Gating).

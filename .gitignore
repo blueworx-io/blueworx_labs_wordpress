@@ -12,3 +12,6 @@ playwright-report/
 .env.*
 !.env.example
 .wp-test/
+
+# Playwright MCP session output
+.playwright-mcp/

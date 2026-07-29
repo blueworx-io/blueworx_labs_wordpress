@@ -38,6 +38,8 @@ function blueworx_is_breeze_active() {
  * @return void
  */
 function blueworx_handle_manual_cache_refresh() {
+	blueworx_require_post_request();
+
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
 	}

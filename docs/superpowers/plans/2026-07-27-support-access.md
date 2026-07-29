@@ -321,6 +321,9 @@ function blueworx_support_removed_caps() {
 		'edit_files',
 		'edit_plugins',
 		'edit_themes',
+		// Raw script saved into content executes later in a real administrator's
+		// browser — onward access by another route.
+		'unfiltered_html',
 		'install_plugins',
 		'install_themes',
 		'update_plugins',
@@ -575,11 +578,11 @@ function blueworx_support_handle_actions() {
 add_action( 'admin_init', 'blueworx_support_handle_actions' );
 ```
 
-`blueworx_support_log_event()` lands in Task 7. Until then, add this stub immediately so the calls above do not fatal — Task 7 replaces the body:
+`blueworx_support_log_event()` lands in Task 8. Until then, add this stub immediately so the calls above do not fatal — Task 8 replaces the body:
 
 ```php
 /**
- * Records an audit event. Body implemented in Task 7.
+ * Records an audit event. Body implemented in Task 8.
  *
  * @param string $type Event type.
  * @return void
