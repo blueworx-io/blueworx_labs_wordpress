@@ -483,6 +483,136 @@ test.describe('BlueWorx admin theme', () => {
     expect(transparent).not.toContain(anchorBackground);
   });
 
+  test('name fields are paired side by side on the profile screen', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    const first = await page.locator('[data-bw-field="first_name"]').boundingBox();
+    const last = await page.locator('[data-bw-field="last_name"]').boundingBox();
+
+    // Same row, different columns.
+    expect(Math.abs(first.y - last.y)).toBeLessThan(4);
+    expect(last.x).toBeGreaterThan(first.x);
+  });
+
+  test('cards carry an explanatory subtitle', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('.bw-profile-card-sub').first()).toBeVisible();
+  });
+
+  test('editing another user shows a back link to the users list', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+
+    // The back link only exists on user-edit.php. Core sends you to your own
+    // profile.php when you click yourself, where the link is correctly absent,
+    // so this only tests anything with a second user present.
+    const row = page.locator('#the-list tr').filter({ hasNotText: 'admin' }).first();
+    test.skip(await row.count() === 0, 'Harness has only one user');
+
+    await row.locator('a').first().click();
+    await expect(page.locator('.bw-profile-back')).toBeVisible();
+  });
+
+  test('own profile has no back link', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('.bw-profile-back')).toHaveCount(0);
+  });
+
+  test('saving the profile still persists a change', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    const nickname = page.locator('#nickname');
+    const original = await nickname.inputValue();
+    const probe = `bw-test-${Date.now()}`;
+
+    // The native #submit control is hidden by design — the hero's Save Changes
+    // button (#bw-profile-save) is what a real user clicks, and it proxies the
+    // native submit via nativeSubmit.click(). Clicking through the hero button
+    // here is what actually guards the "still saves" invariant post-redesign.
+    await nickname.fill(probe);
+    await page.locator('#bw-profile-save').click();
+    await page.goto('/wp-admin/profile.php');
+    await expect(page.locator('#nickname')).toHaveValue(probe);
+
+    // Restore, and wait for the save to land so teardown cannot race it and
+    // leave the harness carrying a bw-test-* nickname into the next run.
+    await page.locator('#nickname').fill(original);
+    await page.locator('#bw-profile-save').click();
+    await expect(page.locator('#nickname')).toHaveValue(original);
+  });
+
+  test('every profile field stays inside the form after the restructure', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // The redesign MOVES core's markup rather than recreating it. Any control
+    // that lands outside #your-profile silently stops posting — the save test
+    // above would still pass, because it only exercises one field. This is the
+    // structural guard for all of them.
+    const inForm = await page.locator('#your-profile input, #your-profile select, #your-profile textarea').count();
+    const onPage = await page.locator('.wrap input, .wrap select, .wrap textarea').count();
+
+    // The hero and back link add only a <button> and an <a>, never a field, so
+    // every input/select/textarea under .wrap must still be inside the form.
+    expect(inForm).toBeGreaterThan(0);
+    expect(onPage).toBe(inForm);
+  });
+
+  test('the security card carries the sessions control', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // Account Management routes to the right-hand card; the "Log Out Everywhere
+    // Else" row must travel with it rather than being orphaned or dropped.
+    // Core renders this row on every own-profile view, so this is an outright
+    // assertion — no skip guard, which would let the section go missing quietly.
+    await expect(page.locator('.bw-profile-card .user-sessions-wrap')).toBeAttached();
+    await expect(page.locator('.bw-profile-card #destroy-sessions')).toBeVisible();
+  });
+
+  test('core rows hidden by class stay hidden inside the cards', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // The card grid must not out-specify core's own class-only hiding rules.
+    // Both of these are hidden until the user asks to change their password.
+    await expect(page.locator('#your-profile tr.user-pass2-wrap')).toBeHidden();
+    await expect(page.locator('#your-profile tr.pw-weak')).toBeHidden();
+  });
+
+  test('no bare section headings are left visible outside the cards', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/profile.php');
+
+    // Every original <h2> (Name, Contact Info, About Yourself, Account
+    // Management, ...) is left in the form so any nonce/markup it wraps still
+    // posts, but must be hidden — the card title stands in for it visually.
+    const strayHeadings = page.locator('#your-profile > h2');
+    const count = await strayHeadings.count();
+
+    for (let i = 0; i < count; i += 1) {
+      await expect(strayHeadings.nth(i)).toBeHidden();
+    }
+
+    // And the native submit button must not be visibly duplicating the hero's
+    // Save Changes button, even though it stays in the DOM and clickable.
+    await expect(page.locator('#your-profile p.submit')).toBeHidden();
+  });
+
+  test('a delete card appears when editing another user', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/users.php');
+    const row = page.locator('#the-list tr').filter({ hasNotText: 'admin' }).first();
+    test.skip(await row.count() === 0, 'Harness has only one user');
+
+    await row.locator('a').first().click();
+    await expect(page.locator('.bw-profile-danger')).toBeVisible();
+  });
+
   test('hovering a parent menu item reveals its submenu', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await login(page);

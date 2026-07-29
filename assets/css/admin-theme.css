@@ -1270,7 +1270,7 @@ div.error {
 .bw-profile-grid {
 	display: grid;
 	grid-template-columns: 2fr 1fr;
-	gap: 20px;
+	gap: 24px;
 	align-items: start;
 }
 
@@ -1282,23 +1282,37 @@ div.error {
 
 .bw-profile-col {
 	display: grid;
-	gap: 20px;
+	gap: 24px;
 	min-width: 0;
+}
+
+.bw-profile-back {
+	display: inline-block;
+	margin-bottom: 12px;
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
 }
 
 .bw-profile-card {
 	background: #fff;
+	border: 1px solid var(--bw-border);
 	border-radius: var(--bw-radius-card);
 	box-shadow: var(--bw-shadow-card);
-	padding: 20px 22px;
+	padding: 22px 24px;
 }
 
 .bw-profile-card-title {
-	margin: 0 0 14px;
+	margin: 0 0 6px;
 	font-family: var(--bw-font-head);
 	font-weight: 700;
-	font-size: 15px;
+	font-size: 16px;
 	color: var(--bw-charcoal);
+}
+
+.bw-profile-card .form-table th {
+	padding-bottom: 7px;
+	font-size: 12.5px;
 }
 
 /* Flatten WordPress's two-column .form-table into stacked, label-above fields.
@@ -1315,13 +1329,61 @@ div.error {
 	box-shadow: none;
 }
 
-.bw-profile-card .form-table tr {
-	display: block;
-	margin-bottom: 14px;
+.bw-profile-card .form-table > tbody {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px 16px;
 }
 
-.bw-profile-card .form-table tr:last-child {
+/* Full width by default; only the explicitly paired fields share a row.
+
+   Deliberately no `display` here. The tbody above is a grid container, so its
+   rows are blockified automatically — setting `display: block` as well would
+   out-specify core's own class-only hiding rules (`.pw-weak`, `.hide-if-js`,
+   and anything a plugin hides the same way) and force those rows visible on
+   every load. Leaving display alone lets core keep control of it. */
+.bw-profile-card .form-table tr {
+	grid-column: 1 / -1;
 	margin-bottom: 0;
+}
+
+.bw-profile-card .form-table tr.bw-profile-field-half {
+	grid-column: span 1;
+}
+
+@media only screen and (max-width: 782px) {
+	.bw-profile-card .form-table tr.bw-profile-field-half {
+		grid-column: 1 / -1;
+	}
+}
+
+.bw-profile-card-sub {
+	margin: -8px 0 16px;
+	color: var(--bw-muted);
+	font-size: 12px;
+}
+
+.bw-profile-danger {
+	border-color: rgba(255, 48, 47, .35);
+}
+
+.bw-profile-danger .bw-btn-danger {
+	display: inline-flex;
+	align-items: center;
+	border: 1px solid var(--bw-error);
+	border-radius: var(--bw-radius-btn);
+	padding: 9px 16px;
+	color: var(--bw-error);
+	background: transparent;
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.bw-profile-danger .bw-btn-danger:hover,
+.bw-profile-danger .bw-btn-danger:focus {
+	color: #fff;
+	background: var(--bw-error);
 }
 
 .bw-profile-card .form-table th,
