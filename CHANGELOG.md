@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.42.1] - 2026-07-29
+
+### Added
+- `CONNECT_CLAUDE_CODE.md` — a copy-ready prompt that hands a Claude Code session
+  everything it needs to connect to a live site over Support Access: the key, the site
+  URLs, the REST header, the browser key-exchange URL, and the read-only, 24-hour-window
+  and personal-data rules. Previously the same setup had to be explained by hand at the
+  start of every session. Also a short FAQ entry in `readme.txt` pointing at it.
+  Closes #61.
+- The prompt ships with `<SITE-URL>` and `<SUPPORT-KEY>` placeholders rather than a real
+  key. A support key is a live per-site credential shown once at generation, so writing
+  one into a tracked file would commit a secret and pin the doc to a single site.
+
 ## [1.42.0] - 2026-07-29
 
 ### Added
