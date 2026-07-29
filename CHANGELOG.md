@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.41.1] - 2026-07-29
+
+### Changed
+- Machine-local Claude Code settings now live in an ignored
+  `.claude/settings.local.json`, so a local permissions tweak can no longer ride
+  into an unrelated commit. `.claude/settings.json` stays tracked for team policy.
+
+### Added
+- `npm run check:merge`, run after resolving a merge conflict and before pushing.
+  It catches leftover conflict markers, content the base branch has that a
+  resolution dropped, and specs that no longer parse — the three ways a hand
+  merge has actually broken this repo. See `docs/merging-branches.md`.
+
 ## [1.41.0] - 2026-07-29
 
 ### Changed
