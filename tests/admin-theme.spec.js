@@ -483,6 +483,74 @@ test.describe('BlueWorx admin theme', () => {
     expect(transparent).not.toContain(anchorBackground);
   });
 
+  test('hovering a parent menu item reveals its submenu', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Posts is not the current menu on the dashboard, so it uses the fly-out
+    // path rather than the current-item accordion.
+    const posts = page.locator('#menu-posts');
+    await posts.hover();
+
+    const submenu = posts.locator('.wp-submenu');
+    await expect(submenu).toBeVisible();
+
+    // A naive visibility check would pass even if the fly-out rendered at the
+    // wrong offset (still on-screen, just beside the wrong item, or clipped by
+    // #adminmenuwrap's scroll container). Assert it actually sits beside its
+    // own item and fully inside the viewport.
+    const submenuBox = await submenu.boundingBox();
+    const itemBox = await posts.boundingBox();
+    const viewport = page.viewportSize();
+
+    expect(submenuBox.x).toBeGreaterThan(0);
+    expect(submenuBox.y).toBeGreaterThanOrEqual(0);
+    expect(submenuBox.y + submenuBox.height).toBeLessThanOrEqual(viewport.height);
+    expect(Math.abs(submenuBox.y - itemBox.y)).toBeLessThanOrEqual(itemBox.height);
+  });
+
+  test('keyboard focus reveals the submenu too', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    await page.locator('#menu-posts > a.menu-top').focus();
+
+    const submenu = page.locator('#menu-posts .wp-submenu');
+    await expect(submenu).toBeVisible();
+
+    const submenuBox = await submenu.boundingBox();
+    const viewport = page.viewportSize();
+
+    expect(submenuBox.x).toBeGreaterThan(0);
+    expect(submenuBox.y).toBeGreaterThanOrEqual(0);
+    expect(submenuBox.y + submenuBox.height).toBeLessThanOrEqual(viewport.height);
+  });
+
+  test('a fly-out near the bottom of the sidebar flips upward', async ({ page }) => {
+    // A short viewport forces the last menu item's fly-out to overflow the
+    // viewport foot if it were positioned at the item's own top offset.
+    await page.setViewportSize({ width: 1280, height: 500 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const lastItem = page.locator('#adminmenu > li.menu-top.wp-not-current-submenu').last();
+    await lastItem.hover();
+
+    const submenu = lastItem.locator('.wp-submenu');
+    await expect(submenu).toBeVisible();
+
+    const submenuBox = await submenu.boundingBox();
+    const itemBox = await lastItem.boundingBox();
+    const viewport = page.viewportSize();
+
+    expect(submenuBox.y + submenuBox.height).toBeLessThanOrEqual(viewport.height);
+    // Proof it actually flipped rather than merely fitting: the fly-out's top
+    // is above the item's own top offset.
+    expect(submenuBox.y).toBeLessThan(itemBox.y);
+  });
+
   test('the BlueWorx top bar does not cover the block editor toolbar in normal mode', async ({ page }) => {
     // Wide enough, and above the 961px breakpoint, so the sidebar sits in its
     // expanded (232px) state — the state where core's 160px assumption and our

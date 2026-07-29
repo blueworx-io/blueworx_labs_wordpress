@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.40.0] - 2026-07-29
+
+### Fixed
+- Admin sidebar submenus appear on hover again. The expanded sidebar's own
+  scroll container had been clipping them, so a parent item had to be clicked to
+  reach its children. Keyboard focus opens them too.
+
 ## [1.39.0] - 2026-07-29
 
 ### Fixed
