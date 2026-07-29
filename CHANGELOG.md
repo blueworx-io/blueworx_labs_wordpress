@@ -20,6 +20,16 @@ versioning.
   session immediately, rather than only barring new logins.
 
 ### Fixed
+- Support access could trash and permanently delete posts, pages, media and
+  categories. WordPress drives those through nonce'd GET links and GET bulk
+  forms, so the read-only block — which refused only non-GET methods — never
+  saw them. The delete capabilities are now stripped from the support role, a
+  write action arriving on any admin screen is refused by default, and the
+  destructive meta capabilities are denied outright. Reading every one of
+  those screens is unchanged.
+- Support access could read a WooCommerce order or a single comment by ID with
+  personal data access switched off. Only the list screens were denied; the
+  single-item editors behind `post.php` and `comment.php` were not.
 - Support access could deactivate or activate a plugin or theme through
   WordPress's nonce'd GET links. Reading the plugin and theme lists is
   unchanged; only the action is refused.

@@ -43,6 +43,25 @@ function impostorSupportUser(command) {
   return execFileSync('php', [fixture, wpLoad, command], { encoding: 'utf8' }).trim();
 }
 
+/**
+ * Runs tests/fixtures/support-access-probe.php.
+ *
+ * "ids" returns the IDs of a published post, page and approved comment, so a
+ * test can address a single-item screen directly. "deny-pages"/"allow-pages"
+ * install and remove a must-use plugin that adds "page" to the denied
+ * personal-data post types — the real denied types are WooCommerce's, and
+ * WooCommerce is not on the harness, so this drives the same branch with a
+ * post type that exists.
+ *
+ * @param {'ids'|'deny-pages'|'allow-pages'} command Fixture command.
+ * @return {string} Fixture stdout.
+ */
+function supportAccessProbe(command) {
+  const fixture = path.join(__dirname, 'fixtures', 'support-access-probe.php');
+  const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+  return execFileSync('php', [fixture, wpLoad, command], { encoding: 'utf8' }).trim();
+}
+
 const CONSOLE_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
 test.describe('Support access — key lifecycle', () => {
@@ -847,6 +866,172 @@ test.describe('Support access — key lifecycle', () => {
 
       await page.goto('/wp-admin/users.php');
       await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('the support account cannot trash or delete content over core GET links', async ({
+    page,
+    context,
+  }) => {
+    // Security review finding. The read-only block only refuses non-GET methods,
+    // and WordPress trashes and deletes over nonce'd GET: post.php?action=trash
+    // is a row-action anchor core renders into a page support is allowed to
+    // read, and the bulk form on edit.php is method="get". Neither was covered
+    // by the plugins.php/themes.php gate, and the role kept every delete_*
+    // capability, so the read-only guarantee did not hold against stock core.
+    const ids = JSON.parse(supportAccessProbe('ids'));
+
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      // The post list still reads — that is the diagnostic the feature exists
+      // for, and the fix must not cost it.
+      const list = await anon.goto(`${baseURL}/wp-admin/edit.php`);
+      expect(list.status()).toBe(200);
+      await expect(anon.locator('#the-list')).toBeVisible();
+
+      // Capability layer: with the delete_* capabilities stripped, core does not
+      // even render a Trash row action for this account.
+      await expect(anon.locator('#the-list a[href*="action=trash"]')).toHaveCount(0);
+
+      // Request layer, independently. A hand-built trash link is refused even
+      // though it is a GET, and even with a scraped nonce.
+      const nonce = await anon.evaluate(() => {
+        const el = document.querySelector('#_wpnonce, input[name="_wpnonce"]');
+        return el ? el.value : '';
+      });
+      const trash = await anon.goto(
+        `${baseURL}/wp-admin/post.php?action=trash&post=${ids.postId}&_wpnonce=${nonce}`
+      );
+      expect(trash.status(), 'GET trash must be refused').toBe(403);
+
+      // The bulk form on edit.php is method="get", so bulk trash arrives as GET.
+      const bulk = await anon.goto(
+        `${baseURL}/wp-admin/edit.php?action=trash&post%5B%5D=${ids.postId}&_wpnonce=${nonce}`
+      );
+      expect(bulk.status(), 'GET bulk trash must be refused').toBe(403);
+
+      // action2 — the bottom bulk selector — on the same footing.
+      const bulk2 = await anon.goto(
+        `${baseURL}/wp-admin/edit.php?action2=trash&post%5B%5D=${ids.postId}&_wpnonce=${nonce}`
+      );
+      expect(bulk2.status()).toBe(403);
+
+      // Media, taxonomy terms and comment moderation are the same shape.
+      expect(
+        (await anon.goto(`${baseURL}/wp-admin/upload.php?action=delete&media%5B%5D=1`)).status()
+      ).toBe(403);
+      expect(
+        (await anon.goto(`${baseURL}/wp-admin/edit-tags.php?taxonomy=category&action=delete&tag_ID=1`)).status()
+      ).toBe(403);
+      expect(
+        (await anon.goto(`${baseURL}/wp-admin/comment.php?action=approvecomment&c=${ids.commentId}`)).status()
+      ).toBe(403);
+
+      // Reading a single post is still allowed — action=edit renders the
+      // editor, and saving it is a separate POSTed action that is refused.
+      const read = await anon.goto(
+        `${baseURL}/wp-admin/post.php?post=${ids.postId}&action=edit`
+      );
+      expect(read.status(), 'reading a post must still work').toBe(200);
+
+      await fresh.close();
+      fresh = undefined;
+
+      // And nothing was actually trashed.
+      await page.goto(`/wp-admin/post.php?post=${ids.postId}&action=edit`);
+      await expect(page.locator('#original_post_status')).toHaveValue('publish');
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+    }
+  });
+
+  test('personal-data screens are denied one item at a time, not just as lists', async ({
+    page,
+    context,
+  }) => {
+    // Security review finding. The data gate matched denied post types only on
+    // edit.php, and denied screens only by exact $pagenow — so the single-item
+    // editors for the same records (post.php?post=<id>, comment.php?c=<id>)
+    // stayed readable by ID while the operator believed data access was off.
+    const ids = JSON.parse(supportAccessProbe('ids'));
+    supportAccessProbe('deny-pages');
+
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+
+    // Access open, personal data explicitly NOT opted in.
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    let fresh;
+
+    try {
+      fresh = await context.browser().newContext();
+      const anon = await fresh.newPage();
+      await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
+      await expect(anon.locator('body.wp-admin')).toHaveCount(1);
+
+      // The list screen was already denied.
+      expect((await anon.goto(`${baseURL}/wp-admin/edit.php?post_type=page`)).status()).toBe(403);
+
+      // The single-item editor for the same record must be too. post.php
+      // carries no post_type parameter, so the type is resolved from the ID.
+      expect(
+        (await anon.goto(`${baseURL}/wp-admin/post.php?post=${ids.pageId}&action=edit`)).status(),
+        'a denied post type must be denied by ID as well as by list'
+      ).toBe(403);
+
+      // A post type that is NOT denied still reads, so the gate has not simply
+      // closed the editor for everything.
+      expect(
+        (await anon.goto(`${baseURL}/wp-admin/post.php?post=${ids.postId}&action=edit`)).status()
+      ).toBe(200);
+
+      // The single-comment screen shows the commenter's email and IP; the list
+      // it belongs to was denied, so this must be denied on the same footing.
+      expect(
+        (await anon.goto(`${baseURL}/wp-admin/comment.php?action=editcomment&c=${ids.commentId}`)).status()
+      ).toBe(403);
+    } finally {
+      await restoreAll([
+        ['remove the deny-pages fixture', async () => supportAccessProbe('allow-pages')],
+        [
+          'revoke support key',
+          async () => {
+            if (fresh) {
+              await fresh.close();
+            }
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
     }
   });
 

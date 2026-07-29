@@ -242,8 +242,81 @@ function blueworx_support_removed_caps() {
 		'delete_users',
 		'promote_users',
 		'remove_users',
+		/*
+		 * Content deletion. WordPress trashes and deletes through nonce'd GET
+		 * links (post.php?action=trash, and the method="get" bulk form on
+		 * edit.php and upload.php), so the request-layer write block — which
+		 * only refuses non-GET methods — never sees those requests. Nothing on
+		 * a read-only account needs these, and dropping them costs no screen
+		 * rendering: list tables simply omit the Trash and Delete links.
+		 */
+		'delete_posts',
+		'delete_others_posts',
+		'delete_published_posts',
+		'delete_private_posts',
+		'delete_pages',
+		'delete_others_pages',
+		'delete_published_pages',
+		'delete_private_pages',
 	);
 }
+
+/**
+ * Meta capabilities denied outright to the support account.
+ *
+ * The primitive capabilities above cover posts, pages and attachments. These are
+ * the destructive operations WordPress resolves through map_meta_cap against a
+ * capability the account must keep in order to READ the screen at all —
+ * delete_term resolves to manage_categories, which is also what gates viewing
+ * edit-tags.php, and delete_comment resolves through the parent post's
+ * edit_post, which gates viewing the post editor. Denying the meta capability
+ * leaves the read intact and removes only the write.
+ *
+ * The user meta capabilities (edit_user, delete_user, promote_user, remove_user)
+ * are deliberately NOT here. Their primitives are already stripped in
+ * blueworx_support_removed_caps(), so managing another user is impossible
+ * regardless; denying the meta capability adds nothing and breaks the account's
+ * own profile, because core's map_meta_cap special-cases self-editing to always
+ * allow it and this filter would override that.
+ *
+ * @return array Meta capability names.
+ */
+function blueworx_support_denied_meta_caps() {
+	return array(
+		'delete_post',
+		'delete_page',
+		'delete_term',
+		'delete_comment',
+	);
+}
+
+/**
+ * Denies destructive meta capabilities to the support account.
+ *
+ * Defence in depth behind blueworx_support_gate_write_actions(): a capability
+ * denial holds wherever the request reaches, including any code path that
+ * bypasses the admin_init screen gate entirely.
+ *
+ * @param array  $caps    Primitive capabilities required.
+ * @param string $cap     Capability being checked.
+ * @param int    $user_id User being checked.
+ * @return array Primitive capabilities, or do_not_allow.
+ */
+function blueworx_support_deny_meta_caps( $caps, $cap, $user_id ) {
+	if ( ! in_array( $cap, blueworx_support_denied_meta_caps(), true ) ) {
+		return $caps;
+	}
+
+	// Narrowed to the support account asking about itself. map_meta_cap also runs
+	// for other users (a list table asking "can that user edit this row?"), and a
+	// real administrator's own checks must not be affected.
+	if ( (int) $user_id !== get_current_user_id() || ! blueworx_support_is_support_user() ) {
+		return $caps;
+	}
+
+	return array( 'do_not_allow' );
+}
+add_filter( 'map_meta_cap', 'blueworx_support_deny_meta_caps', 10, 3 );
 
 /**
  * Builds the support role's capability map from the live administrator role.
@@ -504,7 +577,17 @@ function blueworx_support_denied_screens() {
 	 */
 	return (array) apply_filters(
 		'blueworx_support_denied_screens',
-		array( 'users.php', 'user-edit.php', 'edit-comments.php', 'export.php' )
+		array(
+			'users.php',
+			'user-edit.php',
+			'edit-comments.php',
+			// The single-comment editor. edit-comments.php is the list it belongs
+			// to; this screen shows the same commenter email and IP one row at a
+			// time, and is a different $pagenow, so denying the list alone left
+			// the data reachable by ID.
+			'comment.php',
+			'export.php',
+		)
 	);
 }
 
@@ -621,11 +704,12 @@ function blueworx_support_denied_routes() {
 /**
  * Whether the screen being requested holds personal data.
  *
- * Three shapes of screen are matched, because the data screens this feature
- * has to withhold are not all addressed the same way: plain $pagenow values
+ * Four shapes of screen are matched, because the data screens this feature has
+ * to withhold are not all addressed the same way: plain $pagenow values
  * (users.php), page slugs behind admin.php (WooCommerce and SureCart order and
- * customer tables), and post-type list tables behind edit.php (the legacy
- * WooCommerce order table).
+ * customer tables), post-type list tables behind edit.php (the legacy
+ * WooCommerce order table), and the single-item editor behind post.php, which
+ * identifies its subject by ID rather than by post type.
  *
  * @return bool True when the screen must be refused.
  */
@@ -668,10 +752,24 @@ function blueworx_support_screen_is_denied() {
 		return false;
 	}
 
-	if ( 'edit.php' === $screen ) {
+	if ( 'edit.php' === $screen || 'post-new.php' === $screen ) {
 		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		return '' !== $post_type && in_array( $post_type, blueworx_support_denied_post_types(), true );
+	}
+
+	// The single-item editor for the same objects. post.php carries no post_type
+	// parameter — the type has to be resolved from the ID — so matching the list
+	// screen alone left every denied record readable one at a time, by an ID
+	// that is sequential and trivially enumerated.
+	if ( 'post.php' === $screen ) {
+		$post_id = isset( $_GET['post'] ) ? (int) $_GET['post'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( $post_id > 0 ) {
+			$post_type = (string) get_post_type( $post_id );
+
+			return '' !== $post_type && in_array( $post_type, blueworx_support_denied_post_types(), true );
+		}
 	}
 
 	return false;
@@ -708,59 +806,131 @@ function blueworx_support_gate_data_screens() {
 add_action( 'admin_init', 'blueworx_support_gate_data_screens', 0 );
 
 /**
- * Admin screens whose "action" parameter activates or deactivates code.
+ * Admin screens whose "action" parameter performs a write.
+ *
+ * WordPress does not confine its writes to POST. Trashing, deleting, approving,
+ * activating and upgrading are all driven by nonce'd GET links, and the two
+ * list-table filter forms that carry bulk actions (edit.php and upload.php) are
+ * method="get", so their bulk submissions arrive as GET too. Every one of those
+ * requests passes blueworx_support_block_writes(), which only refuses non-GET
+ * methods — so each screen that takes a write action over GET has to be named.
  *
  * @return array $pagenow values.
  */
-function blueworx_support_activation_screens() {
-	return array( 'plugins.php', 'themes.php' );
+function blueworx_support_action_screens() {
+	/**
+	 * Filters the screens whose GET action parameter is refused.
+	 *
+	 * @param array $screens $pagenow values.
+	 */
+	return (array) apply_filters(
+		'blueworx_support_action_screens',
+		array(
+			'plugins.php',
+			'themes.php',
+			'post.php',
+			'edit.php',
+			'upload.php',
+			'media.php',
+			'comment.php',
+			'edit-comments.php',
+			'edit-tags.php',
+			'term.php',
+			'link.php',
+			'edit-link-categories.php',
+			'users.php',
+			'update.php',
+			'update-core.php',
+			'import.php',
+			'export.php',
+			'options.php',
+			'theme-editor.php',
+			'plugin-editor.php',
+			'site-health.php',
+			'privacy.php',
+			'erase-personal-data.php',
+			'export-personal-data.php',
+		)
+	);
 }
 
 /**
- * Denies plugin and theme activation actions to the support account.
+ * Action values that only ever read.
  *
- * The activate_plugins and switch_themes capabilities are deliberately retained
- * on the support role: activate_plugins is what gates VIEWING plugins.php, and reading the
- * plugin list is one of the primary diagnostics this feature exists to enable.
- * But WordPress activates or deactivates a SINGLE plugin through a nonce'd GET
- * link (plugins.php?action=activate&plugin=…&_wpnonce=…) — only the bulk
- * actions are POSTed — and themes.php?action=activate&stylesheet=… behaves the
- * same way. The account can render plugins.php, harvest its own valid nonces
- * from that page and follow the link, so the read-only write block (which only
- * refuses non-GET methods) never sees it.
+ * An allow-list, not a deny-list of known-destructive values: the set of
+ * write actions across core and every plugin is open-ended, and a deny-list
+ * loses that race by default. Anything not named here is refused.
  *
- * The action is therefore blocked here while the read is left intact: any
- * request to one of these screens carrying an action parameter is refused.
- * Both "action" and "action2" are checked because WordPress submits the bottom
- * bulk-action selector under the second name, and '-1' — WordPress's "no action
- * selected" value — is treated as no action at all.
+ * @return array Action values.
+ */
+function blueworx_support_readonly_actions() {
+	/**
+	 * Filters the action values support access is allowed to follow.
+	 *
+	 * @param array $actions Action values.
+	 */
+	return (array) apply_filters(
+		'blueworx_support_readonly_actions',
+		array(
+			// WordPress's own "no action selected" value on a bulk selector.
+			'-1',
+			// Renders an editor. The save is a separate, POSTed action
+			// (editpost / editedcomment / editedtag), which is refused.
+			'edit',
+			'editcomment',
+			'view',
+		)
+	);
+}
+
+/**
+ * Denies write actions carried over GET to the support account.
+ *
+ * The capabilities behind these screens are deliberately retained on the support
+ * role: activate_plugins is what gates VIEWING plugins.php, manage_categories
+ * gates viewing edit-tags.php, and reading those screens is a primary diagnostic
+ * this feature exists to enable. WordPress gates rendering on the same
+ * capabilities it gates writes on, so the read cannot be kept by capability
+ * alone.
+ *
+ * The ACTION is therefore blocked here while the read is left intact: on any
+ * screen in blueworx_support_action_screens(), an action parameter that is not
+ * in blueworx_support_readonly_actions() is refused. Both "action" and "action2"
+ * are checked, because WordPress submits the bottom bulk-action selector under
+ * the second name.
+ *
+ * Reading the request rather than only $_GET is deliberate. The bulk forms on
+ * edit.php and upload.php are method="get", but WP_List_Table::current_action()
+ * reads $_REQUEST, so an action arriving by either route must be caught.
  *
  * @return void
  */
-function blueworx_support_gate_activation_actions() {
+function blueworx_support_gate_write_actions() {
 	global $pagenow;
 
 	if ( ! blueworx_support_is_support_user() ) {
 		return;
 	}
 
-	if ( ! in_array( (string) $pagenow, blueworx_support_activation_screens(), true ) ) {
+	if ( ! in_array( (string) $pagenow, blueworx_support_action_screens(), true ) ) {
 		return;
 	}
 
+	$allowed = blueworx_support_readonly_actions();
+
 	foreach ( array( 'action', 'action2' ) as $param ) {
-		$value = isset( $_GET[ $param ] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			? sanitize_text_field( wp_unslash( $_GET[ $param ] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$value = isset( $_REQUEST[ $param ] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			? sanitize_text_field( wp_unslash( $_REQUEST[ $param ] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			: '';
 
-		if ( '' === $value || '-1' === $value ) {
+		if ( '' === $value || in_array( $value, $allowed, true ) ) {
 			continue;
 		}
 
 		blueworx_support_log_event( 'blocked_write' );
 
 		wp_die(
-			esc_html__( 'BlueWorx support access is read-only: plugins and themes cannot be activated or deactivated.', 'blueworx-labs-wordpress' ),
+			esc_html__( 'BlueWorx support access is read-only: this action is refused.', 'blueworx-labs-wordpress' ),
 			esc_html__( 'BlueWorx Support', 'blueworx-labs-wordpress' ),
 			array( 'response' => 403 )
 		);
@@ -769,7 +939,7 @@ function blueworx_support_gate_activation_actions() {
 // Priority 0, for the same reason as blueworx_support_gate_data_screens(): this
 // denial must win over any other feature's own admin_init handling of the same
 // screen, so it cannot escape as a redirect-to-200.
-add_action( 'admin_init', 'blueworx_support_gate_activation_actions', 0 );
+add_action( 'admin_init', 'blueworx_support_gate_write_actions', 0 );
 
 /**
  * Denies personal-data REST routes unless data access is open.
