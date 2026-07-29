@@ -54,6 +54,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/disable-comments.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
 require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
+require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
 
 // Headless REST layer (auth, accounts, content, CORS, revalidation, proxies).
 require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
@@ -61,3 +62,9 @@ require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
 register_activation_hook( __FILE__, 'blueworx_headless_install' );
 register_activation_hook( __FILE__, 'blueworx_client_roles_maybe_ensure' );
 register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );
+
+// Deactivation, not just uninstall: the support account is a near-administrator
+// whose read-only guarantee comes entirely from this plugin's request-layer
+// block. With the plugin switched off that block is gone but the account would
+// remain, so it is removed the moment the plugin is deactivated.
+register_deactivation_hook( __FILE__, 'blueworx_support_on_deactivate' );

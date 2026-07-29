@@ -612,4 +612,113 @@ test.describe('BlueWorx admin theme', () => {
     await row.locator('a').first().click();
     await expect(page.locator('.bw-profile-danger')).toBeVisible();
   });
+
+  test('the BlueWorx top bar does not cover the block editor toolbar in normal mode', async ({ page }) => {
+    // Wide enough, and above the 961px breakpoint, so the sidebar sits in its
+    // expanded (232px) state — the state where core's 160px assumption and our
+    // width disagree, which is what the horizontal assertions below cover.
+    await page.setViewportSize({ width: 1265, height: 900 });
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    // Leave fullscreen if WordPress remembered it on — this test asserts the
+    // normal-mode offset, so asserting in fullscreen would test the wrong state.
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    const bar = await page.locator('.bw-topbar').boundingBox();
+    const sidebar = await page.locator('#adminmenuback').boundingBox();
+    const editor = await skeleton.boundingBox();
+
+    expect(editor.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+
+    // Core hard-codes the skeleton's left edge to its own 160px expanded
+    // admin-menu width. Our expanded sidebar is 232px, so without the
+    // matching override the editor — including its own Undo button — renders
+    // partly underneath ours.
+    expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+
+    const undo = await page.locator('button[aria-label="Undo"]').boundingBox();
+    expect(undo.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  });
+
+  test('the BlueWorx top bar hides itself in fullscreen mode instead of covering the editor toolbar', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    // Force fullscreen on — this test asserts the fullscreen-mode behaviour, so
+    // it must not depend on whatever state WordPress remembered for this user.
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (!select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    // Our chrome is gone rather than reserved-for: the bar isn't just moved out
+    // of the way, it isn't there to cover anything.
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+    await expect(page.locator('.bw-brand')).toBeHidden();
+
+    // The editor's own toolbar (undo/redo/inserter) sits at the very top of the
+    // skeleton in fullscreen — confirm nothing of ours still covers it.
+    const editor = await skeleton.boundingBox();
+    expect(editor.y).toBe(0);
+  });
+
+  test('the block editor toolbar clears the folded-width sidebar in the 783-960px band', async ({ page }) => {
+    // Below 961px the sidebar is always in its folded state, and folded's 36px
+    // happens to equal core's own folded admin-menu width — so this state
+    // needs no left-offset override, only pinning: a future change to
+    // --bw-sidebar-w or the breakpoints could silently break the agreement.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await login(page);
+    await page.goto('/wp-admin/post-new.php');
+
+    await page.evaluate(() => {
+      const { select, dispatch } = window.wp.data;
+      if (select('core/edit-post').isFeatureActive('fullscreenMode')) {
+        dispatch('core/edit-post').toggleFeature('fullscreenMode');
+      }
+    });
+
+    const skeleton = page.locator('.interface-interface-skeleton');
+    await expect(skeleton).toBeVisible();
+
+    const sidebar = await page.locator('#adminmenuback').boundingBox();
+    const editor = await skeleton.boundingBox();
+
+    expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  });
+
+  test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {
+    // WordPress forces site-editor.php permanently into fullscreen — there is
+    // no non-fullscreen state to test here. Our fullscreen rule is what
+    // governs it, so this documents that (non-obvious) fact and confirms our
+    // chrome disappears rather than needing its own offset rule.
+    await login(page);
+    await page.goto('/wp-admin/site-editor.php');
+
+    // The site editor can take several seconds to boot on this harness — wait
+    // on its own layout element rather than a fixed timeout.
+    const layout = page.locator('.edit-site-layout');
+    await expect(layout).toBeVisible({ timeout: 15000 });
+
+    await expect(page.locator('body')).toHaveClass(/is-fullscreen-mode/);
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+
+    const box = await layout.boundingBox();
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+  });
 });
