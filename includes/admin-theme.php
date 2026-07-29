@@ -122,6 +122,21 @@ add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
  * that may be late here. Keep the 60px top bar height in sync with
  * --bw-topbar-h in admin-theme.css.
  *
+ * The block/site editor's `.interface-interface-skeleton` offset is mirrored
+ * here too. The skeleton itself is not in the DOM until the editor's own JS
+ * has mounted, which normally happens well after the enqueued admin-theme.css
+ * has already applied — so in the common case this extra rule is a no-op. But
+ * a caching or asset-optimiser plugin can defer/async that <link>, and if it
+ * lands after the editor mounts, the skeleton would paint at core's default
+ * (unoffset) position while the topbar has not yet gained its position:fixed
+ * treatment either — then both flip into place together once the sheet
+ * arrives, and on a slow enough connection that flip is visible: exactly the
+ * reported overlap, flashing on every load instead of being permanently
+ * fixed. Fullscreen is not mirrored here: nothing in this critical block gives
+ * .bw-topbar/.bw-brand position:fixed or display:flex, so they cannot yet be
+ * covering anything in this window, fullscreen or not — core's own CSS
+ * already puts the skeleton at top:0 in that state, which is what we want.
+ *
  * @return void
  */
 function blueworx_print_admin_theme_critical_css() {
@@ -138,6 +153,7 @@ function blueworx_print_admin_theme_critical_css() {
 			#adminmenuwrap { position: fixed !important; bottom: 0 !important; height: auto !important; }
 			#adminmenuback { top: 0 !important; }
 			#adminmenuwrap { top: 60px !important; left: 0; }
+			body.block-editor-page:not(.is-fullscreen-mode) .interface-interface-skeleton { top: 60px; }
 		}
 	</style>
 	<?php
