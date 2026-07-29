@@ -90,6 +90,14 @@ function blueworx_enqueue_admin_theme() {
 		array( 'blueworx-admin-fonts' ),
 		blueworx_get_admin_asset_version( 'assets/css/admin-theme.css' )
 	);
+
+	wp_enqueue_script(
+		'blueworx-admin-menu-flyout',
+		BLUEWORX_LABS_URL . 'assets/js/admin-menu-flyout.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/admin-menu-flyout.js' ),
+		true
+	);
 }
 add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
 
