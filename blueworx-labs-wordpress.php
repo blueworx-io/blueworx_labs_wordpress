@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, cache refresh, admin/profile enhancements, and the headless REST layer that powers BlueWorx headless WordPress sites.
- * Version:           1.44.0
+ * Version:           1.45.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.44.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.45.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -46,7 +46,6 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-groups.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-icons.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-badges.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
-require_once BLUEWORX_LABS_PATH . 'includes/client-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
@@ -61,7 +60,6 @@ require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
 
 register_activation_hook( __FILE__, 'blueworx_headless_install' );
-register_activation_hook( __FILE__, 'blueworx_client_roles_maybe_ensure' );
 register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );
 
 // Deactivation, not just uninstall: the support account is a near-administrator

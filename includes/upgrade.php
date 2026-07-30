@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 6;
+	return 7;
 }
 
 /**
@@ -327,16 +327,100 @@ function blueworx_migrate_remove_orphaned_roles() {
 }
 
 /**
- * Registers the client roles on sites upgrading to 1.16.0.
+ * Gets the client role slugs retired in 1.45.0.
  *
- * Fresh activations get the roles from the activation hook; this covers existing
- * sites, where the activation hook does not fire on a plugin update. Idempotent
- * and gated on the feature being enabled (which it is by default).
+ * These were the "Client Roles" feature's three assignable roles (Business
+ * Owner, External Dev, Content Editor). The feature is gone; the slugs live on
+ * here only so the removal migration below can find whatever an earlier version
+ * wrote into the database.
+ *
+ * @return array Role slugs.
+ */
+function blueworx_get_retired_client_role_slugs() {
+	return array(
+		'blueworx_client_owner',
+		'blueworx_client_dev',
+		'blueworx_client_editor',
+	);
+}
+
+/**
+ * Removes the client roles retired in 1.45.0.
+ *
+ * The feature's code is gone, but a site that ran 1.16.0–1.44.0 still carries
+ * the three role definitions and the feature's options, so they would otherwise
+ * keep appearing in the Users screen and in Site Protection forever.
+ *
+ * A role is removed only when no users are assigned to it: remove_role() does
+ * not reassign users, so dropping a role that is still an account's only role
+ * would strand that account. Anything skipped is recorded in
+ * blueworx_orphaned_roles_skipped, the same visibility the 1.8.0 role-editor
+ * sweep uses, so it can be cleared once its users are reassigned.
  *
  * @return void
  */
-function blueworx_migrate_ensure_client_roles() {
-	blueworx_client_roles_maybe_ensure();
+function blueworx_migrate_remove_client_roles() {
+	$skipped = get_option( 'blueworx_orphaned_roles_skipped', array() );
+	$skipped = is_array( $skipped ) ? $skipped : array();
+
+	foreach ( blueworx_get_retired_client_role_slugs() as $slug ) {
+		if ( ! get_role( $slug ) ) {
+			continue;
+		}
+
+		$assigned = get_users(
+			array(
+				'role'   => $slug,
+				'number' => 1,
+				'fields' => 'ID',
+			)
+		);
+
+		if ( ! empty( $assigned ) ) {
+			$skipped[] = $slug;
+			continue;
+		}
+
+		remove_role( $slug );
+	}
+
+	delete_option( 'blueworx_client_roles_signature' );
+	delete_option( 'blueworx_client_editor_can_delete_users' );
+	delete_option( 'blueworx_feature_client_roles' );
+
+	$skipped = array_values( array_unique( $skipped ) );
+
+	if ( ! empty( $skipped ) ) {
+		update_option( 'blueworx_orphaned_roles_skipped', $skipped );
+	} else {
+		delete_option( 'blueworx_orphaned_roles_skipped' );
+	}
+}
+
+/**
+ * Re-registers the support role so it carries its 1.45.0 label.
+ *
+ * The role is written only when a key is generated, so a site with a support
+ * key already issued would otherwise keep showing the old
+ * "BlueWorx Support (read-only)" label until the next key. Capabilities are
+ * rebuilt from the same function the feature uses, so this is a label change
+ * only, and sites that never used support access have no role to touch.
+ *
+ * @return void
+ */
+function blueworx_migrate_relabel_support_role() {
+	$slug = blueworx_support_role_slug();
+
+	if ( ! get_role( $slug ) ) {
+		return;
+	}
+
+	remove_role( $slug );
+	add_role(
+		$slug,
+		__( 'BlueWorx - Support Agent (Read-Only)', 'blueworx-labs-wordpress' ),
+		blueworx_support_build_caps()
+	);
 }
 
 /**
@@ -374,8 +458,9 @@ function blueworx_run_pending_labs_migrations() {
 		blueworx_migrate_remove_orphaned_roles();
 	}
 
-	if ( $stored_version < 6 ) {
-		blueworx_migrate_ensure_client_roles();
+	if ( $stored_version < 7 ) {
+		blueworx_migrate_remove_client_roles();
+		blueworx_migrate_relabel_support_role();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

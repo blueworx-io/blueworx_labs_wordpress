@@ -51,12 +51,6 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'security',
 			'detail'      => 'site_protection',
 		),
-		'client_roles'          => array(
-			'label'       => __( 'Client Roles', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Adds Business Owner, External Dev and Content Editor roles that show or hide backend areas for client accounts.', 'blueworx-labs-wordpress' ),
-			'section'     => 'security',
-			'detail'      => 'client_roles',
-		),
 		'support_access'        => array(
 			'label'       => __( 'BlueWorx support access', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Lets BlueWorx open a read-only support session with one key, for a 24-hour window you control. No access is possible until you generate a key and switch the window on.', 'blueworx-labs-wordpress' ),
