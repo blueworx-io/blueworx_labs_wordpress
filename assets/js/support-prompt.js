@@ -42,7 +42,9 @@
 
     try {
       copied = document.execCommand('copy');
-    } catch (error) {
+    } catch {
+      // The failure itself is the whole signal — the caller reports "not
+      // copied" either way, so there is nothing to read off the error.
       copied = false;
     }
 

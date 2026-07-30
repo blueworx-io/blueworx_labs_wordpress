@@ -242,6 +242,7 @@ function blueworx_support_removed_caps() {
 		'delete_users',
 		'promote_users',
 		'remove_users',
+
 		/*
 		 * Content deletion. WordPress trashes and deletes through nonce'd GET
 		 * links (post.php?action=trash, and the method="get" bulk form on
@@ -310,7 +311,7 @@ function blueworx_support_deny_meta_caps( $caps, $cap, $user_id ) {
 	// Narrowed to the support account asking about itself. map_meta_cap also runs
 	// for other users (a list table asking "can that user edit this row?"), and a
 	// real administrator's own checks must not be affected.
-	if ( (int) $user_id !== get_current_user_id() || ! blueworx_support_is_support_user() ) {
+	if ( get_current_user_id() !== (int) $user_id || ! blueworx_support_is_support_user() ) {
 		return $caps;
 	}
 

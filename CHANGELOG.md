@@ -31,7 +31,18 @@ versioning.
   rather than one row per request, so the cap can no longer silently discard the
   evidence. Existing entries without a count render unchanged.
 
+- **Lint cleanups, no behaviour change.** The unused `catch` binding in
+  `assets/js/support-prompt.js` is dropped (optional catch binding), and two
+  `phpcs` nits in `includes/support-access.php` are corrected — a missing blank
+  line before a block comment, and a non-Yoda comparison in the `map_meta_cap`
+  guard.
+
 ### Notes
+- **CRLF line endings are repo-wide and deliberately left alone.** `phpcs` reports
+  one `Generic.Files.LineEndings.InvalidEOLChar` per file across 33 PHP files
+  because the committed blobs carry CRLF. Normalising is a whole-repo change that
+  rewrites every line of every file, so it does not belong in a bug-fix diff;
+  tracked separately for a `.gitattributes` + `git add --renormalize` commit.
 - #20 (headless CORS has no deny path) was already fixed in 1.16.2 under #35 and
   is closed as such — core's `rest_send_cors_headers` is removed and replaced in
   `includes/rest/cors.php`, and `tests/headless-rest.spec.js` covers both
