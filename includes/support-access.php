@@ -353,7 +353,7 @@ function blueworx_support_ensure_account() {
 	remove_role( blueworx_support_role_slug() );
 	add_role(
 		blueworx_support_role_slug(),
-		__( 'BlueWorx Support (read-only)', 'blueworx-labs-wordpress' ),
+		__( 'BlueWorx - Support Agent (Read-Only)', 'blueworx-labs-wordpress' ),
 		blueworx_support_build_caps()
 	);
 

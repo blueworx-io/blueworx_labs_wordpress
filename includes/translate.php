@@ -167,7 +167,7 @@ function blueworx_translate_exclusions() {
  * Sanitises and saves the translation settings.
  *
  * Called from blueworx_save_feature_settings(), which has already performed the
- * capability check, the client-role console check and the nonce check. This
+ * capability check and the nonce check. This
  * function does no permission checking of its own and must never be wired to a
  * request on its own.
  *

@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.45.0] - 2026-07-30
+
+### Removed
+- **The Client Roles feature is gone.** The three assignable roles it registered
+  — Admin — Business Owner (`blueworx_client_owner`), External Dev
+  (`blueworx_client_dev`) and Content Editor (`blueworx_client_editor`) — are
+  withdrawn along with the sidebar-group gating, the console block and the
+  "Allow Content Editors to delete users" setting. `includes/client-roles.php`
+  and the feature toggle are deleted; nothing else in the plugin depended on
+  them.
+- **Existing sites are swept clean on upgrade.** Migration 7 removes the three
+  role definitions and deletes `blueworx_client_roles_signature`,
+  `blueworx_client_editor_can_delete_users` and `blueworx_feature_client_roles`,
+  so the roles stop appearing in the Users screen and in Site Protection. As
+  with the 1.8.0 role-editor sweep, a role that still has a user assigned is
+  left in place and recorded in `blueworx_orphaned_roles_skipped` rather than
+  stranding that account.
+
+### Changed
+- **The support role is now labelled "BlueWorx - Support Agent (Read-Only)"**
+  (was "BlueWorx Support (read-only)"). Presentation only — capabilities, the
+  key gate, the window and the read-only enforcement are untouched. Migration 7
+  re-registers the role in place so a site that already holds a support key
+  picks up the new label without waiting for the next key generation.
+
 ## [1.44.0] - 2026-07-30
 
 ### Fixed

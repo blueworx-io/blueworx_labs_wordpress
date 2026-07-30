@@ -1,15 +1,13 @@
 <?php
 /**
- * Uninstall: remove the client role definitions and BlueWorx support access.
+ * Uninstall: remove BlueWorx support access and the feature options.
  *
- * Client roles are definition-only. Users' wp_capabilities meta is deliberately
- * preserved so that reinstalling the plugin re-registers the roles and every
- * assigned user regains their role automatically. Slugs are inlined because the
- * plugin's code is not loaded during uninstall.
+ * The support account itself must not survive uninstall, so that part requires
+ * includes/support-access.php to reuse its existing removal routine rather than
+ * reimplementing it here.
  *
- * Support access is different: the managed account itself must not survive
- * uninstall, so that part requires includes/support-access.php to reuse its
- * existing removal routine rather than reimplementing it here.
+ * The retired client roles are not handled here: the 1.45.0 migration in
+ * includes/upgrade.php clears them on upgrade, well before any uninstall.
  *
  * @package BlueWorxLabs
  */
@@ -19,15 +17,6 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-foreach ( array( 'blueworx_client_owner', 'blueworx_client_dev', 'blueworx_client_editor' ) as $blueworx_role_slug ) {
-	if ( get_role( $blueworx_role_slug ) ) {
-		remove_role( $blueworx_role_slug );
-	}
-}
-
-delete_option( 'blueworx_client_roles_signature' );
-delete_option( 'blueworx_client_editor_can_delete_users' );
-
 delete_option( 'blueworx_translate_languages' );
 delete_option( 'blueworx_translate_position' );
 delete_option( 'blueworx_translate_label' );
@@ -36,9 +25,9 @@ delete_option( 'blueworx_translate_exclusions' );
 // BlueWorx Support Access: remove the managed account, the role, and every
 // option the feature created. blueworx_support_remove_account() is required
 // from includes/support-access.php rather than reimplemented here because it
-// already knows the account's login and how to tear it down safely; unlike
-// the client-roles pattern above, the account itself (not just a role
-// definition) must not survive uninstall. Requiring the file is safe in this
+// already knows the account's login and how to tear it down safely, and the
+// account itself (not just a role definition) must not survive uninstall.
+// Requiring the file is safe in this
 // context: at the top level it only defines constants and functions and
 // registers hooks that never fire during uninstall (no admin_init, init or
 // REST request is in flight), so nothing it references executes here except
