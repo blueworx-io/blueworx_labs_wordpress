@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.44.0] - 2026-07-30
+
+### Fixed
+- **The support account can read its own user record again.** `/wp/v2/users` is
+  denied by prefix while the personal-data window is shut, and `/wp/v2/users/me`
+  starts with it — so the account was refused the one record that is not
+  third-party personal data. wp-admin fetches `/wp/v2/users/me?context=edit` on
+  every page load, so a support session saw a console 403 on every screen and
+  block-editor preferences could not load or persist. `me`, and the account's own
+  numeric ID, are now exempt; `/wp/v2/users` and any other user's ID are refused
+  exactly as before (`blueworx_support_route_is_own_record()`). Closes #60.
+- **Heartbeat no longer erases the audit log.** WordPress polls
+  `admin-ajax.php` every 60 seconds from any open tab. The write block correctly
+  refused it and logged a `blocked_write` each time, so an idle session filled the
+  100-entry log in about 100 minutes — evicting `key_generated`, `access_opened`,
+  `login` and any genuine refusal well inside the 24-hour window the log exists to
+  document. Two changes: Heartbeat is deregistered for the support account so the
+  request is never made, and a Heartbeat POST that does arrive is still refused but
+  no longer recorded. Closes #59.
+
+### Changed
+- **Consecutive identical audit events collapse into one entry with a count**,
+  rendered as `×N` against the newest occurrence. This is the general defence
+  behind the Heartbeat fix: any chatty caller, known or not, now costs one row
+  rather than one row per request, so the cap can no longer silently discard the
+  evidence. Existing entries without a count render unchanged.
+
+### Notes
+- #20 (headless CORS has no deny path) was already fixed in 1.16.2 under #35 and
+  is closed as such — core's `rest_send_cors_headers` is removed and replaced in
+  `includes/rest/cors.php`, and `tests/headless-rest.spec.js` covers both
+  namespaces.
+
 ## [1.43.0] - 2026-07-29
 
 ### Added
