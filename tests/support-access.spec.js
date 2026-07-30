@@ -1297,6 +1297,164 @@ test.describe('Support access — key lifecycle', () => {
     }
   });
 
+  test('the support account can read its own record while other users stay denied', async ({
+    page,
+    request,
+  }) => {
+    // /wp/v2/users/me is the account's OWN record, not third-party personal
+    // data, and wp-admin fetches it on every page load. Denying it by prefix
+    // protects nobody and 403s the whole admin.
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    const headers = { 'X-BlueWorx-Support-Key': key };
+
+    try {
+      const me = await request.get(`${baseURL}/wp-json/wp/v2/users/me?context=edit`, { headers });
+      expect(me.status()).toBe(200);
+      expect((await me.json()).slug).toBe('blueworx_support');
+
+      const meId = (await me.json()).id;
+
+      // The rest of the collection is untouched by the exemption.
+      const list = await request.get(`${baseURL}/wp-json/wp/v2/users`, { headers });
+      expect(list.status()).toBe(403);
+      expect((await list.json()).code).toBe('blueworx_support_no_data');
+
+      // Every administrator on the harness has a lower ID than the support
+      // account, which is created last, so ID 1 is always somebody else.
+      expect(meId).not.toBe(1);
+      const other = await request.get(`${baseURL}/wp-json/wp/v2/users/1`, { headers });
+      expect(other.status()).toBe(403);
+      expect((await other.json()).code).toBe('blueworx_support_no_data');
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('heartbeat traffic does not erase the session evidence from the audit log', async ({
+    page,
+    request,
+  }) => {
+    // Heartbeat POSTs once a minute from any open tab and is refused as a
+    // write. Logged one-per-refusal it evicts the whole 100-entry log —
+    // including the events the log exists to prove — in under two hours.
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    const headers = { 'X-BlueWorx-Support-Key': key };
+    const log = page.locator('[data-testid="bw-support-log"] li');
+
+    try {
+      await page.goto(CONSOLE_PATH);
+      const before = await log.count();
+
+      for (let i = 0; i < 8; i += 1) {
+        const beat = await request.post(`${baseURL}/wp-admin/admin-ajax.php?action=heartbeat`, {
+          headers,
+          form: { action: 'heartbeat', _nonce: 'x' },
+        });
+        // Still refused — the fix is to stop recording it, not to let it write.
+        expect(beat.status()).toBe(403);
+      }
+
+      await page.goto(CONSOLE_PATH);
+      const after = await log.count();
+
+      // Eight refusals must not cost eight entries.
+      expect(after - before).toBeLessThanOrEqual(1);
+      await expect(page.locator('[data-testid="bw-support-log"]')).toContainText('access_opened');
+
+      // A real blocked write is still recorded — this must not silence the log.
+      await request.post(`${baseURL}/wp-admin/admin-post.php`, { headers, form: { probe: '1' } });
+      await page.goto(CONSOLE_PATH);
+      await expect(page.locator('[data-testid="bw-support-log"] li').first()).toContainText(
+        'blocked_write'
+      );
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
+  test('a repeated event collapses into one entry carrying a count', async ({ page, request }) => {
+    // The general defence behind the Heartbeat fix: any chatty caller, known or
+    // not, costs one row rather than one row per request.
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Generate key' }).click();
+    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    await page.goto(CONSOLE_PATH);
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+
+    const headers = { 'X-BlueWorx-Support-Key': key };
+
+    try {
+      await page.goto(CONSOLE_PATH);
+      // The log persists across earlier tests, so this measures growth rather
+      // than assuming it started empty.
+      const before = await page.locator('[data-testid="bw-support-log"] li').count();
+
+      // Each authenticated REST call logs rest_auth once, so four calls are
+      // four consecutive identical events.
+      for (let i = 0; i < 4; i += 1) {
+        const res = await request.get(`${baseURL}/wp-json/wp/v2/settings`, { headers });
+        expect(res.status()).toBe(200);
+      }
+
+      await page.goto(CONSOLE_PATH);
+      const rows = page.locator('[data-testid="bw-support-log"] li');
+      expect((await rows.count()) - before).toBeLessThanOrEqual(1);
+      await expect(rows.first()).toContainText('rest_auth');
+      await expect(rows.first()).toContainText('×4');
+    } finally {
+      await restoreAll([
+        [
+          'revoke support key',
+          async () => {
+            await page.goto(CONSOLE_PATH);
+            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.waitForTimeout(1000);
+          },
+        ],
+      ]);
+
+      await page.goto('/wp-admin/users.php');
+      await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+    }
+  });
+
   test('the panel offers a one-click Claude Code prompt carrying the fresh key', async ({
     page,
   }) => {

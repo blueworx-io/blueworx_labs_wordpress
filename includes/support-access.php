@@ -242,6 +242,7 @@ function blueworx_support_removed_caps() {
 		'delete_users',
 		'promote_users',
 		'remove_users',
+
 		/*
 		 * Content deletion. WordPress trashes and deletes through nonce'd GET
 		 * links (post.php?action=trash, and the method="get" bulk form on
@@ -310,7 +311,7 @@ function blueworx_support_deny_meta_caps( $caps, $cap, $user_id ) {
 	// Narrowed to the support account asking about itself. map_meta_cap also runs
 	// for other users (a list table asking "can that user edit this row?"), and a
 	// real administrator's own checks must not be affected.
-	if ( (int) $user_id !== get_current_user_id() || ! blueworx_support_is_support_user() ) {
+	if ( get_current_user_id() !== (int) $user_id || ! blueworx_support_is_support_user() ) {
 		return $caps;
 	}
 
@@ -528,6 +529,14 @@ add_action( 'admin_init', 'blueworx_support_handle_actions' );
  * The log is what makes the access window verifiable rather than merely
  * claimed, so it records refusals as well as successes.
  *
+ * Consecutive identical events from the same IP collapse into a single entry
+ * carrying a count. A 100-entry cap plus one row per request means any chatty
+ * caller — Heartbeat was the one that surfaced this, but it is not the only
+ * candidate — silently evicts the events the log exists to prove, well inside
+ * the 24-hour window it documents. Collapsing keeps the evidence and loses
+ * nothing: the repeated event is still recorded, with how often and how
+ * recently it happened.
+ *
  * @param string $type Event type.
  * @return void
  */
@@ -542,10 +551,26 @@ function blueworx_support_log_event( $type ) {
 		? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
 		: '';
 
+	$type = sanitize_key( $type );
+	$last = end( $log );
+	$key  = key( $log );
+
+	if ( is_array( $last ) && isset( $last['type'] ) && $last['type'] === $type && ( isset( $last['ip'] ) ? $last['ip'] : '' ) === $ip ) {
+		$log[ $key ]['count'] = ( isset( $last['count'] ) ? (int) $last['count'] : 1 ) + 1;
+		// The newest occurrence is the useful timestamp: it answers "is this
+		// still happening?", which the first occurrence cannot.
+		$log[ $key ]['time'] = time();
+
+		update_option( 'blueworx_support_log', $log );
+
+		return;
+	}
+
 	$log[] = array(
-		'type' => sanitize_key( $type ),
-		'time' => time(),
-		'ip'   => $ip,
+		'type'  => $type,
+		'time'  => time(),
+		'ip'    => $ip,
+		'count' => 1,
 	);
 
 	update_option( 'blueworx_support_log', array_slice( $log, -100 ) );
@@ -942,6 +967,35 @@ function blueworx_support_gate_write_actions() {
 add_action( 'admin_init', 'blueworx_support_gate_write_actions', 0 );
 
 /**
+ * Whether a REST route addresses the support account's own user record.
+ *
+ * /wp/v2/users is denied by prefix, and /wp/v2/users/me starts with it — so the
+ * account was refused its OWN record. That protects nobody: the account already
+ * knows who it is. It does break wp-admin, which fetches
+ * /wp/v2/users/me?context=edit on every page load for block-editor preferences,
+ * so a support session saw a console 403 on every screen.
+ *
+ * Both spellings are matched: "me", and the account's own numeric ID, which is
+ * what the block editor uses once it has resolved the current user.
+ *
+ * @param string $route Route being dispatched.
+ * @return bool True when the route is the account's own record.
+ */
+function blueworx_support_route_is_own_record( $route ) {
+	if ( '/wp/v2/users/me' === $route ) {
+		return true;
+	}
+
+	if ( ! preg_match( '#^/wp/v2/users/(\d+)$#', $route, $matches ) ) {
+		return false;
+	}
+
+	$user = blueworx_support_get_user();
+
+	return $user instanceof WP_User && (int) $user->ID === (int) $matches[1];
+}
+
+/**
  * Denies personal-data REST routes unless data access is open.
  *
  * @param mixed           $result  Pre-dispatch result.
@@ -958,6 +1012,10 @@ function blueworx_support_gate_data_routes( $result, $server, $request ) {
 
 	$route = (string) $request->get_route();
 
+	if ( blueworx_support_route_is_own_record( $route ) ) {
+		return $result;
+	}
+
 	foreach ( blueworx_support_denied_routes() as $prefix ) {
 		if ( 0 === strpos( $route, $prefix ) ) {
 			return new WP_Error(
@@ -971,6 +1029,50 @@ function blueworx_support_gate_data_routes( $result, $server, $request ) {
 	return $result;
 }
 add_filter( 'rest_pre_dispatch', 'blueworx_support_gate_data_routes', 11, 3 );
+
+/**
+ * Whether this request is WordPress's Heartbeat poll.
+ *
+ * Heartbeat POSTs to admin-ajax.php every 60 seconds from any open wp-admin
+ * tab, so it meets the write block on a schedule rather than because anybody
+ * did anything.
+ *
+ * Reading the action off the request is not a nonce check and does not need to
+ * be: nothing is authorised on the strength of it. It only decides whether a
+ * refusal that has already happened is worth a log entry, so the worst a forged
+ * value can do is suppress its own record — while still being refused.
+ *
+ * @return bool True for a Heartbeat request.
+ */
+function blueworx_support_is_heartbeat_request() {
+	if ( ! wp_doing_ajax() ) {
+		return false;
+	}
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only routing decision; see docblock.
+	$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+
+	return 'heartbeat' === $action;
+}
+
+/**
+ * Stops Heartbeat running at all during a support session.
+ *
+ * The write block already refuses the POST, but a refused POST is still a
+ * console 403 once a minute in the session's own diagnostic tool. Dropping the
+ * script means the request is never made.
+ *
+ * @return void
+ */
+function blueworx_support_disable_heartbeat() {
+	if ( ! blueworx_support_is_support_user() ) {
+		return;
+	}
+
+	wp_deregister_script( 'heartbeat' );
+}
+add_action( 'admin_enqueue_scripts', 'blueworx_support_disable_heartbeat', 1 );
+add_action( 'wp_enqueue_scripts', 'blueworx_support_disable_heartbeat', 1 );
 
 /**
  * Rejects every non-read request made by the support account.
@@ -999,7 +1101,12 @@ function blueworx_support_block_writes() {
 		return;
 	}
 
-	blueworx_support_log_event( 'blocked_write' );
+	// Still refused — but not recorded. Heartbeat is machine traffic nobody
+	// initiated, so logging it documents nothing and costs the log its real
+	// entries. Blocking it remains the point; the log is for actions.
+	if ( ! blueworx_support_is_heartbeat_request() ) {
+		blueworx_support_log_event( 'blocked_write' );
+	}
 
 	wp_die(
 		esc_html__( 'BlueWorx support access is read-only.', 'blueworx-labs-wordpress' ),
@@ -1459,8 +1566,13 @@ function blueworx_support_render_panel() {
 	<h3><?php esc_html_e( 'Audit log', 'blueworx-labs-wordpress' ); ?></h3>
 	<ul data-testid="bw-support-log">
 		<?php foreach ( blueworx_support_get_log() as $entry ) : ?>
+			<?php $count = isset( $entry['count'] ) ? (int) $entry['count'] : 1; ?>
 			<li>
 				<code><?php echo esc_html( $entry['type'] ); ?></code>
+				<?php if ( $count > 1 ) : ?>
+					<?php /* translators: %d: number of times the event repeated. */ ?>
+					<strong><?php echo esc_html( sprintf( __( '×%d', 'blueworx-labs-wordpress' ), $count ) ); ?></strong>
+				<?php endif; ?>
 				<?php echo esc_html( date_i18n( 'Y-m-d H:i', (int) $entry['time'] ) ); ?>
 				<?php echo esc_html( $entry['ip'] ); ?>
 			</li>
