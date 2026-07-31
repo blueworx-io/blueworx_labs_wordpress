@@ -93,12 +93,18 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 					true
 				);
 
-				$roles      = (array) $profile_user->roles;
-				$role_key   = ! empty( $roles ) ? reset( $roles ) : '';
+				// Every role, not just the first: a user may hold several, and a
+				// card that names one of them is worse than one that names none.
 				$wp_roles   = wp_roles();
-				$role_label = ( '' !== $role_key && isset( $wp_roles->role_names[ $role_key ] ) )
-					? translate_user_role( $wp_roles->role_names[ $role_key ] )
-					: '';
+				$role_names = array();
+
+				foreach ( (array) $profile_user->roles as $role_key ) {
+					if ( isset( $wp_roles->role_names[ $role_key ] ) ) {
+						$role_names[] = translate_user_role( $wp_roles->role_names[ $role_key ] );
+					}
+				}
+
+				$role_label = implode( ', ', $role_names );
 				$post_count = (int) count_user_posts( $profile_user->ID, 'post', true );
 				$registered = $profile_user->user_registered
 					? date_i18n( 'F Y', strtotime( $profile_user->user_registered ) )

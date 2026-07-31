@@ -57,6 +57,12 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'security',
 			'detail'      => 'support_access',
 		),
+		'user_roles'            => array(
+			'label'       => __( 'Flexible user roles', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Lists roles alphabetically on the add-user and edit-user screens, and lets one user hold more than one role at a time.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => null,
+		),
 		'application_passwords' => array(
 			'label'       => __( 'Application Passwords', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-labs-wordpress' ),
