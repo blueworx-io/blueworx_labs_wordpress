@@ -518,7 +518,7 @@
     // Unlike a foreground applyLanguage() pass, this one is triggered by
     // content simply appearing on the page — but it is exactly as capable of
     // leaving the toggle enabled mid-write, so it gets the same busy state.
-    setBusy(true, config.label + '…');
+    setBusy(true, config.busyLabel);
 
     translateTargets(targets, translator, passGeneration).then(function () {
       // A newer pass already changed the busy state and observer for
@@ -586,7 +586,7 @@
       hadTranslation = true;
     }
 
-    setBusy(true, config.label + '…');
+    setBusy(true, config.busyLabel);
 
     return Promise.resolve()
       .then(function () {
@@ -749,9 +749,13 @@
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-haspopup', 'listbox');
 
+    // Never painted, always announced. The pill shows the current language and
+    // nothing else, but a button whose whole accessible name is "English" — or,
+    // in flags-only, nothing at all — does not say what pressing it does. This
+    // span is what makes it "Choose language, English".
     var label = document.createElement('span');
     label.className = 'blueworx-translate__label';
-    label.textContent = config.label;
+    label.textContent = config.toggleLabel;
 
     var current = document.createElement('span');
     current.className = 'blueworx-translate__current';

@@ -45,7 +45,6 @@ test.describe('BlueWorx on-page translation — settings', () => {
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="en"]')).toHaveCount(0);
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('bottom-right');
     await expect(detail.locator('select[name="blueworx_translate_display"]')).toHaveValue('text');
-    await expect(detail.locator('input[name="blueworx_translate_label"]')).toHaveValue('Language');
     // Off by default: an install already using the switcher keeps showing it.
     await expect(detail.locator('input[name="blueworx_translate_admin_only"]')).not.toBeChecked();
   });
@@ -88,14 +87,12 @@ test.describe('BlueWorx on-page translation — settings', () => {
     // rather than toggling an unchecked box on.
     await detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]').setChecked(false);
     await detail.locator('select[name="blueworx_translate_position"]').selectOption('top-left');
-    await detail.locator('input[name="blueworx_translate_label"]').fill('Read in');
     await detail.locator('textarea[name="blueworx_translate_exclusions"]').fill('.site-brand\n  \n.sku');
     await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
 
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]')).not.toBeChecked();
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('top-left');
-    await expect(detail.locator('input[name="blueworx_translate_label"]')).toHaveValue('Read in');
     // Blank lines are dropped; the two real selectors survive in order.
     await expect(detail.locator('textarea[name="blueworx_translate_exclusions"]')).toHaveValue('.site-brand\n.sku');
 
@@ -103,7 +100,6 @@ test.describe('BlueWorx on-page translation — settings', () => {
       ['translation settings', async () => {
         await detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]').setChecked(true);
         await detail.locator('select[name="blueworx_translate_position"]').selectOption('bottom-right');
-        await detail.locator('input[name="blueworx_translate_label"]').fill('Language');
         await detail.locator('textarea[name="blueworx_translate_exclusions"]').fill('');
         await page.getByRole('button', { name: 'Save Changes' }).click();
         await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
@@ -125,7 +121,11 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
     expect(config.source).toBe('en');
     expect(config.sourceLabel).toBe('English');
     expect(config.position).toBe('bottom-right');
-    expect(config.label).toBe('Language');
+    // The switcher carries no wording of its own; these two are the only strings
+    // it is given, and neither is a site setting.
+    expect(config.toggleLabel).toBe('Choose language');
+    expect(config.busyLabel).toBe('Translating…');
+    expect(config.label).toBeUndefined();
     expect(Array.isArray(config.exclude)).toBe(true);
     expect(config.languages.map((l) => l.code)).toEqual(['ar', 'zh', 'fr', 'de', 'es']);
     expect(config.languages.every((l) => typeof l.label === 'string' && l.label.length > 0)).toBe(true);
@@ -204,7 +204,7 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
     await expect(widget).toBeVisible();
     await expect(widget).toHaveClass(/blueworx-translate--bottom-right/);
 
-    const toggle = page.getByRole('button', { name: /Language/ });
+    const toggle = page.getByRole('button', { name: /Choose language/ });
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
@@ -228,7 +228,7 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
     await installTranslatorStub(page, { unavailable: ['de'] });
     await page.goto('/');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     const options = page.locator('.blueworx-translate__option');
     await expect(options).toHaveCount(5);
     await expect(page.locator('.blueworx-translate__option[data-lang="de"]')).toHaveCount(0);
@@ -351,6 +351,7 @@ test.describe('BlueWorx on-page translation — display style', () => {
 
   const PILL_NAME = '.blueworx-translate__toggle .blueworx-translate__name';
   const PILL_FLAG = '.blueworx-translate__toggle .blueworx-translate__flag';
+  const PILL_LABEL = '.blueworx-translate__toggle .blueworx-translate__label';
 
   test('text only shows the language name and no flag', async ({ page }) => {
     await installTranslatorStub(page);
@@ -359,8 +360,11 @@ test.describe('BlueWorx on-page translation — display style', () => {
 
     await expect(page.locator('.blueworx-translate')).toHaveClass(/blueworx-translate--display-text\b/);
     await expect(page.locator(PILL_FLAG)).toBeHidden();
-    await expect(page.locator('.blueworx-translate__label')).toBeVisible();
     expect(await widthOf(page, PILL_NAME)).toBeGreaterThan(1);
+    // The pill carries no wording of its own in any style — the name it shows
+    // is the current language, never a caption.
+    expect(await widthOf(page, PILL_LABEL)).toBeLessThanOrEqual(1);
+    await expect(page.locator('.blueworx-translate__toggle')).toHaveAccessibleName(/Choose language/);
   });
 
   test('text and flags shows both', async ({ page }) => {
@@ -379,10 +383,10 @@ test.describe('BlueWorx on-page translation — display style', () => {
     await page.goto('/');
 
     await expect(page.locator(PILL_FLAG)).toBeVisible();
-    // The button label and the language name are both off the screen...
-    await expect(page.locator('.blueworx-translate__label')).toBeHidden();
+    // Nothing on the pill but the flag...
     expect(await widthOf(page, PILL_NAME)).toBeLessThanOrEqual(1);
-    // ...but the name is still what names the button.
+    // ...and yet the button still says what it is and what it is set to.
+    await expect(page.locator('.blueworx-translate__toggle')).toHaveAccessibleName(/Choose language/);
     await expect(page.locator('.blueworx-translate__toggle')).toHaveAccessibleName(/English/);
 
     await page.locator('.blueworx-translate__toggle').click();
@@ -399,7 +403,6 @@ test.describe('BlueWorx on-page translation — display style', () => {
     // hidden; at phone width it is the only thing on the pill.
     await expect(page.locator(PILL_FLAG)).toBeVisible();
     expect(await widthOf(page, PILL_NAME)).toBeLessThanOrEqual(1);
-    await expect(page.locator('.blueworx-translate__label')).toBeHidden();
 
     // The open list still reads in words — the space saving is the pill's, and
     // a flag-only menu would make choosing a language a guessing game.
@@ -438,7 +441,7 @@ test.describe('BlueWorx on-page translation — translating', () => {
     await page.goto('/');
     await plantFixture(page);
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
 
     await expect(page.locator('#bw-text')).toHaveText('[fr] Hello world');
@@ -448,7 +451,7 @@ test.describe('BlueWorx on-page translation — translating', () => {
     await expect(page.locator('#bw-code')).toHaveText('const x = 1;');
     await expect(page.locator('#bw-number')).toHaveText('2026');
     // The widget must never translate its own controls.
-    await expect(page.getByRole('button', { name: /Language/ })).not.toContainText('[fr]');
+    await expect(page.getByRole('button', { name: /Choose language/ })).not.toContainText('[fr]');
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   });
 
@@ -471,7 +474,7 @@ test.describe('BlueWorx on-page translation — translating', () => {
     await page.goto('/');
     await plantFixture(page);
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
 
     await expect(page.locator('#bw-text')).toHaveText('[fr] Hello world');
@@ -503,7 +506,7 @@ test.describe('BlueWorx on-page translation — translating', () => {
       document.body.setAttribute('aria-label', 'Body region');
     });
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
 
     // html[lang] flips only once the pass has finished; wait on it before
@@ -517,7 +520,7 @@ test.describe('BlueWorx on-page translation — translating', () => {
     await page.goto('/');
     await plantFixture(page);
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
@@ -537,11 +540,11 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     await page.goto('/');
     const before = await page.locator('body').innerText();
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('body')).toContainText('[fr]');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="en"]').click();
 
     await expect(page.locator('body')).not.toContainText('[fr]');
@@ -553,7 +556,7 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     await installTranslatorStub(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('body')).toContainText('[fr]');
 
@@ -598,7 +601,7 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     await page.goto('/');
     await plantFixture(page);
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await expect(page.locator('#bw-text')).toHaveText('[fr] Hello world');
@@ -606,7 +609,7 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     await expect(page.locator('#bw-input')).toHaveAttribute('placeholder', '[fr] Your email');
 
     // Straight to German, without going via English first.
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="de"]').click();
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');
@@ -624,7 +627,7 @@ test.describe('BlueWorx on-page translation — dynamic content', () => {
     await installTranslatorStub(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
 
@@ -642,7 +645,7 @@ test.describe('BlueWorx on-page translation — dynamic content', () => {
     await installTranslatorStub(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
 
@@ -661,7 +664,7 @@ test.describe('BlueWorx on-page translation — dynamic content', () => {
     await installTranslatorStub(page, { delay: 300 });
     await page.goto('/');
 
-    const toggle = page.getByRole('button', { name: /Language/ });
+    const toggle = page.getByRole('button', { name: /Choose language/ });
     await toggle.click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr', { timeout: 20000 });
@@ -706,11 +709,11 @@ test.describe('BlueWorx on-page translation — dynamic content', () => {
     await installTranslatorStub(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
 
-    await page.getByRole('button', { name: /Language/ }).click();
+    await page.getByRole('button', { name: /Choose language/ }).click();
     await page.locator('.blueworx-translate__option[data-lang="en"]').click();
 
     await page.evaluate(() => {
@@ -732,7 +735,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     await installTranslatorStub(page);
     await page.goto('/');
 
-    const toggle = page.getByRole('button', { name: /Language/ });
+    const toggle = page.getByRole('button', { name: /Choose language/ });
     await toggle.focus();
     await page.keyboard.press('Enter');
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
@@ -760,7 +763,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     await page.goto('/');
     const before = await page.locator('body').innerText();
 
-    const toggle = page.getByRole('button', { name: /Language/ });
+    const toggle = page.getByRole('button', { name: /Choose language/ });
     await toggle.click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
 
@@ -795,7 +798,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     });
     await page.goto('/');
 
-    const toggle = page.getByRole('button', { name: /Language/ });
+    const toggle = page.getByRole('button', { name: /Choose language/ });
     await toggle.click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
@@ -818,7 +821,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     await installTranslatorStub(page);
     await page.goto('/');
 
-    const toggle = page.getByRole('button', { name: /Language/ });
+    const toggle = page.getByRole('button', { name: /Choose language/ });
     await toggle.click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
 

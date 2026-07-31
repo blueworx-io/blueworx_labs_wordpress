@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 7;
+	return 8;
 }
 
 /**
@@ -424,6 +424,20 @@ function blueworx_migrate_relabel_support_role() {
 }
 
 /**
+ * Drops the retired language switcher button label.
+ *
+ * The switcher no longer carries wording of its own — the pill shows the
+ * current language and nothing else — so the setting and its option are gone.
+ * Nothing reads `blueworx_translate_label` any more; this only stops a site
+ * that once customised it from carrying a dead row forever.
+ *
+ * @return void
+ */
+function blueworx_migrate_remove_translate_label() {
+	delete_option( 'blueworx_translate_label' );
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -461,6 +475,10 @@ function blueworx_run_pending_labs_migrations() {
 	if ( $stored_version < 7 ) {
 		blueworx_migrate_remove_client_roles();
 		blueworx_migrate_relabel_support_role();
+	}
+
+	if ( $stored_version < 8 ) {
+		blueworx_migrate_remove_translate_label();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

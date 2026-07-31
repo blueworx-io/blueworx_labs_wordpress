@@ -226,17 +226,6 @@ function blueworx_translate_admin_only() {
 }
 
 /**
- * Gets the switcher button label.
- *
- * @return string Non-empty label.
- */
-function blueworx_translate_label() {
-	$saved = trim( (string) get_option( 'blueworx_translate_label', '' ) );
-
-	return '' === $saved ? __( 'Language', 'blueworx-labs-wordpress' ) : $saved;
-}
-
-/**
  * Gets the extra CSS selectors whose contents must never be translated.
  *
  * @return array Ordered list of selectors.
@@ -268,9 +257,6 @@ function blueworx_translate_save_settings( $post ) {
 	$raw_display = isset( $post['blueworx_translate_display'] ) ? sanitize_key( wp_unslash( $post['blueworx_translate_display'] ) ) : '';
 	$display     = isset( blueworx_translate_display_styles()[ $raw_display ] ) ? $raw_display : 'text';
 
-	$raw_label = isset( $post['blueworx_translate_label'] ) ? sanitize_text_field( wp_unslash( $post['blueworx_translate_label'] ) ) : '';
-	$label     = trim( mb_substr( $raw_label, 0, 40 ) );
-
 	// One selector per line, blank lines dropped, and hard caps on both the line
 	// length and the number of lines so a paste accident cannot bloat the option
 	// or the inline config payload on every page load.
@@ -295,7 +281,6 @@ function blueworx_translate_save_settings( $post ) {
 	update_option( 'blueworx_translate_position', $position );
 	update_option( 'blueworx_translate_display', $display );
 	update_option( 'blueworx_translate_admin_only', isset( $post['blueworx_translate_admin_only'] ) ? '1' : '0' );
-	update_option( 'blueworx_translate_label', $label );
 	update_option( 'blueworx_translate_exclusions', array_values( array_unique( $exclusions ) ), false );
 }
 
@@ -348,10 +333,6 @@ function blueworx_translate_render_detail() {
 			<?php endforeach; ?>
 		</select><br />
 		<span class="description"><?php esc_html_e( 'Applies on desktop. On phones the switcher always shows flags only, to save space. Windows has no flag glyphs and shows the two-letter country code instead.', 'blueworx-labs-wordpress' ); ?></span>
-	</p>
-	<p>
-		<label for="blueworx_translate_label"><?php esc_html_e( 'Button label', 'blueworx-labs-wordpress' ); ?></label><br />
-		<input type="text" id="blueworx_translate_label" name="blueworx_translate_label" class="regular-text" maxlength="40" value="<?php echo esc_attr( blueworx_translate_label() ); ?>" />
 	</p>
 	<p>
 		<label for="blueworx_translate_exclusions"><?php esc_html_e( 'Never translate (one CSS selector per line)', 'blueworx-labs-wordpress' ); ?></label><br />
@@ -419,8 +400,15 @@ function blueworx_translate_config() {
 		'languages'   => $languages,
 		'position'    => blueworx_translate_position(),
 		'display'     => blueworx_translate_display(),
-		'label'       => blueworx_translate_label(),
 		'exclude'     => blueworx_translate_exclusions(),
+		// The switcher carries no visible wording of its own — the pill shows the
+		// current language and nothing else. These two are the exceptions, and
+		// neither is decoration: the first is the button's accessible name, which
+		// a control showing only "English" (or only a flag) would otherwise not
+		// have, and the second is the only thing a visitor is told when a
+		// language will not load.
+		'toggleLabel' => __( 'Choose language', 'blueworx-labs-wordpress' ),
+		'busyLabel'   => __( 'Translating…', 'blueworx-labs-wordpress' ),
 		'errorLabel'  => __( "Couldn't load that language.", 'blueworx-labs-wordpress' ),
 	);
 }
