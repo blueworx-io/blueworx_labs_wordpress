@@ -78,6 +78,51 @@
   font-weight: 600;
 }
 
+.blueworx-translate__current,
+.blueworx-translate__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blueworx-translate__flag {
+  /* Emoji only: no platform ships a flag glyph in its UI font, so the emoji
+     font has to be asked for by name or Windows and some Linux builds fall
+     back to the two regional-indicator letters even where a flag exists. */
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif;
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+/* Text only: the flag stays in the DOM for the narrow-screen fallback below,
+   and is simply not painted. */
+.blueworx-translate--display-text .blueworx-translate__flag {
+  display: none;
+}
+
+/* Flags only: the button label and every language name are hidden visually but
+   left in the accessibility tree, so the control still announces "Language,
+   French" rather than an unnamed button. */
+.blueworx-translate--display-flags .blueworx-translate__label {
+  display: none;
+}
+
+.blueworx-translate--display-flags .blueworx-translate__name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.blueworx-translate--display-flags .blueworx-translate__toggle {
+  padding: 10px 14px;
+}
+
 .blueworx-translate__list {
   position: absolute;
   right: 0;
@@ -138,6 +183,42 @@
 .blueworx-translate__option:focus {
   outline: 2px solid var(--bw-translate-accent);
   outline-offset: -2px;
+}
+
+/* Phones get flags only on the pill whatever the site chose: the switcher floats
+   over the content, and a button label plus a language name costs width a small
+   screen cannot spare. Only the pill — the open list still reads in words, where
+   there is room for them and where guessing a flag is the difference between
+   choosing a language and hunting for one.
+
+   Written with the same class hooks the display styles use, later in the file,
+   so it wins on order rather than on weight. */
+@media (max-width: 600px) {
+  .blueworx-translate--display-text .blueworx-translate__toggle .blueworx-translate__flag {
+    display: inline;
+  }
+
+  .blueworx-translate--display-text .blueworx-translate__toggle .blueworx-translate__label,
+  .blueworx-translate--display-text-flags .blueworx-translate__toggle .blueworx-translate__label {
+    display: none;
+  }
+
+  .blueworx-translate--display-text .blueworx-translate__toggle .blueworx-translate__name,
+  .blueworx-translate--display-text-flags .blueworx-translate__toggle .blueworx-translate__name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .blueworx-translate__toggle {
+    padding: 10px 14px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
