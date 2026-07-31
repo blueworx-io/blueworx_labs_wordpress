@@ -135,9 +135,9 @@ function blueworx_translate_display() {
 /**
  * Gets the source language: the site's own locale as a BCP-47 base tag.
  *
- * get_locale() returns forms like "en_GB" and "pt_BR"; the Translator API takes
- * base tags, and a site whose locale is not in the label map still translates
- * correctly from its own language.
+ * Locales arrive from get_locale() in forms like "en_GB" and "pt_BR"; the
+ * Translator API takes base tags, and a site whose locale is not in the label
+ * map still translates correctly from its own language.
  *
  * @return string Two-letter language tag, or "en" when the locale is unusable.
  */
