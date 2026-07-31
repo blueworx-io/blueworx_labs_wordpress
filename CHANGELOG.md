@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.46.0] - 2026-07-31
+
+### Added
+- **A user can hold more than one role.** New "Flexible user roles" feature
+  (Security & Access). The Role dropdown on the add-user and edit-user screens
+  becomes a checkbox list built from the same roles WordPress was already
+  willing to grant, and every ticked role is saved. Capabilities were always the
+  union of a user's roles in WordPress core — what was missing was any way to
+  choose more than one. Clearing every box is the explicit "no role for this
+  site" case. `includes/user-roles.php`, `assets/js/user-roles.js`.
+- **Roles are listed alphabetically.** The same feature filters `editable_roles`
+  so every role list reads by display name instead of by whichever order plugins
+  happened to register in. "— No role for this site —" is appended by wp-admin
+  after the roles are printed, so it stays last.
+- **The language switcher can show text, flags, or both.** New "Show languages
+  as" setting under On-page translation: Text only (the default, unchanged
+  behaviour), Text & flags, or Flags only. Flags are emoji, so there are no new
+  assets and no requests; where a platform has no flag glyph — Windows — they
+  degrade to the two-letter country code.
+- **Phones get flags on the pill whatever the site chose.** Below 600px the
+  floating button shows the flag alone. The open menu still reads in words,
+  where there is room for them.
+
+### Changed
+- **The profile card names every role a user holds**, comma separated, instead
+  of only the first one.
+
 ## [1.45.0] - 2026-07-30
 
 ### Removed

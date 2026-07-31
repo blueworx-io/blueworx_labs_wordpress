@@ -4,7 +4,7 @@ Tags:              login, security, custom login url, hardening, cache
 Requires at least: 5.0
 Tested up to:      6.9
 Requires PHP:      8.0
-Stable tag:        1.44.0
+Stable tag:        1.46.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,8 @@ BlueWorx Labs improves your WordPress site by:
 * Working reliably on both Apache and Nginx servers, including Cloudways stacks, without relying on `.htaccess` rewrite rules.
 * Refreshing Cloudways/Varnish cache when posts or pages are published, updated, restored, or deleted.
 * Disabling comments, suppressing selected admin emails, and cleaning up the user profile screen.
-* Offering visitors an on-page translation switcher that runs entirely in their own browser (Chrome and Edge 138+).
+* Offering visitors an on-page translation switcher that runs entirely in their own browser (Chrome and Edge 138+), shown as text, flags, or both.
+* Listing user roles alphabetically and letting a user hold more than one role at a time.
 
 The new login URL and cache refresh status are displayed in the **BlueWorx** admin menu.
 
