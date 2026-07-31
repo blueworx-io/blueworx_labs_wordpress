@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.48.0] - 2026-07-31
+
+### Removed
+- **The language switcher's button label is gone**, along with the "Button
+  label" setting that fed it. The pill now shows the current language and
+  nothing else — a flag, a name, or both, per the display style. Sites that had
+  customised the wording lose it; migration 8 deletes the
+  `blueworx_translate_label` option rather than leaving a dead row behind.
+
+### Changed
+- **The switcher's accessible name no longer depends on a site setting.** A pill
+  reading only "English" — or, in flags-only, showing only a flag — does not say
+  what pressing it does, so the button carries a fixed, translatable "Choose
+  language" that is announced and never painted. The busy state, which used to
+  echo the button label, now says "Translating…".
+
 ## [1.47.0] - 2026-07-31
 
 ### Added
