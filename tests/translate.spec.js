@@ -1,7 +1,16 @@
 // `test` comes from helpers.js, not '@playwright/test': it carries the fixture
 // that opts out of core's wp-admin view transitions, which otherwise freeze
 // rendering in headless Chromium and hang every actionability check.
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login, restoreAll } from './helpers.js';
+import {
+  test,
+  expect,
+  isPlaceholder,
+  ADMIN_USER,
+  ADMIN_PASS,
+  baseURL,
+  login,
+  restoreAll,
+} from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
@@ -37,6 +46,8 @@ test.describe('BlueWorx on-page translation — settings', () => {
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('bottom-right');
     await expect(detail.locator('select[name="blueworx_translate_display"]')).toHaveValue('text');
     await expect(detail.locator('input[name="blueworx_translate_label"]')).toHaveValue('Language');
+    // Off by default: an install already using the switcher keeps showing it.
+    await expect(detail.locator('input[name="blueworx_translate_admin_only"]')).not.toBeChecked();
   });
 
   test('the display style offers exactly the three documented options', async ({ page }) => {
@@ -222,6 +233,75 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
     await expect(options).toHaveCount(5);
     await expect(page.locator('.blueworx-translate__option[data-lang="de"]')).toHaveCount(0);
     await expect(page.locator('.blueworx-translate__option[data-lang="fr"]')).toHaveCount(1);
+  });
+});
+
+test.describe('BlueWorx on-page translation — administrators only', () => {
+  test.skip(
+    isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
+    'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
+  );
+
+  const ADMIN_ONLY = 'input[name="blueworx_translate_admin_only"]';
+
+  test('with the setting on, the switcher is sent to admins and to nobody else', async ({ page, browser }) => {
+    await gotoSettings(page);
+    const detail = page.locator('[data-blueworx-detail="translate"]');
+
+    await detail.locator(ADMIN_ONLY).setChecked(true);
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    await expect(detail.locator(ADMIN_ONLY)).toBeChecked();
+
+    try {
+      // The signed-in administrator still gets the whole feature.
+      await page.goto('/');
+      await expect(page.locator('#blueworx-translate-root')).toHaveCount(1);
+      expect(await page.evaluate(() => window.blueworxTranslate)).toBeTruthy();
+
+      // A separate context is a genuinely logged-out visitor — not the same
+      // session with a cookie deleted, which would still hit whatever the
+      // logged-in page left cached.
+      const anonContext = await browser.newContext({ baseURL });
+      const anon = await anonContext.newPage();
+
+      try {
+        await anon.goto('/');
+        // Nothing is merely hidden: the root, the config and the assets are
+        // all absent from the response.
+        await expect(anon.locator('#blueworx-translate-root')).toHaveCount(0);
+        await expect(anon.locator('.blueworx-translate')).toHaveCount(0);
+        expect(await anon.evaluate(() => window.blueworxTranslate)).toBeUndefined();
+        await expect(anon.locator('script[src*="translate-widget.js"]')).toHaveCount(0);
+        await expect(anon.locator('link[href*="translate-widget.css"]')).toHaveCount(0);
+      } finally {
+        await anonContext.close();
+      }
+    } finally {
+      await restoreAll([
+        ['administrators-only setting', async () => {
+          await page.goto(SETTINGS_PATH);
+          await detail.locator(ADMIN_ONLY).setChecked(false);
+          await page.getByRole('button', { name: 'Save Changes' }).click();
+          await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+        }],
+      ]);
+    }
+  });
+
+  test('with the setting off, a logged-out visitor gets the switcher', async ({ browser }) => {
+    // The default state, asserted from a clean context so the previous test's
+    // restore is proven to have actually restored something.
+    const anonContext = await browser.newContext({ baseURL });
+    const anon = await anonContext.newPage();
+
+    try {
+      await anon.goto('/');
+      await expect(anon.locator('#blueworx-translate-root')).toHaveCount(1);
+      expect(await anon.evaluate(() => window.blueworxTranslate)).toBeTruthy();
+    } finally {
+      await anonContext.close();
+    }
   });
 });
 
