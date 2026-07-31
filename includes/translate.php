@@ -214,6 +214,18 @@ function blueworx_translate_position() {
 }
 
 /**
+ * Reports whether the switcher is restricted to site administrators.
+ *
+ * Off by default, so an install that has been using the switcher keeps showing
+ * it to everyone.
+ *
+ * @return bool True when only administrators should see the switcher.
+ */
+function blueworx_translate_admin_only() {
+	return '1' === get_option( 'blueworx_translate_admin_only', '0' );
+}
+
+/**
  * Gets the switcher button label.
  *
  * @return string Non-empty label.
@@ -282,6 +294,7 @@ function blueworx_translate_save_settings( $post ) {
 	update_option( 'blueworx_translate_languages', $languages, false );
 	update_option( 'blueworx_translate_position', $position );
 	update_option( 'blueworx_translate_display', $display );
+	update_option( 'blueworx_translate_admin_only', isset( $post['blueworx_translate_admin_only'] ) ? '1' : '0' );
 	update_option( 'blueworx_translate_label', $label );
 	update_option( 'blueworx_translate_exclusions', array_values( array_unique( $exclusions ) ), false );
 }
@@ -312,6 +325,13 @@ function blueworx_translate_render_detail() {
 			</label>
 		<?php endforeach; ?>
 	</fieldset>
+	<p>
+		<label>
+			<input type="checkbox" name="blueworx_translate_admin_only" value="1" <?php checked( blueworx_translate_admin_only() ); ?> />
+			<?php esc_html_e( 'Only show the switcher to site administrators', 'blueworx-labs-wordpress' ); ?>
+		</label><br />
+		<span class="description"><?php esc_html_e( 'For trying the switcher out on a live site before opening it up. Visitors and other logged-in users see no button at all, and none of its code is loaded for them.', 'blueworx-labs-wordpress' ); ?></span>
+	</p>
 	<p>
 		<label for="blueworx_translate_position"><?php esc_html_e( 'Button position', 'blueworx-labs-wordpress' ); ?></label><br />
 		<select id="blueworx_translate_position" name="blueworx_translate_position">
@@ -344,11 +364,30 @@ function blueworx_translate_render_detail() {
 /**
  * Decides whether the frontend widget should load at all.
  *
- * @return bool True when the feature is on, this is a frontend request, and at
- *              least one target language is configured.
+ * The single gate for the whole feature: the script, the stylesheet, the inline
+ * config and the root element all ask this one question, so a visitor who is
+ * not allowed the switcher is not merely shown nothing — nothing is sent.
+ *
+ * "Site administrator" means manage_options, the same capability that gates the
+ * settings screen this option lives on. An Editor is not one.
+ *
+ * Page caching is not a hole here, and the direction matters: hosts serving this
+ * plugin (Cloudways/Varnish) cache logged-out responses only, and an
+ * administrator always carries an auth cookie that bypasses the cache. So the
+ * page that gets cached and reused is the one without the switcher. The worst
+ * case is an admin briefly not seeing a button they just switched on, never a
+ * visitor seeing one they should not.
+ *
+ * @return bool True when the feature is on, this is a frontend request, the
+ *              viewer is allowed the switcher, and at least one target language
+ *              is configured.
  */
 function blueworx_translate_should_load() {
 	if ( is_admin() || ! blueworx_feature_enabled( 'translate' ) ) {
+		return false;
+	}
+
+	if ( blueworx_translate_admin_only() && ! current_user_can( 'manage_options' ) ) {
 		return false;
 	}
 

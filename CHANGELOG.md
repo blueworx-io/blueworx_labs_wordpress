@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.47.0] - 2026-07-31
+
+### Added
+- **The language switcher can be limited to site administrators.** New
+  "Only show the switcher to site administrators" checkbox on the On-page
+  translation panel, off by default, for trying the switcher out on a live site
+  before opening it up. It is not a hidden button: the gate sits in
+  `blueworx_translate_should_load()`, which every part of the feature already
+  asks, so a visitor who is not an administrator is sent no root element, no
+  inline config, no script and no stylesheet. "Administrator" means
+  `manage_options` — the same capability that gates the settings screen the
+  option lives on.
+
 ## [1.46.0] - 2026-07-31
 
 ### Added
