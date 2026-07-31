@@ -1,3 +1,13 @@
+# Check every text file out with LF, on every platform.
+#
+# Everything in this repo is already stored LF-only (git ls-files --eol shows
+# i/lf across the board), but a Windows clone with core.autocrlf=true rewrites
+# the working copy to CRLF on checkout. Nothing about the commits changes — but
+# PHPCS reads the working copy, so Generic.Files.LineEndings.InvalidEOLChar
+# fires on every PHP file locally while CI, on Linux, sees none of it. A lint
+# error that only exists on half the machines is worse than no lint error.
+* text=auto eol=lf
+
 # Treat font binaries as binary so autocrlf never rewrites them.
 *.woff2 binary
 *.woff  binary

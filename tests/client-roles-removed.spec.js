@@ -41,11 +41,16 @@ test.describe('Client Roles removal', () => {
     await login(page);
     await page.goto('/wp-admin/user-new.php');
 
+    // The role checkbox list replaces the native select and is built from it,
+    // so the retired slugs must be absent from both. The select is still in the
+    // DOM — disabled and hidden — which is why this asserts on its options
+    // rather than on its visibility.
     const roleSelect = page.locator('select#role');
-    await expect(roleSelect).toBeVisible();
+    await expect(roleSelect).toHaveCount(1);
 
     for (const slug of RETIRED_ROLE_SLUGS) {
       await expect(roleSelect.locator(`option[value="${slug}"]`)).toHaveCount(0);
+      await expect(page.locator(`input[name="blueworx_user_roles[]"][value="${slug}"]`)).toHaveCount(0);
     }
   });
 });

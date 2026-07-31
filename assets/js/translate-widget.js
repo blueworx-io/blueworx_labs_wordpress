@@ -14,7 +14,8 @@
     toggle: null,
     list: null,
     status: null,
-    current: null,
+    currentFlag: null,
+    currentName: null,
     translator: null,
     targetCode: null,
   };
@@ -115,6 +116,11 @@
   /**
    * Sets the language shown on the pill and selected in the list.
    *
+   * The flag and the name are written to their own spans rather than as one
+   * string: which of the two is visible is a CSS decision (the display style,
+   * and the flags-only fallback on narrow screens), and the name stays in the
+   * DOM even when hidden so the button keeps an accessible name.
+   *
    * @param {string} code Language code, or the source code for "original".
    */
   function setCurrent(code) {
@@ -127,7 +133,8 @@
       options[i].setAttribute('aria-selected', isActive ? 'true' : 'false');
 
       if (isActive) {
-        state.current.textContent = options[i].textContent;
+        state.currentFlag.textContent = options[i].getAttribute('data-flag') || '';
+        state.currentName.textContent = options[i].getAttribute('data-label') || '';
       }
     }
   }
@@ -726,8 +733,14 @@
       return;
     }
 
+    // The display style is a class, not a branch in this builder: the same
+    // markup has to serve the narrow-screen flags-only fallback, which is a
+    // media query and cannot be known here.
+    var display = config.display || 'text';
+
     var widget = document.createElement('div');
-    widget.className = 'blueworx-translate blueworx-translate--' + config.position;
+    widget.className =
+      'blueworx-translate blueworx-translate--' + config.position + ' blueworx-translate--display-' + display;
 
     var toggle = document.createElement('button');
     toggle.type = 'button';
@@ -743,6 +756,16 @@
     var current = document.createElement('span');
     current.className = 'blueworx-translate__current';
 
+    var currentFlag = document.createElement('span');
+    currentFlag.className = 'blueworx-translate__flag';
+    currentFlag.setAttribute('aria-hidden', 'true');
+
+    var currentName = document.createElement('span');
+    currentName.className = 'blueworx-translate__name';
+
+    current.appendChild(currentFlag);
+    current.appendChild(currentName);
+
     toggle.appendChild(label);
     toggle.appendChild(current);
 
@@ -754,7 +777,9 @@
 
     // The source language leads the list: it is how a visitor gets back to the
     // page as written.
-    var choices = [{ code: config.source, label: config.sourceLabel }].concat(languages);
+    var choices = [
+      { code: config.source, label: config.sourceLabel, flag: config.sourceFlag },
+    ].concat(languages);
 
     choices.forEach(function (choice) {
       var option = document.createElement('li');
@@ -762,8 +787,23 @@
       option.setAttribute('role', 'option');
       option.setAttribute('tabindex', '-1');
       option.setAttribute('data-lang', choice.code);
+      // Read back by setCurrent() when this option becomes the chosen one, so
+      // the pill never has to re-derive either value from the option's text.
+      option.setAttribute('data-label', choice.label);
+      option.setAttribute('data-flag', choice.flag || '');
       option.setAttribute('aria-selected', 'false');
-      option.textContent = choice.label;
+
+      var optionFlag = document.createElement('span');
+      optionFlag.className = 'blueworx-translate__flag';
+      optionFlag.setAttribute('aria-hidden', 'true');
+      optionFlag.textContent = choice.flag || '';
+
+      var optionName = document.createElement('span');
+      optionName.className = 'blueworx-translate__name';
+      optionName.textContent = choice.label;
+
+      option.appendChild(optionFlag);
+      option.appendChild(optionName);
       list.appendChild(option);
     });
 
@@ -780,7 +820,8 @@
     state.toggle = toggle;
     state.list = list;
     state.status = status;
-    state.current = current;
+    state.currentFlag = currentFlag;
+    state.currentName = currentName;
 
     setCurrent(config.source);
 

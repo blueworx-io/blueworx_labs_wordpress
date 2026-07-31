@@ -35,7 +35,38 @@ test.describe('BlueWorx on-page translation — settings', () => {
     // The site's own language is never offered as a target.
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="en"]')).toHaveCount(0);
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('bottom-right');
+    await expect(detail.locator('select[name="blueworx_translate_display"]')).toHaveValue('text');
     await expect(detail.locator('input[name="blueworx_translate_label"]')).toHaveValue('Language');
+  });
+
+  test('the display style offers exactly the three documented options', async ({ page }) => {
+    await gotoSettings(page);
+    const display = page.locator('[data-blueworx-detail="translate"] select[name="blueworx_translate_display"]');
+
+    await expect(display.locator('option')).toHaveCount(3);
+    expect(await display.locator('option').evaluateAll((options) => options.map((o) => o.value))).toEqual([
+      'text',
+      'text-flags',
+      'flags',
+    ]);
+  });
+
+  test('the display style persists after save', async ({ page }) => {
+    await gotoSettings(page);
+    const detail = page.locator('[data-blueworx-detail="translate"]');
+
+    await detail.locator('select[name="blueworx_translate_display"]').selectOption('flags');
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    await expect(detail.locator('select[name="blueworx_translate_display"]')).toHaveValue('flags');
+
+    await restoreAll([
+      ['switcher display style', async () => {
+        await detail.locator('select[name="blueworx_translate_display"]').selectOption('text');
+        await page.getByRole('button', { name: 'Save Changes' }).click();
+        await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      }],
+    ]);
   });
 
   test('settings persist after save, and invalid values are rejected', async ({ page }) => {
@@ -87,6 +118,11 @@ test.describe('BlueWorx on-page translation — frontend delivery', () => {
     expect(Array.isArray(config.exclude)).toBe(true);
     expect(config.languages.map((l) => l.code)).toEqual(['ar', 'zh', 'fr', 'de', 'es']);
     expect(config.languages.every((l) => typeof l.label === 'string' && l.label.length > 0)).toBe(true);
+    // Every offered language, and the source language, carries a flag; without
+    // one the flags-only style and the narrow-screen fallback show nothing.
+    expect(config.languages.every((l) => typeof l.flag === 'string' && l.flag.length > 0)).toBe(true);
+    expect(config.sourceFlag).toBe('🇬🇧');
+    expect(config.display).toBe('text');
     expect(config.errorLabel).toBe("Couldn't load that language.");
   });
 
@@ -166,7 +202,7 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
     const options = page.locator('.blueworx-translate__option');
     // Five configured targets plus the source language.
     await expect(options).toHaveCount(6);
-    await expect(options.first()).toHaveText('English');
+    await expect(options.first().locator('.blueworx-translate__name')).toHaveText('English');
     await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -186,6 +222,111 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
     await expect(options).toHaveCount(5);
     await expect(page.locator('.blueworx-translate__option[data-lang="de"]')).toHaveCount(0);
     await expect(page.locator('.blueworx-translate__option[data-lang="fr"]')).toHaveCount(1);
+  });
+});
+
+test.describe('BlueWorx on-page translation — display style', () => {
+  test.skip(isPlaceholder, 'No real staging/preview URL configured yet.');
+
+  /**
+   * Forces a display style into the config before the widget reads it.
+   *
+   * The style is a site setting, but which of three CSS classes it produces is
+   * the whole of its frontend behaviour — injecting it here exercises that
+   * without three round trips through wp-admin.
+   *
+   * @param {import('@playwright/test').Page} page  Playwright page.
+   * @param {string}                          style One of text, text-flags, flags.
+   */
+  async function useDisplay(page, style) {
+    await page.addInitScript((chosen) => {
+      const apply = () => {
+        if (window.blueworxTranslate) {
+          window.blueworxTranslate.display = chosen;
+          return true;
+        }
+        return false;
+      };
+      if (!apply()) {
+        document.addEventListener('readystatechange', apply);
+      }
+    }, style);
+  }
+
+  /**
+   * Measures a widget element's painted width.
+   *
+   * The visually-hidden treatment clips an element to 1px rather than removing
+   * it — deliberately, so it keeps its place in the accessibility tree — and a
+   * 1px box still counts as "visible" to Playwright. Width is what actually
+   * distinguishes shown from hidden here.
+   *
+   * @param {import('@playwright/test').Page} page     Playwright page.
+   * @param {string}                          selector Element to measure.
+   * @return {Promise<number>} Painted width in pixels.
+   */
+  function widthOf(page, selector) {
+    return page.locator(selector).evaluate((element) => element.getBoundingClientRect().width);
+  }
+
+  const PILL_NAME = '.blueworx-translate__toggle .blueworx-translate__name';
+  const PILL_FLAG = '.blueworx-translate__toggle .blueworx-translate__flag';
+
+  test('text only shows the language name and no flag', async ({ page }) => {
+    await installTranslatorStub(page);
+    await useDisplay(page, 'text');
+    await page.goto('/');
+
+    await expect(page.locator('.blueworx-translate')).toHaveClass(/blueworx-translate--display-text\b/);
+    await expect(page.locator(PILL_FLAG)).toBeHidden();
+    await expect(page.locator('.blueworx-translate__label')).toBeVisible();
+    expect(await widthOf(page, PILL_NAME)).toBeGreaterThan(1);
+  });
+
+  test('text and flags shows both', async ({ page }) => {
+    await installTranslatorStub(page);
+    await useDisplay(page, 'text-flags');
+    await page.goto('/');
+
+    await expect(page.locator(PILL_FLAG)).toBeVisible();
+    await expect(page.locator(PILL_FLAG)).toHaveText('🇬🇧');
+    expect(await widthOf(page, PILL_NAME)).toBeGreaterThan(1);
+  });
+
+  test('flags only shows the flag and keeps the name for screen readers', async ({ page }) => {
+    await installTranslatorStub(page);
+    await useDisplay(page, 'flags');
+    await page.goto('/');
+
+    await expect(page.locator(PILL_FLAG)).toBeVisible();
+    // The button label and the language name are both off the screen...
+    await expect(page.locator('.blueworx-translate__label')).toBeHidden();
+    expect(await widthOf(page, PILL_NAME)).toBeLessThanOrEqual(1);
+    // ...but the name is still what names the button.
+    await expect(page.locator('.blueworx-translate__toggle')).toHaveAccessibleName(/English/);
+
+    await page.locator('.blueworx-translate__toggle').click();
+    await expect(page.locator('.blueworx-translate__option[data-lang="fr"]')).toHaveAccessibleName(/French/);
+  });
+
+  test('a phone-width screen falls back to flags on the pill, whatever the site chose', async ({ page }) => {
+    await installTranslatorStub(page);
+    await useDisplay(page, 'text');
+    await page.setViewportSize({ width: 375, height: 720 });
+    await page.goto('/');
+
+    // Text-only is the site setting, and on a wide screen the flag would be
+    // hidden; at phone width it is the only thing on the pill.
+    await expect(page.locator(PILL_FLAG)).toBeVisible();
+    expect(await widthOf(page, PILL_NAME)).toBeLessThanOrEqual(1);
+    await expect(page.locator('.blueworx-translate__label')).toBeHidden();
+
+    // The open list still reads in words — the space saving is the pill's, and
+    // a flag-only menu would make choosing a language a guessing game.
+    await page.locator('.blueworx-translate__toggle').click();
+    const optionName = '.blueworx-translate__option[data-lang="fr"] .blueworx-translate__name';
+    await expect(page.locator(optionName)).toHaveText('French');
+    expect(await widthOf(page, optionName)).toBeGreaterThan(1);
   });
 });
 
@@ -340,7 +481,7 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await expect(page.locator('body')).toContainText('[fr]');
-    await expect(page.locator('.blueworx-translate__current')).toHaveText('French');
+    await expect(page.locator('.blueworx-translate__current .blueworx-translate__name')).toHaveText('French');
   });
 
   test('a stored language that is no longer offered is discarded', async ({ page }) => {
@@ -350,7 +491,7 @@ test.describe('BlueWorx on-page translation — restore and persistence', () => 
     });
     await page.goto('/');
 
-    await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+    await expect(page.locator('.blueworx-translate__current .blueworx-translate__name')).toHaveText('English');
     await expect(page.locator('body')).not.toContainText('[fr]');
     expect(await page.evaluate(() => window.localStorage.getItem('blueworxTranslateLang'))).toBeNull();
   });
@@ -546,7 +687,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     await expect(page.locator('.blueworx-translate__status')).toContainText("Couldn't load");
     await expect(toggle).toHaveAttribute('aria-busy', 'false');
     await expect(toggle).toBeEnabled();
-    await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+    await expect(page.locator('.blueworx-translate__current .blueworx-translate__name')).toHaveText('English');
     expect(await page.locator('body').innerText()).toContain(before.slice(0, 40));
     await expect(page.locator('html')).not.toHaveAttribute('lang', 'fr');
   });
@@ -578,7 +719,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     await toggle.click();
     await page.locator('.blueworx-translate__option[data-lang="fr"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-    await expect(page.locator('.blueworx-translate__current')).toHaveText('French');
+    await expect(page.locator('.blueworx-translate__current .blueworx-translate__name')).toHaveText('French');
 
     await toggle.click();
     await page.locator('.blueworx-translate__option[data-lang="de"]').click();
@@ -587,7 +728,7 @@ test.describe('BlueWorx on-page translation — keyboard and failures', () => {
     // The restore already put the text back in English; the pill and
     // html[lang] must say so too, not still claim French.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.locator('.blueworx-translate__current')).toHaveText('English');
+    await expect(page.locator('.blueworx-translate__current .blueworx-translate__name')).toHaveText('English');
     // ...and so must the remembered choice — otherwise a reload silently
     // brings French back even though the widget just showed English.
     expect(await page.evaluate(() => window.localStorage.getItem('blueworxTranslateLang'))).toBeNull();
