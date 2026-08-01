@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.49.0] - 2026-08-01
+
+### Security
+- **A headless bearer token now only authenticates `blueworx/v1` routes.** The
+  token check hangs off `determine_current_user`, which WordPress consults for
+  every request it serves — so a valid token authenticated the whole of core
+  `wp/v2` as well as our own namespace. A token minted so a front end could
+  read its own account was, for an administrator, also enough to read and
+  rewrite `wp/v2/settings`. The filter now returns early unless the request is
+  addressed to `blueworx/v1`, reading both permalink shapes
+  (`/wp-json/blueworx/v1/…` and `?rest_route=/blueworx/v1/…`) and taking the
+  prefix from `rest_get_url_prefix()` rather than hard-coding `wp-json`. An
+  unrecognised URL shape fails closed.
+
+  Silent failure is unchanged: an invalid or out-of-scope token still leaves
+  the request anonymous rather than refusing it, so public core routes stay
+  public and cookie+nonce authentication is untouched.
+
+  **Breaking for anyone calling core `wp/v2` with a bearer token** — that never
+  worked by design, but it did work. Use cookie authentication for core routes,
+  or a `blueworx/v1` route. (#27)
 ## [1.48.1] - 2026-08-01
 
 ### Fixed
