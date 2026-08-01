@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.49.1] - 2026-08-01
+
+### Changed
+- **PHPCS runs clean.** The last twelve findings are gone, so the next real one
+  will be visible instead of buried: array formatting in
+  `admin-menu-badges.php` and `admin-menu-icons.php`, assignment and double
+  arrow alignment in `rest/render.php`, and a doc comment in `rest/cors.php`
+  that started with a lowercase `wp/v2`.
+
+  Two were not reformatting. The `do_action( 'wp_enqueue_scripts' )` in
+  `rest/render.php` is fired deliberately — it is core's hook, and the whole
+  point is to reach the callbacks other plugins and the theme registered on it,
+  so a plugin-prefixed name would reach nothing. That one carries a
+  `phpcs:ignore` with the reason rather than a rename. The `get_post_types()`
+  arguments in `admin-menu-badges.php` moved to a named variable instead of
+  taking PHPCBF's inline wrapping, which read worse than the original.
+
+  No behaviour change anywhere — formatting, one comment reword, and one
+  documented ignore.
+
 ## [1.49.0] - 2026-08-01
 
 ### Security

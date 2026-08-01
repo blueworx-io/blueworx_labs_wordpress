@@ -117,9 +117,9 @@ function blueworx_headless_render_describe( $registry, $handle, $is_script ) {
 		// object throws immediately and the feature is dead on arrival.
 		$data = $registry->get_data( $handle, 'data' );
 
-		$described['data']   = is_string( $data ) ? $data : '';
-		$described['before'] = array_values( array_filter( (array) $registry->get_data( $handle, 'before' ), 'is_string' ) );
-		$described['after']  = array_values( array_filter( (array) $registry->get_data( $handle, 'after' ), 'is_string' ) );
+		$described['data']     = is_string( $data ) ? $data : '';
+		$described['before']   = array_values( array_filter( (array) $registry->get_data( $handle, 'before' ), 'is_string' ) );
+		$described['after']    = array_values( array_filter( (array) $registry->get_data( $handle, 'after' ), 'is_string' ) );
 		$described['strategy'] = (string) ( $item->extra['strategy'] ?? '' );
 	} else {
 		$described['media']  = (string) ( $item->args ? $item->args : 'all' );
@@ -237,6 +237,10 @@ function blueworx_headless_route_render( $request ) {
 	// whatever the theme and every other plugin enqueue site-wide.
 	if ( $request->get_param( 'with_global_enqueue' ) ) {
 		if ( ! did_action( 'wp_enqueue_scripts' ) ) {
+			// Firing core's own hook, not declaring one of ours, so the
+			// plugin-prefix rule does not apply — a prefixed name here would
+			// reach none of the callbacks this is fired to collect.
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 			do_action( 'wp_enqueue_scripts' );
 		}
 	}
@@ -253,7 +257,7 @@ function blueworx_headless_route_render( $request ) {
 		wp_scripts(),
 		array_values( array_diff( $after['scripts'], $before['scripts'] ) )
 	);
-	$new_styles = blueworx_headless_render_with_deps(
+	$new_styles  = blueworx_headless_render_with_deps(
 		wp_styles(),
 		array_values( array_diff( $after['styles'], $before['styles'] ) )
 	);
@@ -276,10 +280,10 @@ function blueworx_headless_route_render( $request ) {
 
 	return rest_ensure_response(
 		array(
-			'html'      => $html,
+			'html'       => $html,
 			'shortcodes' => $found,
-			'styles'    => $styles,
-			'scripts'   => $scripts,
+			'styles'     => $styles,
+			'scripts'    => $scripts,
 		)
 	);
 }

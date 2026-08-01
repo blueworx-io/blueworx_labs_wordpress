@@ -45,8 +45,24 @@ function blueworx_get_svg_kses_allowlist() {
 			'focusable'       => true,
 		),
 		'path'   => array_merge( $shared, array( 'd' => true ) ),
-		'rect'   => array_merge( $shared, array( 'x' => true, 'y' => true, 'width' => true, 'height' => true, 'rx' => true ) ),
-		'circle' => array_merge( $shared, array( 'cx' => true, 'cy' => true, 'r' => true ) ),
+		'rect'   => array_merge(
+			$shared,
+			array(
+				'x'      => true,
+				'y'      => true,
+				'width'  => true,
+				'height' => true,
+				'rx'     => true,
+			)
+		),
+		'circle' => array_merge(
+			$shared,
+			array(
+				'cx' => true,
+				'cy' => true,
+				'r'  => true,
+			)
+		),
 	);
 }
 
