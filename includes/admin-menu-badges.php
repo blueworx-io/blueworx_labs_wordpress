@@ -47,7 +47,12 @@ function blueworx_get_admin_menu_badge_counts() {
 		$counts['upload.php'] = $media;
 	}
 
-	foreach ( get_post_types( array( '_builtin' => false, 'show_ui' => true ), 'names' ) as $post_type ) {
+	$cpt_args = array(
+		'_builtin' => false,
+		'show_ui'  => true,
+	);
+
+	foreach ( get_post_types( $cpt_args, 'names' ) as $post_type ) {
 		$cpt_count = (int) wp_count_posts( $post_type )->publish;
 
 		if ( $cpt_count > 0 ) {

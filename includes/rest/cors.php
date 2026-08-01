@@ -52,9 +52,10 @@ function blueworx_headless_origin_allowed( $origin ) {
 /**
  * REST namespaces this plugin sends CORS headers for.
  *
- * wp/v2 is included because the headless front-end fetches content bodies from
- * it — /resolve hands back a wp/v2 rest_url. Anything outside this list gets no
- * CORS headers at all, since core's permissive handler is removed below.
+ * Core's wp/v2 is included because the headless front-end fetches content
+ * bodies from it — /resolve hands back a wp/v2 rest_url. Anything outside this
+ * list gets no CORS headers at all, since core's permissive handler is removed
+ * below.
  *
  * @return array Namespace prefixes.
  */
