@@ -4,7 +4,28 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.49.3] - 2026-08-01
+## [1.50.2] - 2026-08-01
+
+### Changed
+- **Changelog entries go back in `CHANGELOG.md`.** 1.50.0 moved them to
+  per-change files in `changelog.d/` so two open branches could not conflict on
+  the top of one shared file. That half worked. The other half did not: folding
+  the fragments back into `CHANGELOG.md` has to happen on `main` after a merge,
+  and nothing is allowed to write there.
+
+  `main` accepts changes only through a pull request. A workflow cannot be given
+  an exception — this repo uses GitHub's older branch protection, which has no
+  bypass list, and the newer ruleset system does not offer the Actions bot as an
+  option. A bot-opened pull request is not a way round it either: GitHub does not
+  run CI on one, so the required check never reports and it can never merge.
+  Every remaining route needed either a weakened branch rule or a stored access
+  token.
+
+  So the fragments are gone and the version-line conflicts in
+  `blueworx-labs-wordpress.php`, `package.json` and `readme.txt` were never
+  addressed by this anyway. `docs/merging-branches.md` is the guidance that
+  actually helps: resolve only the conflicting hunk, then run
+  `npm run check:merge` before pushing. (#57)
 
 ### Changed
 
