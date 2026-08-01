@@ -117,7 +117,11 @@ Short-lived **JWT access token** + long-lived **rotating refresh cookie**.
 
 - **Access token** — a signed JWT (HS256), returned in the JSON body of `/auth/login`
   and `/auth/refresh`. Send it as `Authorization: Bearer <token>` on every
-  authenticated request. TTL = the configured access TTL (default 3600 s). Claims
+  authenticated request. **It authenticates `blueworx/v1` routes only** — core
+  `wp/v2` ignores it, deliberately, so a token scoped to a front end's own
+  account can never be used to read or rewrite site settings. Content from
+  `wp/v2` is fetched anonymously (see §3); anything that needs the current user
+  has a `blueworx/v1` route. TTL = the configured access TTL (default 3600 s). Claims
   include a per-user `tv` (token version); bumping the user's token version instantly
   invalidates all outstanding access tokens.
 - **Refresh token** — opaque, delivered **only** as an `HttpOnly`, `Secure`,
