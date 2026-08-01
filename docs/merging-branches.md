@@ -1,22 +1,23 @@
 # Merging parallel feature branches
 
-Every branch in this repo bumps the plugin version and records a changelog
+Every branch in this repo bumps the plugin version and prepends a `CHANGELOG.md`
 entry, because CI requires both on every PR. That is fine for one branch at a
 time. When several branches are open at once, each one has to take `main` before
 it can merge, and the same handful of files conflict every time:
 
+- `CHANGELOG.md` — both sides insert at the top of the file
 - `blueworx-labs-wordpress.php`, `package.json`, `readme.txt` — the version line
 - whichever spec both branches touched, usually `tests/admin-theme.spec.js`
 
-`CHANGELOG.md` used to head that list, and was the most frequent conflict of the
-lot. It no longer is. A branch adds its own file under `changelog.d/` instead
-(see `changelog.d/README.md`), so two branches never touch the same lines, and a
-workflow folds those fragments into `CHANGELOG.md` on `main`, where nothing else
-is writing to it. There is no local assembly command, on purpose: running one on
-a feature branch would put the entry back at the top of the shared file and
-re-create exactly the conflict the fragments remove.
-
 The conflicts themselves are trivial. Resolving them is where the damage happens.
+
+> Per-change files under `changelog.d/` were tried in 1.50.0 and removed in
+> 1.50.2. They did stop the `CHANGELOG.md` conflict, but folding them back into
+> `CHANGELOG.md` has to happen on `main` after a merge, and nothing can write
+> there: `main` takes pull requests only, the older branch protection this repo
+> uses has no bypass list, and GitHub does not run CI on a bot-opened pull
+> request, so one could never merge. Do not re-propose it without a way past
+> that.
 
 ## Two ways this goes wrong
 
