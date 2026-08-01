@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.48.1] - 2026-08-01
+
+### Fixed
+- **The plugin now states one minimum PHP version, not two.** `composer.json`
+  asked for `>=7.4` while the plugin header and `phpcs.xml.dist` both said 8.0,
+  so Composer would happily resolve on a PHP version the code is neither
+  written for nor linted against. Composer now requires `>=8.0`, matching the
+  header, `readme.txt` and the PHPCS `testVersion`. No runtime behaviour
+  changes and no dependency versions move — the lock file's platform
+  requirement is the only thing that shifts. (#28)
+
 ## [1.48.0] - 2026-07-31
 
 ### Removed
