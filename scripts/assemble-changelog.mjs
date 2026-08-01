@@ -74,9 +74,13 @@ export function assemble({ changelog, fragments, version, date }) {
     // Same version already has a section — merge into its end rather than
     // emitting a second heading for one version.
     const next = changelog.indexOf('\n## [', existing + 1);
-    const end = next === -1 ? changelog.length : next + 1;
+    const atEnd = next === -1;
+    const end = atEnd ? changelog.length : next + 1;
     const before = changelog.slice(0, end).replace(/\n+$/, '\n');
-    return `${before}\n${body}\n${changelog.slice(end)}`;
+    // A following heading needs a blank line before it; the end of the file
+    // needs no extra trailing newline.
+    const after = atEnd ? '' : `\n${changelog.slice(end)}`;
+    return `${before}\n${body}\n${after}`;
   }
 
   const section = `## [${version}] - ${date}\n\n${body}\n`;

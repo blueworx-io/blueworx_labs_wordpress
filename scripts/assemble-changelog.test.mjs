@@ -70,6 +70,17 @@ test('assemble: appends into an existing heading for the same version', () => {
   assert.match(out, /### Added\n- The first thing\.\n\n### Fixed\n- Late fix\./);
 });
 
+test('assemble: appending keeps a blank line before the next version heading', () => {
+  const twoVersions = `${HEAD}\n## [0.9.0] - 2025-12-01\n\n### Fixed\n- An old fix.\n`;
+  const out = assemble({
+    changelog: twoVersions,
+    fragments: [{ name: 'a.md', text: '### Fixed\n- Late fix.\n' }],
+    version: '1.0.0',
+    date: '2026-08-01',
+  });
+  assert.match(out, /- Late fix\.\n\n## \[0\.9\.0\]/);
+});
+
 test('assemble: no fragments leaves the changelog untouched', () => {
   assert.equal(assemble({ changelog: HEAD, fragments: [], version: '1.1.0', date: '2026-08-01' }), HEAD);
 });
