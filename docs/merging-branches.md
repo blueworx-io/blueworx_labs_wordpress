@@ -12,9 +12,9 @@ it can merge, and the same handful of files conflict every time:
 lot. It no longer is. A branch adds its own file under `changelog.d/` instead
 (see `changelog.d/README.md`), so two branches never touch the same lines, and a
 workflow folds those fragments into `CHANGELOG.md` on `main`, where nothing else
-is writing to it. Never run `npm run changelog:assemble` on a feature branch —
-that puts the entry back at the top of the shared file and re-creates exactly
-the conflict the fragments remove.
+is writing to it. There is no local assembly command, on purpose: running one on
+a feature branch would put the entry back at the top of the shared file and
+re-create exactly the conflict the fragments remove.
 
 The conflicts themselves are trivial. Resolving them is where the damage happens.
 
