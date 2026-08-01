@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.49.3] - 2026-08-01
+
+### Changed
+
+- **CI now pins the shared foundation workflow to `@v1` instead of tracking its
+  `main` branch.** Any change to the shared workflow used to land in this
+  project's CI the moment it merged upstream, with no way to stage it. `v1` is a
+  moving major tag that follows backward-compatible releases, so fixes still
+  arrive on their own; a breaking change goes to `v2` and waits for a deliberate
+  move here. `foundation_ref` is set to match — it defaults to `main`, so pinning
+  only the `uses:` ref would run the v1 workflow against today's scripts.
+  Nothing about the plugin itself changes.
+
 ## [1.49.2] - 2026-08-01
 
 ### Changed
