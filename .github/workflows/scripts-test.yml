@@ -1,0 +1,17 @@
+name: Script tests
+
+# The shared guardrails workflow runs ESLint and Playwright. Neither covers the
+# build scripts in scripts/, and the foundation's test_command input is the
+# Playwright command — overloading it would break sharding and the zero-tests
+# gate. So the unit tests get their own three-step job.
+on: pull_request
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm run test:scripts

@@ -1,6 +1,6 @@
 {
   "name": "blueworx-labs-wordpress",
-  "version": "1.49.3",
+  "version": "1.50.0",
   "private": true,
   "description": "BlueWorx Labs | WordPress Enhancements — primary headless WordPress plugin.",
   "license": "GPL-2.0-or-later",
@@ -9,7 +9,9 @@
     "build": "node scripts/build-zip.mjs",
     "lint": "eslint assets/js",
     "version:check": "node scripts/version-check.mjs",
-    "check:merge": "node scripts/check-merge-sanity.mjs"
+    "check:merge": "node scripts/check-merge-sanity.mjs",
+    "changelog:assemble": "node scripts/assemble-changelog.mjs",
+    "test:scripts": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

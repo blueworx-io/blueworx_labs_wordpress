@@ -25,4 +25,12 @@ jobs:
       # input defaults to `main`, so without it the v1 workflow would run
       # against whatever is on the foundation's main branch today.
       foundation_ref: v1
+      # The shared exclude list deliberately keeps `scripts/` shippable, because
+      # plenty of plugins keep runtime JS there. This one does not: what ships is
+      # the allowlist in scripts/build-zip.mjs — the plugin file, uninstall.php,
+      # readme.txt, includes/, assets/, languages/ — and nothing under scripts/
+      # is read at runtime by WordPress. Excluding the directory also stops every
+      # future *.test.mjs next to a build script from failing the zip check.
+      exclude_paths: |
+        /scripts
     secrets: inherit
