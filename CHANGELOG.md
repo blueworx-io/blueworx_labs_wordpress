@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.51.0] - 2026-08-01
+
+### Added
+- **A Guides page, under BlueWorx > Guides.** Written support guides for every
+  function this plugin adds, plus the everyday WordPress questions clients ask —
+  pages versus posts, publishing and scheduling, undoing a change, images and
+  alt text, editing the navigation, adding a user, and why updates matter.
+
+  The page assembles itself rather than being a hand-kept list. Tabs are the
+  feature sections from the settings page, so guides and settings read in the
+  same shape, and every feature in the registry gets a guide slot — add a
+  feature there and it appears here, falling back to its own settings
+  description until someone writes a longer one. A function switched off has its
+  guide hidden, so a client is never reading instructions for something they
+  cannot see. A tab with nothing left in it disappears rather than becoming a
+  dead end.
+
+  The guide text is written, not generated. A docblock describes code to a
+  developer and an LLM writing about the plugin at runtime can state things that
+  are not true; neither belongs in front of a client.
+
+  Other plugins plug into the same page through two filters:
+  `blueworx_guide_tabs` adds a tab, `blueworx_guides` adds guides. Anything a
+  third party supplies is run through `wp_kses_post` on output, so a guide body
+  cannot introduce script. A guide naming a tab nobody registered is collected
+  under "Other" rather than dropped — losing another plugin's content is worse
+  than losing its grouping — and an id already in use is ignored, so a third
+  party cannot displace a built-in guide by reusing its id.
+
+  Tabs are plain links rather than JavaScript: each is a real URL that can be
+  bookmarked or sent to someone, and the page works with no script at all.
+  (#97)
+
 ## [1.50.2] - 2026-08-01
 
 ### Changed
