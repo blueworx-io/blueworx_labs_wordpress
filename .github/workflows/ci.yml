@@ -2,7 +2,7 @@ name: CI
 on: pull_request
 jobs:
   guardrails:
-    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@shard-wordpress-tests
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@main
     with:
       plugin_slug: blueworx-labs-wordpress
       # Provision a disposable WordPress on the runner rather than pointing at a
@@ -13,10 +13,12 @@ jobs:
       # what makes this safe — the specs mutate site-wide state, so they must
       # never share one site. Do NOT raise `workers` in playwright.config.js to
       # chase the same win; that shares the site and corrupts runs.
+      #
+      # Playwright shards by spec FILE here (fullyParallel is false), so the
+      # slowest single file is the floor — more shards than this buys nothing
+      # until the big spec files are split up.
       shards: 3
       # This plugin moves the login screen off wp-login.php, which 301s away.
       # Without this every admin spec fails at the sign-in step.
       wp_login_path: admin_login
-      # Trialling the sharding change before it lands on foundation's main.
-      foundation_ref: shard-wordpress-tests
     secrets: inherit
