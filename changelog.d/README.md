@@ -25,8 +25,13 @@ file per branch cannot conflict.
 
 ## Assembly
 
-`npm run changelog:assemble` folds every pending fragment into `CHANGELOG.md`
-under the current plugin version and deletes the fragments. It runs
-automatically on push to `main` (`.github/workflows/changelog.yml`); the manual
-command is the fallback. Never run it on a feature branch — that re-creates the
-conflict this directory exists to remove.
+Nothing to do by hand. On every push to `main`,
+`.github/workflows/changelog.yml` folds the pending fragments into
+`CHANGELOG.md` under the current plugin version and deletes them. The script and
+the job both live in the foundation, so every project that opts in gets the same
+behaviour.
+
+It can also be run from the Actions tab ("Assemble changelog" → Run workflow) if
+it ever needs a nudge. There is deliberately no local command: assembly writes
+to the top of the shared file, which is the exact thing this directory exists to
+keep off feature branches.

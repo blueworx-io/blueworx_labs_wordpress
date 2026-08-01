@@ -7,9 +7,7 @@
 
   A branch now adds `changelog.d/<branch-name>.md` and never touches
   `CHANGELOG.md`, so there is nothing to conflict on. A workflow on `main` folds
-  the pending fragments in under the current version and deletes them;
-  `npm run changelog:assemble` is the manual fallback. Never run it on a feature
-  branch.
+  the pending fragments in under the current version and deletes them.
 
   The shared guardrail in the foundation accepts either shape, so projects
   without a `changelog.d/` directory are unaffected. (#57)
