@@ -25,6 +25,16 @@ versioning.
   **Breaking for anyone calling core `wp/v2` with a bearer token** — that never
   worked by design, but it did work. Use cookie authentication for core routes,
   or a `blueworx/v1` route. (#27)
+## [1.48.1] - 2026-08-01
+
+### Fixed
+- **The plugin now states one minimum PHP version, not two.** `composer.json`
+  asked for `>=7.4` while the plugin header and `phpcs.xml.dist` both said 8.0,
+  so Composer would happily resolve on a PHP version the code is neither
+  written for nor linted against. Composer now requires `>=8.0`, matching the
+  header, `readme.txt` and the PHPCS `testVersion`. No runtime behaviour
+  changes and no dependency versions move — the lock file's platform
+  requirement is the only thing that shifts. (#28)
 
 ## [1.48.0] - 2026-07-31
 
