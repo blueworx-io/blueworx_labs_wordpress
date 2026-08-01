@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.49.2] - 2026-08-01
+
+### Changed
+- **CI splits the Playwright suite across three runners.** The guardrails job
+  ran all 133 tests on one runner at `workers: 1` and took ~11m30s on every PR,
+  which was the main cost of merging anything.
+
+  `workers: 1` stays exactly as it is. It is load-bearing: the specs toggle
+  site-wide state — feature flags, menu order, protection settings — so running
+  them concurrently against one WordPress makes one spec's "off" another's
+  "on". Sharding avoids that because each shard is a separate CI runner with
+  its own WordPress, so there is nothing shared to corrupt. Do not raise
+  `workers` in `playwright.config.js` to chase the same win.
+
+  The zero-tests gate now applies to the sum across shards, so a suite that
+  skips itself wholesale still fails the build. No plugin code changes. (#55)
+
 ## [1.49.1] - 2026-08-01
 
 ### Changed
