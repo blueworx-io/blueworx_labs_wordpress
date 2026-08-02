@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.55.0] - 2026-08-02
+
+### Added
+- **Sign in with an account you already have.** A new Single sign-on option under
+  Security & Access lets people sign in with an account from somewhere else — a
+  company Google or Microsoft account, or a membership system — instead of a
+  separate password here. Paste in the three details your provider gives you,
+  give them the return address shown on the screen, and a sign-in button appears
+  on the login page.
+
+  You choose whether a first-time visitor gets an account automatically and which
+  role they land on. Signing in can never make someone an administrator. It is
+  off until you switch it on, and nothing changes for sites that leave it off.
+
 ## [1.54.0] - 2026-08-02
 
 ### Removed
