@@ -4,6 +4,63 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.53.0] - 2026-08-02
+
+### Added
+- **Choose how long people stay signed in.** Under Security & Access, "Login
+  session length" sets how long a login lasts — 24 hours, 2, 5 or 7 days, or
+  until the person signs out. It was two days before, and only if you closed the
+  browser first, which is why it felt like being logged out constantly. Existing
+  sites get 24 hours without changing anything.
+
+- **Toolbar cleanup.** Takes the WordPress logo, Customize, the update counter,
+  "+ New" and the "Howdy," greeting out of the black bar, and removes the Help
+  drawer. It can also hide that bar completely on the public side of the site,
+  either for everyone but administrators or for the roles you choose. A BlueWorx
+  support session always keeps its toolbar.
+
+- **Dashboard tidy-up.** Removes the dashboard panels nobody uses — Welcome,
+  Quick Draft, Elementor Overview and others you pick. Removed for good, rather
+  than hidden behind Screen Options where one tick brings them back.
+
+- **Duplicate a page or post.** A Duplicate link beside every item makes a full
+  copy as a draft, including its categories and all its field values, so the
+  next one starts from a page that already works.
+
+- **Media tools.** Replace a file with a new version without the address
+  changing, so every page already using it updates by itself. Oversized photos
+  are scaled down as they are uploaded — 1920 by 1920 out of the box. SVG logos
+  can be allowed for chosen roles, and every one is stripped of anything that
+  could run before it is stored.
+
+- **Revision limit.** Keeps the most recent saved versions of a page rather than
+  every version forever, which stops the database quietly becoming the biggest
+  thing on the site. Twenty by default; versions already saved are left alone.
+
+- **XML-RPC off.** Closes the old remote-publishing endpoint attackers use to
+  guess passwords in bulk. On by default. Turn it off if you use the WordPress
+  mobile app or Jetpack.
+
+- **Search engine rules.** An editable robots.txt, off by default so an existing
+  file or your SEO plugin stays in charge.
+
+- **Hide usernames in author links.** Replaces the sign-in name in author page
+  addresses with a meaningless code. Off by default, because it changes those
+  addresses.
+
+- **View the admin as another role.** Lets an administrator see what an editor
+  or a member can actually reach, with a bar along the bottom to switch back. It
+  can only ever show you less than you normally see, never more. Off by default.
+
+### Changed
+- **The headless API is now off unless you switch it on.** It let a separate
+  front-end app read the site and sign people in, and nothing uses it any more —
+  the app it was built for is gone. It was on everywhere, so a handful of
+  addresses were answering on every site with no one calling them. Existing sites
+  are not switched on by an update; if a site genuinely needs it, turn it on
+  under Integrations. Nothing is deleted — the setting can be turned back on and
+  everything is as it was.
+
 ## [1.52.0] - 2026-08-01
 
 ### Changed
