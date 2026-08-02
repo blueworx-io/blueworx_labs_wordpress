@@ -83,7 +83,7 @@ should not also hand the Customizer to every editor.
 **6. New features that change URLs, open network surface, or grant a capability
 default OFF.** The feature registry previously treated an absent option as
 enabled, which is right for the features that shipped under it. `robots_txt`,
-`author_slugs`, `view_as_role` and `headless_api` now carry an explicit
+`author_slugs` and `view_as_role` now carry an explicit
 `'default' => '0'`, so an update can never switch them on underneath a live site.
 
 ## Still to do before ASE can be removed

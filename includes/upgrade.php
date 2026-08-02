@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 8;
+	return 9;
 }
 
 /**
@@ -438,6 +438,83 @@ function blueworx_migrate_remove_translate_label() {
 }
 
 /**
+ * Gets the options the removed headless REST layer wrote.
+ *
+ * Listed explicitly rather than swept with a `blueworx_headless_%` LIKE delete:
+ * a wildcard delete against wp_options is the kind of thing that quietly takes
+ * a row it was not meant to, and this set is finite and known.
+ *
+ * @return array Option names.
+ */
+function blueworx_get_retired_headless_options() {
+	return array(
+		'blueworx_headless_db_version',
+		'blueworx_headless_access_ttl',
+		'blueworx_headless_allowed_origins',
+		'blueworx_headless_cpts',
+		'blueworx_headless_default_role',
+		'blueworx_headless_email_verification_required',
+		'blueworx_headless_frontend_url',
+		'blueworx_headless_login_max_attempts',
+		'blueworx_headless_login_window',
+		'blueworx_headless_refresh_ttl_days',
+		'blueworx_headless_registration_mode',
+		'blueworx_headless_render_shortcodes',
+		'blueworx_headless_revalidate_enabled',
+		'blueworx_headless_revalidate_url',
+		'blueworx_headless_surecart_enabled',
+		'blueworx_feature_headless_api',
+	);
+}
+
+/**
+ * Removes everything the headless REST layer left behind.
+ *
+ * The layer was switched off in 1.53.0 and deleted in 1.54.0. Its code is gone,
+ * but a site that ran any earlier version still carries two tables, a scheduled
+ * event with nothing listening to it, its settings, and a per-user token
+ * version — all of it created on activation, on every install, whether or not
+ * the site was ever headless.
+ *
+ * The tables hold refresh tokens and invites. Both are meaningless without the
+ * code that issued and validated them: a refresh token can no longer be
+ * presented anywhere, and an invite can no longer be redeemed. Dropping them is
+ * therefore not data loss in any sense a site owner would recognise — it is
+ * removing the residue of a feature that no longer exists.
+ *
+ * @return void
+ */
+function blueworx_migrate_remove_headless_layer() {
+	global $wpdb;
+
+	$timestamp = wp_next_scheduled( 'blueworx_headless_gc_tokens' );
+
+	if ( $timestamp ) {
+		wp_unschedule_event( $timestamp, 'blueworx_headless_gc_tokens' );
+	}
+
+	// Belt and braces: an event scheduled by a version that used a different
+	// argument signature would survive the single unschedule above.
+	wp_clear_scheduled_hook( 'blueworx_headless_gc_tokens' );
+
+	foreach ( blueworx_get_retired_headless_options() as $option ) {
+		delete_option( $option );
+	}
+
+	delete_metadata( 'user', 0, 'blueworx_headless_token_version', '', true );
+	delete_metadata( 'user', 0, 'blueworx_headless_email_unverified', '', true );
+
+	foreach ( array( 'blueworx_refresh_tokens', 'blueworx_invites' ) as $suffix ) {
+		$table = $wpdb->prefix . $suffix;
+
+		// Dropping a table this plugin created, named from the site prefix and a
+		// fixed literal — no caller input reaches this, and DROP TABLE takes no
+		// placeholders.
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+}
+
+/**
  * Runs any pending one-time migrations.
  *
  * Cheap on every request: a single get_option compare when already current.
@@ -479,6 +556,10 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 8 ) {
 		blueworx_migrate_remove_translate_label();
+	}
+
+	if ( $stored_version < 9 ) {
+		blueworx_migrate_remove_headless_layer();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

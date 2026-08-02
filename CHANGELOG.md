@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.54.0] - 2026-08-02
+
+### Removed
+- **The headless API is gone.** It let a separate front-end app read the site
+  and sign people in, the app it was built for no longer exists, and no site
+  uses it. It was switched off in the last release; this deletes it.
+
+  Updating tidies up after it: two unused database tables are dropped, a nightly
+  job that had nothing left to do is cancelled, and its settings are cleared. You
+  do not have to do anything, and nothing you can see on the site changes.
+
 ## [1.53.0] - 2026-08-02
 
 ### Added

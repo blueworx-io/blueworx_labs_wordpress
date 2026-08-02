@@ -703,7 +703,7 @@ function blueworx_support_denied_post_types() {
  * @return array Route prefixes.
  */
 function blueworx_support_denied_routes() {
-	$routes = array( '/wp/v2/users', '/wp/v2/comments', '/blueworx/v1/account', '/blueworx/v1/surecart' );
+	$routes = array( '/wp/v2/users', '/wp/v2/comments' );
 
 	// The same commerce data, reachable over REST rather than through a screen.
 	if ( blueworx_support_woocommerce_active() ) {
@@ -1288,19 +1288,16 @@ add_filter( 'blueworx_site_protection_role_check', 'blueworx_support_exempt_from
 /**
  * Resolves the support user from the access-key header.
  *
- * Runs on determine_current_user at priority 21, after the headless JWT
- * resolver (includes/rest/bootstrap.php, registered at priority 20), and
- * follows the same rule: any failure leaves $user_id untouched, so public
- * routes and cookie or JWT authentication keep working.
+ * Runs on determine_current_user at priority 21, and follows the rule any
+ * resolver on that filter must: a failure leaves $user_id untouched, so public
+ * routes and cookie authentication keep working.
  *
- * Priority 21 rather than 20: this file is required before
- * includes/rest/bootstrap.php in blueworx-labs-wordpress.php, so registering
- * at the same priority would make this resolver run FIRST, by include order
- * — a property no one reading either file in isolation should have to know
- * about, and the opposite of the ordering intended here. Running after the
- * JWT resolver is also the safer choice on its own merits: a JWT explicitly
- * issued to a real, identified user should take precedence over a support
- * key, not be pre-empted by it.
+ * The priority is 21 rather than the default 10 because it once had to run
+ * after the headless layer's JWT resolver, which sat at 20. That layer was
+ * removed in 1.54.0 and nothing else registers here now, so the number no
+ * longer resolves a conflict — it is left alone rather than changed, because
+ * moving a resolver on this filter is a change to who a request is
+ * authenticated as, and there is nothing to gain from making it.
  *
  * determine_current_user can be invoked more than once per request, and on
  * the vast majority of requests no key header is present at all. Both facts
@@ -1424,7 +1421,6 @@ function blueworx_support_claude_prompt( $key = '' ) {
 		'',
 		'- REST index:        ' . $site . '/wp-json/',
 		'- Core content:      ' . $site . '/wp-json/wp/v2/       (posts, pages, CPTs, media)',
-		'- BlueWorx headless: ' . $site . '/wp-json/blueworx/v1/ (menus, site config, path resolution)',
 		'- BlueWorx console:  ' . $site . '/wp-admin/admin.php?page=blueworx-labs-wordpress',
 		'- /wp-login.php is blocked by this plugin. The custom login URL is ' . $login_url,
 		'  and it is for humans — you authenticate with the key above, not a password.',
@@ -1436,8 +1432,8 @@ function blueworx_support_claude_prompt( $key = '' ) {
 		'- The window lasts 24 hours. When it closes, or the key is revoked, everything',
 		'  returns 403 — that is expected, not a bug. Ask me to reopen it.',
 		'- Personal data is withheld unless I opened it for this session: /wp/v2/users,',
-		'  /wp/v2/comments, /blueworx/v1/account, /blueworx/v1/surecart and the',
-		'  WooCommerce/SureCart order and customer routes return 403 blueworx_support_no_data.',
+		'  /wp/v2/comments and the WooCommerce/SureCart order and customer routes',
+		'  return 403 blueworx_support_no_data.',
 		'  Do not attempt to reach that data another way.',
 		'- Five wrong keys lock this address out for 15 minutes. On a 403, stop and check',
 		'  with me instead of retrying with variations.',

@@ -4,8 +4,7 @@
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
-    "php": ">=8.0",
-    "firebase/php-jwt": "^7.0"
+    "php": ">=8.0"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^3.11",

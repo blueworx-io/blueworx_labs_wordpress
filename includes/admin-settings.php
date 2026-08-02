@@ -172,14 +172,11 @@ function blueworx_save_feature_settings() {
 
 	check_admin_referer( 'blueworx_save_feature_settings' );
 
-	$posted            = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-	$headless_was_live = blueworx_feature_enabled( 'headless_api' );
+	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
 		update_option( 'blueworx_feature_' . $key, isset( $posted[ $key ] ) ? '1' : '0' );
 	}
-
-	blueworx_sync_headless_api_state( $headless_was_live );
 
 	// Login detail: editable slug.
 	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
@@ -216,46 +213,6 @@ function blueworx_save_feature_settings() {
 	exit;
 }
 add_action( 'admin_post_blueworx_save_feature_settings', 'blueworx_save_feature_settings' );
-
-/**
- * Brings the headless API's tables and cron into line with its feature toggle.
- *
- * The layer is loaded by a conditional require in the main plugin file, so its
- * install routine is not in memory on the request that switches it ON — the
- * option was still '0' when the file list was decided. The require here is that
- * gap closed, and it is the only place in the plugin that loads the REST layer
- * outside the toggle.
- *
- * Switching it off unschedules the token sweep. The tables are deliberately
- * left in place: an off switch that silently drops user data would be the wrong
- * thing to be reversible.
- *
- * @param bool $was_live Whether the feature was on before this save.
- * @return void
- */
-function blueworx_sync_headless_api_state( $was_live ) {
-	$is_live = blueworx_feature_enabled( 'headless_api' );
-
-	if ( $was_live === $is_live ) {
-		return;
-	}
-
-	if ( $is_live ) {
-		require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
-
-		if ( function_exists( 'blueworx_headless_install' ) ) {
-			blueworx_headless_install();
-		}
-
-		return;
-	}
-
-	$timestamp = wp_next_scheduled( 'blueworx_headless_gc_tokens' );
-
-	if ( $timestamp ) {
-		wp_unschedule_event( $timestamp, 'blueworx_headless_gc_tokens' );
-	}
-}
 
 /**
  * Saves the login session length.
@@ -687,18 +644,6 @@ function blueworx_render_feature_detail( $key ) {
 			<input type="number" min="0" max="500" id="blueworx_revisions_limit" name="blueworx_revisions_limit" value="<?php echo esc_attr( (string) blueworx_revisions_to_keep() ); ?>" class="small-text" />
 		</p>
 		<p class="description"><?php esc_html_e( 'Applies to versions saved from now on — versions already stored are left alone. Set it to 0 to stop keeping versions at all.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php
-		return;
-	}
-
-	if ( 'headless_api' === $key ) {
-		?>
-		<p class="description">
-			<?php esc_html_e( 'Only switch this on for a site with a separate front-end app reading it. It opens sign-in, account and content endpoints, and needs a signing key set on the server before sign-in works at all.', 'blueworx-labs-wordpress' ); ?>
-		</p>
-		<?php if ( blueworx_feature_enabled( 'headless_api' ) ) : ?>
-			<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-headless' ) ); ?>"><?php esc_html_e( 'Open the API settings', 'blueworx-labs-wordpress' ); ?></a></p>
-		<?php endif; ?>
 		<?php
 	}
 }

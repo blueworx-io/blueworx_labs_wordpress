@@ -30,7 +30,6 @@ function blueworx_get_feature_sections() {
 		'performance'   => __( 'Performance', 'blueworx-labs-wordpress' ),
 		'admin_menu'    => __( 'Admin Menu', 'blueworx-labs-wordpress' ),
 		'appearance'    => __( 'Appearance', 'blueworx-labs-wordpress' ),
-		'integrations'  => __( 'Integrations', 'blueworx-labs-wordpress' ),
 	);
 }
 
@@ -197,13 +196,6 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Removes the dashboard panels you never use, rather than just hiding them behind Screen Options where they come back.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => 'dashboard_widgets',
-		),
-		'headless_api'          => array(
-			'label'       => __( 'Headless content API', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Opens the BlueWorx API that lets a separate front-end app read this site and sign users in. Off unless a site was built that way — nothing else needs it.', 'blueworx-labs-wordpress' ),
-			'section'     => 'integrations',
-			'detail'      => 'headless_api',
-			'default'     => '0',
 		),
 	);
 }

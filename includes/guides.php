@@ -266,9 +266,6 @@ function blueworx_get_feature_guide_bodies() {
 
 		'dashboard_widgets'     => '<p>' . esc_html__( 'Removes the dashboard panels nobody on your site uses, so the first screen after signing in shows what matters instead of WordPress news and an empty draft box.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'These are removed rather than hidden, so they stay gone for everybody instead of reappearing the moment someone opens Screen Options.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'headless_api'          => '<p>' . esc_html__( 'Opens a set of addresses that let a separate front-end app read this site and sign people in to it. This is only used on sites built that way — if you are reading your site at its normal address, it is not one of them.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Leave it off. Switching it on adds a way into the site that would otherwise not be there, and nothing on an ordinary WordPress site needs it.', 'blueworx-labs-wordpress' ) . '</p>',
 	);
 }
 
