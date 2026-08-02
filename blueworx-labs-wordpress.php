@@ -53,6 +53,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/sso/jwt.php';
 require_once BLUEWORX_LABS_PATH . 'includes/sso/log.php';
 require_once BLUEWORX_LABS_PATH . 'includes/sso/users.php';
 require_once BLUEWORX_LABS_PATH . 'includes/sso/flow.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/ui.php';
 require_once BLUEWORX_LABS_PATH . 'includes/sso/settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';

@@ -170,6 +170,20 @@ test.describe('Single sign-on flow', () => {
     }
   });
 
+  test('the button renders on the login screen with the configured label', async ({ page }) => {
+    await page.goto(cacheBust('/admin_login'));
+
+    const button = page.locator('a.blueworx-sso-button');
+    await expect(button).toBeVisible();
+    await expect(button).toContainText('Sign in with Test IdP');
+    await expect(button).toHaveAttribute('href', /blueworx_sso=login/);
+  });
+
+  test('no icon font is loaded for it', async ({ page }) => {
+    await page.goto(cacheBust('/admin_login'));
+    await expect(page.locator('link[href*="font-awesome"]')).toHaveCount(0);
+  });
+
   test('two attempts never reuse a state', async ({ page }) => {
     const first = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
     const second = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
