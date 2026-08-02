@@ -220,6 +220,370 @@ if ( blueworx_admin_theme_enabled() ) {
 }
 
 /**
+ * The wp-login action currently being displayed.
+ *
+ * @return string Action slug, e.g. "login", "lostpassword", "register".
+ */
+function blueworx_login_action() {
+	// Display-only branching on a public, unauthenticated screen — reading the
+	// action WordPress has already routed on, not acting on input.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : 'login';
+
+	return '' === $action ? 'login' : $action;
+}
+
+/**
+ * Renders the dark brand panel that forms the left half of the login screen.
+ *
+ * Fires on `login_header`, immediately after <body> opens, so the panel is a
+ * sibling of #login rather than inside it. It is positioned by CSS, not by
+ * document order — see the header comment in assets/css/login-theme.css.
+ *
+ * @return void
+ */
+function blueworx_render_login_panel() {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return;
+	}
+
+	$site_name = get_bloginfo( 'name', 'display' );
+	$initial   = blueworx_first_initial( $site_name );
+
+	/**
+	 * Filters the small badge shown above the login headline.
+	 *
+	 * @param string $badge Badge text.
+	 */
+	$badge = apply_filters( 'blueworx_login_badge', __( 'Admin Login', 'blueworx-labs-wordpress' ) );
+
+	/**
+	 * Filters the login panel headline.
+	 *
+	 * @param string $headline Headline text.
+	 */
+	$headline = apply_filters(
+		'blueworx_login_headline',
+		__( 'Everything Your Site Needs, In One Place', 'blueworx-labs-wordpress' )
+	);
+
+	/**
+	 * Filters the login panel tagline shown under the headline.
+	 *
+	 * @param string $tagline Tagline text.
+	 */
+	$tagline = apply_filters(
+		'blueworx_login_tagline',
+		__( 'Manage content, media, and your team from a single dashboard built for clarity.', 'blueworx-labs-wordpress' )
+	);
+	?>
+	<div class="bw-login-panel" aria-hidden="true">
+		<div class="bw-login-panel-inner">
+			<a class="bw-login-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" tabindex="-1">
+				<span class="bw-login-brand-mark"><?php echo esc_html( $initial ); ?></span>
+				<span class="bw-login-brand-name"><?php echo esc_html( $site_name ); ?></span>
+			</a>
+			<div class="bw-login-pitch">
+				<?php if ( '' !== $badge ) : ?>
+					<span class="bw-login-badge"><?php echo esc_html( $badge ); ?></span>
+				<?php endif; ?>
+				<p class="bw-login-headline"><?php echo esc_html( $headline ); ?></p>
+				<?php if ( '' !== $tagline ) : ?>
+					<p class="bw-login-tagline"><?php echo esc_html( $tagline ); ?></p>
+				<?php endif; ?>
+			</div>
+			<p class="bw-login-panel-footer">
+				<?php
+				printf(
+					/* translators: 1: Current year, 2: Site title. */
+					esc_html__( '© %1$s %2$s · Powered by BlueWorx', 'blueworx-labs-wordpress' ),
+					esc_html( gmdate( 'Y' ) ),
+					esc_html( $site_name )
+				);
+				?>
+			</p>
+		</div>
+	</div>
+	<?php
+}
+add_action( 'login_header', 'blueworx_render_login_panel' );
+
+/**
+ * Adds the card heading above the login form.
+ *
+ * Hooked to `login_message` because that is the only output point inside #login
+ * between the logo and the form. Any real message WordPress wants to show is
+ * kept and rendered below the heading.
+ *
+ * @param string $message Existing login message markup.
+ * @return string Heading markup followed by the original message.
+ */
+function blueworx_login_card_heading( $message ) {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return $message;
+	}
+
+	switch ( blueworx_login_action() ) {
+		case 'lostpassword':
+		case 'retrievepassword':
+			$title    = __( 'Forgot Your Password?', 'blueworx-labs-wordpress' );
+			$subtitle = __( 'We&#8217;ll email you a link to set a new one.', 'blueworx-labs-wordpress' );
+			break;
+
+		case 'resetpass':
+		case 'rp':
+			$title    = __( 'Choose a New Password', 'blueworx-labs-wordpress' );
+			$subtitle = __( 'Make it long, and different from your last one.', 'blueworx-labs-wordpress' );
+			break;
+
+		case 'register':
+			$title    = __( 'Create an Account', 'blueworx-labs-wordpress' );
+			$subtitle = __( 'Sign up to get started.', 'blueworx-labs-wordpress' );
+			break;
+
+		case 'login':
+			$title    = __( 'Welcome Back', 'blueworx-labs-wordpress' );
+			$subtitle = __( 'Sign in to manage your site.', 'blueworx-labs-wordpress' );
+			break;
+
+		default:
+			// Confirm-admin-email, logout confirmations and the like: leave alone.
+			return $message;
+	}
+
+	$heading = sprintf(
+		'<p class="bw-login-title">%s</p><p class="bw-login-subtitle">%s</p>',
+		esc_html( $title ),
+		esc_html( $subtitle )
+	);
+
+	return $heading . $message;
+}
+add_filter( 'login_message', 'blueworx_login_card_heading' );
+
+/**
+ * Whether the lost-password link has already been rendered in the password row.
+ *
+ * @param bool|null $set Pass true to record that it has.
+ * @return bool True once the password-row link has been rendered.
+ */
+function blueworx_login_forgot_link_rendered( $set = null ) {
+	static $rendered = false;
+
+	if ( true === $set ) {
+		$rendered = true;
+	}
+
+	return $rendered;
+}
+
+/**
+ * Renders the "Forgot Password?" link that sits on the password label row.
+ *
+ * `login_form` fires inside the form just after the password field — the
+ * closest hook to where the link belongs, but still one level out: the link has
+ * to be a CHILD of .user-pass-wrap for CSS to position it against that row.
+ * Nothing hooks inside the row, so the script below moves it in.
+ *
+ * It runs inline, immediately after the markup it moves, so the link is in
+ * place before the browser first paints it — a footer script would show it in
+ * the wrong spot first. Without script it stays where PHP put it, as an
+ * ordinary link under the password field, which is why the positioning rule is
+ * scoped to `.user-pass-wrap > .bw-login-forgot`.
+ *
+ * `login_form` only fires on the sign-in form, so nothing here tests the action.
+ *
+ * @return void
+ */
+function blueworx_render_login_forgot_link() {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return;
+	}
+
+	printf(
+		'<a class="bw-login-forgot" href="%s">%s</a>',
+		esc_url( wp_lostpassword_url() ),
+		esc_html__( 'Forgot Password?', 'blueworx-labs-wordpress' )
+	);
+
+	blueworx_login_forgot_link_rendered( true );
+
+	if ( ! function_exists( 'wp_print_inline_script_tag' ) ) {
+		return;
+	}
+
+	wp_print_inline_script_tag(
+		'( function () {' .
+		'var link = document.querySelector( ".bw-login-forgot" );' .
+		'var row = document.querySelector( ".user-pass-wrap" );' .
+		'if ( link && row ) { row.appendChild( link ); }' .
+		'}() );'
+	);
+}
+add_action( 'login_form', 'blueworx_render_login_forgot_link' );
+
+/**
+ * Drops the duplicate lost-password link from the footer nav.
+ *
+ * Only on the sign-in form, where the link has already been rendered in the
+ * password row — the register and reset forms keep theirs. The flag is what
+ * decides that, so the two can never disagree.
+ *
+ * @param string $html_link Lost-password link markup.
+ * @return string Markup, or an empty string when already shown above.
+ */
+function blueworx_filter_lost_password_link( $html_link ) {
+	if ( ! blueworx_admin_theme_enabled() || ! blueworx_login_forgot_link_rendered() ) {
+		return $html_link;
+	}
+
+	return '';
+}
+add_filter( 'lost_password_html_link', 'blueworx_filter_lost_password_link' );
+
+/**
+ * Drops the "|" that would be left dangling after the registration link.
+ *
+ * Core prints the separator straight after the register link, expecting the
+ * lost-password link to follow it — which on the sign-in form it no longer
+ * does. This cannot key off the render flag the way the link filter does: core
+ * resolves the separator before the form is rendered, so it tests the same
+ * condition that causes the link to be removed in the first place.
+ *
+ * @param string $separator Separator string.
+ * @return string Separator, or an empty string on the sign-in form.
+ */
+function blueworx_filter_login_link_separator( $separator ) {
+	if ( ! blueworx_admin_theme_enabled() || 'login' !== blueworx_login_action() ) {
+		return $separator;
+	}
+
+	return '';
+}
+add_filter( 'login_link_separator', 'blueworx_filter_login_link_separator' );
+
+/**
+ * Flags the sign-in screens where the footer nav will render with no links.
+ *
+ * On the sign-in form the lost-password link moves up to the password row, so
+ * with registration closed #nav comes out holding nothing but whitespace —
+ * which `:empty` does not match, hence a class rather than a CSS-only rule.
+ *
+ * @param string[] $classes Body classes.
+ * @return string[] Body classes, possibly with the empty-nav flag.
+ */
+function blueworx_login_body_class( $classes ) {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return $classes;
+	}
+
+	if ( 'login' === blueworx_login_action() && ! get_option( 'users_can_register' ) ) {
+		$classes[] = 'bw-login-nav-empty';
+	}
+
+	return $classes;
+}
+add_filter( 'login_body_class', 'blueworx_login_body_class' );
+
+/**
+ * Prefixes the registration link with the "New here?" lead-in from the design.
+ *
+ * @param string $link Registration link markup.
+ * @return string Registration link with a lead-in.
+ */
+function blueworx_filter_register_link( $link ) {
+	if ( ! blueworx_admin_theme_enabled() || 'login' !== blueworx_login_action() ) {
+		return $link;
+	}
+
+	return '<span class="bw-login-register-lead">' .
+		esc_html__( 'New here?', 'blueworx-labs-wordpress' ) .
+		'</span> ' . $link;
+}
+add_filter( 'register', 'blueworx_filter_register_link' );
+
+/**
+ * Retitles the core login strings the design renames.
+ *
+ * Scoped to the login screen and to core's own text domain, and matched on the
+ * exact source string, so a translated site or another plugin's copy is never
+ * touched. Anything not listed falls straight through.
+ *
+ * @param string $translated Translated text.
+ * @param string $text       Original text.
+ * @param string $domain     Text domain.
+ * @return string Possibly replaced text.
+ */
+function blueworx_login_strings( $translated, $text, $domain ) {
+	if ( 'default' !== $domain ) {
+		return $translated;
+	}
+
+	switch ( $text ) {
+		case 'Username or Email Address':
+			return __( 'Email or Username', 'blueworx-labs-wordpress' );
+
+		case 'Remember Me':
+			return __( 'Remember me on this device', 'blueworx-labs-wordpress' );
+
+		case 'Log In':
+			return __( 'Sign In', 'blueworx-labs-wordpress' );
+
+		case 'Register':
+			return __( 'Create an Account', 'blueworx-labs-wordpress' );
+	}
+
+	return $translated;
+}
+
+/**
+ * Hooks the login-only string changes.
+ *
+ * Added on `login_init` rather than at load so the gettext filter is never
+ * live on the front end or in wp-admin, where the same strings mean other
+ * things ("Log In" in the admin bar, "Register" in Settings).
+ *
+ * @return void
+ */
+function blueworx_add_login_string_filters() {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return;
+	}
+
+	add_filter( 'gettext', 'blueworx_login_strings', 10, 3 );
+}
+add_action( 'login_init', 'blueworx_add_login_string_filters' );
+
+/**
+ * Adds the placeholder shown in the empty username field.
+ *
+ * WordPress prints that input with no hook around it, so this is the one piece
+ * of the design that needs script. It is cosmetic and additive: with script
+ * blocked, or on WordPress older than 5.7, the field is simply a normal empty
+ * field.
+ *
+ * @return void
+ */
+function blueworx_print_login_placeholder_script() {
+	if ( ! blueworx_admin_theme_enabled() || 'login' !== blueworx_login_action() ) {
+		return;
+	}
+
+	if ( ! function_exists( 'wp_print_inline_script_tag' ) ) {
+		return;
+	}
+
+	wp_print_inline_script_tag(
+		sprintf(
+			'var bwLoginUser = document.getElementById( "user_login" );' .
+			'if ( bwLoginUser && ! bwLoginUser.value ) { bwLoginUser.placeholder = %s; }',
+			wp_json_encode( __( 'you@example.com', 'blueworx-labs-wordpress' ) )
+		)
+	);
+}
+add_action( 'login_footer', 'blueworx_print_login_placeholder_script' );
+
+/**
  * Renders the BlueWorx brand block and admin top bar.
  *
  * Replaces the WordPress admin bar visually on desktop (the stylesheet hides

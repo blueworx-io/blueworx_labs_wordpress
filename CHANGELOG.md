@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.52.0] - 2026-08-01
+
+### Changed
+- **A new look for the login screen.** It is now a split screen: your site's
+  name and a short welcome on a dark panel down the left, and the sign-in box on
+  the right. The wording is friendlier too — "Email or Username", "Remember me
+  on this device", and a "Forgot Password?" link that sits next to the password
+  box instead of underneath the form.
+
+  Nothing about signing in changes. The same fields, the same buttons, the same
+  links, and the same password reset and registration screens as before. On a
+  phone the dark panel steps aside and you get the sign-in box on its own, as
+  now.
+
 ## [1.51.0] - 2026-08-01
 
 ### Added

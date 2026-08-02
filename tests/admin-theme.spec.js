@@ -184,9 +184,12 @@ test.describe('BlueWorx admin theme', () => {
     // hours ago — which reported this working feature as broken.
     await page.goto(cacheBust(LOGIN_PATH));
 
-    // The WordPress logo is replaced by the site-name wordmark.
+    // The WordPress logo is replaced by the site-name wordmark. It is in the
+    // markup at every width, but from 900px up the split-screen brand panel
+    // carries the branding and this copy is hidden — so assert the element and
+    // its styling, not its visibility. Layout lives in login-design.spec.js.
     const logo = page.locator('.login h1 a');
-    await expect(logo).toBeVisible();
+    await expect(logo).toHaveCount(1);
     await expect(logo).not.toHaveCSS('background-image', /wordpress-logo/);
     await expect(page.locator('link#blueworx-login-theme-css')).toHaveCount(1);
   });
