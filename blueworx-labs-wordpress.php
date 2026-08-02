@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
- * Description:       Site hardening, cache refresh, admin/profile enhancements, and the headless REST layer that powers BlueWorx headless WordPress sites.
- * Version:           1.52.0
+ * Description:       Site hardening, admin and media tools, cache refresh, profile enhancements, and an optional headless REST layer.
+ * Version:           1.53.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.52.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.53.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -59,11 +59,33 @@ require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
 
-// Headless REST layer (auth, accounts, content, CORS, revalidation, proxies).
-require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-bar.php';
+require_once BLUEWORX_LABS_PATH . 'includes/dashboard-widgets.php';
+require_once BLUEWORX_LABS_PATH . 'includes/security-hardening.php';
+require_once BLUEWORX_LABS_PATH . 'includes/robots-txt.php';
+require_once BLUEWORX_LABS_PATH . 'includes/media-tools.php';
+require_once BLUEWORX_LABS_PATH . 'includes/content-tools.php';
+require_once BLUEWORX_LABS_PATH . 'includes/revisions.php';
+require_once BLUEWORX_LABS_PATH . 'includes/login-session.php';
+require_once BLUEWORX_LABS_PATH . 'includes/view-as-role.php';
 
-register_activation_hook( __FILE__, 'blueworx_headless_install' );
-register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );
+/*
+ * Headless REST layer (auth, accounts, content, CORS, revalidation, proxies).
+ *
+ * Loaded only when the `headless_api` feature is on, which it is not by default.
+ * Nothing consumes this API any more: the Next.js front end it was built for was
+ * deleted in July 2026 and the marketing site became its own plugin, so on every
+ * other site it was unauthenticated surface with no caller. Gating the require
+ * rather than each route is deliberate — the routes, the settings page, the cron
+ * and the table creation all live behind this one line, so there is no path by
+ * which half of it can still be live.
+ */
+if ( blueworx_feature_enabled( 'headless_api' ) ) {
+	require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
+
+	register_activation_hook( __FILE__, 'blueworx_headless_install' );
+	register_deactivation_hook( __FILE__, 'blueworx_headless_clear_scheduled_events' );
+}
 
 // Deactivation, not just uninstall: the support account is a near-administrator
 // whose read-only guarantee comes entirely from this plugin's request-layer

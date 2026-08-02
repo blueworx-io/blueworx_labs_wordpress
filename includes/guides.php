@@ -235,6 +235,40 @@ function blueworx_get_feature_guide_bodies() {
 
 		'admin_theme'           => '<p>' . esc_html__( 'Restyles the admin and sign-in screens with the BlueWorx look.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'Appearance only — every screen works exactly as it does normally. Switch it off at any time to go back to the standard WordPress look.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'login_session'         => '<p>' . esc_html__( 'Decides how long somebody stays signed in before WordPress asks for their password again. Out of the box that is two days, which on a site people dip in and out of feels like being logged out constantly.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Pick a length that matches how the site is used. A longer session is more convenient and slightly less safe on a shared computer, so choose "Until they sign out" only where everyone has their own machine. The change applies the next time each person signs in.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'view_as_role'          => '<p>' . esc_html__( 'Lets you look at the admin area the way one of your other roles sees it, so you can check what an editor or a member can actually reach before you tell them.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'A bar along the bottom of the screen shows which role you are viewing as and puts you back with one click. It can only ever show you less than you normally see, never more, so it cannot be used to gain access to anything.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'xmlrpc'                => '<p>' . esc_html__( 'XML-RPC is an old way of posting to WordPress from another program. Almost nobody uses it any more, but attackers do: it lets them try hundreds of passwords in a single request.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Leave this on. Turn it off only if you publish from the WordPress mobile app or use Jetpack, both of which need it.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'author_slugs'          => '<p>' . esc_html__( 'By default a WordPress author page has the person\'s sign-in name in its address, which hands an attacker half of what they need to get in.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'This replaces that name with a meaningless code. It is off by default because it changes those addresses, so switch it on early in a site\'s life rather than after the pages have been shared or indexed.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'content_tools'         => '<p>' . esc_html__( 'Adds a Duplicate link beside every page and post. It makes a complete copy as a draft — the content, the categories, and all the field values — so you can build the next one from a page that already works rather than starting again.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'The copy is always a draft, and nothing is published until you say so. There is also an optional setting that lets a page point at an address on another site, for when a menu entry needs to send people somewhere else entirely.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'revisions'             => '<p>' . esc_html__( 'WordPress keeps a copy of a page every time you save it, forever. On a site that is edited often that quietly becomes the largest thing in the database and slows everything down.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'This keeps the most recent ones and lets the older ones go. Twenty is plenty for undoing a mistake. Copies already saved are left alone; the limit applies from now on.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'robots_txt'            => '<p>' . esc_html__( 'robots.txt is the short file that tells search engines which parts of the site to look at. This gives you a box to edit it in rather than needing access to the server.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Be careful: one wrong line here can remove the site from Google. If an SEO plugin is already managing this, leave it switched off and let that plugin do it. After saving, open /robots.txt in a browser and check it says what you expect.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'media_tools'           => '<p>' . esc_html__( 'Three things at once. You can replace a file with a new version without the address changing, so every page already using it updates by itself instead of you hunting them down.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Photos straight from a phone or camera are far larger than any screen needs, so oversized images are scaled down as they are uploaded — the page loads faster and nobody has to remember to resize anything.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'SVG logos can also be allowed, for chosen roles only. WordPress blocks them by default for a good reason: an SVG is a document that can carry code. Every one uploaded here is stripped of anything that could run, but still only allow it for people you trust with the whole site.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'admin_bar'             => '<p>' . esc_html__( 'Tidies the black bar across the top of the screen: the WordPress logo, the Customize link, the update counter and the Help drawer all go, leaving the things your team actually uses.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'It can also hide that bar completely on the public side of the site, either for everyone but administrators or for the roles you choose, so a logged-in member sees the site the way a visitor does.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'dashboard_widgets'     => '<p>' . esc_html__( 'Removes the dashboard panels nobody on your site uses, so the first screen after signing in shows what matters instead of WordPress news and an empty draft box.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'These are removed rather than hidden, so they stay gone for everybody instead of reappearing the moment someone opens Screen Options.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'headless_api'          => '<p>' . esc_html__( 'Opens a set of addresses that let a separate front-end app read this site and sign people in to it. This is only used on sites built that way — if you are reading your site at its normal address, it is not one of them.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Leave it off. Switching it on adds a way into the site that would otherwise not be there, and nothing on an ordinary WordPress site needs it.', 'blueworx-labs-wordpress' ) . '</p>',
 	);
 }
 

@@ -14,6 +14,22 @@ test.describe('Headless REST layer', () => {
     api = await request.newContext({ baseURL });
   });
 
+  /*
+   * The whole layer sits behind the `headless_api` feature, which defaults to
+   * off — on a site that has not switched it on there are no routes to test, and
+   * headless-feature-flag.spec.js is what asserts that absence. Probing once and
+   * skipping is the difference between "this site does not use the headless API"
+   * and "the headless API is broken".
+   */
+  test.beforeEach(async () => {
+    const probe = await api.get(`${ns}/site`);
+
+    test.skip(
+      404 === probe.status(),
+      'The headless_api feature is off on this site, so blueworx/v1 is not registered.'
+    );
+  });
+
   test.afterAll(async () => {
     await api.dispose();
   });

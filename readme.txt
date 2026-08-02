@@ -4,7 +4,7 @@ Tags:              login, security, custom login url, hardening, cache
 Requires at least: 5.0
 Tested up to:      6.9
 Requires PHP:      8.0
-Stable tag:        1.52.0
+Stable tag:        1.53.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,13 @@ BlueWorx Labs improves your WordPress site by:
 * Disabling comments, suppressing selected admin emails, and cleaning up the user profile screen.
 * Offering visitors an on-page translation switcher that runs entirely in their own browser (Chrome and Edge 138+), shown as text, flags, or both.
 * Listing user roles alphabetically and letting a user hold more than one role at a time.
+* Choosing how long a login lasts, from 24 hours up to until the person signs out.
+* Tidying the toolbar and the dashboard, and hiding the toolbar on the front of the site for chosen roles.
+* Duplicating a page or post as a draft, complete with its categories and field values.
+* Replacing a media file without its address changing, scaling oversized images on upload, and optionally allowing sanitised SVG uploads for chosen roles.
+* Capping the number of saved revisions per item.
+* Turning XML-RPC off, and optionally hiding usernames in author page addresses.
+* Editing robots.txt from the admin, and letting an administrator view the admin as another role.
 * Providing a **Guides** page of written help for every function above and for everyday WordPress tasks, which other plugins can add their own guides to.
 
 The new login URL and cache refresh status are displayed in the **BlueWorx** admin menu.

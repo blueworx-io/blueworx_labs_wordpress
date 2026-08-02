@@ -2,6 +2,13 @@
 
 **Consuming this WordPress plugin from a BlueWorx headless (Next.js) frontend.**
 
+> **The REST layer is off by default from v1.53.0.** Nothing consumes it any more,
+> so it now sits behind the `headless_api` feature and no route is registered
+> until somebody switches it on under **BlueWorx > Enhancements > Integrations**.
+> Existing sites are not enabled by an update. Everything below is accurate once
+> it is on; until then the whole `blueworx/v1` namespace answers 404. Retiring it
+> for good is tracked in issue #32.
+
 This document is the contract between the **BlueWorx Labs | WordPress Enhancements**
 plugin (this repo) and a decoupled Next.js frontend that renders the site. It is
 written to be read by a Claude Code session working *in the headless repo* — point

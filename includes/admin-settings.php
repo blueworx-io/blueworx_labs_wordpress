@@ -172,11 +172,14 @@ function blueworx_save_feature_settings() {
 
 	check_admin_referer( 'blueworx_save_feature_settings' );
 
-	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$posted            = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$headless_was_live = blueworx_feature_enabled( 'headless_api' );
 
 	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
 		update_option( 'blueworx_feature_' . $key, isset( $posted[ $key ] ) ? '1' : '0' );
 	}
+
+	blueworx_sync_headless_api_state( $headless_was_live );
 
 	// Login detail: editable slug.
 	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
@@ -199,12 +202,176 @@ function blueworx_save_feature_settings() {
 	// Translation detail: languages, position, label and exclusions.
 	blueworx_translate_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler; the callee sanitizes every field.
 
+	blueworx_save_login_session_settings();
+	blueworx_save_admin_bar_settings();
+	blueworx_save_dashboard_widget_settings();
+	blueworx_save_robots_txt_settings();
+	blueworx_save_media_tools_settings();
+	blueworx_save_content_tools_settings();
+	blueworx_save_revisions_settings();
+
 	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
 	exit;
 }
 add_action( 'admin_post_blueworx_save_feature_settings', 'blueworx_save_feature_settings' );
+
+/**
+ * Brings the headless API's tables and cron into line with its feature toggle.
+ *
+ * The layer is loaded by a conditional require in the main plugin file, so its
+ * install routine is not in memory on the request that switches it ON — the
+ * option was still '0' when the file list was decided. The require here is that
+ * gap closed, and it is the only place in the plugin that loads the REST layer
+ * outside the toggle.
+ *
+ * Switching it off unschedules the token sweep. The tables are deliberately
+ * left in place: an off switch that silently drops user data would be the wrong
+ * thing to be reversible.
+ *
+ * @param bool $was_live Whether the feature was on before this save.
+ * @return void
+ */
+function blueworx_sync_headless_api_state( $was_live ) {
+	$is_live = blueworx_feature_enabled( 'headless_api' );
+
+	if ( $was_live === $is_live ) {
+		return;
+	}
+
+	if ( $is_live ) {
+		require_once BLUEWORX_LABS_PATH . 'includes/rest/bootstrap.php';
+
+		if ( function_exists( 'blueworx_headless_install' ) ) {
+			blueworx_headless_install();
+		}
+
+		return;
+	}
+
+	$timestamp = wp_next_scheduled( 'blueworx_headless_gc_tokens' );
+
+	if ( $timestamp ) {
+		wp_unschedule_event( $timestamp, 'blueworx_headless_gc_tokens' );
+	}
+}
+
+/**
+ * Saves the login session length.
+ *
+ * Every function below is called from blueworx_save_feature_settings() after it
+ * has run check_admin_referer(), so the nonce is verified before any of them
+ * reads $_POST.
+ *
+ * @return void
+ */
+function blueworx_save_login_session_settings() {
+	$choice = isset( $_POST['blueworx_login_session'] ) ? sanitize_key( wp_unslash( $_POST['blueworx_login_session'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	if ( isset( blueworx_login_session_choices()[ $choice ] ) ) {
+		update_option( 'blueworx_login_session', $choice );
+	}
+}
+
+/**
+ * Saves the toolbar cleanup settings.
+ *
+ * @return void
+ */
+function blueworx_save_admin_bar_settings() {
+	$nodes = isset( $_POST['blueworx_admin_bar_removed_nodes'] ) ? (array) wp_unslash( $_POST['blueworx_admin_bar_removed_nodes'] ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Verified by the calling handler; sanitized and allowlisted below.
+	$nodes = array_values( array_intersect( array_keys( blueworx_admin_bar_removable_nodes() ), array_map( 'sanitize_key', $nodes ) ) );
+
+	update_option( 'blueworx_admin_bar_removed_nodes', $nodes );
+	update_option( 'blueworx_admin_bar_hide_howdy', isset( $_POST['blueworx_admin_bar_hide_howdy'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	update_option( 'blueworx_admin_bar_hide_help', isset( $_POST['blueworx_admin_bar_hide_help'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	$mode = isset( $_POST['blueworx_admin_bar_front_end_mode'] ) ? sanitize_key( wp_unslash( $_POST['blueworx_admin_bar_front_end_mode'] ) ) : 'off'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	update_option( 'blueworx_admin_bar_front_end_mode', in_array( $mode, array( 'off', 'all_but_admin', 'roles' ), true ) ? $mode : 'off' );
+
+	$roles = isset( $_POST['blueworx_admin_bar_front_end_roles'] ) ? (array) wp_unslash( $_POST['blueworx_admin_bar_front_end_roles'] ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Verified by the calling handler; sanitized and allowlisted below.
+	$roles = array_values( array_intersect( array_keys( blueworx_get_site_protection_role_choices() ), array_map( 'sanitize_key', $roles ) ) );
+
+	update_option( 'blueworx_admin_bar_front_end_roles', $roles );
+}
+
+/**
+ * Saves the dashboard tidy-up settings.
+ *
+ * @return void
+ */
+function blueworx_save_dashboard_widget_settings() {
+	$widgets = isset( $_POST['blueworx_dashboard_removed_widgets'] ) ? (array) wp_unslash( $_POST['blueworx_dashboard_removed_widgets'] ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Verified by the calling handler; sanitized and allowlisted below.
+	$widgets = array_values( array_intersect( array_keys( blueworx_dashboard_removable_widgets() ), array_map( 'sanitize_key', $widgets ) ) );
+
+	update_option( 'blueworx_dashboard_removed_widgets', $widgets );
+}
+
+/**
+ * Saves the robots.txt content.
+ *
+ * @return void
+ */
+function blueworx_save_robots_txt_settings() {
+	if ( ! isset( $_POST['blueworx_robots_txt'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+		return;
+	}
+
+	// Not sanitize_textarea_field: it collapses the line structure this file is
+	// made of. blueworx_robots_txt_sanitize() strips tags and control characters
+	// line by line instead.
+	$raw = (string) wp_unslash( $_POST['blueworx_robots_txt'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Verified by the calling handler; sanitized on the next line.
+
+	update_option( 'blueworx_robots_txt', blueworx_robots_txt_sanitize( $raw ) );
+}
+
+/**
+ * Saves the media tool settings.
+ *
+ * @return void
+ */
+function blueworx_save_media_tools_settings() {
+	update_option( 'blueworx_media_replace_enabled', isset( $_POST['blueworx_media_replace_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	update_option( 'blueworx_media_max_dimensions_enabled', isset( $_POST['blueworx_media_max_dimensions_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	$width  = isset( $_POST['blueworx_media_max_width'] ) ? absint( wp_unslash( $_POST['blueworx_media_max_width'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	$height = isset( $_POST['blueworx_media_max_height'] ) ? absint( wp_unslash( $_POST['blueworx_media_max_height'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	update_option( 'blueworx_media_max_width', $width > 0 ? min( $width, 10000 ) : 1920 );
+	update_option( 'blueworx_media_max_height', $height > 0 ? min( $height, 10000 ) : 1920 );
+
+	$roles = isset( $_POST['blueworx_media_svg_roles'] ) ? (array) wp_unslash( $_POST['blueworx_media_svg_roles'] ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Verified by the calling handler; sanitized and allowlisted below.
+	$roles = array_values( array_intersect( array_keys( blueworx_get_site_protection_role_choices() ), array_map( 'sanitize_key', $roles ) ) );
+
+	update_option( 'blueworx_media_svg_roles', $roles );
+}
+
+/**
+ * Saves the content tool settings.
+ *
+ * @return void
+ */
+function blueworx_save_content_tools_settings() {
+	update_option( 'blueworx_duplicate_enabled', isset( $_POST['blueworx_duplicate_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	update_option( 'blueworx_external_permalinks_enabled', isset( $_POST['blueworx_external_permalinks_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+}
+
+/**
+ * Saves the revision limit.
+ *
+ * @return void
+ */
+function blueworx_save_revisions_settings() {
+	if ( ! isset( $_POST['blueworx_revisions_limit'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+		return;
+	}
+
+	$limit = absint( wp_unslash( $_POST['blueworx_revisions_limit'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	update_option( 'blueworx_revisions_limit', min( 500, $limit ) );
+}
 
 /**
  * Renders the BlueWorx feature settings page.
@@ -356,6 +523,182 @@ function blueworx_render_feature_detail( $key ) {
 	if ( 'menu_editor' === $key ) {
 		?>
 		<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-menu' ) ); ?>"><?php esc_html_e( 'Open Edit Menu page', 'blueworx-labs-wordpress' ); ?></a></p>
+		<?php
+		return;
+	}
+
+	if ( 'login_session' === $key ) {
+		$current = blueworx_login_session_choice();
+		?>
+		<p>
+			<label for="blueworx_login_session"><?php esc_html_e( 'Stay logged in for', 'blueworx-labs-wordpress' ); ?></label><br />
+			<select id="blueworx_login_session" name="blueworx_login_session">
+				<?php foreach ( blueworx_login_session_choices() as $value => $label ) : ?>
+					<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current, $value ); ?>><?php echo esc_html( $label ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</p>
+		<p class="description"><?php esc_html_e( 'Applies from the next time somebody signs in. Anyone already signed in keeps their current session until it runs out.', 'blueworx-labs-wordpress' ); ?></p>
+		<?php
+		return;
+	}
+
+	if ( 'admin_bar' === $key ) {
+		$removed = blueworx_admin_bar_removed_nodes();
+		$mode    = blueworx_admin_bar_front_end_mode();
+		$roles   = blueworx_admin_bar_front_end_hidden_roles();
+		?>
+		<fieldset>
+			<legend><strong><?php esc_html_e( 'Take these out of the toolbar', 'blueworx-labs-wordpress' ); ?></strong></legend>
+			<?php foreach ( blueworx_admin_bar_removable_nodes() as $node => $label ) : ?>
+				<p><label>
+					<input type="checkbox" name="blueworx_admin_bar_removed_nodes[]" value="<?php echo esc_attr( $node ); ?>" <?php checked( in_array( $node, $removed, true ) ); ?> />
+					<?php echo esc_html( $label ); ?>
+				</label></p>
+			<?php endforeach; ?>
+			<p><label>
+				<input type="checkbox" name="blueworx_admin_bar_hide_howdy" value="1" <?php checked( blueworx_admin_bar_hide_howdy() ); ?> />
+				<?php esc_html_e( 'Drop the "Howdy," greeting', 'blueworx-labs-wordpress' ); ?>
+			</label></p>
+			<p><label>
+				<input type="checkbox" name="blueworx_admin_bar_hide_help" value="1" <?php checked( blueworx_admin_bar_hide_help() ); ?> />
+				<?php esc_html_e( 'Remove the Help tab and drawer', 'blueworx-labs-wordpress' ); ?>
+			</label></p>
+		</fieldset>
+		<fieldset style="margin-top:12px;">
+			<legend><strong><?php esc_html_e( 'Hide the toolbar on the front of the site', 'blueworx-labs-wordpress' ); ?></strong></legend>
+			<p><label>
+				<input type="radio" name="blueworx_admin_bar_front_end_mode" value="off" <?php checked( $mode, 'off' ); ?> />
+				<?php esc_html_e( 'Show it to everyone signed in (WordPress default)', 'blueworx-labs-wordpress' ); ?>
+			</label></p>
+			<p><label>
+				<input type="radio" name="blueworx_admin_bar_front_end_mode" value="all_but_admin" <?php checked( $mode, 'all_but_admin' ); ?> />
+				<?php esc_html_e( 'Hide it for everyone except administrators', 'blueworx-labs-wordpress' ); ?>
+			</label></p>
+			<p><label>
+				<input type="radio" name="blueworx_admin_bar_front_end_mode" value="roles" <?php checked( $mode, 'roles' ); ?> />
+				<?php esc_html_e( 'Hide it for these roles only', 'blueworx-labs-wordpress' ); ?>
+			</label></p>
+			<p>
+				<select name="blueworx_admin_bar_front_end_roles[]" multiple size="4" aria-label="<?php esc_attr_e( 'Roles the toolbar is hidden for', 'blueworx-labs-wordpress' ); ?>">
+					<?php foreach ( blueworx_get_site_protection_role_choices() as $role_slug => $role_label ) : ?>
+						<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $roles, true ) ); ?>><?php echo esc_html( $role_label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
+			<p class="description"><?php esc_html_e( 'A BlueWorx support session always keeps its toolbar, so the read-only indicator and the button that ends the session stay visible.', 'blueworx-labs-wordpress' ); ?></p>
+		</fieldset>
+		<?php
+		return;
+	}
+
+	if ( 'dashboard_widgets' === $key ) {
+		$removed = blueworx_dashboard_removed_widgets();
+		?>
+		<fieldset>
+			<legend><strong><?php esc_html_e( 'Remove these dashboard panels', 'blueworx-labs-wordpress' ); ?></strong></legend>
+			<?php foreach ( blueworx_dashboard_removable_widgets() as $widget => $label ) : ?>
+				<p><label>
+					<input type="checkbox" name="blueworx_dashboard_removed_widgets[]" value="<?php echo esc_attr( $widget ); ?>" <?php checked( in_array( $widget, $removed, true ) ); ?> />
+					<?php echo esc_html( $label ); ?>
+				</label></p>
+			<?php endforeach; ?>
+		</fieldset>
+		<p class="description"><?php esc_html_e( 'A panel removed here is gone for everyone, not just hidden behind Screen Options. Panels belonging to a plugin that is switched off are ignored.', 'blueworx-labs-wordpress' ); ?></p>
+		<?php
+		return;
+	}
+
+	if ( 'robots_txt' === $key ) {
+		?>
+		<?php if ( blueworx_robots_txt_file_exists() ) : ?>
+			<p class="notice notice-warning" style="padding:8px;">
+				<?php esc_html_e( 'There is a real robots.txt file on the server. WordPress serves that file instead, so anything saved here will have no effect until it is removed.', 'blueworx-labs-wordpress' ); ?>
+			</p>
+		<?php endif; ?>
+		<?php if ( ! get_option( 'blog_public' ) ) : ?>
+			<p class="notice notice-warning" style="padding:8px;">
+				<?php esc_html_e( 'This site is set to discourage search engines, under Settings > Reading. What you save here is served anyway, so if the site is meant to stay out of search results, say so in the box below as well.', 'blueworx-labs-wordpress' ); ?>
+			</p>
+		<?php endif; ?>
+		<p>
+			<label for="blueworx_robots_txt"><?php esc_html_e( 'robots.txt content', 'blueworx-labs-wordpress' ); ?></label><br />
+			<textarea id="blueworx_robots_txt" name="blueworx_robots_txt" rows="10" class="large-text code"><?php echo esc_textarea( blueworx_robots_txt_content() ); ?></textarea>
+		</p>
+		<p class="description">
+			<?php esc_html_e( 'Replaces the file WordPress generates. If an SEO plugin also writes robots rules, check the result at /robots.txt after saving — whichever runs last wins.', 'blueworx-labs-wordpress' ); ?>
+			<a href="<?php echo esc_url( home_url( '/robots.txt' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View the live file', 'blueworx-labs-wordpress' ); ?></a>
+		</p>
+		<?php
+		return;
+	}
+
+	if ( 'media_tools' === $key ) {
+		list( $max_width, $max_height ) = blueworx_media_max_dimensions();
+		$svg_roles                      = blueworx_media_svg_roles();
+		?>
+		<p><label>
+			<input type="checkbox" name="blueworx_media_replace_enabled" value="1" <?php checked( blueworx_media_replace_enabled() ); ?> />
+			<?php esc_html_e( 'Allow a file to be replaced in place', 'blueworx-labs-wordpress' ); ?>
+		</label></p>
+		<p><label>
+			<input type="checkbox" name="blueworx_media_max_dimensions_enabled" value="1" <?php checked( blueworx_media_max_dimensions_enabled() ); ?> />
+			<?php esc_html_e( 'Shrink oversized images as they are uploaded', 'blueworx-labs-wordpress' ); ?>
+		</label></p>
+		<p>
+			<label for="blueworx_media_max_width"><?php esc_html_e( 'Largest width', 'blueworx-labs-wordpress' ); ?></label>
+			<input type="number" min="1" max="10000" id="blueworx_media_max_width" name="blueworx_media_max_width" value="<?php echo esc_attr( (string) $max_width ); ?>" class="small-text" />
+			<label for="blueworx_media_max_height"><?php esc_html_e( 'Largest height', 'blueworx-labs-wordpress' ); ?></label>
+			<input type="number" min="1" max="10000" id="blueworx_media_max_height" name="blueworx_media_max_height" value="<?php echo esc_attr( (string) $max_height ); ?>" class="small-text" />
+			<span class="description"><?php esc_html_e( 'pixels', 'blueworx-labs-wordpress' ); ?></span>
+		</p>
+		<p><strong><?php esc_html_e( 'Allow SVG uploads for these roles', 'blueworx-labs-wordpress' ); ?></strong></p>
+		<p>
+			<select name="blueworx_media_svg_roles[]" multiple size="4" aria-label="<?php esc_attr_e( 'Roles allowed to upload SVG files', 'blueworx-labs-wordpress' ); ?>">
+				<?php foreach ( blueworx_get_site_protection_role_choices() as $role_slug => $role_label ) : ?>
+					<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $svg_roles, true ) ); ?>><?php echo esc_html( $role_label ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</p>
+		<p class="description"><?php esc_html_e( 'Select nothing to switch SVG uploads off, which is the default. An SVG is a document that can carry code, so every one uploaded is stripped of anything that could run before it is stored. Only grant this to roles you trust with the whole site.', 'blueworx-labs-wordpress' ); ?></p>
+		<?php
+		return;
+	}
+
+	if ( 'content_tools' === $key ) {
+		?>
+		<p><label>
+			<input type="checkbox" name="blueworx_duplicate_enabled" value="1" <?php checked( blueworx_duplicate_enabled() ); ?> />
+			<?php esc_html_e( 'Show a Duplicate link on pages, posts and custom items', 'blueworx-labs-wordpress' ); ?>
+		</label></p>
+		<p><label>
+			<input type="checkbox" name="blueworx_external_permalinks_enabled" value="1" <?php checked( blueworx_external_permalinks_enabled() ); ?> />
+			<?php esc_html_e( 'Let an item point at an address on another site', 'blueworx-labs-wordpress' ); ?>
+		</label></p>
+		<p class="description"><?php esc_html_e( 'The second one adds a "Link to another site" box to the editor. Anyone clicking that item goes straight to the address you put there. Leave it off unless you need it.', 'blueworx-labs-wordpress' ); ?></p>
+		<?php
+		return;
+	}
+
+	if ( 'revisions' === $key ) {
+		?>
+		<p>
+			<label for="blueworx_revisions_limit"><?php esc_html_e( 'Saved versions to keep per item', 'blueworx-labs-wordpress' ); ?></label>
+			<input type="number" min="0" max="500" id="blueworx_revisions_limit" name="blueworx_revisions_limit" value="<?php echo esc_attr( (string) blueworx_revisions_to_keep() ); ?>" class="small-text" />
+		</p>
+		<p class="description"><?php esc_html_e( 'Applies to versions saved from now on — versions already stored are left alone. Set it to 0 to stop keeping versions at all.', 'blueworx-labs-wordpress' ); ?></p>
+		<?php
+		return;
+	}
+
+	if ( 'headless_api' === $key ) {
+		?>
+		<p class="description">
+			<?php esc_html_e( 'Only switch this on for a site with a separate front-end app reading it. It opens sign-in, account and content endpoints, and needs a signing key set on the server before sign-in works at all.', 'blueworx-labs-wordpress' ); ?>
+		</p>
+		<?php if ( blueworx_feature_enabled( 'headless_api' ) ) : ?>
+			<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-headless' ) ); ?>"><?php esc_html_e( 'Open the API settings', 'blueworx-labs-wordpress' ); ?></a></p>
+		<?php endif; ?>
 		<?php
 	}
 }
