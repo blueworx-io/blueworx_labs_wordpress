@@ -9,8 +9,6 @@
 	<exclude-pattern>/dist/</exclude-pattern>
 	<exclude-pattern>/.foundation/</exclude-pattern>
 	<exclude-pattern>*/assets/*</exclude-pattern>
-	<!-- Bundled third-party library (firebase/php-jwt); not our code to lint. -->
-	<exclude-pattern>*/includes/rest/lib/*</exclude-pattern>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>

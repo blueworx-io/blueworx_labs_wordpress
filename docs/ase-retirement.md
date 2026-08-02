@@ -33,7 +33,6 @@ Enhancements**:
 | Revision limit | On, 20. |
 | View the admin as another role | On. |
 | Login session length | 24 hours, unless the client asks otherwise. |
-| Headless content API | Leave OFF. |
 
 The robots.txt content to paste, byte for byte:
 

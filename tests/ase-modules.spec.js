@@ -40,13 +40,28 @@ test.describe('ASE replacement modules', () => {
       'revisions',
       'robots_txt',
       'media_tools',
-      'headless_api',
     ]) {
       await expect(page.locator(toggleFor(key)), `${key} should be on the settings page`).toHaveCount(1);
     }
 
     await expect(page.getByRole('heading', { name: 'Media' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
+  });
+
+  test('the retired headless API is gone from the settings page and the site', async ({ page }) => {
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+
+    await expect(page.locator(toggleFor('headless_api'))).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Integrations' })).toHaveCount(0);
+
+    const api = await request.newContext({ baseURL });
+
+    try {
+      const site = await api.get('/wp-json/blueworx/v1/site');
+      expect(site.status(), 'the retired namespace must not answer at all').toBe(404);
+    } finally {
+      await api.dispose();
+    }
   });
 
   test('the revision limit saves and comes back', async ({ page }) => {

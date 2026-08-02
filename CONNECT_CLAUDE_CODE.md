@@ -68,7 +68,6 @@ URLs you will need
 
 - REST index:        <SITE-URL>/wp-json/
 - Core content:      <SITE-URL>/wp-json/wp/v2/          (posts, pages, CPTs, media)
-- BlueWorx headless: <SITE-URL>/wp-json/blueworx/v1/    (menus, site config, path resolution)
 - wp-admin console:  <SITE-URL>/wp-admin/admin.php?page=blueworx-labs-wordpress
 - The default /wp-login.php is blocked by this plugin — there is a custom login URL,
   shown on the console above. Do not try to log in the normal way.
@@ -80,9 +79,9 @@ Rules — respect these rather than working around them
 - The window is 24 hours. When it closes, or if the key is revoked, everything starts
   returning 403 — that is expected, not a bug. Ask me to reopen it.
 - Personal data is withheld unless I explicitly opened it for this session:
-  /wp/v2/users, /wp/v2/comments, /blueworx/v1/account, /blueworx/v1/surecart, and the
-  WooCommerce/SureCart order and customer routes return
-  403 blueworx_support_no_data. Do not attempt to reach that data another way.
+  /wp/v2/users, /wp/v2/comments, and the WooCommerce/SureCart order and customer
+  routes return 403 blueworx_support_no_data. Do not attempt to reach that data
+  another way.
 - Five wrong keys locks this address out for 15 minutes. If you get a 403, stop and
   check with me instead of retrying with variations.
 - Every use is written to the audit log on the console panel, including refused writes.
@@ -105,8 +104,5 @@ can see and wait for the actual task.
 
 ## Related
 
-- [`HEADLESS_INTEGRATION.md`](HEADLESS_INTEGRATION.md) — the JWT auth model for a Next.js
-  frontend. That is a different credential path; support access is for troubleshooting,
-  not for running a site.
 - [`includes/support-access.php`](includes/support-access.php) — the implementation, and
   the source of truth if this document and the code ever disagree.
