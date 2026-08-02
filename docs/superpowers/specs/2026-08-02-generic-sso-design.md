@@ -143,9 +143,11 @@ Playwright specs, no live provider needed:
 - The trigger URL redirects to the configured authorization endpoint with the
   expected `state`, `nonce` and PKCE challenge.
 
-The token exchange and id_token verification are covered by pointing the plugin at
-a small stub issuer served by the test harness, so signature and claim checks run
-against known-good and known-bad tokens.
+Token verification and user matching are covered by plain PHP scripts run from the
+command line, with the handful of WordPress functions they touch stubbed. The JWT
+script generates a real RSA key at run time and asserts that a good token verifies
+and that every tampered variant — `alg` of none, wrong issuer, wrong audience,
+expired, replayed nonce, unknown key, bad signature — is refused.
 
 ## Cutover
 
