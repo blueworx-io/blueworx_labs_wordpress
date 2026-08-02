@@ -10,7 +10,16 @@
  * in tests/php, which run without WordPress.
  */
 
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login, restoreAll } from './helpers.js';
+import {
+  test,
+  expect,
+  isPlaceholder,
+  ADMIN_USER,
+  ADMIN_PASS,
+  login,
+  restoreAll,
+  cacheBust,
+} from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
@@ -69,5 +78,103 @@ test.describe('Single sign-on', () => {
     await login(page);
     await page.goto(SETTINGS_PATH);
     await expect(page.locator('.blueworx-sso-callback-url')).toContainText('blueworx_sso=callback');
+  });
+});
+
+test.describe('Single sign-on flow', () => {
+  test.skip(
+    isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
+    'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
+  );
+
+  // The provider address is never reachable from the test machine, so the
+  // endpoints are set by hand. That exercises the override path too, which is
+  // what any provider without a published configuration will use.
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await page.locator(toggleFor('sso')).setChecked(true);
+    await page.fill('#blueworx_sso_issuer', 'https://idp.test');
+    await page.fill('#blueworx_sso_client_id', 'test-client');
+    await page.fill('#blueworx_sso_client_secret', 'test-secret');
+    await page.fill('#blueworx_sso_button_label', 'Sign in with Test IdP');
+    await page.locator('details.blueworx-sso-advanced summary').click();
+    await page.fill('#blueworx_sso_authorization_endpoint_override', 'https://idp.test/authorize');
+    await page.fill('#blueworx_sso_token_endpoint_override', 'https://idp.test/token');
+    await page.selectOption('#blueworx_sso_pkce', 'on');
+    await save(page);
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await page.locator(toggleFor('sso')).setChecked(false);
+    await save(page);
+    await page.close();
+  });
+
+  test('the trigger URL sends people to the provider with state, nonce and PKCE', async ({ page }) => {
+    const response = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+    expect(response.status()).toBe(302);
+
+    const target = new URL(response.headers().location);
+    expect(target.origin + target.pathname).toBe('https://idp.test/authorize');
+    expect(target.searchParams.get('response_type')).toBe('code');
+    expect(target.searchParams.get('client_id')).toBe('test-client');
+    expect(target.searchParams.get('state')).toHaveLength(43);
+    expect(target.searchParams.get('nonce')).toHaveLength(43);
+    expect(target.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(target.searchParams.get('code_challenge')).toHaveLength(43);
+  });
+
+  test('a callback with an unknown state is refused', async ({ page }) => {
+    const response = await page.request.get('/?blueworx_sso=callback&code=abc&state=nonsense', {
+      maxRedirects: 0,
+    });
+    expect(response.status()).toBe(302);
+    expect(response.headers().location).toContain('blueworx_sso_error=1');
+  });
+
+  test('a callback with no state at all is refused', async ({ page }) => {
+    const response = await page.request.get('/?blueworx_sso=callback&code=abc', { maxRedirects: 0 });
+    expect(response.status()).toBe(302);
+    expect(response.headers().location).toContain('blueworx_sso_error=1');
+  });
+
+  test('a state can only be used once', async ({ page }) => {
+    const started = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+    const state = new URL(started.headers().location).searchParams.get('state');
+
+    // The first callback gets as far as the token exchange, which fails because
+    // the provider does not exist. The point is that the second one does not get
+    // that far: the state is spent either way.
+    await page.request.get(`/?blueworx_sso=callback&code=abc&state=${state}`, { maxRedirects: 0 });
+    const replay = await page.request.get(`/?blueworx_sso=callback&code=abc&state=${state}`, {
+      maxRedirects: 0,
+    });
+
+    expect(replay.status()).toBe(302);
+    expect(replay.headers().location).toContain('blueworx_sso_error=1');
+  });
+
+  test('the failure message on the login screen gives nothing away', async ({ page }) => {
+    await page.goto(cacheBust('/admin_login?blueworx_sso_error=1'));
+    const body = await page.locator('body').innerText();
+
+    expect(body).toContain('could not sign you in');
+    for (const leak of ['state', 'signature', 'nonce', 'token', 'issuer']) {
+      expect(body.toLowerCase()).not.toContain(leak);
+    }
+  });
+
+  test('two attempts never reuse a state', async ({ page }) => {
+    const first = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+    const second = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+
+    const stateOf = (response) => new URL(response.headers().location).searchParams.get('state');
+    expect(stateOf(first)).not.toBe(stateOf(second));
   });
 });
