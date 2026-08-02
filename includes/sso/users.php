@@ -56,8 +56,17 @@ function blueworx_sso_resolve_user( $claims ) {
 			$existing = get_user_by( 'email', $email );
 
 			if ( $existing ) {
-				// The one-time link. From here the subject is the key, so a later
-				// email change at either end cannot detach or hijack the account.
+				$already = (string) get_user_meta( $existing->ID, 'blueworx_sso_subject', true );
+
+				// Linking is a one-time step. An account already tied to a different
+				// identity must never be re-pointed on the strength of an email — that
+				// is exactly how one person ends up inside another's account.
+				if ( '' !== $already && $already !== $subject ) {
+					return new WP_Error( 'blueworx_sso_already_linked', __( 'That account is already connected to a different sign-in.', 'blueworx-labs-wordpress' ) );
+				}
+
+				// From here the subject is the key, so a later email change at either
+				// end cannot detach or hijack the account.
 				blueworx_sso_link( $existing->ID, $subject, $issuer );
 
 				return $existing;
