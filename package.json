@@ -8,6 +8,7 @@
   "scripts": {
     "build": "node scripts/build-zip.mjs",
     "lint": "eslint assets/js",
+    "test:php": "php tests/php/discovery-test.php && php tests/php/jwt-test.php && php tests/php/users-test.php",
     "version:check": "node scripts/version-check.mjs",
     "check:merge": "node scripts/check-merge-sanity.mjs"
   },
