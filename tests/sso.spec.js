@@ -33,4 +33,41 @@ test.describe('Single sign-on', () => {
     await expect(page.locator(toggleFor('sso'))).toHaveCount(1);
     await expect(page.locator(toggleFor('sso'))).not.toBeChecked();
   });
+
+  test('the settings survive a save and the secret is never rendered', async ({ page }) => {
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await page.locator(toggleFor('sso')).setChecked(true);
+    await page.fill('#blueworx_sso_issuer', 'https://idp.test');
+    await page.fill('#blueworx_sso_client_id', 'test-client');
+    await page.fill('#blueworx_sso_client_secret', 'super-secret-value');
+    await page.fill('#blueworx_sso_button_label', 'Sign in with Test IdP');
+    await save(page);
+
+    await page.goto(SETTINGS_PATH);
+    await expect(page.locator('#blueworx_sso_issuer')).toHaveValue('https://idp.test');
+    await expect(page.locator('#blueworx_sso_client_id')).toHaveValue('test-client');
+
+    // A secret that can be read back out of the screen is a secret anyone with
+    // admin access — including a read-only support session — can walk off with.
+    await expect(page.locator('#blueworx_sso_client_secret')).toHaveValue('');
+    expect(await page.content()).not.toContain('super-secret-value');
+
+    await restoreAll([
+      [
+        'sso off',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await page.locator(toggleFor('sso')).setChecked(false);
+          await save(page);
+        },
+      ],
+    ]);
+  });
+
+  test('the callback URL is shown for copying', async ({ page }) => {
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await expect(page.locator('.blueworx-sso-callback-url')).toContainText('blueworx_sso=callback');
+  });
 });

@@ -199,6 +199,9 @@ function blueworx_save_feature_settings() {
 	// Translation detail: languages, position, label and exclusions.
 	blueworx_translate_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler; the callee sanitizes every field.
 
+	// Single sign-on detail: provider, credentials and provisioning.
+	blueworx_sso_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler; the callee sanitizes every field.
+
 	blueworx_save_login_session_settings();
 	blueworx_save_admin_bar_settings();
 	blueworx_save_dashboard_widget_settings();
@@ -445,6 +448,11 @@ function blueworx_render_feature_detail( $key ) {
 			</p>
 			<?php
 		endforeach;
+		return;
+	}
+
+	if ( 'sso' === $key ) {
+		blueworx_sso_render_detail();
 		return;
 	}
 
