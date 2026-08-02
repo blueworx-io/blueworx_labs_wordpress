@@ -1,0 +1,13 @@
+#
+# Minimal OpenSSL configuration, used only so the test scripts can generate a
+# throwaway RSA key.
+#
+# Windows PHP builds ship without an openssl.cnf, so openssl_pkey_new() there
+# fails with "configuration file routines: no such file" and the whole JWT test
+# looks broken when nothing is. Passing this file explicitly makes the test
+# behave the same on every machine.
+#
+[req]
+distinguished_name = req_distinguished_name
+
+[req_distinguished_name]

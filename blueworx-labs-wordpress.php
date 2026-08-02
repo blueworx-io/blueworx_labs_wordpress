@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.54.0
+ * Version:           1.55.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.54.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.55.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -47,6 +47,14 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-icons.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-badges.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/sso.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/discovery.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/jwt.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/log.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/users.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/flow.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/ui.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/guides.php';

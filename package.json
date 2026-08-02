@@ -1,6 +1,6 @@
 {
   "name": "blueworx-labs-wordpress",
-  "version": "1.54.0",
+  "version": "1.55.0",
   "private": true,
   "description": "BlueWorx Labs | WordPress Enhancements — site hardening, admin and media tools, and profile enhancements.",
   "license": "GPL-2.0-or-later",
@@ -8,6 +8,7 @@
   "scripts": {
     "build": "node scripts/build-zip.mjs",
     "lint": "eslint assets/js",
+    "test:php": "php tests/php/discovery-test.php && php tests/php/jwt-test.php && php tests/php/users-test.php",
     "version:check": "node scripts/version-check.mjs",
     "check:merge": "node scripts/check-merge-sanity.mjs"
   },

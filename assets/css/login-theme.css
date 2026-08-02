@@ -537,3 +537,34 @@ body.login .language-switcher select {
 	border: 1px solid var(--bw-border);
 	border-radius: 8px;
 }
+
+/*
+ * Single sign-on button.
+ *
+ * Styled to sit under the sign-in button as a clearly secondary route, and drawn
+ * with an inline SVG rather than an icon font so it costs no extra request.
+ */
+body.login .blueworx-sso-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin: 16px 0 0;
+	padding: 10px 16px;
+	border: 1px solid var(--bw-border);
+	border-radius: 8px;
+	background: #fff;
+	color: var(--bw-text);
+	font-weight: 500;
+	text-decoration: none;
+}
+
+body.login .blueworx-sso-button:hover,
+body.login .blueworx-sso-button:focus {
+	border-color: var(--bw-primary);
+	color: var(--bw-primary-dark);
+}
+
+body.login .blueworx-sso-button__icon {
+	flex: 0 0 auto;
+}

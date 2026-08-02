@@ -199,6 +199,11 @@ function blueworx_get_feature_guide_bodies() {
 		'site_protection'       => '<p>' . esc_html__( 'Keeps the site private. Visitors who are not signed in, or who do not hold one of the roles you pick, cannot see the site at all.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'Use it for a site in build, a staging copy, or a members-only area. Choose the front of the site, the admin area, or both, then tick the roles allowed through. Take care not to lock out the role you are signed in with.', 'blueworx-labs-wordpress' ) . '</p>',
 
+		'sso'                   => '<p>' . esc_html__( 'Lets people sign in with an account they already have somewhere else — a company Google or Microsoft account, or a membership system — instead of a separate password here.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Your provider gives you three things: an address, a client ID and a client secret. Paste them in, and give the provider the return address shown on the settings screen. The connection line tells you whether the two ends can see each other.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'Decide whether someone signing in for the first time should get an account automatically, and which role they land on. Signing in can never make someone an administrator, whatever the provider says.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'If a sign-in fails, the person only sees a general message — telling them why would help an attacker. The real reason is listed under Recent sign-ins on the settings screen.', 'blueworx-labs-wordpress' ) . '</p>',
+
 		'support_access'        => '<p>' . esc_html__( 'Lets BlueWorx look at your site to help with a problem, without you sharing a password or creating an account.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'Nothing is open until you act. Generate a key, send it to us, and switch the window on. Access is read-only and expires after 24 hours on its own. You can close it early at any time by switching the window off.', 'blueworx-labs-wordpress' ) . '</p>',
 
