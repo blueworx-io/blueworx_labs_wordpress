@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.55.1] - 2026-08-02
+
+### Changed
+- The sign-in safety checks now run automatically with the rest of the tests, so
+  a future change cannot weaken them unnoticed. Nothing changes on the site.
+
 ## [1.55.0] - 2026-08-02
 
 ### Added
