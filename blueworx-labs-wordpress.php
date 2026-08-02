@@ -47,6 +47,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-icons.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-badges.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-order.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-security.php';
+require_once BLUEWORX_LABS_PATH . 'includes/sso/sso.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/guides.php';
