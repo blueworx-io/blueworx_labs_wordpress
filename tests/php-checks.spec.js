@@ -14,7 +14,7 @@
 import { execFileSync } from 'node:child_process';
 import { test, expect } from './helpers.js';
 
-const SCRIPTS = ['discovery-test.php', 'jwt-test.php', 'users-test.php'];
+const SCRIPTS = ['discovery-test.php', 'jwt-test.php', 'login-redirect-test.php', 'users-test.php'];
 
 let phpAvailable = true;
 

@@ -94,6 +94,12 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'security',
 			'detail'      => 'login_session',
 		),
+		'login_redirect'        => array(
+			'label'       => __( 'Land on the dashboard after signing in', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Takes anyone who works in the admin area to the dashboard when they sign in, instead of wherever a booking or shop plugin decides to send them. Customers are left alone, and a link that asked for a particular page still goes there.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => null,
+		),
 		'xmlrpc'                => array(
 			'label'       => __( 'XML-RPC disabled', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Closes the old remote-publishing endpoint that attackers use to guess passwords in bulk. Leave this on unless you use the WordPress mobile app or Jetpack.', 'blueworx-labs-wordpress' ),
