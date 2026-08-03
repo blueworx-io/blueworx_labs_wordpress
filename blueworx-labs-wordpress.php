@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.55.1
+ * Version:           1.56.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.55.1' );
+	define( 'BLUEWORX_LABS_VERSION', '1.56.0' );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -75,6 +75,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/media-tools.php';
 require_once BLUEWORX_LABS_PATH . 'includes/content-tools.php';
 require_once BLUEWORX_LABS_PATH . 'includes/revisions.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-session.php';
+require_once BLUEWORX_LABS_PATH . 'includes/login-redirect.php';
 require_once BLUEWORX_LABS_PATH . 'includes/view-as-role.php';
 
 // Deactivation, not just uninstall: the support account is a near-administrator

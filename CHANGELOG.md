@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.56.0] - 2026-08-03
+
+### Added
+- **Signing in takes you to the dashboard again.** On a site with a booking or
+  shop plugin — LatePoint was the one that prompted this — logging in could drop
+  you straight onto that plugin's screen instead of your dashboard. A new
+  Security & Access option, on by default, puts the dashboard back for anyone who
+  works in the admin area. Customers still go where the booking plugin sends
+  them, and a link that asked for a particular page still takes you there.
+
 ## [1.55.1] - 2026-08-02
 
 ### Changed
