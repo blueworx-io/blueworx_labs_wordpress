@@ -45,25 +45,30 @@ test.describe('Hide the user list from the public API', () => {
 
   test('a signed-in administrator can still read the user list', async ({ page }) => {
     await login(page);
-    await page.goto(SETTINGS_PATH);
 
     // The cookie alone is not enough. WordPress only treats a cookie-carrying
     // REST call as authenticated when it also presents the REST nonce; without
-    // it the request is anonymous as far as the API is concerned, which is what
-    // this feature now refuses. So the fetch is made from inside the admin page,
-    // the way wp-admin's own code does it.
-    const result = await page.evaluate(async (route) => {
-      const nonce = window.wpApiSettings && window.wpApiSettings.nonce;
-      const response = await fetch(route, {
-        headers: nonce ? { 'X-WP-Nonce': nonce } : {},
-        credentials: 'same-origin',
-      });
-      return { status: response.status, hadNonce: Boolean(nonce), body: await response.json() };
-    }, USERS_ROUTE);
+    // one the request is anonymous as far as the API is concerned, which is
+    // exactly what this feature refuses.
+    //
+    // The call therefore goes through wp.apiFetch, which attaches the nonce
+    // itself — rather than reading window.wpApiSettings, which is only defined
+    // on screens that happen to enqueue wp-api-request and was absent on the
+    // settings page. The block editor is the screen where apiFetch is certain
+    // to be loaded, and this suite already drives it elsewhere.
+    await page.goto('/wp-admin/post-new.php');
+    await page.waitForFunction(() => window.wp && window.wp.apiFetch);
 
-    expect(result.hadNonce).toBe(true);
-    expect(result.status).toBe(200);
-    expect(Array.isArray(result.body)).toBe(true);
+    const result = await page.evaluate(async () => {
+      try {
+        const users = await window.wp.apiFetch({ path: '/wp/v2/users' });
+        return { ok: true, isArray: Array.isArray(users) };
+      } catch (error) {
+        return { ok: false, code: error && error.code, message: error && error.message };
+      }
+    });
+
+    expect(result).toMatchObject({ ok: true, isArray: true });
   });
 
   test('wp-admin still loads its own user record without a console error', async ({ page }) => {
