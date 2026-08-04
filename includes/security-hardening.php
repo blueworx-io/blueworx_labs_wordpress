@@ -281,29 +281,38 @@ function blueworx_rest_users_route_is_restricted( $route ) {
  * Kept separate from the dispatch filter, and pure, so the rule can be checked
  * without a WordPress install (tests/php/rest-users-test.php).
  *
- * The bar is list_users rather than merely being signed in: a subscriber on a
- * membership site is a member of the public with an account, and handing them
- * the full staff list is the same disclosure by another door.
+ * The bar is deliberately "signed in", not a capability. The hole being closed
+ * is anonymous enumeration — the site handing its account names to the public.
+ * Once a caller is authenticated, core's own per-context permission checks
+ * decide what they may see, and they are already careful: context=edit demands
+ * list_users, and ?who=authors is scoped to who may assign authors.
  *
- * @param string $route          Route being dispatched.
- * @param bool   $can_list_users Whether the caller holds list_users.
+ * Re-implementing that here with a flat list_users test was the first attempt
+ * and it was wrong. It refuses roles core deliberately allows, so the block
+ * editor's author picker and anything else reading the route as a signed-in
+ * non-administrator would break — a regression well outside what this feature
+ * was for, and one that would surface as "the editor is broken" rather than as
+ * a security setting.
+ *
+ * @param string $route     Route being dispatched.
+ * @param bool   $logged_in Whether the caller is authenticated.
  * @return bool True when the request must be refused.
  */
-function blueworx_rest_users_request_denied( $route, $can_list_users ) {
+function blueworx_rest_users_request_denied( $route, $logged_in ) {
 	if ( ! blueworx_rest_users_route_is_restricted( $route ) ) {
 		return false;
 	}
 
-	return ! $can_list_users;
+	return ! $logged_in;
 }
 
 /**
- * Refuses the public user routes to callers who may not list users.
+ * Refuses the public user routes to callers who are not signed in.
  *
- * A 401 for an anonymous caller and a 403 for a signed-in one, matching what
- * core returns when it refuses a route on capability grounds — so a client
- * library reacts the way it already knows how, and an operator reading a log can
- * tell "nobody was signed in" from "somebody was, and still could not".
+ * 401 rather than 403: nobody was authenticated, which is the distinction core
+ * draws on the same routes, so a client library reacts the way it already knows
+ * how and an operator reading a log sees "no credentials" rather than "wrong
+ * credentials".
  *
  * @param mixed           $result  Pre-dispatch result.
  * @param WP_REST_Server  $server  Server instance.
@@ -318,16 +327,14 @@ function blueworx_restrict_rest_users( $result, $server, $request ) {
 		return $result;
 	}
 
-	if ( ! blueworx_rest_users_request_denied( (string) $request->get_route(), current_user_can( 'list_users' ) ) ) {
+	if ( ! blueworx_rest_users_request_denied( (string) $request->get_route(), is_user_logged_in() ) ) {
 		return $result;
 	}
-
-	$logged_in = is_user_logged_in();
 
 	return new WP_Error(
 		'blueworx_rest_users_forbidden',
 		__( 'The user list is not publicly available on this site.', 'blueworx-labs-wordpress' ),
-		array( 'status' => $logged_in ? 403 : 401 )
+		array( 'status' => 401 )
 	);
 }
 

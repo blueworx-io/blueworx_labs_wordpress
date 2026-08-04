@@ -43,13 +43,27 @@ test.describe('Hide the user list from the public API', () => {
     expect(response.status()).toBe(401);
   });
 
-  test('an administrator can still read the user list', async ({ page }) => {
+  test('a signed-in administrator can still read the user list', async ({ page }) => {
     await login(page);
+    await page.goto(SETTINGS_PATH);
 
-    const response = await page.request.get(`${baseURL}${USERS_ROUTE}`);
+    // The cookie alone is not enough. WordPress only treats a cookie-carrying
+    // REST call as authenticated when it also presents the REST nonce; without
+    // it the request is anonymous as far as the API is concerned, which is what
+    // this feature now refuses. So the fetch is made from inside the admin page,
+    // the way wp-admin's own code does it.
+    const result = await page.evaluate(async (route) => {
+      const nonce = window.wpApiSettings && window.wpApiSettings.nonce;
+      const response = await fetch(route, {
+        headers: nonce ? { 'X-WP-Nonce': nonce } : {},
+        credentials: 'same-origin',
+      });
+      return { status: response.status, hadNonce: Boolean(nonce), body: await response.json() };
+    }, USERS_ROUTE);
 
-    expect(response.status()).toBe(200);
-    expect(Array.isArray(await response.json())).toBe(true);
+    expect(result.hadNonce).toBe(true);
+    expect(result.status).toBe(200);
+    expect(Array.isArray(result.body)).toBe(true);
   });
 
   test('wp-admin still loads its own user record without a console error', async ({ page }) => {

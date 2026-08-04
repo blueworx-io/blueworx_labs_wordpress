@@ -87,7 +87,7 @@ check(
 );
 
 check(
-	'a caller who may list users is allowed through',
+	'a signed-in caller is allowed through, and core decides what they see',
 	blueworx_rest_users_request_denied( '/wp/v2/users', true ),
 	false
 );
