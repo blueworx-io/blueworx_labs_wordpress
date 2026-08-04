@@ -971,6 +971,7 @@ div.error {
 	margin-top: 4px;
 }
 
+
 /* ─── Sidebar: item metrics (from the v2 export) ───
    Item margin and radius are already set where li.menu-top is first declared;
    not restated here. */
@@ -1112,6 +1113,33 @@ div.error {
 	}
 
 	body.folded #adminmenu li.bw-logout a {
+		justify-content: center;
+	}
+}
+
+/*
+ * The same collapse, for the fold WordPress does on its own.
+ *
+ * The rule above only names body.folded, which is the collapse BUTTON. Core
+ * also folds the sidebar by itself between 783px and 960px, and marks that with
+ * body.auto-fold instead — a class the rule above never matched. So on any
+ * laptop window in that range the rail was 36px wide while the labels inside it
+ * were still displayed: the group headings wrapped into stacked fragments
+ * between the icons ("OV", "CU CO", "CON", "SIT"), and Log Out broke across two
+ * lines.
+ *
+ * Capped at 960px because auto-fold stays on the body above that width while
+ * the sidebar is expanded again — without the cap this would hide the labels on
+ * a full-width desktop sidebar.
+ */
+@media only screen and (min-width: 783px) and (max-width: 960px) {
+	body.auto-fold #adminmenu li.bw-group-start::before,
+	body.auto-fold .bw-badge,
+	body.auto-fold #adminmenu li.bw-logout a span {
+		display: none;
+	}
+
+	body.auto-fold #adminmenu li.bw-logout a {
 		justify-content: center;
 	}
 }

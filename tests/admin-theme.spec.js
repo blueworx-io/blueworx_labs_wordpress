@@ -772,6 +772,52 @@ test.describe('BlueWorx admin theme', () => {
     expect(editor.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
   });
 
+  test('the sidebar labels collapse with the rail, however the rail got narrow', async ({ page }) => {
+    // Two different classes fold this sidebar. body.folded is the collapse
+    // button; body.auto-fold is WordPress narrowing it on its own between 783
+    // and 960px. The label-hiding rule originally named only the first, so on
+    // any laptop window in that band the 36px rail still carried its labels:
+    // the group headings wrapped into stacked fragments between the icons and
+    // Log Out broke across two lines.
+    const labelDisplays = () =>
+      page.evaluate(() => ({
+        heading: getComputedStyle(
+          document.querySelector('#adminmenu li.bw-group-start'),
+          '::before'
+        ).display,
+        logout: getComputedStyle(document.querySelector('#adminmenu li.bw-logout a span')).display,
+        railWidth: Math.round(document.getElementById('adminmenuwrap').getBoundingClientRect().width),
+      }));
+
+    await login(page);
+
+    // Auto-folded: a 36px rail, so the labels must be gone.
+    await page.setViewportSize({ width: 900, height: 900 });
+    await page.goto(DASH_PATH);
+
+    let state = await labelDisplays();
+    expect(state.railWidth).toBeLessThan(60);
+    expect(state.heading).toBe('none');
+    expect(state.logout).toBe('none');
+
+    // Wide and expanded: auto-fold is STILL on the body here, so a rule without
+    // an upper bound would wrongly hide the labels on a full-width sidebar.
+    await page.setViewportSize({ width: 1200, height: 900 });
+
+    state = await labelDisplays();
+    expect(state.railWidth).toBeGreaterThan(150);
+    expect(state.heading).toBe('block');
+    expect(state.logout).toBe('block');
+
+    // Wide but collapsed with the button: back to a rail, back to no labels.
+    await page.evaluate(() => document.body.classList.add('folded'));
+
+    state = await labelDisplays();
+    expect(state.railWidth).toBeLessThan(60);
+    expect(state.heading).toBe('none');
+    expect(state.logout).toBe('none');
+  });
+
   test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {
     // WordPress forces site-editor.php permanently into fullscreen — there is
     // no non-fullscreen state to test here. Our fullscreen rule is what

@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.56.1] - 2026-08-04
+
+### Fixed
+- **The admin sidebar no longer garbles itself on a smaller screen.** On a
+  laptop window between roughly 780 and 960 pixels wide, WordPress narrows the
+  sidebar to a strip of icons — but our section headings and the Log Out label
+  stayed on, squashed into it as unreadable stacked fragments. They now collapse
+  with the sidebar, the way they already did when you collapse it yourself.
+
 ## [1.56.0] - 2026-08-03
 
 ### Added
