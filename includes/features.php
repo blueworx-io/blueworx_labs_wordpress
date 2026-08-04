@@ -113,6 +113,12 @@ function blueworx_get_feature_definitions() {
 			'detail'      => null,
 			'default'     => '0',
 		),
+		'rest_users'            => array(
+			'label'       => __( 'Hide the user list from the public API', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Stops anyone reading your list of accounts straight off the site without signing in. WordPress publishes it by default, which hands an attacker the sign-in names to try. Turn this off only if something outside the site genuinely needs to read your users.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => null,
+		),
 		'application_passwords' => array(
 			'label'       => __( 'Application Passwords', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-labs-wordpress' ),
