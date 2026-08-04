@@ -145,4 +145,52 @@ check(
 
 unset( $GLOBALS['filters']['blueworx_rest_user_routes'] );
 
+echo "\nExisting sites are not changed underneath their owners\n";
+
+// The real migration file. It only defines functions and registers one hook at
+// include time, so it loads cleanly against the stubs.
+require __DIR__ . '/../../includes/upgrade.php';
+
+check(
+	'a site that has run this plugin before is opted out',
+	blueworx_should_opt_out_of_new_default( true ),
+	true
+);
+
+check(
+	'a fresh install is left to inherit the safer default',
+	blueworx_should_opt_out_of_new_default( false ),
+	false
+);
+
+$GLOBALS['options'] = array( 'blueworx_labs_db_version' => 9 );
+blueworx_migrate_rest_users_default();
+
+check(
+	'upgrading from 1.56.0 writes the feature off explicitly',
+	isset( $GLOBALS['options']['blueworx_feature_rest_users'] ) ? $GLOBALS['options']['blueworx_feature_rest_users'] : null,
+	'0'
+);
+
+$GLOBALS['options'] = array();
+blueworx_migrate_rest_users_default();
+
+check(
+	'a fresh install has nothing written, so the default stands',
+	isset( $GLOBALS['options']['blueworx_feature_rest_users'] ),
+	false
+);
+
+$GLOBALS['options'] = array(
+	'blueworx_labs_db_version'      => 9,
+	'blueworx_feature_rest_users'   => '1',
+);
+blueworx_migrate_rest_users_default();
+
+check(
+	'a choice already made is never overwritten',
+	$GLOBALS['options']['blueworx_feature_rest_users'],
+	'1'
+);
+
 finish();

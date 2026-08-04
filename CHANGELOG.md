@@ -28,6 +28,10 @@ versioning.
   stayed on, squashed into it as unreadable stacked fragments. They now collapse
   with the sidebar, the way they already did when you collapse it yourself.
 
+  Sites already running the plugin are left as they are and can switch it on
+  when they are ready, so nothing changes underneath a live site on update.
+  New installs get it from the start.
+
 ## [1.56.0] - 2026-08-03
 
 ### Added
