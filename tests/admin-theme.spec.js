@@ -818,7 +818,7 @@ test.describe('BlueWorx admin theme', () => {
     expect(state.logout).toBe('none');
   });
 
-  test('a plugin that takes the whole window over is not left with an empty sidebar column', async ({ page }) => {
+  test('a plugin that takes the whole window over gets the whole window', async ({ page }) => {
     // LatePoint is not installed on this harness, so the test recreates the two
     // rules it actually ships on its own admin screens (verified against
     // latepoint/public/stylesheets/admin.css 5.6.10): body.latepoint-admin hides
@@ -843,27 +843,28 @@ test.describe('BlueWorx admin theme', () => {
 
     const layout = await page.evaluate(() => {
       const content = document.getElementById('wpcontent');
-      const bar = document.querySelector('.bw-topbar');
+      const box = content.getBoundingClientRect();
       return {
-        contentLeft: Math.round(content.getBoundingClientRect().x),
+        contentLeft: Math.round(box.x),
+        contentTop: Math.round(box.y),
         contentMargin: getComputedStyle(content).marginLeft,
-        barLeft: Math.round(bar.getBoundingClientRect().x),
+        contentPadding: getComputedStyle(content).paddingTop,
       };
     });
 
-    // No offset held open for a sidebar that isn't painted.
+    // Neither offset is held open: margin-left for a sidebar that isn't painted,
+    // padding-top for a bar that is no longer drawn.
     expect(layout.contentMargin).toBe('0px');
+    expect(layout.contentPadding).toBe('0px');
     expect(layout.contentLeft).toBe(0);
+    expect(layout.contentTop).toBe(0);
 
-    // The brand block is fixed and lives outside the #adminmenumain LatePoint
-    // hides, so it survives on its own unless we hide it too — it was what
-    // floated at the top of the empty column.
+    // Our chrome is gone rather than reserved-for, the same answer fullscreen
+    // gets. The brand block matters specifically: it is fixed and lives outside
+    // the #adminmenumain LatePoint hides, so it survives on its own unless we
+    // hide it too — it was what floated at the top of the empty column.
     await expect(page.locator('.bw-brand')).toBeHidden();
-
-    // The top bar stays: it is the way back out of a plugin that has replaced
-    // the entire admin menu. It just has to span the full width now.
-    await expect(page.locator('.bw-topbar')).toBeVisible();
-    expect(layout.barLeft).toBe(0);
+    await expect(page.locator('.bw-topbar')).toBeHidden();
   });
 
   test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {

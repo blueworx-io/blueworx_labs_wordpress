@@ -941,24 +941,30 @@ div.error {
    the brand block — fixed, and outside the hidden #adminmenumain, so it survived
    independently — floating at the top of it.
 
-   These rules restore LatePoint's intent: no sidebar offset, no brand block, and
-   the top bar spanning the full width so there is still a way back out. Placed
-   after the width queries above rather than inside them, so equal-specificity
-   selectors resolve on source order at every breakpoint.
+   These rules restore LatePoint's intent by taking our chrome out of the way
+   entirely — the same answer the block editor's fullscreen mode gets above, and
+   for the same reason: a screen that has deliberately replaced the whole admin
+   frame, its own nav and user menu included, is not one to reserve space in.
+   LatePoint carries its own way back to wp-admin, so nothing is stranded.
+
+   Placed after the width queries above rather than inside them, so
+   equal-specificity selectors resolve on source order at every breakpoint.
 
    #adminmenuback/#adminmenuwrap need no equivalent: they are children of the
    #adminmenumain LatePoint hides, so our fixed-positioning rules on them never
    paint here. */
-body.latepoint-admin #wpcontent {
-	margin-left: 0;
-}
-
+body.latepoint-admin .bw-topbar,
 body.latepoint-admin .bw-brand {
 	display: none;
 }
 
-body.latepoint-admin .bw-topbar {
-	left: 0;
+/* Both offsets go together. margin-left held the page open for a sidebar that
+   LatePoint had already hidden; padding-top reserves the height of a top bar
+   that, from here on, is not drawn either — leaving it would swap the empty
+   column for an empty strip. */
+body.latepoint-admin #wpcontent {
+	margin-left: 0;
+	padding-top: 0;
 }
 
 @media only screen and (max-width: 1100px) {
