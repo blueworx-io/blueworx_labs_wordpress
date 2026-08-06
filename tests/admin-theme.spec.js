@@ -818,6 +818,55 @@ test.describe('BlueWorx admin theme', () => {
     expect(state.logout).toBe('none');
   });
 
+  test('a plugin that takes the whole window over gets the whole window', async ({ page }) => {
+    // LatePoint is not installed on this harness, so the test recreates the two
+    // rules it actually ships on its own admin screens (verified against
+    // latepoint/public/stylesheets/admin.css 5.6.10): body.latepoint-admin hides
+    // #adminmenumain outright and resets #wpcontent to margin-left:0, because its
+    // app runs full width behind its own left nav.
+    //
+    // This is a cascade test, which is the whole of the bug: our
+    // `body:not(.folded) #wpcontent` rule carries a type selector LatePoint's
+    // `.latepoint-admin #wpcontent` does not, so ours used to win and hold the
+    // content indented against a sidebar that was no longer rendered.
+    await page.setViewportSize({ width: 1265, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    await page.addStyleTag({
+      content: `
+        .latepoint-admin #adminmenumain { display: none; }
+        .latepoint-admin #wpcontent { margin-left: 0px; padding-left: 0px; }
+      `,
+    });
+    await page.evaluate(() => document.body.classList.add('latepoint-admin'));
+
+    const layout = await page.evaluate(() => {
+      const content = document.getElementById('wpcontent');
+      const box = content.getBoundingClientRect();
+      return {
+        contentLeft: Math.round(box.x),
+        contentTop: Math.round(box.y),
+        contentMargin: getComputedStyle(content).marginLeft,
+        contentPadding: getComputedStyle(content).paddingTop,
+      };
+    });
+
+    // Neither offset is held open: margin-left for a sidebar that isn't painted,
+    // padding-top for a bar that is no longer drawn.
+    expect(layout.contentMargin).toBe('0px');
+    expect(layout.contentPadding).toBe('0px');
+    expect(layout.contentLeft).toBe(0);
+    expect(layout.contentTop).toBe(0);
+
+    // Our chrome is gone rather than reserved-for, the same answer fullscreen
+    // gets. The brand block matters specifically: it is fixed and lives outside
+    // the #adminmenumain LatePoint hides, so it survives on its own unless we
+    // hide it too — it was what floated at the top of the empty column.
+    await expect(page.locator('.bw-brand')).toBeHidden();
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+  });
+
   test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {
     // WordPress forces site-editor.php permanently into fullscreen — there is
     // no non-fullscreen state to test here. Our fullscreen rule is what
