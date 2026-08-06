@@ -819,16 +819,20 @@ test.describe('BlueWorx admin theme', () => {
   });
 
   test('a plugin that takes the whole window over gets the whole window', async ({ page }) => {
-    // LatePoint is not installed on this harness, so the test recreates the two
-    // rules it actually ships on its own admin screens (verified against
-    // latepoint/public/stylesheets/admin.css 5.6.10): body.latepoint-admin hides
-    // #adminmenumain outright and resets #wpcontent to margin-left:0, because its
-    // app runs full width behind its own left nav.
+    // LatePoint is not installed on this harness, so the test recreates the
+    // three rules it actually ships on its own admin screens (verified against
+    // latepoint/public/stylesheets/admin.css 5.6.10, and the resulting geometry
+    // measured on a live LatePoint install): body.latepoint-admin hides
+    // #adminmenumain outright, resets #wpcontent to margin-left:0 because its app
+    // runs full width behind its own left nav, and pulls the body up by 32px to
+    // reclaim the space core reserves on <html> for the admin bar it hides.
     //
-    // This is a cascade test, which is the whole of the bug: our
+    // This is a cascade test, which is the whole of the bug — twice over. Our
     // `body:not(.folded) #wpcontent` rule carries a type selector LatePoint's
     // `.latepoint-admin #wpcontent` does not, so ours used to win and hold the
-    // content indented against a sidebar that was no longer rendered.
+    // content indented against a sidebar that was no longer rendered. And we
+    // zero html.wp-toolbar's padding-top ourselves, so that -32px pull had
+    // nothing left to cancel and hauled the whole app off the top of the window.
     await page.setViewportSize({ width: 1265, height: 900 });
     await login(page);
     await page.goto(DASH_PATH);
@@ -837,6 +841,7 @@ test.describe('BlueWorx admin theme', () => {
       content: `
         .latepoint-admin #adminmenumain { display: none; }
         .latepoint-admin #wpcontent { margin-left: 0px; padding-left: 0px; }
+        .wp-toolbar body.latepoint-admin { margin-top: -32px; }
       `,
     });
     await page.evaluate(() => document.body.classList.add('latepoint-admin'));
@@ -849,6 +854,8 @@ test.describe('BlueWorx admin theme', () => {
         contentTop: Math.round(box.y),
         contentMargin: getComputedStyle(content).marginLeft,
         contentPadding: getComputedStyle(content).paddingTop,
+        bodyMarginTop: getComputedStyle(document.body).marginTop,
+        bodyTop: Math.round(document.body.getBoundingClientRect().y),
       };
     });
 
@@ -858,6 +865,12 @@ test.describe('BlueWorx admin theme', () => {
     expect(layout.contentPadding).toBe('0px');
     expect(layout.contentLeft).toBe(0);
     expect(layout.contentTop).toBe(0);
+
+    // And nothing is hauled off the top of the window: LatePoint's -32px pull
+    // compensates for space we no longer reserve, so it has to be cancelled or
+    // its own search field and New Booking button are clipped by the window edge.
+    expect(layout.bodyMarginTop).toBe('0px');
+    expect(layout.bodyTop).toBe(0);
 
     // Our chrome is gone rather than reserved-for, the same answer fullscreen
     // gets. The brand block matters specifically: it is fixed and lives outside

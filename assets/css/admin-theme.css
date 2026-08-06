@@ -967,6 +967,23 @@ body.latepoint-admin #wpcontent {
 	padding-top: 0;
 }
 
+/* LatePoint hides the admin bar and then pulls the whole body up by 32px
+   (`.wp-toolbar body.latepoint-admin { margin-top: -32px }`) to reclaim the
+   space core reserves for it on <html>. We have already reclaimed that space —
+   the responsive block above zeroes html.wp-toolbar's padding-top from 783px up,
+   because our own bar replaces the admin bar — so the pull-up had nothing left
+   to cancel and dragged the app 32px above the top of the window, clipping
+   LatePoint's own search field and New Booking button.
+
+   Bounded to the same breakpoint that zeroes the padding, and no wider: below
+   783px core still reserves 46px for the admin bar and we leave it there, so
+   LatePoint's compensation is doing real work and must stand. */
+@media only screen and (min-width: 783px) {
+	html.wp-toolbar body.latepoint-admin {
+		margin-top: 0;
+	}
+}
+
 @media only screen and (max-width: 1100px) {
 	.bw-stat-grid {
 		grid-template-columns: repeat(2, 1fr);

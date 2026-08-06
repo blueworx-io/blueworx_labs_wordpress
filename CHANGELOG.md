@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.57.2] - 2026-08-06
+
+### Fixed
+- **The Bookings search box and New Booking button are no longer cut off.** The
+  last release gave LatePoint the whole window, but its screens shift themselves
+  up to fill the gap the WordPress toolbar leaves behind — and we had already
+  closed that gap, so everything sat too high and the top of the page was lost
+  off the edge of the window. It lines up properly now.
+
 ## [1.57.1] - 2026-08-06
 
 ### Fixed
