@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.57.1] - 2026-08-06
+
+### Fixed
+- **The Bookings screens are no longer squashed by the admin design.** LatePoint
+  uses the whole window and brings its own menu, so our sidebar was leaving an
+  empty column down the left of every Bookings page with the BlueWorx logo
+  stranded at the top of it. Those pages now get the full width, and the top bar
+  still spans across so there is a way back to the rest of the admin.
+
 ## [1.57.0] - 2026-08-04
 
 ### Added

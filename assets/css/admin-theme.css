@@ -929,6 +929,38 @@ div.error {
 	}
 }
 
+/* ─── LatePoint ───
+   LatePoint's admin screens take the whole window over: on body.latepoint-admin
+   it hides #adminmenumain outright and resets #wpcontent to margin-left:0 so its
+   own app — which carries its own left nav — runs full width.
+
+   Our `body:not(.folded) #wpcontent` rule carries a type selector that LatePoint's
+   `.latepoint-admin #wpcontent` does not, so ours won the cascade and kept the
+   content indented by the sidebar width against a sidebar that was no longer
+   there. That left an empty column down the left of every Bookings screen, with
+   the brand block — fixed, and outside the hidden #adminmenumain, so it survived
+   independently — floating at the top of it.
+
+   These rules restore LatePoint's intent: no sidebar offset, no brand block, and
+   the top bar spanning the full width so there is still a way back out. Placed
+   after the width queries above rather than inside them, so equal-specificity
+   selectors resolve on source order at every breakpoint.
+
+   #adminmenuback/#adminmenuwrap need no equivalent: they are children of the
+   #adminmenumain LatePoint hides, so our fixed-positioning rules on them never
+   paint here. */
+body.latepoint-admin #wpcontent {
+	margin-left: 0;
+}
+
+body.latepoint-admin .bw-brand {
+	display: none;
+}
+
+body.latepoint-admin .bw-topbar {
+	left: 0;
+}
+
 @media only screen and (max-width: 1100px) {
 	.bw-stat-grid {
 		grid-template-columns: repeat(2, 1fr);
