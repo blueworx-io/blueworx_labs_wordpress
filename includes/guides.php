@@ -253,6 +253,9 @@ function blueworx_get_feature_guide_bodies() {
 		'author_slugs'          => '<p>' . esc_html__( 'By default a WordPress author page has the person\'s sign-in name in its address, which hands an attacker half of what they need to get in.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'This replaces that name with a meaningless code. It is off by default because it changes those addresses, so switch it on early in a site\'s life rather than after the pages have been shared or indexed.', 'blueworx-labs-wordpress' ) . '</p>',
 
+		'rest_users'            => '<p>' . esc_html__( 'WordPress publishes the list of everyone with an account on the site, readable by anyone, with no sign-in needed. It gives away the names people sign in with, which is half of what someone needs to break in.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'This closes that off, so only people who are signed in and allowed to manage users can read it. Leave it on. Turn it off only if something outside the site — a separate app or a directory page — genuinely needs to read your list of users.', 'blueworx-labs-wordpress' ) . '</p>',
+
 		'content_tools'         => '<p>' . esc_html__( 'Adds a Duplicate link beside every page and post. It makes a complete copy as a draft — the content, the categories, and all the field values — so you can build the next one from a page that already works rather than starting again.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'The copy is always a draft, and nothing is published until you say so. There is also an optional setting that lets a page point at an address on another site, for when a menu entry needs to send people somewhere else entirely.', 'blueworx-labs-wordpress' ) . '</p>',
 

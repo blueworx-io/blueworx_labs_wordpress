@@ -18,7 +18,64 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 9;
+	return 10;
+}
+
+/**
+ * Whether a site that already runs this plugin should be opted out of a new
+ * default-on feature.
+ *
+ * The promise made in includes/features.php is that an absent option falls back
+ * to the registered default "so an existing install is never silently changed by
+ * an update". A feature that is added default-on quietly breaks that promise:
+ * the site has no stored option, so it inherits the new default and its
+ * behaviour changes on upgrade without anyone choosing it.
+ *
+ * The fix is to write the option explicitly for sites that were already running,
+ * and leave fresh installs to fall through to the default. So: new sites get the
+ * safer setting, existing sites keep working, and both are a deliberate answer
+ * rather than an accident of ordering.
+ *
+ * @param bool $plugin_has_run_before Whether this plugin has run on this site before.
+ * @return bool True when the feature must be written off rather than inherited.
+ */
+function blueworx_should_opt_out_of_new_default( $plugin_has_run_before ) {
+	return (bool) $plugin_has_run_before;
+}
+
+/**
+ * Leaves existing sites with the public user list they already had.
+ *
+ * 1.57.0 adds the `rest_users` feature default-on. A site upgrading into it has
+ * no stored option and would otherwise start refusing /wp/v2/users to anonymous
+ * callers the moment it updated — which is the right end state, but not
+ * something to do to a live site without its owner choosing it. Anything reading
+ * that route from outside would break, and nobody would connect the failure to a
+ * WordPress update.
+ *
+ * Fresh installs are not touched, so they inherit the default and are protected
+ * from the start.
+ *
+ * Known limit: a site so old that it predates blueworx_labs_db_version (before
+ * the 1.x "blueworx-enhancements" era) has no version row either, so it reads as
+ * fresh and does get the feature on. That is accepted rather than worked around
+ * — there is no other durable marker to test, and the alternative is sniffing
+ * unrelated options and guessing.
+ *
+ * @return void
+ */
+function blueworx_migrate_rest_users_default() {
+	if ( ! blueworx_should_opt_out_of_new_default( null !== get_option( 'blueworx_labs_db_version', null ) ) ) {
+		return;
+	}
+
+	// Only when the site has not already expressed a preference, which it cannot
+	// have here — but this migration must stay safe if it is ever re-run.
+	if ( null !== get_option( 'blueworx_feature_rest_users', null ) ) {
+		return;
+	}
+
+	update_option( 'blueworx_feature_rest_users', '0' );
 }
 
 /**
@@ -560,6 +617,12 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 9 ) {
 		blueworx_migrate_remove_headless_layer();
+	}
+
+	// Runs before the version row is written below, so it can still tell an
+	// upgrade from a fresh install by whether that row exists at all.
+	if ( $stored_version < 10 ) {
+		blueworx_migrate_rest_users_default();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

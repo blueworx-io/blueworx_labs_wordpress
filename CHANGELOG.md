@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.57.0] - 2026-08-04
+
+### Added
+- **Your list of users is no longer public.** WordPress publishes everyone's
+  account name to anyone who asks, without them signing in — which gives away
+  the names people log in with. A new Security & Access option, on by default,
+  closes that off so it can only be read by someone signed in. Turn it off if
+  something outside the site genuinely needs that list. Pairs with "Hide
+  usernames in author links": either on its own leaves the names reachable by
+  the other route.
+
+  Sites already running the plugin are left as they are and can switch it on
+  when they are ready, so nothing changes underneath a live site on update.
+  New installs get it from the start.
+
 ## [1.56.1] - 2026-08-04
 
 ### Fixed
@@ -12,6 +27,10 @@ versioning.
   sidebar to a strip of icons — but our section headings and the Log Out label
   stayed on, squashed into it as unreadable stacked fragments. They now collapse
   with the sidebar, the way they already did when you collapse it yourself.
+
+  Sites already running the plugin are left as they are and can switch it on
+  when they are ready, so nothing changes underneath a live site on update.
+  New installs get it from the start.
 
 ## [1.56.0] - 2026-08-03
 

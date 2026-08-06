@@ -214,3 +214,134 @@ if ( blueworx_feature_enabled( 'author_slugs' ) ) {
 	}
 	unset( $blueworx_author_slug_hook );
 }
+
+/**
+ * REST route prefixes that expose the user list.
+ *
+ * The author-slug option above hides usernames in author URLs, which is only
+ * half the job: core publishes the same usernames at /wp/v2/users to anyone who
+ * asks, with no key and no login, for every user who has published a post. An
+ * obfuscated author link is worth little while the username is one request away.
+ *
+ * @return array Route prefixes.
+ */
+function blueworx_rest_user_routes() {
+	/**
+	 * Filters the REST routes treated as the user list.
+	 *
+	 * Matched as prefixes, so a namespace that republishes the same data under
+	 * its own route can be named here.
+	 *
+	 * @param array $routes Route prefixes.
+	 */
+	return (array) apply_filters( 'blueworx_rest_user_routes', array( '/wp/v2/users' ) );
+}
+
+/**
+ * Whether a route is one of the user routes this feature restricts.
+ *
+ * /wp/v2/users/me is deliberately exempt. It returns only the caller's own
+ * record, so it discloses nothing the caller does not already know, and wp-admin
+ * fetches it on every page load for block-editor preferences — restricting it
+ * would put a console error on every admin screen while protecting nobody.
+ *
+ * Matching is by path segment rather than raw prefix, so /wp/v2/users-something
+ * in another plugin's namespace is not swept in by accident.
+ *
+ * @param string $route Route being dispatched.
+ * @return bool True when the route must be checked.
+ */
+function blueworx_rest_users_route_is_restricted( $route ) {
+	$route = (string) $route;
+
+	foreach ( blueworx_rest_user_routes() as $prefix ) {
+		$prefix = (string) $prefix;
+
+		if ( '' === $prefix ) {
+			continue;
+		}
+
+		if ( $route !== $prefix && 0 !== strpos( $route, $prefix . '/' ) ) {
+			continue;
+		}
+
+		if ( $prefix . '/me' === $route ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Whether a caller must be refused a user route.
+ *
+ * Kept separate from the dispatch filter, and pure, so the rule can be checked
+ * without a WordPress install (tests/php/rest-users-test.php).
+ *
+ * The bar is deliberately "signed in", not a capability. The hole being closed
+ * is anonymous enumeration — the site handing its account names to the public.
+ * Once a caller is authenticated, core's own per-context permission checks
+ * decide what they may see, and they are already careful: context=edit demands
+ * list_users, and ?who=authors is scoped to who may assign authors.
+ *
+ * Re-implementing that here with a flat list_users test was the first attempt
+ * and it was wrong. It refuses roles core deliberately allows, so the block
+ * editor's author picker and anything else reading the route as a signed-in
+ * non-administrator would break — a regression well outside what this feature
+ * was for, and one that would surface as "the editor is broken" rather than as
+ * a security setting.
+ *
+ * @param string $route     Route being dispatched.
+ * @param bool   $logged_in Whether the caller is authenticated.
+ * @return bool True when the request must be refused.
+ */
+function blueworx_rest_users_request_denied( $route, $logged_in ) {
+	if ( ! blueworx_rest_users_route_is_restricted( $route ) ) {
+		return false;
+	}
+
+	return ! $logged_in;
+}
+
+/**
+ * Refuses the public user routes to callers who are not signed in.
+ *
+ * 401 rather than 403: nobody was authenticated, which is the distinction core
+ * draws on the same routes, so a client library reacts the way it already knows
+ * how and an operator reading a log sees "no credentials" rather than "wrong
+ * credentials".
+ *
+ * @param mixed           $result  Pre-dispatch result.
+ * @param WP_REST_Server  $server  Server instance.
+ * @param WP_REST_Request $request Current request.
+ * @return mixed Untouched result, or a WP_Error.
+ */
+function blueworx_restrict_rest_users( $result, $server, $request ) {
+	unset( $server );
+
+	// Something ahead of this has already answered the request; leave it alone.
+	if ( null !== $result ) {
+		return $result;
+	}
+
+	if ( ! blueworx_rest_users_request_denied( (string) $request->get_route(), is_user_logged_in() ) ) {
+		return $result;
+	}
+
+	return new WP_Error(
+		'blueworx_rest_users_forbidden',
+		__( 'The user list is not publicly available on this site.', 'blueworx-labs-wordpress' ),
+		array( 'status' => 401 )
+	);
+}
+
+if ( blueworx_feature_enabled( 'rest_users' ) ) {
+	// Priority 5: ahead of support access's own gates (10 and 11), which speak
+	// only for the support account and would otherwise never be reached for it —
+	// the support role holds list_users, so this rule passes it through and lets
+	// blueworx_support_gate_data_routes() give its own, more specific refusal.
+	add_filter( 'rest_pre_dispatch', 'blueworx_restrict_rest_users', 5, 3 );
+}
