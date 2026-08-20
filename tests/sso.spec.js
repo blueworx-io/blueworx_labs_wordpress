@@ -3,7 +3,7 @@
  *
  * These assert the parts visible from outside PHP: that the feature is offered
  * and off by default, that its settings survive a save without ever rendering
- * the client secret, that the sign-in trigger builds a correct authorization
+ * the client secret, that both entry points build a correct authorization
  * request, and that a callback with a bad state is refused without saying why.
  *
  * The crypto itself — signature and claim checks — is covered by the PHP scripts
@@ -74,6 +74,34 @@ test.describe('Single sign-on', () => {
     ]);
   });
 
+  test('the joining destinations survive a save', async ({ page }) => {
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await page.locator(toggleFor('sso')).setChecked(true);
+    await page.fill('#blueworx_sso_redirect_after_register', 'https://example.test/register-success/');
+    await page.fill('#blueworx_sso_no_account_url', 'https://example.test/join/');
+    await save(page);
+
+    await page.goto(SETTINGS_PATH);
+    await expect(page.locator('#blueworx_sso_redirect_after_register')).toHaveValue(
+      'https://example.test/register-success/'
+    );
+    await expect(page.locator('#blueworx_sso_no_account_url')).toHaveValue('https://example.test/join/');
+
+    await restoreAll([
+      [
+        'joining destinations cleared',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await page.fill('#blueworx_sso_redirect_after_register', '');
+          await page.fill('#blueworx_sso_no_account_url', '');
+          await page.locator(toggleFor('sso')).setChecked(false);
+          await save(page);
+        },
+      ],
+    ]);
+  });
+
   test('the callback URL is shown for copying', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
@@ -128,6 +156,30 @@ test.describe('Single sign-on flow', () => {
     expect(target.searchParams.get('nonce')).toHaveLength(43);
     expect(target.searchParams.get('code_challenge_method')).toBe('S256');
     expect(target.searchParams.get('code_challenge')).toHaveLength(43);
+  });
+
+  test('joining asks the provider for its signup screen, and signing in does not', async ({
+    page,
+  }) => {
+    const join = await page.request.get('/?blueworx_sso=register', { maxRedirects: 0 });
+    expect(join.status()).toBe(302);
+    expect(new URL(join.headers().location).searchParams.get('prompt')).toBe('signup');
+
+    // Sending the signup prompt on a plain sign-in would push people who already
+    // have an account into creating a second one.
+    const signIn = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+    expect(new URL(signIn.headers().location).searchParams.get('prompt')).toBeNull();
+  });
+
+  test('both entry points return to the same address', async ({ page }) => {
+    const redirectOf = async (path) => {
+      const response = await page.request.get(path, { maxRedirects: 0 });
+      return new URL(response.headers().location).searchParams.get('redirect_uri');
+    };
+
+    // Providers match the return address exactly and most register only one, so
+    // the two buttons must not drift apart here.
+    expect(await redirectOf('/?blueworx_sso=register')).toBe(await redirectOf('/?blueworx_sso=login'));
   });
 
   test('a callback with an unknown state is refused', async ({ page }) => {
