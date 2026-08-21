@@ -32,6 +32,7 @@ function blueworx_sso_icon_svg() {
  * @param array $args {
  *     Optional.
  *
+ *     @type string $intent      'login' (the default) or 'register'.
  *     @type string $label       Override the configured label.
  *     @type string $redirect_to Where to send the person afterwards.
  * }
@@ -42,21 +43,25 @@ function blueworx_sso_button_html( $args = array() ) {
 		return '';
 	}
 
-	$label = isset( $args['label'] ) ? trim( (string) $args['label'] ) : '';
+	$intent = blueworx_sso_intent( isset( $args['intent'] ) ? $args['intent'] : 'login' );
+	$label  = isset( $args['label'] ) ? trim( (string) $args['label'] ) : '';
 
 	if ( '' === $label ) {
-		$label = trim( (string) blueworx_sso_option( 'button_label' ) );
+		$label = trim( (string) blueworx_sso_option( 'register' === $intent ? 'register_button_label' : 'button_label' ) );
 	}
 
 	if ( '' === $label ) {
-		$label = __( 'Sign in with single sign-on', 'blueworx-labs-wordpress' );
+		$label = 'register' === $intent
+			? __( 'Join with single sign-on', 'blueworx-labs-wordpress' )
+			: __( 'Sign in with single sign-on', 'blueworx-labs-wordpress' );
 	}
 
 	return sprintf(
-		'<a class="blueworx-sso-button" href="%1$s">%2$s<span class="blueworx-sso-button__label">%3$s</span></a>',
-		esc_url( blueworx_sso_login_url( isset( $args['redirect_to'] ) ? $args['redirect_to'] : '' ) ),
+		'<a class="blueworx-sso-button blueworx-sso-button--%4$s" href="%1$s">%2$s<span class="blueworx-sso-button__label">%3$s</span></a>',
+		esc_url( blueworx_sso_login_url( isset( $args['redirect_to'] ) ? $args['redirect_to'] : '', $intent ) ),
 		blueworx_sso_icon_svg(),
-		esc_html( $label )
+		esc_html( $label ),
+		esc_attr( $intent )
 	);
 }
 
@@ -73,12 +78,13 @@ add_action( 'login_form', 'blueworx_sso_render_login_button' );
 /**
  * Renders the button anywhere on the site.
  *
- * @param array $atts Shortcode attributes: label, redirect_to.
+ * @param array $atts Shortcode attributes: intent, label, redirect_to.
  * @return string Button markup.
  */
 function blueworx_sso_button_shortcode( $atts ) {
 	$atts = shortcode_atts(
 		array(
+			'intent'      => 'login',
 			'label'       => '',
 			'redirect_to' => '',
 		),

@@ -181,11 +181,15 @@ function claims( $overrides = array() ) {
 /**
  * Resolves a claim set and reduces the result to something comparable.
  *
- * @param array $claim_set Claims.
+ * Defaults to the joining route, because that is the only one allowed to create
+ * an account; the signing-in route is asked for explicitly where it matters.
+ *
+ * @param array  $claim_set Claims.
+ * @param string $intent    'register' or 'login'.
  * @return string Error code, or 'user:' and the username.
  */
-function resolve( $claim_set ) {
-	$result = blueworx_sso_resolve_user( $claim_set );
+function resolve( $claim_set, $intent = 'register' ) {
+	$result = blueworx_sso_resolve_user( $claim_set, $intent );
 
 	return is_wp_error( $result ) ? $result->get_error_code() : 'user:' . $result->user_login;
 }
@@ -221,6 +225,25 @@ check( 'a second identity on a linked account is refused', resolve( claims( arra
 check( 'and the original link is intact', $GLOBALS['meta'][1]['blueworx_sso_subject'], 'provider-subject-1' );
 
 $GLOBALS['options']['blueworx_sso_auto_register'] = '1';
+
+echo "\nSigning in never creates an account\n";
+
+// Someone with no account here who presses Sign in has almost certainly signed
+// in somewhere before and expects to find their things. Handing them a fresh,
+// empty account looks exactly like their history has been lost, so the routes
+// are kept apart: only joining creates.
+$before = count( $GLOBALS['inserted'] );
+check( 'signing in with no account is refused even with joining switched on', resolve( claims( array( 'sub' => 'subject-visitor', 'email' => 'visitor@example.test' ) ), 'login' ), 'blueworx_sso_no_account' );
+check( 'and created nobody', count( $GLOBALS['inserted'] ), $before );
+
+// Linking is not creating, though: an existing account with a matching verified
+// email is still adopted on the way in.
+$GLOBALS['users'][] = new WP_User( 7, 'already-here', 'already-here@example.test', array( 'author' ) );
+check( 'signing in still links an existing account', resolve( claims( array( 'sub' => 'subject-existing', 'email' => 'already-here@example.test' ) ), 'login' ), 'user:already-here' );
+check( 'without creating anything', count( $GLOBALS['inserted'] ), $before );
+check( 'and without touching their role', $GLOBALS['users'][ count( $GLOBALS['users'] ) - 1 ]->roles, array( 'author' ) );
+
+echo "\nJoining creates\n";
 
 check( 'a new person gets an account', resolve( claims( array( 'sub' => 'subject-new', 'email' => 'newcomer@example.test' ) ) ), 'user:newcomer' );
 check( 'on the configured role', $GLOBALS['inserted'][0]['role'], 'subscriber' );

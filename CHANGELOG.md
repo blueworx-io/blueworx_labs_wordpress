@@ -4,6 +4,36 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.0] - 2026-08-21
+
+### Added
+- **A separate button for joining.** Single sign-on now has two entry points
+  instead of one: Sign in, for people who already have an account, and Join, for
+  people who do not. Both come back to the same address, so your provider still
+  only needs the one.
+
+  Joining asks the provider to open on its "create an account" screen, and the
+  two can land people on different pages afterwards — a newcomer on your welcome
+  or next-steps page, everyone else wherever they normally go. The sign-in button
+  is still added to the login screen for you; put the joining one on a page with
+  `[blueworx_sso_button intent="register"]`.
+
+### Changed
+- **Signing in no longer creates accounts.** Someone with no account here who
+  presses Sign in used to get a brand new empty one, which looks exactly like
+  their history has been lost. They are now sent to your joining page instead —
+  set it under Single sign-on. Only the Join button creates accounts, and only if
+  you allow it.
+
+  If you were relying on the sign-in button to create accounts, add the joining
+  button to your site.
+
+### Fixed
+- **A safety check on the profile the provider sends back.** Where the signed
+  proof of who signed in and the profile details fetched alongside it disagreed
+  about who they described, the details were used anyway. They are now refused.
+  No site is known to have been affected; providers do not normally do this.
+
 ## [1.57.3] - 2026-08-21
 
 ### Fixed

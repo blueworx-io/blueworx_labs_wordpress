@@ -69,10 +69,15 @@ function blueworx_sso_render_detail() {
 		<input type="text" id="blueworx_sso_button_label" name="blueworx_sso_button_label" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'button_label' ) ); ?>" placeholder="<?php esc_attr_e( 'Sign in with single sign-on', 'blueworx-labs-wordpress' ); ?>" />
 	</p>
 	<p>
+		<label for="blueworx_sso_register_button_label"><?php esc_html_e( 'Joining button text', 'blueworx-labs-wordpress' ); ?></label><br />
+		<input type="text" id="blueworx_sso_register_button_label" name="blueworx_sso_register_button_label" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'register_button_label' ) ); ?>" placeholder="<?php esc_attr_e( 'Join with single sign-on', 'blueworx-labs-wordpress' ); ?>" />
+	</p>
+	<p>
 		<label>
 			<input type="checkbox" name="blueworx_sso_auto_register" value="1" <?php checked( '1', blueworx_sso_option( 'auto_register', '0' ) ); ?> />
-			<?php esc_html_e( 'Create an account for anyone who signs in and does not have one', 'blueworx-labs-wordpress' ); ?>
-		</label>
+			<?php esc_html_e( 'Let the joining button create an account for someone who does not have one', 'blueworx-labs-wordpress' ); ?>
+		</label><br />
+		<span class="description"><?php esc_html_e( 'Signing in never creates an account, whatever this is set to.', 'blueworx-labs-wordpress' ); ?></span>
 	</p>
 	<p>
 		<label for="blueworx_sso_default_role"><?php esc_html_e( 'Role for new accounts', 'blueworx-labs-wordpress' ); ?></label><br />
@@ -87,10 +92,27 @@ function blueworx_sso_render_detail() {
 		<label for="blueworx_sso_redirect_after_login"><?php esc_html_e( 'Send people here after signing in', 'blueworx-labs-wordpress' ); ?></label><br />
 		<input type="url" id="blueworx_sso_redirect_after_login" name="blueworx_sso_redirect_after_login" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'redirect_after_login' ) ); ?>" placeholder="<?php echo esc_attr( admin_url() ); ?>" />
 	</p>
+	<p>
+		<label for="blueworx_sso_redirect_after_register"><?php esc_html_e( 'Send people here after joining', 'blueworx-labs-wordpress' ); ?></label><br />
+		<input type="url" id="blueworx_sso_redirect_after_register" name="blueworx_sso_redirect_after_register" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'redirect_after_register' ) ); ?>" />
+		<span class="description"><?php esc_html_e( 'Leave blank to use the same page as signing in.', 'blueworx-labs-wordpress' ); ?></span>
+	</p>
+	<p>
+		<label for="blueworx_sso_no_account_url"><?php esc_html_e( 'Send people here when they sign in and have no account', 'blueworx-labs-wordpress' ); ?></label><br />
+		<input type="url" id="blueworx_sso_no_account_url" name="blueworx_sso_no_account_url" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'no_account_url' ) ); ?>" />
+		<span class="description"><?php esc_html_e( 'Your joining page. Leave blank to show the usual "we could not sign you in" message instead.', 'blueworx-labs-wordpress' ); ?></span>
+	</p>
 
 	<p>
 		<strong><?php esc_html_e( 'Give your provider this address:', 'blueworx-labs-wordpress' ); ?></strong>
 		<code class="blueworx-sso-callback-url"><?php echo esc_html( blueworx_sso_callback_url() ); ?></code>
+	</p>
+	<p>
+		<strong><?php esc_html_e( 'Buttons:', 'blueworx-labs-wordpress' ); ?></strong>
+		<code>[blueworx_sso_button]</code>
+		<?php esc_html_e( 'to sign in, and', 'blueworx-labs-wordpress' ); ?>
+		<code>[blueworx_sso_button intent="register"]</code>
+		<?php esc_html_e( 'to join. The sign-in button is added to the login screen for you.', 'blueworx-labs-wordpress' ); ?>
 	</p>
 	<p>
 		<strong><?php esc_html_e( 'Connection:', 'blueworx-labs-wordpress' ); ?></strong>
@@ -110,6 +132,11 @@ function blueworx_sso_render_detail() {
 			<label for="blueworx_sso_redirect_uri"><?php esc_html_e( 'Return address registered with the provider', 'blueworx-labs-wordpress' ); ?></label><br />
 			<input type="url" id="blueworx_sso_redirect_uri" name="blueworx_sso_redirect_uri" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'redirect_uri' ) ); ?>" placeholder="<?php echo esc_attr( blueworx_sso_callback_url() ); ?>" />
 			<span class="description"><?php esc_html_e( 'Only set this when the provider has an older address registered that cannot be changed.', 'blueworx-labs-wordpress' ); ?></span>
+		</p>
+		<p>
+			<label for="blueworx_sso_signup_prompt"><?php esc_html_e( 'Signup prompt', 'blueworx-labs-wordpress' ); ?></label><br />
+			<input type="text" id="blueworx_sso_signup_prompt" name="blueworx_sso_signup_prompt" class="regular-text" value="<?php echo esc_attr( blueworx_sso_option( 'signup_prompt', 'signup' ) ); ?>" placeholder="signup" />
+			<span class="description"><?php esc_html_e( 'Asks the provider to open on its "create an account" screen when someone joins. Empty it if your provider refuses the request.', 'blueworx-labs-wordpress' ); ?></span>
 		</p>
 		<p>
 			<label for="blueworx_sso_pkce"><?php esc_html_e( 'Proof key (PKCE)', 'blueworx-labs-wordpress' ); ?></label><br />
@@ -192,14 +219,14 @@ function blueworx_sso_render_log() {
  * @return void
  */
 function blueworx_sso_save_settings( $posted ) {
-	$text_fields = array( 'client_id', 'button_label', 'scope' );
+	$text_fields = array( 'client_id', 'button_label', 'register_button_label', 'scope', 'signup_prompt' );
 
 	foreach ( $text_fields as $field ) {
 		$value = isset( $posted[ 'blueworx_sso_' . $field ] ) ? sanitize_text_field( wp_unslash( $posted[ 'blueworx_sso_' . $field ] ) ) : '';
 		update_option( 'blueworx_sso_' . $field, $value, false );
 	}
 
-	$url_fields = array( 'issuer', 'redirect_uri', 'redirect_after_login' );
+	$url_fields = array( 'issuer', 'redirect_uri', 'redirect_after_login', 'redirect_after_register', 'no_account_url' );
 
 	foreach ( blueworx_sso_endpoint_override_fields() as $key => $unused_label ) {
 		$url_fields[] = $key . '_override';

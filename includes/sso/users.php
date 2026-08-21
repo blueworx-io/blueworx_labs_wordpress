@@ -8,7 +8,10 @@
  *  - the provider's own subject identifier is the real key, stored on first use;
  *  - an email may link an identity to an existing account exactly once, and only
  *    when the provider says that email is verified;
- *  - an existing user's role is never changed, and administrator is never given.
+ *  - an existing user's role is never changed, and administrator is never given;
+ *  - only the joining route may create an account. Signing in resolves or
+ *    refuses, so somebody who mistypes their way in never lands in a brand new,
+ *    empty account wondering where everything went.
  *
  * Anything a particular site needs beyond that — extra profile fields, its own
  * roles, membership data — belongs on the hooks at the end of this file, in the
@@ -25,10 +28,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Finds or creates the WordPress user for a verified identity.
  *
- * @param array $claims Verified claims from the provider.
+ * @param array  $claims Verified claims from the provider.
+ * @param string $intent Which button started this: 'login' or 'register'.
  * @return WP_User|WP_Error The user, or an error naming why not.
  */
-function blueworx_sso_resolve_user( $claims ) {
+function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 	$subject = isset( $claims['sub'] ) ? (string) $claims['sub'] : '';
 
 	if ( '' === $subject ) {
@@ -73,7 +77,13 @@ function blueworx_sso_resolve_user( $claims ) {
 			}
 		}
 
-		if ( '1' !== blueworx_sso_option( 'auto_register', '0' ) ) {
+		/*
+		 * Two gates, both of which must be open. The intent stops the sign-in
+		 * button quietly creating accounts for people who already have one under
+		 * another address; the setting is the site owner's say in whether the
+		 * joining button may create accounts at all.
+		 */
+		if ( 'register' !== $intent || '1' !== blueworx_sso_option( 'auto_register', '0' ) ) {
 			return new WP_Error( 'blueworx_sso_no_account', __( 'There is no account here for that sign-in.', 'blueworx-labs-wordpress' ) );
 		}
 
@@ -97,11 +107,12 @@ function blueworx_sso_resolve_user( $claims ) {
 	 * Anything specific to one site belongs here — profile fields, extra roles,
 	 * membership records — in the plugin that owns it, rather than in this one.
 	 *
-	 * @param int   $user_id The person who signed in.
-	 * @param array $claims  Verified claims from the provider.
-	 * @param bool  $is_new  Whether this sign-in created the account.
+	 * @param int    $user_id The person who signed in.
+	 * @param array  $claims  Verified claims from the provider.
+	 * @param bool   $is_new  Whether this sign-in created the account.
+	 * @param string $intent  Which button started this: 'login' or 'register'.
 	 */
-	do_action( 'blueworx_sso_user_authenticated', $user->ID, $claims, $is_new );
+	do_action( 'blueworx_sso_user_authenticated', $user->ID, $claims, $is_new, $intent );
 
 	return $user;
 }

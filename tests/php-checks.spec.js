@@ -19,6 +19,7 @@ const SCRIPTS = [
   'jwt-test.php',
   'login-redirect-test.php',
   'users-test.php',
+  'sso-flow-test.php',
   'rest-users-test.php',
 ];
 
