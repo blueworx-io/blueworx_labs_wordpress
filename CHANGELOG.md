@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.58.0] - 2026-08-20
+## [1.58.0] - 2026-08-21
 
 ### Added
 - **A separate button for joining.** Single sign-on now has two entry points
@@ -33,6 +33,25 @@ versioning.
   proof of who signed in and the profile details fetched alongside it disagreed
   about who they described, the details were used anyway. They are now refused.
   No site is known to have been affected; providers do not normally do this.
+
+## [1.57.3] - 2026-08-21
+
+### Fixed
+- The editor no longer opens with an empty strip across the top when you put it
+  in fullscreen. WordPress 7.1 changed how it reserves room for the toolbar we
+  replace, and we were still leaving that room behind.
+
+### Internal
+- Tests now run against the local copy of the plugin by default, instead of
+  whatever build happens to be deployed on a staging site. A run that says
+  "passed" now says it about the code in front of you. Testing a deployed site is
+  still possible, but you have to ask for it. (#113)
+- The LatePoint layout can now be checked against a real LatePoint install
+  rather than a hand-written imitation of its stylesheet, which is where the last
+  two Bookings layout bugs came from. One command installs it locally; the check
+  skips where it is absent. (#114)
+
+Nothing changes for anyone using the plugin in either of those two.
 
 ## [1.57.2] - 2026-08-06
 

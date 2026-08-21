@@ -7,13 +7,20 @@ import dotenv from 'dotenv';
 //
 // Never overrides a variable that is already set, so CI — which injects these as
 // real secrets, with no .env file present — always wins.
+//
+// MUST run before ./tests/test-target.js is imported: that module reads
+// process.env at import time, so loading .env after it would leave it reading a
+// half-empty environment. A static `import` would be hoisted above this call,
+// hence the dynamic import on the line after.
 dotenv.config({ quiet: true });
 
-const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
+const { baseURL } = await import('./tests/test-target.js');
 
 export default defineConfig({
   testDir: './tests',
+  // Defaults to the local harness (see tests/test-target.js), so a bare run
+  // tests the working tree. This tells you plainly when it is not running.
+  globalSetup: './tests/global-setup.js',
   // These specs mutate ONE shared WordPress: they toggle feature flags, save
   // settings, and hide menu items, then restore. Run them in parallel and they
   // corrupt each other — one spec's "flag off" is another's "flag on", and a

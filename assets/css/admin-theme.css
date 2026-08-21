@@ -769,6 +769,17 @@ div.error {
 		display: none;
 	}
 
+	/* Hiding the bar is not enough on its own. WordPress publishes its height as
+	   a custom property and positions the block and site editors from it —
+	   `.edit-site` and the fullscreen skeleton are both anchored to
+	   `var(--wp-admin--admin-bar--height)`. Left at 32px it reserves a strip for
+	   a bar that is no longer drawn, so fullscreen opens with a gap above the
+	   editor. Zeroed here, in the same block that hides the bar, so the two can
+	   never disagree. Below 783px the native bar stays and so does its height. */
+	html {
+		--wp-admin--admin-bar--height: 0px;
+	}
+
 	html.wp-toolbar {
 		padding-top: 0;
 	}
