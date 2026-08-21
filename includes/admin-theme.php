@@ -77,17 +77,12 @@ function blueworx_enqueue_admin_theme() {
 		return;
 	}
 
-	wp_enqueue_style(
-		'blueworx-admin-fonts',
-		BLUEWORX_LABS_URL . 'assets/css/blueworx-fonts.css',
-		array(),
-		blueworx_get_admin_asset_version( 'assets/css/blueworx-fonts.css' )
-	);
+	blueworx_enqueue_admin_design_style();
 
 	wp_enqueue_style(
 		'blueworx-admin-theme',
 		BLUEWORX_LABS_URL . 'assets/css/admin-theme.css',
-		array( 'blueworx-admin-fonts' ),
+		array( 'blueworx-admin-design' ),
 		blueworx_get_admin_asset_version( 'assets/css/admin-theme.css' )
 	);
 
@@ -170,17 +165,12 @@ function blueworx_enqueue_login_theme() {
 		return;
 	}
 
-	wp_enqueue_style(
-		'blueworx-admin-fonts',
-		BLUEWORX_LABS_URL . 'assets/css/blueworx-fonts.css',
-		array(),
-		blueworx_get_admin_asset_version( 'assets/css/blueworx-fonts.css' )
-	);
+	blueworx_enqueue_admin_design_style();
 
 	wp_enqueue_style(
 		'blueworx-login-theme',
 		BLUEWORX_LABS_URL . 'assets/css/login-theme.css',
-		array( 'blueworx-admin-fonts' ),
+		array( 'blueworx-admin-design' ),
 		blueworx_get_admin_asset_version( 'assets/css/login-theme.css' )
 	);
 
@@ -1014,9 +1004,9 @@ function blueworx_print_admin_menu_decorations() {
 				if ( data.count && ! row.querySelector( '.update-plugins, .awaiting-mod' ) ) {
 					var name = row.querySelector( '.wp-menu-name' );
 
-					if ( name && ! name.querySelector( '.bw-badge' ) ) {
+					if ( name && ! name.querySelector( '.bwx-badge' ) ) {
 						var badge = document.createElement( 'span' );
-						badge.className = 'bw-badge';
+						badge.className = 'bwx-badge';
 						badge.textContent = String( data.count );
 						badge.setAttribute( 'aria-label', data.label );
 						name.appendChild( badge );

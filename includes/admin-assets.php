@@ -27,6 +27,96 @@ function blueworx_get_admin_asset_version( $relative_path ) {
 }
 
 /**
+ * The four BlueWorx screens the shared admin design system may style.
+ *
+ * Deliberately a short, explicit list rather than a prefix match. The system's
+ * component styles are opt-in: they belong on screens this plugin owns
+ * end-to-end, and nowhere near WordPress's own screens, where they would
+ * restyle furniture we do not control.
+ *
+ * @return string[] Admin hook suffixes.
+ */
+function blueworx_admin_design_screens() {
+	return array(
+		'toplevel_page_blueworx-labs-wordpress',
+		'blueworx_page_blueworx-guides',
+		'blueworx_page_blueworx-edit-menu',
+		'blueworx_page_blueworx-cache',
+	);
+}
+
+/**
+ * Enqueues the shared design system stylesheet.
+ *
+ * Also the plugin's only source of @font-face for Sora and Inter — the separate
+ * fonts stylesheet this replaced declared the same six faces against the same
+ * files, and two declarations of one thing is one too many. That is why the
+ * admin re-skin and the login screen call this too, rather than each carrying a
+ * copy: they need the faces, and this is where they now live.
+ *
+ * @return void
+ */
+function blueworx_enqueue_admin_design_style() {
+	wp_enqueue_style(
+		'blueworx-admin-design',
+		BLUEWORX_LABS_URL . 'assets/blueworx-admin-design.css',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/blueworx-admin-design.css' )
+	);
+}
+
+/**
+ * Loads the design system on the BlueWorx screens.
+ *
+ * Registered separately from blueworx_enqueue_admin_assets() on purpose: that
+ * function returns early on some screens once it has loaded what they need, and
+ * a stylesheet every BlueWorx screen depends on should not sit behind another
+ * screen's early return.
+ *
+ * @param string $hook_suffix Current admin screen hook.
+ * @return void
+ */
+function blueworx_enqueue_admin_design_system( $hook_suffix ) {
+	if ( ! in_array( $hook_suffix, blueworx_admin_design_screens(), true ) ) {
+		return;
+	}
+
+	blueworx_enqueue_admin_design_style();
+
+	// Icons are inlined as SVG by the design system's own module, which upgrades
+	// any [data-lucide] element. Shipped as a module because that is how the
+	// system publishes it; the markup degrades to an empty span without it.
+	wp_enqueue_script(
+		'blueworx-admin-design-icons',
+		BLUEWORX_LABS_URL . 'assets/js/blueworx-admin-design-icons.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/blueworx-admin-design-icons.js' ),
+		true
+	);
+}
+add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_design_system' );
+
+/**
+ * Serves the icon module as a real ES module.
+ *
+ * wp_enqueue_script() has no module type of its own on the WordPress versions
+ * this plugin supports, and the file uses `export`, so without this the browser
+ * rejects it on the first export statement.
+ *
+ * @param string $tag    Script tag.
+ * @param string $handle Script handle.
+ * @return string Script tag.
+ */
+function blueworx_admin_design_icons_module( $tag, $handle ) {
+	if ( 'blueworx-admin-design-icons' !== $handle ) {
+		return $tag;
+	}
+
+	return str_replace( '<script ', '<script type="module" ', $tag );
+}
+add_filter( 'script_loader_tag', 'blueworx_admin_design_icons_module', 10, 2 );
+
+/**
  * Loads admin scripts only on screens touched by this plugin.
  *
  * @param string $hook_suffix Current admin screen hook.

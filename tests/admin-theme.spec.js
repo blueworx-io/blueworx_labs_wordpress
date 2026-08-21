@@ -286,7 +286,7 @@ test.describe('BlueWorx admin theme', () => {
     const published = parseInt(publishedText.replace(/\D/g, ''), 10);
 
     await page.goto(DASH_PATH);
-    const badge = page.locator('#adminmenu li a[href="edit.php"] .bw-badge');
+    const badge = page.locator('#adminmenu li a[href="edit.php"] .bwx-badge');
 
     if (published > 0) {
       await expect(badge).toHaveText(String(published));

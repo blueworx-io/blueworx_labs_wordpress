@@ -1104,7 +1104,7 @@ body.latepoint-admin #wpcontent {
    given a fixed 18px box — line-height plus padding previously came to 20.5px
    and made every badged row 1px taller than its neighbours. Keep the height
    below the label's line box; do not swap it back for padding + line-height. */
-.bw-badge {
+.bwx-badge {
 	align-items: center;
 	background: rgba(255, 255, 255, .08);
 	border-radius: 9999px;
@@ -1120,8 +1120,8 @@ body.latepoint-admin #wpcontent {
 	padding: 0 6px;
 }
 
-#adminmenu li.current .bw-badge,
-#adminmenu li.wp-has-current-submenu .bw-badge {
+#adminmenu li.current .bwx-badge,
+#adminmenu li.wp-has-current-submenu .bwx-badge {
 	background: rgba(255, 255, 255, .22);
 	color: #fff;
 }
@@ -1173,7 +1173,7 @@ body.latepoint-admin #wpcontent {
 /* Folded: labels, badges and headings collapse; icons remain. */
 @media only screen and (min-width: 783px) {
 	body.folded #adminmenu li.bw-group-start::before,
-	body.folded .bw-badge,
+	body.folded .bwx-badge,
 	body.folded #adminmenu li.bw-logout a span {
 		display: none;
 	}
@@ -1200,7 +1200,7 @@ body.latepoint-admin #wpcontent {
  */
 @media only screen and (min-width: 783px) and (max-width: 960px) {
 	body.auto-fold #adminmenu li.bw-group-start::before,
-	body.auto-fold .bw-badge,
+	body.auto-fold .bwx-badge,
 	body.auto-fold #adminmenu li.bw-logout a span {
 		display: none;
 	}
@@ -1324,7 +1324,7 @@ body.latepoint-admin #wpcontent {
 	flex-shrink: 0;
 }
 
-.bw-profile-hero .bw-btn {
+.bw-profile-hero .bwx-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -1338,25 +1338,25 @@ body.latepoint-admin #wpcontent {
 	cursor: pointer;
 }
 
-.bw-profile-hero .bw-btn-ghost {
+.bw-profile-hero .bwx-btn-ghost {
 	color: #fff;
 	background: transparent;
 	border-color: rgba(255, 255, 255, .25);
 }
 
-.bw-profile-hero .bw-btn-ghost:hover,
-.bw-profile-hero .bw-btn-ghost:focus {
+.bw-profile-hero .bwx-btn-ghost:hover,
+.bw-profile-hero .bwx-btn-ghost:focus {
 	background: rgba(255, 255, 255, .08);
 	color: #fff;
 }
 
-.bw-profile-hero .bw-btn-primary {
+.bw-profile-hero .bwx-btn-primary {
 	color: #fff;
 	background: var(--bw-primary);
 }
 
-.bw-profile-hero .bw-btn-primary:hover,
-.bw-profile-hero .bw-btn-primary:focus {
+.bw-profile-hero .bwx-btn-primary:hover,
+.bw-profile-hero .bwx-btn-primary:focus {
 	background: var(--bw-primary-dark);
 	color: #fff;
 }
@@ -1461,7 +1461,7 @@ body.latepoint-admin #wpcontent {
 	border-color: rgba(255, 48, 47, .35);
 }
 
-.bw-profile-danger .bw-btn-danger {
+.bw-profile-danger .bwx-btn-danger {
 	display: inline-flex;
 	align-items: center;
 	border: 1px solid var(--bw-error);
@@ -1474,8 +1474,8 @@ body.latepoint-admin #wpcontent {
 	text-decoration: none;
 }
 
-.bw-profile-danger .bw-btn-danger:hover,
-.bw-profile-danger .bw-btn-danger:focus {
+.bw-profile-danger .bwx-btn-danger:hover,
+.bw-profile-danger .bwx-btn-danger:focus {
 	color: #fff;
 	background: var(--bw-error);
 }

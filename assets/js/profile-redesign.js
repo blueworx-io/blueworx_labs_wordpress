@@ -108,8 +108,8 @@
 				'</div>' +
 			'</div>' +
 			'<div class="bw-profile-hero-actions">' +
-				( data.postsUrl ? '<a class="bw-btn bw-btn-ghost" href="' + encodeURI( data.postsUrl ) + '">' + escapeHtml( data.viewLabel ) + '</a>' : '' ) +
-				'<button type="button" class="bw-btn bw-btn-primary" id="bw-profile-save">' + escapeHtml( data.saveLabel ) + '</button>' +
+				( data.postsUrl ? '<a class="bwx-btn bwx-btn-ghost" href="' + encodeURI( data.postsUrl ) + '">' + escapeHtml( data.viewLabel ) + '</a>' : '' ) +
+				'<button type="button" class="bwx-btn bwx-btn-primary" id="bw-profile-save">' + escapeHtml( data.saveLabel ) + '</button>' +
 			'</div>';
 
 		return hero;
@@ -236,7 +236,7 @@
 			danger.innerHTML =
 				'<h2 class="bw-profile-card-title">' + escapeHtml( data.deleteLabel ) + '</h2>' +
 				'<p class="bw-profile-card-sub">' + escapeHtml( data.dangerSub ) + '</p>' +
-				'<a class="bw-btn bw-btn-danger" href="' + encodeURI( data.deleteUrl ) + '">' +
+				'<a class="bwx-btn bwx-btn-danger" href="' + encodeURI( data.deleteUrl ) + '">' +
 					escapeHtml( data.deleteLabel ) +
 				'</a>';
 			rightCol.appendChild( danger );
