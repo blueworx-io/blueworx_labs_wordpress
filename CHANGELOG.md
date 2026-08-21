@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.1] - 2026-08-21
+
+### Internal
+- The BlueWorx screens now draw from the shared BlueWorx design system rather
+  than their own stylesheet, so they look like the rest of BlueWorx and stay
+  that way on their own. Nothing on screen changes yet — this release only puts
+  the system in place for the screen rebuilds that follow. (#115)
+
+Nothing changes for anyone using the plugin.
+
 ## [1.58.0] - 2026-08-21
 
 ### Added
