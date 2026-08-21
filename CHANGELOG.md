@@ -6,6 +6,11 @@ versioning.
 
 ## [1.57.3] - 2026-08-21
 
+### Fixed
+- The editor no longer opens with an empty strip across the top when you put it
+  in fullscreen. WordPress 7.1 changed how it reserves room for the toolbar we
+  replace, and we were still leaving that room behind.
+
 ### Internal
 - Tests now run against the local copy of the plugin by default, instead of
   whatever build happens to be deployed on a staging site. A run that says
@@ -16,7 +21,7 @@ versioning.
   two Bookings layout bugs came from. One command installs it locally; the check
   skips where it is absent. (#114)
 
-Nothing changes for anyone using the plugin in either case.
+Nothing changes for anyone using the plugin in either of those two.
 
 ## [1.57.2] - 2026-08-06
 
