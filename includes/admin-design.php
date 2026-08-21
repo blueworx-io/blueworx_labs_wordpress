@@ -35,14 +35,24 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function blueworx_ds_allowed_html() {
 	$global = array(
-		'class'       => true,
-		'id'          => true,
-		'style'       => true,
-		'title'       => true,
-		'role'        => true,
-		'tabindex'    => true,
-		'hidden'      => true,
-		'data-lucide' => true,
+		'class'    => true,
+		'id'       => true,
+		'style'    => true,
+		'title'    => true,
+		'role'     => true,
+		'tabindex' => true,
+		'hidden'   => true,
+
+		// Our own hooks. wp_kses() has no wildcard, so every data attribute the
+		// screens rely on is listed here or it is silently dropped — which looks
+		// exactly like markup that was never rendered.
+		'data-lucide'                => true,
+		'data-blueworx-feature'      => true,
+		'data-blueworx-detail'       => true,
+		'data-blueworx-guide'        => true,
+		'data-blueworx-guide-tab'    => true,
+		'data-blueworx-guide-panel'  => true,
+		'data-blueworx-roles'        => true,
 	);
 
 	// Every aria-* and data-* attribute our screens use, spelled out: wp_kses()
@@ -335,6 +345,7 @@ function blueworx_ds_page_header( $args ) {
  *     @type string $actions Head actions HTML.
  *     @type string $footer  Footer HTML.
  *     @type bool   $flush   Whether the body drops its padding (tables).
+ *     @type array  $attrs   Extra attributes on the section element.
  * }
  * @return string HTML.
  */
@@ -349,6 +360,7 @@ function blueworx_ds_card( $args ) {
 			'actions' => '',
 			'footer'  => '',
 			'flush'   => false,
+			'attrs'   => array(),
 		)
 	);
 
@@ -380,8 +392,9 @@ function blueworx_ds_card( $args ) {
 	$footer = '' !== $args['footer'] ? '<div class="bw-card__foot">' . $args['footer'] . '</div>' : '';
 
 	return sprintf(
-		'<section class="bw-card%1$s">%2$s%3$s%4$s</section>',
+		'<section class="bw-card%1$s"%2$s>%3$s%4$s%5$s</section>',
 		$args['flush'] ? ' bw-card--flush' : '',
+		blueworx_ds_attrs( $args['attrs'] ),
 		$head,
 		$body,
 		$footer

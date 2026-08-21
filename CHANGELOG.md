@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.3] - 2026-08-21
+
+### Changed
+- **The Guides screen has been rebuilt.** Each guide is now a card, the section
+  tabs say how many guides sit behind them, and a site with nothing switched on
+  gets a proper explanation and a way through to Enhancements instead of a bare
+  line of text. Tabs are still ordinary links, so you can still bookmark one or
+  send it to somebody. (#117)
+
 ## [1.58.2] - 2026-08-21
 
 ### Changed

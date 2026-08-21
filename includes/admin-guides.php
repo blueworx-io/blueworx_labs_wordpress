@@ -98,62 +98,115 @@ function blueworx_render_guides_page() {
 	$tabs   = blueworx_get_populated_guide_tabs( $guides );
 	$active = blueworx_current_guide_tab( $tabs );
 
+	$header = blueworx_ds_page_header(
+		array(
+			'title' => __( 'Guides', 'blueworx-labs-wordpress' ),
+			'lede'  => __( 'How to use this site and everything BlueWorx adds to it. Switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
+	echo wp_kses( blueworx_ds_screen_open( $header ), blueworx_ds_allowed_html() );
+
 	if ( empty( $tabs ) ) {
-		?>
-		<div class="wrap blueworx-guides">
-			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-			<p><?php esc_html_e( 'No guides are available. Every function is switched off in BlueWorx > Enhancements.', 'blueworx-labs-wordpress' ); ?></p>
-		</div>
-		<?php
+		echo wp_kses(
+			'<div class="bw-page__body">'
+				. blueworx_ds_empty_state(
+					array(
+						'icon'    => 'lightbulb',
+						'title'   => __( 'Nothing is switched on yet', 'blueworx-labs-wordpress' ),
+						'text'    => __( 'Guides appear here for whatever you have switched on. Turn something on and its guide comes with it.', 'blueworx-labs-wordpress' ),
+						'actions' => blueworx_ds_button(
+							array(
+								'label'   => __( 'Go to Enhancements', 'blueworx-labs-wordpress' ),
+								'variant' => 'primary',
+								'href'    => admin_url( 'admin.php?page=blueworx-labs-wordpress' ),
+							)
+						),
+					)
+				)
+				. '</div>',
+			blueworx_ds_allowed_html()
+		);
+
+		echo wp_kses( blueworx_ds_screen_close(), blueworx_ds_allowed_html() );
+
 		return;
 	}
-	?>
-	<div class="wrap blueworx-guides">
-		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
-		<p><?php esc_html_e( 'How to use this site and everything BlueWorx adds to it. Only functions that are switched on appear here.', 'blueworx-labs-wordpress' ); ?></p>
+	// How many guides sit behind each tab, so a tab can say so before you open it.
+	$counts = array();
 
-		<nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php esc_attr_e( 'Guide sections', 'blueworx-labs-wordpress' ); ?>">
-			<?php
-			foreach ( $tabs as $id => $label ) :
-				$url = add_query_arg(
-					array(
-						'page' => 'blueworx-guides',
-						'tab'  => $id,
-					),
-					admin_url( 'admin.php' )
-				);
-				?>
-				<a
-					href="<?php echo esc_url( $url ); ?>"
-					class="nav-tab<?php echo $id === $active ? ' nav-tab-active' : ''; ?>"
-					data-blueworx-guide-tab="<?php echo esc_attr( $id ); ?>"
-					<?php echo $id === $active ? ' aria-current="page"' : ''; ?>
-				><?php echo esc_html( $label ); ?></a>
-			<?php endforeach; ?>
-		</nav>
+	foreach ( $guides as $guide ) {
+		$tab            = isset( $tabs[ $guide['tab'] ] ) ? $guide['tab'] : BLUEWORX_GUIDES_FALLBACK_TAB;
+		$counts[ $tab ] = isset( $counts[ $tab ] ) ? $counts[ $tab ] + 1 : 1;
+	}
 
-		<div class="blueworx-guides-panel" data-blueworx-guide-panel="<?php echo esc_attr( $active ); ?>">
-			<?php
-			foreach ( $guides as $guide ) :
-				if ( $guide['tab'] !== $active ) {
-					continue;
-				}
-				?>
-				<div class="postbox blueworx-guide" data-blueworx-guide="<?php echo esc_attr( $guide['id'] ); ?>">
-					<div class="postbox-header">
-						<h2 class="hndle"><?php echo esc_html( $guide['title'] ); ?></h2>
-					</div>
-					<div class="inside">
-						<?php
-						// Guides can come from other plugins, so the body is filtered
-						// down to safe post markup — no scripts, no event handlers.
-						echo wp_kses_post( $guide['body'] );
-						?>
-					</div>
-				</div>
-			<?php endforeach; ?>
-		</div>
-	</div>
-	<?php
+	// Anchors, not the design system's buttons. Each tab is a real URL somebody
+	// can be sent, and the screen has to work with JavaScript off — which a
+	// button that swaps panels client-side would take away.
+	$tab_html = '';
+
+	foreach ( $tabs as $id => $label ) {
+		$url = add_query_arg(
+			array(
+				'page' => 'blueworx-guides',
+				'tab'  => $id,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		$count = isset( $counts[ $id ] ) ? '<span class="bw-tab__count">' . esc_html( (string) $counts[ $id ] ) . '</span>' : '';
+
+		$tab_html .= sprintf(
+			'<a class="bw-tab%1$s" href="%2$s" data-blueworx-guide-tab="%3$s"%4$s>%5$s%6$s</a>',
+			$id === $active ? ' is-active' : '',
+			esc_url( $url ),
+			esc_attr( $id ),
+			$id === $active ? ' aria-current="page"' : '',
+			esc_html( $label ),
+			$count
+		);
+	}
+
+	// The tab bar and the guides are one column, not two: .bw-page__body is a
+	// flex row (main plus sidebar), so they have to share a .bw-panels column or
+	// the tabs become a narrow left-hand rail.
+	printf(
+		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-tabs bw-tabs--inset" aria-label="%1$s">%2$s</nav>',
+		esc_attr__( 'Guide sections', 'blueworx-labs-wordpress' ),
+		wp_kses( $tab_html, blueworx_ds_allowed_html() )
+	);
+
+	printf(
+		'<div class="bw-guides bw-panels" data-blueworx-guide-panel="%s">',
+		esc_attr( $active )
+	);
+
+	foreach ( $guides as $guide ) {
+		if ( $guide['tab'] !== $active ) {
+			continue;
+		}
+
+		// Guides can come from other plugins, so the body is still filtered down
+		// to safe post markup — no scripts, no event handlers. Unchanged.
+		$body = wp_kses_post( $guide['body'] );
+
+		echo wp_kses(
+			blueworx_ds_card(
+				array(
+					'eyebrow' => isset( $tabs[ $guide['tab'] ] ) ? $tabs[ $guide['tab'] ] : '',
+					'title'   => $guide['title'],
+					'body'    => $body,
+					// Kept from the old markup: other plugins and the tests both
+					// address guides by id, and that is not ours to break.
+					'attrs'   => array( 'data-blueworx-guide' => $guide['id'] ),
+				)
+			),
+			blueworx_ds_allowed_html()
+		);
+	}
+
+	echo '</div></div></div>';
+
+	echo wp_kses( blueworx_ds_screen_close(), blueworx_ds_allowed_html() );
 }
