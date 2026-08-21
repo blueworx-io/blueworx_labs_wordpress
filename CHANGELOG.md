@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.57.3] - 2026-08-21
+
+### Internal
+- Tests now run against the local copy of the plugin by default, instead of
+  whatever build happens to be deployed on a staging site. A run that says
+  "passed" now says it about the code in front of you. Testing a deployed site is
+  still possible, but you have to ask for it. (#113)
+- The LatePoint layout can now be checked against a real LatePoint install
+  rather than a hand-written imitation of its stylesheet, which is where the last
+  two Bookings layout bugs came from. One command installs it locally; the check
+  skips where it is absent. (#114)
+
+Nothing changes for anyone using the plugin in either case.
+
 ## [1.57.2] - 2026-08-06
 
 ### Fixed
