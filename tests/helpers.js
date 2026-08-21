@@ -6,6 +6,10 @@
  */
 
 import { test as base } from '@playwright/test';
+// Imported, not just re-exported: `export ... from` forwards the names without
+// binding them in this module, so login() below would see an undefined
+// ADMIN_USER and fail with a ReferenceError inside a helper that looks fine.
+import { baseURL, isPlaceholder, ADMIN_USER, ADMIN_PASS, LOGIN_PATH_RAW } from './test-target.js';
 
 export { expect } from '@playwright/test';
 
@@ -55,12 +59,10 @@ export const test = base.extend({
   },
 });
 
-export const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
-
-export const isPlaceholder = /placeholder/i.test(baseURL);
-export const ADMIN_USER = process.env.WP_ADMIN_USER;
-export const ADMIN_PASS = process.env.WP_ADMIN_PASS;
+// Passed through, not redefined: playwright.config.js resolves the same values
+// from the same module, so the two can no longer disagree about which site is
+// under test. See tests/test-target.js for why the default is the local harness.
+export { baseURL, isPlaceholder, ADMIN_USER, ADMIN_PASS };
 
 /**
  * Path of the login form.
@@ -77,8 +79,7 @@ export const ADMIN_PASS = process.env.WP_ADMIN_PASS;
  * into "c:/Program Files/Git/admin_login" before Node sees it. Normalising here
  * means callers cannot get it wrong either way.
  */
-const rawLoginPath = process.env.WP_LOGIN_PATH || 'wp-login.php';
-export const LOGIN_PATH = `/${String(rawLoginPath).replace(/^.*[/\\]/, '').trim()}`;
+export const LOGIN_PATH = `/${String(LOGIN_PATH_RAW).replace(/^.*[/\\]/, '').trim()}`;
 
 export const DASH_PATH = '/wp-admin/index.php';
 

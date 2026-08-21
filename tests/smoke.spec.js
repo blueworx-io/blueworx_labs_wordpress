@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-const baseURL =
-  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'https://staging.placeholder.blueworx.io';
-const isPlaceholder = /placeholder/i.test(baseURL);
+import { isPlaceholder } from './test-target.js';
 
 test('site responds at the base URL', async ({ page }) => {
   test.skip(isPlaceholder, 'No real staging/preview URL configured yet (placeholder in use).');
