@@ -32,6 +32,19 @@ function thirdPartyGuides(command) {
   return execFileSync('php', [fixture, wpLoad, command], { encoding: 'utf8' }).trim();
 }
 
+/**
+ * Installs or removes the must-use plugin that empties the guide list, for the
+ * "nothing is switched on" state. See tests/fixtures/guides-none.php.
+ *
+ * @param {'install'|'remove'} command Fixture command.
+ * @return {string} Fixture stdout.
+ */
+function noGuides(command) {
+  const fixture = path.join(__dirname, 'fixtures', 'guides-none.php');
+  const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+  return execFileSync('php', [fixture, wpLoad, command], { encoding: 'utf8' }).trim();
+}
+
 async function gotoGuides(page, tab) {
   await login(page);
   await page.goto(tab ? `${GUIDES_PATH}&tab=${tab}` : GUIDES_PATH);
@@ -57,16 +70,33 @@ test.describe('BlueWorx Guides page', () => {
 
     // No tab named in the query string means the first one, Getting started.
     await expect(page.locator('[data-blueworx-guide-tab="getting-started"]')).toHaveClass(
-      /nav-tab-active/
+      /is-active/
     );
     await expect(page.locator('[data-blueworx-guide="basics-pages-and-posts"]')).toBeVisible();
+  });
+
+  test('tabs are not underlined, and real links still are', async ({ page }) => {
+    await gotoGuides(page);
+
+    // The system's base link rule is a default, not a winner: a component that
+    // turns the underline off has to be able to. When it could not, every tab,
+    // nav row and anchor-rendered button came out underlined.
+    const tab = page.locator('[data-blueworx-guide-tab="getting-started"]');
+    await expect(tab).toHaveCSS('text-decoration-line', 'none');
+
+    // And the default itself is still there for prose links, which is the half
+    // worth keeping.
+    const proseLink = page.locator('.bw-admin .bw-guide a:not([class])').first();
+    if (await proseLink.count()) {
+      await expect(proseLink).toHaveCSS('text-decoration-line', 'underline');
+    }
   });
 
   test('each tab shows only its own guides', async ({ page }) => {
     await gotoGuides(page, 'security');
 
     await expect(page.locator('[data-blueworx-guide-tab="security"]')).toHaveClass(
-      /nav-tab-active/
+      /is-active/
     );
     // A feature guide from this section is present...
     await expect(page.locator('[data-blueworx-guide="feature-login"]')).toBeVisible();
@@ -80,7 +110,7 @@ test.describe('BlueWorx Guides page', () => {
     await gotoGuides(page, 'no-such-tab');
 
     await expect(page.locator('[data-blueworx-guide-tab="getting-started"]')).toHaveClass(
-      /nav-tab-active/
+      /is-active/
     );
     await expect(page.locator('[data-blueworx-guide="basics-pages-and-posts"]')).toBeVisible();
   });
@@ -169,5 +199,54 @@ test.describe('BlueWorx Guides page', () => {
     await gotoGuides(page);
     await expect(page.locator('[data-blueworx-guide-tab="acme"]')).toHaveCount(0);
     await expect(page.locator('[data-blueworx-guide-tab="other"]')).toHaveCount(0);
+  });
+
+  test('tabs still work with JavaScript off', async ({ browser }) => {
+    // The tabs look like the design system's Tabs component, which switches
+    // panels client-side. Ours must not: each tab is a real URL a client can be
+    // sent, and the screen has to work for someone with scripting disabled.
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await page.goto(GUIDES_PATH);
+
+      const security = page.locator('[data-blueworx-guide-tab="security"]');
+      await expect(security).toBeVisible();
+
+      // Real navigation, not a click handler: the href alone gets you there.
+      const href = await security.getAttribute('href');
+      expect(href).toContain('tab=security');
+
+      await page.goto(href);
+      await expect(page.locator('[data-blueworx-guide-tab="security"]')).toHaveClass(/is-active/);
+      await expect(page.locator('[data-blueworx-guide="feature-login"]')).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('says so plainly when there is nothing to show', async ({ page }) => {
+    noGuides('install');
+
+    try {
+      await gotoGuides(page);
+
+      const empty = page.locator('.bw-empty');
+      await expect(empty).toBeVisible();
+      await expect(empty).toContainText('Nothing is switched on yet');
+
+      // The way out has to be on the screen: an empty page with no next step is
+      // where people give up.
+      const cta = empty.getByRole('link', { name: 'Go to Enhancements' });
+      await expect(cta).toBeVisible();
+      await expect(cta).toHaveAttribute('href', /page=blueworx-labs-wordpress/);
+
+      // No tab bar to click into, since there is nothing behind it.
+      await expect(page.locator('.bw-tabs')).toHaveCount(0);
+    } finally {
+      noGuides('remove');
+    }
   });
 });
