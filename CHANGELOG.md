@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.4] - 2026-08-22
+
+### Fixed
+- **Tabs, menu rows and buttons are no longer underlined.** Anything on a
+  BlueWorx screen that is a link underneath — a tab, a row in the side menu, a
+  button you can right-click and open in a new window — was being underlined as
+  though it were a link in a sentence. Ordinary links in text still are.
+
 ## [1.58.3] - 2026-08-21
 
 ### Changed

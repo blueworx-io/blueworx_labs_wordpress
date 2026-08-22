@@ -75,6 +75,23 @@ test.describe('BlueWorx Guides page', () => {
     await expect(page.locator('[data-blueworx-guide="basics-pages-and-posts"]')).toBeVisible();
   });
 
+  test('tabs are not underlined, and real links still are', async ({ page }) => {
+    await gotoGuides(page);
+
+    // The system's base link rule is a default, not a winner: a component that
+    // turns the underline off has to be able to. When it could not, every tab,
+    // nav row and anchor-rendered button came out underlined.
+    const tab = page.locator('[data-blueworx-guide-tab="getting-started"]');
+    await expect(tab).toHaveCSS('text-decoration-line', 'none');
+
+    // And the default itself is still there for prose links, which is the half
+    // worth keeping.
+    const proseLink = page.locator('.bw-admin .bw-guide a:not([class])').first();
+    if (await proseLink.count()) {
+      await expect(proseLink).toHaveCSS('text-decoration-line', 'underline');
+    }
+  });
+
   test('each tab shows only its own guides', async ({ page }) => {
     await gotoGuides(page, 'security');
 
