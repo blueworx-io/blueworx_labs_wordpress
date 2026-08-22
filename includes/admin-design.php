@@ -202,6 +202,8 @@ function blueworx_ds_icon( $name, $size = 16 ) {
  *     @type string $href     Renders an anchor instead of a button.
  *     @type string $type     Button type. Default button.
  *     @type bool   $disabled Whether the control is disabled.
+ *     @type string $class    Extra class, for a component that positions its
+ *                            own button — never for restyling one.
  *     @type array  $attrs    Extra HTML attributes, name => value.
  * }
  * @return string HTML.
@@ -217,6 +219,7 @@ function blueworx_ds_button( $args ) {
 			'href'     => '',
 			'type'     => 'button',
 			'disabled' => false,
+			'class'    => '',
 			'attrs'    => array(),
 		)
 	);
@@ -225,6 +228,10 @@ function blueworx_ds_button( $args ) {
 
 	if ( 'md' !== $args['size'] ) {
 		$classes[] = 'bw-btn--' . $args['size'];
+	}
+
+	if ( '' !== $args['class'] ) {
+		$classes[] = $args['class'];
 	}
 
 	$inner = '';
@@ -487,6 +494,61 @@ function blueworx_ds_empty_state( $args ) {
 	$html .= '' !== $args['actions'] ? '<div class="bw-empty__actions">' . $args['actions'] . '</div>' : '';
 
 	return $html . '</div>';
+}
+
+/**
+ * Renders a read-only value with a copy button beside it.
+ *
+ * The value sits in a real <input> rather than a <code> block so it can be
+ * selected with the keyboard, and so the copy still works where
+ * navigator.clipboard does not exist — which is every site served over plain
+ * HTTP. assets/js/copy-field.js binds any button carrying data-blueworx-copy
+ * to the field whose id it names.
+ *
+ * @param array $args {
+ *     @type string $value Value to show.
+ *     @type string $id    Field id, and the handle the button copies by.
+ *     @type string $label Copy button label.
+ *     @type string $done  Button label while the copy is fresh.
+ *     @type bool   $mono  Whether to render the value in the mono face.
+ *     @type array  $attrs Extra attributes for the input.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_copy_field( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'value' => '',
+			'id'    => 'bw-copy-field',
+			'label' => __( 'Copy', 'blueworx-labs-wordpress' ),
+			'done'  => __( 'Copied', 'blueworx-labs-wordpress' ),
+			'mono'  => true,
+			'attrs' => array(),
+		)
+	);
+
+	$input = sprintf(
+		'<input type="text" class="%1$s" id="%2$s" value="%3$s" readonly%4$s />',
+		esc_attr( 'bw-input' . ( $args['mono'] ? ' bw-input--mono' : '' ) ),
+		esc_attr( $args['id'] ),
+		esc_attr( $args['value'] ),
+		blueworx_ds_attrs( $args['attrs'] )
+	);
+
+	$button = blueworx_ds_button(
+		array(
+			'label' => $args['label'],
+			'icon'  => 'file',
+			'class' => 'bw-copyfield__btn',
+			'attrs' => array(
+				'data-blueworx-copy' => $args['id'],
+				'data-copied-label'  => $args['done'],
+			),
+		)
+	);
+
+	return '<div class="bw-copyfield">' . $input . $button . '</div>';
 }
 
 /**

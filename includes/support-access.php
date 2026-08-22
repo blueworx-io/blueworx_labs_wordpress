@@ -1463,29 +1463,55 @@ function blueworx_support_claude_prompt( $key = '' ) {
  * @return void
  */
 function blueworx_support_render_panel() {
-	$self_url = admin_url( 'admin.php?page=blueworx-labs-wordpress' );
-	?>
-	<?php if ( '' !== $GLOBALS['blueworx_support_new_key'] ) : ?>
-		<p><strong><?php esc_html_e( 'Copy this key now — it is not shown again.', 'blueworx-labs-wordpress' ); ?></strong></p>
-		<code data-testid="bw-support-key"><?php echo esc_html( $GLOBALS['blueworx_support_new_key'] ); ?></code>
-	<?php endif; ?>
+	$self_url  = admin_url( 'admin.php?page=blueworx-labs-wordpress' );
+	$open      = blueworx_support_access_open();
+	$has_key   = blueworx_support_has_key();
+	$new_key   = $GLOBALS['blueworx_support_new_key'];
+	$open_text = '';
 
-	<?php if ( blueworx_support_is_throttled() ) : ?>
-		<div class="notice notice-warning inline">
-			<p>
-				<?php
-				esc_html_e(
-					'Repeated failed key attempts have temporarily blocked support access from this address. Generating or revoking a key clears this.',
-					'blueworx-labs-wordpress'
-				);
-				?>
-			</p>
-		</div>
-	<?php endif; ?>
+	// Every submit button posts straight back to this page, and formaction is
+	// the whole mechanism — see the note above. Nothing here goes through
+	// wp_kses(): the design system helpers escape everything they emit, and an
+	// allow-list would silently drop formaction and leave a panel that looks
+	// right and saves to the wrong handler.
+	$post_here = array(
+		'formaction' => $self_url,
+		'formmethod' => 'post',
+	);
 
-	<?php if ( blueworx_support_access_open() ) : ?>
-		<?php
-		$blueworx_support_until = (int) get_option( 'blueworx_support_access_until', 0 );
+	echo '<div class="bw-fields bw-fields--single">';
+
+	if ( '' !== $new_key ) {
+		echo blueworx_ds_notice(
+			array(
+				'tone'  => 'warning',
+				'title' => __( 'Copy this key now — it is not shown again.', 'blueworx-labs-wordpress' ),
+				'text'  => __( 'Nothing on this site can show it to you a second time. Generate a new key if you lose it.', 'blueworx-labs-wordpress' ),
+			)
+		);
+
+		echo blueworx_ds_copy_field(
+			array(
+				'value' => $new_key,
+				'id'    => 'bw-support-key',
+				'label' => __( 'Copy key', 'blueworx-labs-wordpress' ),
+				'attrs' => array( 'data-testid' => 'bw-support-key' ),
+			)
+		);
+	}
+
+	if ( blueworx_support_is_throttled() ) {
+		echo blueworx_ds_notice(
+			array(
+				'tone'  => 'warning',
+				'title' => __( 'Support access is temporarily blocked from this address.', 'blueworx-labs-wordpress' ),
+				'text'  => __( 'Repeated failed key attempts caused this. Generating or revoking a key clears it.', 'blueworx-labs-wordpress' ),
+			)
+		);
+	}
+
+	if ( $open ) {
+		$until = (int) get_option( 'blueworx_support_access_until', 0 );
 
 		// date_i18n() expects a timestamp that ALREADY carries the site's UTC
 		// offset and renders it as-is; the stored expiry is a plain UTC
@@ -1493,86 +1519,159 @@ function blueworx_support_render_panel() {
 		// report the closing time in UTC while labelling it as local. wp_date()
 		// would do this properly on its own but only exists from WordPress 5.3,
 		// and this plugin still supports 5.0.
-		$blueworx_support_until_local = $blueworx_support_until + (int) ( (float) get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS );
+		$until_local = $until + (int) ( (float) get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS );
+
+		$open_text = sprintf(
+			/* translators: 1: closing date and time, 2: human-readable time remaining, e.g. "3 hours". */
+			__( 'Support access is open until %1$s (%2$s remaining).', 'blueworx-labs-wordpress' ),
+			date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $until_local ),
+			human_time_diff( time(), $until )
+		);
+
+		if ( blueworx_support_data_open() ) {
+			$open_text .= ' ' . __( 'Personal-data access is also open for this window.', 'blueworx-labs-wordpress' );
+		}
+
+		echo blueworx_ds_notice(
+			array(
+				'tone'    => 'success',
+				'title'   => __( 'Support access is open', 'blueworx-labs-wordpress' ),
+				'html'    => '<span data-testid="bw-support-expiry">' . esc_html( $open_text ) . '</span>',
+				'actions' => blueworx_ds_badge( __( 'Open', 'blueworx-labs-wordpress' ), 'success', true ),
+			)
+		);
+	} elseif ( $has_key ) {
+		echo blueworx_ds_notice(
+			array(
+				'tone'    => 'info',
+				'title'   => __( 'Support access is shut', 'blueworx-labs-wordpress' ),
+				'text'    => __( 'A key exists, but nobody can sign in with it until you open the window.', 'blueworx-labs-wordpress' ),
+				'actions' => blueworx_ds_badge( __( 'Shut', 'blueworx-labs-wordpress' ), 'neutral', true ),
+			)
+		);
+	}
+
+	if ( $has_key ) {
+		$prompt = blueworx_support_claude_prompt( $new_key );
 		?>
-		<p data-testid="bw-support-expiry">
-			<strong>
+		<div class="bw-field">
+			<span class="bw-field__label"><?php esc_html_e( 'Claude Code prompt', 'blueworx-labs-wordpress' ); ?></span>
+			<?php
+			// Holds the prompt for the copy button. Hidden rather than absent so
+			// the copy still works with the clipboard API unavailable, which is
+			// every site served over plain HTTP.
+			?>
+			<textarea id="bw-support-prompt" data-testid="bw-support-prompt" readonly hidden aria-hidden="true" tabindex="-1"><?php echo esc_textarea( $prompt ); ?></textarea>
+			<div>
 				<?php
-				printf(
-					/* translators: 1: closing date and time, 2: human-readable time remaining, e.g. "3 hours". */
-					esc_html__( 'Support access is open until %1$s (%2$s remaining).', 'blueworx-labs-wordpress' ),
-					esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $blueworx_support_until_local ) ),
-					esc_html( human_time_diff( time(), $blueworx_support_until ) )
+				echo blueworx_ds_button(
+					array(
+						'label' => __( 'Copy Claude Code prompt', 'blueworx-labs-wordpress' ),
+						'icon'  => 'file',
+						'attrs' => array(
+							'data-blueworx-copy' => 'bw-support-prompt',
+							'data-testid'        => 'bw-support-copy-prompt',
+							'data-copied-label'  => __( 'Copied', 'blueworx-labs-wordpress' ),
+						),
+					)
 				);
 				?>
-			</strong>
-			<?php if ( blueworx_support_data_open() ) : ?>
-				<br /><?php esc_html_e( 'Personal-data access is also open for this window.', 'blueworx-labs-wordpress' ); ?>
-			<?php endif; ?>
-		</p>
-	<?php endif; ?>
-
-	<?php if ( blueworx_support_has_key() ) : ?>
-		<?php $blueworx_support_prompt = blueworx_support_claude_prompt( $GLOBALS['blueworx_support_new_key'] ); ?>
-		<p>
-			<button
-				type="button"
-				class="button"
-				data-testid="bw-support-copy-prompt"
-				data-copied-label="<?php esc_attr_e( 'Copied', 'blueworx-labs-wordpress' ); ?>"
-			><?php esc_html_e( 'Copy Claude Code prompt', 'blueworx-labs-wordpress' ); ?></button>
-		</p>
-		<?php // Holds the prompt for the copy button. Hidden rather than absent so the copy still works with the clipboard API unavailable, which is every site served over plain HTTP. ?>
-		<textarea data-testid="bw-support-prompt" readonly hidden aria-hidden="true" tabindex="-1"><?php echo esc_textarea( $blueworx_support_prompt ); ?></textarea>
-		<p class="description">
-			<?php if ( '' !== $GLOBALS['blueworx_support_new_key'] ) : ?>
-				<?php esc_html_e( 'Paste this into Claude Code and it has the key, the URLs and the limits. This is the only time the prompt carries the key itself — copy it now.', 'blueworx-labs-wordpress' ); ?>
-			<?php else : ?>
-				<?php esc_html_e( 'The key is only ever shown once, so this prompt leaves a <SUPPORT-KEY> placeholder for you to paste your saved key over. Generate a new key if you no longer have it.', 'blueworx-labs-wordpress' ); ?>
-			<?php endif; ?>
-		</p>
-	<?php endif; ?>
-
-	<?php wp_nonce_field( 'blueworx_support_panel', 'blueworx_support_nonce' ); ?>
-	<?php if ( blueworx_support_has_key() ) : ?>
-		<label>
-			<input type="checkbox" name="blueworx_support_with_data" value="1" />
-			<?php esc_html_e( 'Also allow access to personal data for this session', 'blueworx-labs-wordpress' ); ?>
-		</label>
-		<button type="submit" name="blueworx_support_action" value="toggle" class="button" formaction="<?php echo esc_url( $self_url ); ?>" formmethod="post">
-			<?php
-			echo blueworx_support_access_open()
-				? esc_html__( 'Close support access', 'blueworx-labs-wordpress' )
-				: esc_html__( 'Allow support access for 24 hours', 'blueworx-labs-wordpress' );
-			?>
-		</button>
-		<button type="submit" name="blueworx_support_action" value="revoke" class="button" formaction="<?php echo esc_url( $self_url ); ?>" formmethod="post">
-			<?php esc_html_e( 'Revoke key', 'blueworx-labs-wordpress' ); ?>
-		</button>
-	<?php else : ?>
-		<button type="submit" name="blueworx_support_action" value="generate" class="button button-primary" formaction="<?php echo esc_url( $self_url ); ?>" formmethod="post">
-			<?php esc_html_e( 'Generate key', 'blueworx-labs-wordpress' ); ?>
-		</button>
-	<?php endif; ?>
-
-	<p class="description">
-		<?php esc_html_e( 'Read-only is enforced by rejecting every write request from this account. A plugin that writes data in response to a plain page load is not caught by that rule, so only open this window when you have asked BlueWorx to look at something.', 'blueworx-labs-wordpress' ); ?>
-	</p>
-
-	<h3><?php esc_html_e( 'Audit log', 'blueworx-labs-wordpress' ); ?></h3>
-	<ul data-testid="bw-support-log">
-		<?php foreach ( blueworx_support_get_log() as $entry ) : ?>
-			<?php $count = isset( $entry['count'] ) ? (int) $entry['count'] : 1; ?>
-			<li>
-				<code><?php echo esc_html( $entry['type'] ); ?></code>
-				<?php if ( $count > 1 ) : ?>
-					<?php /* translators: %d: number of times the event repeated. */ ?>
-					<strong><?php echo esc_html( sprintf( __( '×%d', 'blueworx-labs-wordpress' ), $count ) ); ?></strong>
+			</div>
+			<p class="bw-field__help">
+				<?php if ( '' !== $new_key ) : ?>
+					<?php esc_html_e( 'Paste this into Claude Code and it has the key, the URLs and the limits. This is the only time the prompt carries the key itself — copy it now.', 'blueworx-labs-wordpress' ); ?>
+				<?php else : ?>
+					<?php esc_html_e( 'The key is only ever shown once, so this prompt leaves a <SUPPORT-KEY> placeholder for you to paste your saved key over. Generate a new key if you no longer have it.', 'blueworx-labs-wordpress' ); ?>
 				<?php endif; ?>
-				<?php echo esc_html( date_i18n( 'Y-m-d H:i', (int) $entry['time'] ) ); ?>
-				<?php echo esc_html( $entry['ip'] ); ?>
-			</li>
-		<?php endforeach; ?>
-	</ul>
+			</p>
+		</div>
+		<?php
+	}
+
+	wp_nonce_field( 'blueworx_support_panel', 'blueworx_support_nonce' );
+
+	echo '<div class="bw-toolbar bw-toolbar--card"><div class="bw-toolbar__group">';
+
+	if ( $has_key ) {
+		?>
+		<label class="bw-check">
+			<input type="checkbox" name="blueworx_support_with_data" value="1" />
+			<span class="bw-check__text"><?php esc_html_e( 'Also allow access to personal data for this session', 'blueworx-labs-wordpress' ); ?></span>
+		</label>
+		<?php
+		echo blueworx_ds_button(
+			array(
+				'label'   => $open
+					? __( 'Close support access', 'blueworx-labs-wordpress' )
+					: __( 'Allow support access for 24 hours', 'blueworx-labs-wordpress' ),
+				'variant' => $open ? 'secondary' : 'primary',
+				'type'    => 'submit',
+				'attrs'   => array_merge(
+					$post_here,
+					array(
+						'name'  => 'blueworx_support_action',
+						'value' => 'toggle',
+					)
+				),
+			)
+		);
+
+		echo blueworx_ds_button(
+			array(
+				'label'   => __( 'Revoke key', 'blueworx-labs-wordpress' ),
+				'variant' => 'danger',
+				'type'    => 'submit',
+				'attrs'   => array_merge(
+					$post_here,
+					array(
+						'name'  => 'blueworx_support_action',
+						'value' => 'revoke',
+					)
+				),
+			)
+		);
+	} else {
+		echo blueworx_ds_button(
+			array(
+				'label'   => __( 'Generate key', 'blueworx-labs-wordpress' ),
+				'variant' => 'primary',
+				'type'    => 'submit',
+				'attrs'   => array_merge(
+					$post_here,
+					array(
+						'name'  => 'blueworx_support_action',
+						'value' => 'generate',
+					)
+				),
+			)
+		);
+	}
+
+	echo '</div></div>';
+
+	printf(
+		'<p class="bw-field__help">%s</p>',
+		esc_html__( 'Read-only is enforced by rejecting every write request from this account. A plugin that writes data in response to a plain page load is not caught by that rule, so only open this window when you have asked BlueWorx to look at something.', 'blueworx-labs-wordpress' )
+	);
+	?>
+	<div class="bw-field">
+		<h3 class="bw-field__label"><?php esc_html_e( 'Audit log', 'blueworx-labs-wordpress' ); ?></h3>
+		<ul data-testid="bw-support-log">
+			<?php foreach ( blueworx_support_get_log() as $entry ) : ?>
+				<?php $count = isset( $entry['count'] ) ? (int) $entry['count'] : 1; ?>
+				<li>
+					<code><?php echo esc_html( $entry['type'] ); ?></code>
+					<?php if ( $count > 1 ) : ?>
+						<?php /* translators: %d: number of times the event repeated. */ ?>
+						<strong><?php echo esc_html( sprintf( __( '×%d', 'blueworx-labs-wordpress' ), $count ) ); ?></strong>
+					<?php endif; ?>
+					<?php echo esc_html( date_i18n( 'Y-m-d H:i', (int) $entry['time'] ) ); ?>
+					<?php echo esc_html( $entry['ip'] ); ?>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+	</div>
 	<?php
+
+	echo '</div>';
 }

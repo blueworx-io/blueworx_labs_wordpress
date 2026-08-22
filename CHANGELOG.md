@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.6] - 2026-08-22
+
+### Changed
+- **The Support Access panel has been rebuilt.** The key you generate now sits
+  in a field with a Copy button beside it, so you can copy it on any site
+  rather than having to select it by hand. Whether access is open, shut or
+  temporarily blocked is said plainly at the top of the panel instead of in a
+  line of bold text. Generating, opening and revoking work exactly as before,
+  and the key is still only ever shown once. (#120)
+
 ## [1.58.5] - 2026-08-22
 
 ### Changed

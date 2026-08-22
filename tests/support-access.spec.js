@@ -10,6 +10,7 @@ import {
   restoreAll,
   cacheBust,
   LOGIN_PATH,
+  readSupportKey,
 } from './helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,7 +86,7 @@ test.describe('Support access — key lifecycle', () => {
 
     await page.getByRole('button', { name: 'Generate key' }).click();
 
-    const key = await page.locator('[data-testid="bw-support-key"]').innerText();
+    const key = await readSupportKey(page);
     expect(key.trim()).toMatch(/^[0-9a-f]{64}$/);
 
     // Shown once: a reload must not render it again.
@@ -102,11 +103,48 @@ test.describe('Support access — key lifecycle', () => {
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
   });
 
+  test('the panel says which state it is in, and posts to its own handler', async ({ page }) => {
+    await login(page);
+    await page.goto(CONSOLE_PATH);
+
+    // Before a key: one action, and nothing claiming a state it is not in.
+    await expect(page.getByRole('button', { name: 'Generate key' })).toBeVisible();
+    await expect(page.locator('[data-testid="bw-support-key"]')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Generate key' }).click();
+
+    // The key is a field with a copy button, not a bare block of text, so it
+    // can be selected and copied on a site served over plain HTTP.
+    const field = page.locator('[data-testid="bw-support-key"]');
+    await expect(field).toHaveValue(/^[0-9a-f]{64}$/);
+    await expect(page.locator('[data-blueworx-copy="bw-support-key"]')).toBeVisible();
+
+    // A key with the window shut is a real state and has to read as one.
+    await expect(page.locator('.bw-notice--info')).toContainText('shut');
+
+    await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
+    await expect(page.locator('[data-testid="bw-support-expiry"]')).toContainText('open until');
+    await expect(page.locator('.bw-notice--success .bw-badge')).toContainText('Open');
+
+    // The buttons carry their own formaction. Without it they post to the
+    // enhancements handler, which redirects — the page would still look fine
+    // and the action would never run.
+    await expect(page.getByRole('button', { name: 'Revoke key' })).toHaveAttribute(
+      'formaction',
+      /page=blueworx-labs-wordpress/
+    );
+
+    await page.getByRole('button', { name: 'Revoke key' }).click();
+    await expect(page.getByRole('button', { name: 'Generate key' })).toBeVisible();
+    await page.goto('/wp-admin/users.php');
+    await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
+  });
+
   test('browser key login is refused while the window is shut', async ({ page, context }) => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
 
     // A separate, logged-out context: the admin cookie must not mask the result.
     const fresh = await context.browser().newContext();
@@ -173,7 +211,7 @@ test.describe('Support access — key lifecycle', () => {
 
       await page.goto(SETTINGS_PATH);
       await page.getByRole('button', { name: 'Generate key' }).click();
-      key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+      key = await readSupportKey(page);
 
       // Re-navigate before the next click: a second click on the same DOM
       // without an intervening goto is the headless-Chromium view-transition
@@ -252,7 +290,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     try {
@@ -305,7 +343,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     try {
@@ -346,7 +384,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
 
     const headers = { 'X-BlueWorx-Support-Key': key };
 
@@ -383,7 +421,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     const headers = { 'X-BlueWorx-Support-Key': key };
@@ -414,7 +452,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     try {
@@ -449,7 +487,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     let fresh;
@@ -505,7 +543,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     // The support account's own ID, read from the users list row (id="user-<ID>")
@@ -558,7 +596,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     try {
@@ -600,7 +638,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     try {
@@ -638,7 +676,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     let fresh;
@@ -689,7 +727,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     let fresh;
@@ -740,7 +778,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     let fresh;
@@ -793,7 +831,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     // How many plugins are active right now, seen as the administrator.
@@ -884,7 +922,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     let fresh;
@@ -983,7 +1021,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
 
     // Access open, personal data explicitly NOT opted in.
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -1059,7 +1097,7 @@ test.describe('Support access — key lifecycle', () => {
     expect(slugBefore.length).toBeGreaterThan(0);
 
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     let fresh;
@@ -1254,7 +1292,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
@@ -1307,7 +1345,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
@@ -1358,7 +1396,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
@@ -1414,7 +1452,7 @@ test.describe('Support access — key lifecycle', () => {
     await login(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
-    const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+    const key = await readSupportKey(page);
     await page.goto(CONSOLE_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
@@ -1467,7 +1505,7 @@ test.describe('Support access — key lifecycle', () => {
     await page.getByRole('button', { name: 'Generate key' }).click();
 
     try {
-      const key = (await page.locator('[data-testid="bw-support-key"]').innerText()).trim();
+      const key = await readSupportKey(page);
       const prompt = await page.locator('[data-testid="bw-support-prompt"]').inputValue();
 
       // The generation render is the ONLY moment the raw key exists, so this is
