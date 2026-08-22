@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.2] - 2026-08-21
+
+### Changed
+- **The Cache screen has been rebuilt.** It now looks like the rest of BlueWorx
+  rather than a plain WordPress settings table, and says plainly what refreshes
+  on its own and what is waiting for you to press the button. Refreshing works
+  exactly as it did. (#116)
+
 ## [1.58.1] - 2026-08-21
 
 ### Internal

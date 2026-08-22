@@ -672,50 +672,79 @@ function blueworx_render_cache_page() {
 	if ( $cache_notice ) {
 		delete_transient( 'blueworx_cache_refresh_notice' );
 	}
-	?>
-	<div class="wrap">
-		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-		<?php if ( $cache_notice ) : ?>
-			<div class="notice notice-success is-dismissible">
-				<p><?php echo esc_html( $cache_notice ); ?></p>
-			</div>
-		<?php endif; ?>
 
-		<h2><?php esc_html_e( 'Cache Refresh', 'blueworx-labs-wordpress' ); ?></h2>
-		<table class="form-table" role="presentation">
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Automatic Refresh', 'blueworx-labs-wordpress' ); ?></th>
-				<td>
-					<strong><?php esc_html_e( 'Enabled', 'blueworx-labs-wordpress' ); ?></strong>
-					<p class="description">
-						<?php esc_html_e( 'When a page or post changes, this plugin refreshes the edited page, homepage, and related listing pages.', 'blueworx-labs-wordpress' ); ?>
-					</p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Breeze Cache', 'blueworx-labs-wordpress' ); ?></th>
-				<td>
-					<strong>
-						<?php echo $breeze_active ? esc_html__( 'Detected', 'blueworx-labs-wordpress' ) : esc_html__( 'Not detected', 'blueworx-labs-wordpress' ); ?>
-					</strong>
-					<p class="description">
-						<?php esc_html_e( 'Cloudways Breeze/Varnish is used when available. WordPress cache clearing is used as a safe fallback.', 'blueworx-labs-wordpress' ); ?>
-					</p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Manual Refresh', 'blueworx-labs-wordpress' ); ?></th>
-				<td>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-						<input type="hidden" name="action" value="blueworx_clear_cache_now" />
-						<?php wp_nonce_field( 'blueworx_clear_cache_now' ); ?>
-						<?php submit_button( esc_html__( 'Refresh Cache Now', 'blueworx-labs-wordpress' ), 'secondary', 'submit', false ); ?>
-					</form>
-				</td>
-			</tr>
-		</table>
-	</div>
-	<?php
+	echo wp_kses_post(
+		blueworx_ds_screen_open(
+			blueworx_ds_page_header(
+				array(
+					'title' => __( 'Cache', 'blueworx-labs-wordpress' ),
+					'lede'  => __( 'What gets refreshed on its own, and a button for when you would rather not wait.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		)
+	);
+
+	if ( $cache_notice ) {
+		echo wp_kses_post(
+			blueworx_ds_notice(
+				array(
+					'tone' => 'success',
+					'text' => $cache_notice,
+				)
+			)
+		);
+	}
+
+	// Status reads as a description list rather than a form table: none of it is
+	// editable, and the old two-column table implied it was.
+	$rows = array(
+		__( 'Automatic refresh', 'blueworx-labs-wordpress' ) => blueworx_ds_badge( __( 'On', 'blueworx-labs-wordpress' ), 'success', true )
+			. '<p class="bw-field__help">'
+			. esc_html__( 'When a page or post changes, this plugin refreshes the edited page, the homepage, and the listing pages it appears on.', 'blueworx-labs-wordpress' )
+			. '</p>',
+		__( 'Breeze cache', 'blueworx-labs-wordpress' )      => blueworx_ds_badge(
+			$breeze_active
+				? __( 'Detected', 'blueworx-labs-wordpress' )
+				: __( 'Not detected', 'blueworx-labs-wordpress' ),
+			$breeze_active ? 'success' : 'neutral',
+			true
+		)
+			. '<p class="bw-field__help">'
+			. esc_html__( 'Cloudways Breeze and Varnish are used where they are available. Where they are not, WordPress clears its own caches instead.', 'blueworx-labs-wordpress' )
+			. '</p>',
+	);
+
+	// The form posts exactly what it posted before — same action, same nonce.
+	$form = sprintf(
+		'<form method="post" action="%1$s"><input type="hidden" name="action" value="blueworx_clear_cache_now" />%2$s%3$s</form>',
+		esc_url( admin_url( 'admin-post.php' ) ),
+		wp_nonce_field( 'blueworx_clear_cache_now', '_wpnonce', true, false ),
+		blueworx_ds_button(
+			array(
+				'label'   => __( 'Refresh cache now', 'blueworx-labs-wordpress' ),
+				'variant' => 'primary',
+				'icon'    => 'refresh-cw',
+				'type'    => 'submit',
+				'attrs'   => array( 'name' => 'submit' ),
+			)
+		)
+	);
+
+	echo wp_kses(
+		'<div class="bw-page__body"><div class="bw-panels">'
+			. blueworx_ds_card(
+				array(
+					'eyebrow' => __( 'Cache', 'blueworx-labs-wordpress' ),
+					'title'   => __( 'Refreshing', 'blueworx-labs-wordpress' ),
+					'body'    => blueworx_ds_description_list( $rows ),
+					'footer'  => $form,
+				)
+			)
+			. '</div></div>',
+		blueworx_ds_allowed_html()
+	);
+
+	echo wp_kses_post( blueworx_ds_screen_close() );
 }
 
 /**
