@@ -186,6 +186,58 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     // Not saved, so nothing to restore — the reorder dies with the page.
   });
 
+
+  test('Edit Menu: a reorder survives a save and a reload', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    const rows = page.locator('.bw-menu-editor-group[data-group="site"] .bw-menu-editor-item');
+    const first = await rows.first().getAttribute('data-slug');
+    const second = await rows.nth(1).getAttribute('data-slug');
+
+    await rows.nth(1).locator('button.bw-menu-editor-up').click();
+    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
+
+    // Reloaded from the saved option, not from whatever the page still had in
+    // the DOM — the point of the save is that it outlives the page.
+    await page.goto(EDIT_MENU_PATH);
+    await expect(rows.first()).toHaveAttribute('data-slug', second);
+    await expect(rows.nth(1)).toHaveAttribute('data-slug', first);
+
+    // Put it back, and confirm the restore landed rather than assuming it.
+    await rows.nth(1).locator('button.bw-menu-editor-up').click();
+    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
+    await page.goto(EDIT_MENU_PATH);
+    await expect(rows.first()).toHaveAttribute('data-slug', first);
+  });
+
+  test('Edit Menu: an empty group still says so, and stops once it has a row', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU_PATH);
+
+    // Hidden starts empty on a site that has hidden nothing. The line is what
+    // gives the group enough height to be a drop target, so it has to be there.
+    const hidden = page.locator('.bw-menu-editor-group[data-group="hidden"]');
+    const rows = hidden.locator('.bw-menu-editor-item');
+    const empty = hidden.locator('.bw-menu-editor-empty');
+
+    if ((await rows.count()) === 0) {
+      await expect(empty).toBeVisible();
+    }
+
+    // Move something in and the line gets out of the way. Not saved, so this
+    // dies with the page.
+    await page.evaluate(() => {
+      const item = document.querySelector('.bw-menu-editor-item[data-slug="tools.php"]');
+      const list = document.querySelector('.bw-menu-editor-group[data-group="hidden"] .bw-menu-editor-list');
+      list.appendChild(item);
+      item.dispatchEvent(new Event('drop', { bubbles: true }));
+    });
+
+    await expect(empty).toBeHidden();
+  });
   test('Edit Menu: keyboard moves an item across a group boundary', async ({ page }) => {
     await login(page);
     await page.goto(EDIT_MENU_PATH);
@@ -228,8 +280,8 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
       item.dispatchEvent(new Event('drop', { bubbles: true }));
     });
 
-    await page.locator('input#submit').click();
-    await expect(page.locator('.notice-success')).toContainText('Menu settings saved');
+    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
 
     await page.goto('/wp-admin/index.php');
     // Hidden means display:none, NOT removed: blueworx_hide_admin_menu_rows()
@@ -258,8 +310,8 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     // reducedMotion in playwright.config.js is silently ignored. An honest click
     // works here now, and if this ever hangs again it is a real regression and
     // must not be forced away.
-    await page.locator('input#submit').click();
-    await expect(page.locator('.notice-success')).toContainText('Menu settings saved');
+    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
 
     await page.goto('/wp-admin/index.php');
     await expect(page.locator('#adminmenu > li.menu-top > a[href="tools.php"]')).toBeVisible();

@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.7] - 2026-08-22
+
+### Changed
+- **The Edit Menu screen has been rebuilt.** Groups are cards, each item is a
+  row you can drag or move with the arrow buttons, and an empty group now says
+  so rather than being a blank space you have to guess at. Save sits at the
+  bottom of the screen and tells you nothing is saved until you press it.
+  Reordering, hiding and grouping all work exactly as they did. (#119)
+
 ## [1.58.6] - 2026-08-22
 
 ### Changed
