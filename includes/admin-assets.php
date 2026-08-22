@@ -288,14 +288,9 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 	}
 
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {
-		// Unconditional: the Edit Menu screen must be usable with admin_theme off,
-		// so it carries its own styling rather than leaning on admin-theme.css.
-		wp_enqueue_style(
-			'blueworx-labs-wordpress-admin-menu-editor',
-			BLUEWORX_LABS_URL . 'assets/css/admin-menu-editor.css',
-			array(),
-			blueworx_get_admin_asset_version( 'assets/css/admin-menu-editor.css' )
-		);
+		// No stylesheet of its own any more: the screen is built from the design
+		// system, which blueworx_enqueue_admin_design_system() loads here whether
+		// or not the admin theme is on.
 
 		// No jQuery, no jQuery UI: the editor uses native drag-and-drop.
 		wp_enqueue_script(

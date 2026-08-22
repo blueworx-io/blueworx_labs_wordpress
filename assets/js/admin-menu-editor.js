@@ -53,6 +53,55 @@
 
 	function syncAll() {
 		editor.querySelectorAll( '.bw-menu-editor-item' ).forEach( syncItem );
+
+		// The "drag something here" line is what gives an empty group enough
+		// height to be a drop target, so it lives inside the list and is hidden
+		// rather than removed once the group has rows.
+		editor.querySelectorAll( '.bw-menu-editor-list' ).forEach( function ( list ) {
+			var empty = list.querySelector( '.bw-menu-editor-empty' );
+
+			if ( empty ) {
+				empty.hidden = list.querySelectorAll( '.bw-menu-editor-item' ).length > 0;
+			}
+		} );
+	}
+
+	/**
+	 * Gets the row next to this one, skipping anything that is not a row.
+	 *
+	 * The list holds the empty-state line as well as rows, and treating that as
+	 * a sibling would make "move down" from the last row swap with a paragraph
+	 * instead of crossing into the next group.
+	 *
+	 * @param {HTMLElement} item      Row element.
+	 * @param {number}      direction -1 up, 1 down.
+	 * @return {HTMLElement|null} The adjacent row, or null at the boundary.
+	 */
+	function siblingRow( item, direction ) {
+		var next = direction < 0 ? item.previousElementSibling : item.nextElementSibling;
+
+		while ( next && ! next.classList.contains( 'bw-menu-editor-item' ) ) {
+			next = direction < 0 ? next.previousElementSibling : next.nextElementSibling;
+		}
+
+		return next;
+	}
+
+	/**
+	 * Puts a row at the end of a list, but still above the empty-state line.
+	 *
+	 * @param {HTMLElement} list List element.
+	 * @param {HTMLElement} item Row element.
+	 */
+	function appendRow( list, item ) {
+		var empty = list.querySelector( '.bw-menu-editor-empty' );
+
+		if ( empty ) {
+			list.insertBefore( item, empty );
+			return;
+		}
+
+		list.appendChild( item );
 	}
 
 	/**
@@ -72,7 +121,7 @@
 	 */
 	function move( item, direction ) {
 		var list = item.parentElement;
-		var sibling = direction < 0 ? item.previousElementSibling : item.nextElementSibling;
+		var sibling = siblingRow( item, direction );
 
 		if ( sibling ) {
 			if ( direction < 0 ) {
@@ -91,13 +140,13 @@
 			}
 
 			if ( direction < 0 ) {
-				target.appendChild( item );
+				appendRow( target, item );
 			} else {
 				target.insertBefore( item, target.firstElementChild );
 			}
 		}
 
-		syncItem( item );
+		syncAll();
 	}
 
 	editor.addEventListener( 'click', function ( event ) {
@@ -159,7 +208,7 @@
 			var after = event.clientY > box.top + box.height / 2;
 			list.insertBefore( dragging, after ? over.nextElementSibling : over );
 		} else if ( ! over ) {
-			list.appendChild( dragging );
+			appendRow( list, dragging );
 		}
 	} );
 

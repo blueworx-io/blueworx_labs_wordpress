@@ -55,6 +55,12 @@ function blueworx_ds_allowed_html() {
 		'data-blueworx-roles'        => true,
 		'data-blueworx-section'      => true,
 		'data-blueworx-panel'        => true,
+
+		// Edit Menu rows. The reorder script reads both, and a row whose
+		// data-slug was dropped saves as though it were never in the list.
+		'data-group'                 => true,
+		'data-slug'                  => true,
+		'draggable'                  => true,
 	);
 
 	// Every aria-* and data-* attribute our screens use, spelled out: wp_kses()
@@ -266,6 +272,57 @@ function blueworx_ds_button( $args ) {
 }
 
 /**
+ * Renders an icon-only button.
+ *
+ * The label is not optional: an icon-only control with no accessible name is
+ * an unlabelled button to anyone not looking at it.
+ *
+ * @param array $args {
+ *     @type string $icon    Lucide icon name.
+ *     @type string $label   Accessible name, also the tooltip.
+ *     @type string $variant ghost|outline|danger. Default ghost.
+ *     @type string $size    md|sm. Default md.
+ *     @type string $type    Button type. Default button.
+ *     @type string $class   Extra class, for a screen that needs its own hook.
+ *     @type array  $attrs   Extra HTML attributes, name => value.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_icon_button( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'icon'    => '',
+			'label'   => '',
+			'variant' => 'ghost',
+			'size'    => 'md',
+			'type'    => 'button',
+			'class'   => '',
+			'attrs'   => array(),
+		)
+	);
+
+	$classes = array( 'bw-iconbtn', 'bw-iconbtn--' . $args['variant'] );
+
+	if ( 'sm' === $args['size'] ) {
+		$classes[] = 'bw-iconbtn--sm';
+	}
+
+	if ( '' !== $args['class'] ) {
+		$classes[] = $args['class'];
+	}
+
+	return sprintf(
+		'<button class="%1$s" type="%2$s" title="%3$s" aria-label="%3$s"%4$s>%5$s</button>',
+		esc_attr( implode( ' ', $classes ) ),
+		esc_attr( $args['type'] ),
+		esc_attr( $args['label'] ),
+		blueworx_ds_attrs( $args['attrs'] ),
+		blueworx_ds_icon( $args['icon'], 'sm' === $args['size'] ? 14 : 18 )
+	);
+}
+
+/**
  * Renders a badge.
  *
  * @param string $label Badge text.
@@ -393,6 +450,8 @@ function blueworx_ds_page_header( $args ) {
  *     @type string $actions Head actions HTML.
  *     @type string $footer  Footer HTML.
  *     @type bool   $flush   Whether the body drops its padding (tables).
+ *     @type string $class   Extra class, for a screen that needs its own hook
+ *                           on the card — never for restyling one.
  *     @type array  $attrs   Extra attributes on the section element.
  * }
  * @return string HTML.
@@ -408,6 +467,7 @@ function blueworx_ds_card( $args ) {
 			'actions' => '',
 			'footer'  => '',
 			'flush'   => false,
+			'class'   => '',
 			'attrs'   => array(),
 		)
 	);
@@ -441,7 +501,7 @@ function blueworx_ds_card( $args ) {
 
 	return sprintf(
 		'<section class="bw-card%1$s"%2$s>%3$s%4$s%5$s</section>',
-		$args['flush'] ? ' bw-card--flush' : '',
+		( $args['flush'] ? ' bw-card--flush' : '' ) . ( '' !== $args['class'] ? ' ' . $args['class'] : '' ),
 		blueworx_ds_attrs( $args['attrs'] ),
 		$head,
 		$body,

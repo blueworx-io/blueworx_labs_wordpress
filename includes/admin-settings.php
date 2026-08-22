@@ -977,61 +977,157 @@ function blueworx_render_edit_menu_page() {
 
 	$sections           = $groups;
 	$sections['hidden'] = __( 'Hidden', 'blueworx-labs-wordpress' );
-	?>
-	<div class="wrap">
-		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-		<?php if ( $notice ) : ?>
-			<div class="notice notice-success is-dismissible">
-				<p><?php echo esc_html( $notice ); ?></p>
-			</div>
-		<?php endif; ?>
-		<p><?php esc_html_e( 'Drag an item into another group to move it, or use the arrow buttons. Items in Hidden do not appear in the sidebar.', 'blueworx-labs-wordpress' ); ?></p>
 
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<input type="hidden" name="action" value="blueworx_save_admin_menu_order" />
-			<?php wp_nonce_field( 'blueworx_save_admin_menu_order' ); ?>
+	echo wp_kses_post(
+		blueworx_ds_screen_open(
+			blueworx_ds_page_header(
+				array(
+					'title' => __( 'Edit Menu', 'blueworx-labs-wordpress' ),
+					'lede'  => __( 'Drag an item into another group to move it, or use the arrows. Anything left in Hidden stays out of the sidebar.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		)
+	);
 
-			<div class="bw-menu-editor">
-				<?php foreach ( $sections as $group => $label ) : ?>
-					<?php blueworx_render_menu_editor_group( $group, $label, $buckets[ $group ] ); ?>
-				<?php endforeach; ?>
-			</div>
+	if ( $notice ) {
+		echo wp_kses_post(
+			blueworx_ds_notice(
+				array(
+					'tone' => 'success',
+					'text' => $notice,
+				)
+			)
+		);
+	}
 
-			<?php submit_button( esc_html__( 'Save Menu Settings', 'blueworx-labs-wordpress' ) ); ?>
-		</form>
-	</div>
-	<?php
+	// Same action, same nonce, same field names as before — this screen changed
+	// its markup, not what it posts.
+	printf(
+		'<form method="post" action="%1$s" class="bw-page__form"><input type="hidden" name="action" value="blueworx_save_admin_menu_order" />%2$s',
+		esc_url( admin_url( 'admin-post.php' ) ),
+		wp_nonce_field( 'blueworx_save_admin_menu_order', '_wpnonce', true, false )
+	);
+
+	$cards = '';
+
+	foreach ( $sections as $group => $label ) {
+		$cards .= blueworx_render_menu_editor_group( $group, $label, $buckets[ $group ] );
+	}
+
+	echo wp_kses(
+		'<div class="bw-page__body"><div class="bw-panels bw-menu-editor">' . $cards . '</div></div>',
+		blueworx_ds_allowed_html()
+	);
+
+	echo wp_kses(
+		'<div class="bw-savebar"><p class="bw-savebar__hint">'
+			. esc_html__( 'Moves are not saved until you say so.', 'blueworx-labs-wordpress' )
+			. '</p>'
+			. blueworx_ds_button(
+				array(
+					'label'   => __( 'Save Menu Settings', 'blueworx-labs-wordpress' ),
+					'variant' => 'primary',
+					'type'    => 'submit',
+				)
+			)
+			. '</div>',
+		blueworx_ds_allowed_html()
+	);
+
+	echo '</form>';
+
+	echo wp_kses_post( blueworx_ds_screen_close() );
 }
 
 /**
- * Renders one Edit Menu group section.
+ * Renders one Edit Menu group as a card of reorderable rows.
+ *
+ * The row classes are the design system's repeater; the bw-menu-editor-* ones
+ * beside them are what assets/js/admin-menu-editor.js binds to. Both are
+ * deliberate: the system owns how a reorderable row looks, the script owns what
+ * moving one does, and neither has to know about the other.
  *
  * @param string $group Group key, or "hidden".
  * @param string $label Translated section label.
  * @param array  $items Menu labels keyed by slug.
- * @return void
+ * @return string HTML.
  */
 function blueworx_render_menu_editor_group( $group, $label, $items ) {
-	?>
-	<section class="bw-menu-editor-group" data-group="<?php echo esc_attr( $group ); ?>">
-		<h2 class="bw-menu-editor-group-title"><?php echo esc_html( $label ); ?></h2>
-		<ul class="bw-menu-editor-list">
-			<?php foreach ( $items as $slug => $item_label ) : ?>
-				<li class="bw-menu-editor-item" draggable="true" data-slug="<?php echo esc_attr( $slug ); ?>">
-					<span class="bw-menu-editor-handle" aria-hidden="true">⠿</span>
-					<span class="bw-menu-editor-label"><?php echo esc_html( $item_label ); ?></span>
-					<button type="button" class="button-link bw-menu-editor-up"
-						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s up', 'blueworx-labs-wordpress' ), $item_label ) ); ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6"></path></svg></button>
-					<button type="button" class="button-link bw-menu-editor-down"
-						aria-label="<?php /* translators: %s: menu item name. */ echo esc_attr( sprintf( __( 'Move %s down', 'blueworx-labs-wordpress' ), $item_label ) ); ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"></path></svg></button>
-					<input type="hidden" class="bw-menu-editor-order" name="blueworx_admin_menu_order[]" value="<?php echo esc_attr( $slug ); ?>" />
-					<input type="hidden" class="bw-menu-editor-group-input" name="<?php echo esc_attr( 'blueworx_admin_menu_groups[' . $slug . ']' ); ?>" value="<?php echo esc_attr( $group ); ?>" />
-					<?php if ( 'hidden' === $group ) : ?>
-						<input type="hidden" class="bw-menu-editor-hidden-input" name="blueworx_hidden_admin_menu_items[]" value="<?php echo esc_attr( $slug ); ?>" />
-					<?php endif; ?>
-				</li>
-			<?php endforeach; ?>
-		</ul>
-	</section>
-	<?php
+	$locked = blueworx_get_locked_admin_menu_items();
+	$rows   = '';
+
+	foreach ( $items as $slug => $item_label ) {
+		$is_locked = in_array( $slug, $locked, true );
+
+		$row = '<span class="bw-repeater__grip">' . blueworx_ds_icon( 'grip-vertical', 16 ) . '</span>';
+
+		$row .= '<div class="bw-repeater__fields"><span class="bw-menu-editor-label">' . esc_html( $item_label ) . '</span></div>';
+
+		// Locked items are refused by the save handler, so say so here rather
+		// than letting someone drag one into Hidden and wonder why it came back.
+		if ( $is_locked ) {
+			$row .= blueworx_ds_badge( __( 'Always shown', 'blueworx-labs-wordpress' ), 'neutral' );
+		}
+
+		$row .= blueworx_ds_icon_button(
+			array(
+				'icon'  => 'chevron-up',
+				/* translators: %s: menu item name. */
+				'label' => sprintf( __( 'Move %s up', 'blueworx-labs-wordpress' ), $item_label ),
+				'size'  => 'sm',
+				'class' => 'bw-menu-editor-up',
+			)
+		);
+
+		$row .= blueworx_ds_icon_button(
+			array(
+				'icon'  => 'chevron-down',
+				/* translators: %s: menu item name. */
+				'label' => sprintf( __( 'Move %s down', 'blueworx-labs-wordpress' ), $item_label ),
+				'size'  => 'sm',
+				'class' => 'bw-menu-editor-down',
+			)
+		);
+
+		$row .= sprintf(
+			'<input type="hidden" class="bw-menu-editor-order" name="blueworx_admin_menu_order[]" value="%1$s" /><input type="hidden" class="bw-menu-editor-group-input" name="%2$s" value="%3$s" />',
+			esc_attr( $slug ),
+			esc_attr( 'blueworx_admin_menu_groups[' . $slug . ']' ),
+			esc_attr( $group )
+		);
+
+		if ( 'hidden' === $group ) {
+			$row .= sprintf(
+				'<input type="hidden" class="bw-menu-editor-hidden-input" name="blueworx_hidden_admin_menu_items[]" value="%1$s" />',
+				esc_attr( $slug )
+			);
+		}
+
+		$rows .= sprintf(
+			'<div class="bw-repeater__row bw-menu-editor-item" role="listitem" draggable="true" data-slug="%1$s">%2$s</div>',
+			esc_attr( $slug ),
+			$row
+		);
+	}
+
+	// An empty group still has to be a drop target, so the "nothing here" line
+	// goes inside the list rather than in place of it. The script hides it as
+	// soon as the list has a row, and shows it again when the last one leaves.
+	$rows .= sprintf(
+		'<p class="bw-repeater__empty bw-menu-editor-empty"%1$s>%2$s</p>',
+		'' === $rows ? '' : ' hidden',
+		esc_html__( 'Drag something here.', 'blueworx-labs-wordpress' )
+	);
+
+	return blueworx_ds_card(
+		array(
+			'eyebrow' => 'hidden' === $group
+				? __( 'Out of the sidebar', 'blueworx-labs-wordpress' )
+				: __( 'Group', 'blueworx-labs-wordpress' ),
+			'title'   => $label,
+			'body'    => '<div class="bw-repeater bw-menu-editor-list" role="list">' . $rows . '</div>',
+			'class'   => 'bw-menu-editor-group',
+			'attrs'   => array( 'data-group' => $group ),
+		)
+	);
 }
