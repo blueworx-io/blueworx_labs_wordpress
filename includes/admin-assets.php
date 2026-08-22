@@ -46,6 +46,38 @@ function blueworx_admin_design_screens() {
 }
 
 /**
+ * WordPress's own screens where this plugin renders a control of its own.
+ *
+ * Separate from blueworx_admin_design_screens() because the guarantee is
+ * different. On our screens the system styles everything; here it styles only
+ * what sits inside our own .bw-admin wrapper, and the surrounding core screen
+ * has to look exactly as it did. The stylesheet is scoped to .bw-admin, so
+ * loading it is safe — but only the screens that actually carry a control get
+ * it, and only while the feature behind that control is on.
+ *
+ * @return string[] Admin hook suffixes.
+ */
+function blueworx_admin_design_core_screens() {
+	$screens = array();
+
+	// Replace-file box and its notices, plus the external-address box: both live
+	// on the post editor, and the attachment editor is post.php too.
+	if ( blueworx_feature_enabled( 'media_tools' ) || blueworx_feature_enabled( 'content_tools' ) ) {
+		$screens[] = 'post.php';
+		$screens[] = 'post-new.php';
+	}
+
+	// The multi-role checkboxes.
+	if ( blueworx_feature_enabled( 'user_roles' ) ) {
+		$screens[] = 'user-new.php';
+		$screens[] = 'user-edit.php';
+		$screens[] = 'profile.php';
+	}
+
+	return $screens;
+}
+
+/**
  * Enqueues the shared design system stylesheet.
  *
  * Also the plugin's only source of @font-face for Sora and Inter — the separate
@@ -77,7 +109,12 @@ function blueworx_enqueue_admin_design_style() {
  * @return void
  */
 function blueworx_enqueue_admin_design_system( $hook_suffix ) {
-	if ( ! in_array( $hook_suffix, blueworx_admin_design_screens(), true ) ) {
+	$screens = array_merge( blueworx_admin_design_screens(), blueworx_admin_design_core_screens() );
+
+	// The view-as bar is hooked to admin_footer, so it can appear on any screen
+	// and there is no shorter list to name. The stylesheet is scoped to
+	// .bw-admin either way, so what this widens is the download, not the reach.
+	if ( ! in_array( $hook_suffix, $screens, true ) && ! blueworx_feature_enabled( 'view_as_role' ) ) {
 		return;
 	}
 

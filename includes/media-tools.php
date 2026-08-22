@@ -513,21 +513,72 @@ function blueworx_media_replace_field( $post ) {
 	}
 
 	$type = get_post_mime_type( $post->ID );
+
+	// This box renders inside core's own <form id="post">, which rules out both
+	// obvious answers. A nested <form> is invalid HTML and browsers drop the
+	// inner tags, hoisting these fields into core's form. Submitting core's form
+	// instead does not work either: it carries its own hidden action=editpost,
+	// and $_REQUEST takes POST over the query string, so admin-post.php sees
+	// "editpost", finds no handler and answers 400 with an empty page.
+	//
+	// So the fields stay here and the form they belong to is printed in the
+	// footer, outside core's, and they are tied to it by the form attribute —
+	// which is the one thing that attribute exists for. See
+	// blueworx_media_replace_form().
+	//
+	// .misc-pub-section is core's class and stays: it is what puts this in the
+	// publish box. .bw-admin goes inside it, around our markup only.
+	$form = 'blueworx-media-replace-form';
 	?>
 	<div class="misc-pub-section blueworx-media-replace">
-		<h4><?php esc_html_e( 'Replace file', 'blueworx-labs-wordpress' ); ?></h4>
-		<p class="description">
-			<?php esc_html_e( 'Upload a new file to take the place of this one. Everywhere it is already used updates automatically, because the address does not change.', 'blueworx-labs-wordpress' ); ?>
-		</p>
-		<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<input type="hidden" name="action" value="blueworx_media_replace" />
-			<input type="hidden" name="attachment_id" value="<?php echo esc_attr( (string) $post->ID ); ?>" />
-			<?php wp_nonce_field( 'blueworx_media_replace_' . $post->ID ); ?>
-			<p><input type="file" name="blueworx_replacement" accept="<?php echo esc_attr( (string) $type ); ?>" required /></p>
-			<p><?php submit_button( esc_html__( 'Replace', 'blueworx-labs-wordpress' ), 'secondary', 'submit', false ); ?></p>
-		</form>
+		<div class="bw-admin">
+			<div class="bw-field">
+				<span class="bw-field__label"><?php esc_html_e( 'Replace file', 'blueworx-labs-wordpress' ); ?></span>
+				<input type="hidden" form="<?php echo esc_attr( $form ); ?>" name="attachment_id" value="<?php echo esc_attr( (string) $post->ID ); ?>" />
+				<input type="hidden" form="<?php echo esc_attr( $form ); ?>" name="blueworx_media_replace_nonce" value="<?php echo esc_attr( wp_create_nonce( 'blueworx_media_replace_' . $post->ID ) ); ?>" />
+				<input type="file" form="<?php echo esc_attr( $form ); ?>" class="bw-input" name="blueworx_replacement" accept="<?php echo esc_attr( (string) $type ); ?>" required />
+				<p class="bw-field__help">
+					<?php esc_html_e( 'Upload a new file to take the place of this one. Everywhere it is already used updates automatically, because the address does not change.', 'blueworx-labs-wordpress' ); ?>
+				</p>
+				<div>
+					<?php
+					echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
+						array(
+							'label' => __( 'Replace', 'blueworx-labs-wordpress' ),
+							'type'  => 'submit',
+							'size'  => 'sm',
+							'attrs' => array( 'form' => $form ),
+						)
+					);
+					?>
+				</div>
+			</div>
+		</div>
 	</div>
 	<?php
+}
+
+/**
+ * Prints the form the replace-file fields belong to.
+ *
+ * Empty on purpose: the fields live in the publish box, inside core's form, and
+ * reach this one through their form attribute. It only has to exist, sit
+ * outside core's form, and carry the action — which is why it is printed in the
+ * footer rather than anywhere near the control it serves.
+ *
+ * @return void
+ */
+function blueworx_media_replace_form() {
+	$screen = get_current_screen();
+
+	if ( ! $screen instanceof WP_Screen || 'attachment' !== $screen->id ) {
+		return;
+	}
+
+	printf(
+		'<form id="blueworx-media-replace-form" method="post" enctype="multipart/form-data" action="%s"><input type="hidden" name="action" value="blueworx_media_replace" /></form>',
+		esc_url( admin_url( 'admin-post.php' ) )
+	);
 }
 
 /**
@@ -550,7 +601,9 @@ function blueworx_media_replace_handle() {
 		wp_die( esc_html__( 'No file was named to replace.', 'blueworx-labs-wordpress' ) );
 	}
 
-	check_admin_referer( 'blueworx_media_replace_' . $attachment_id );
+	// Its own field name, not _wpnonce: the control sits inside core's post form
+	// and core puts its own _wpnonce there.
+	check_admin_referer( 'blueworx_media_replace_' . $attachment_id, 'blueworx_media_replace_nonce' );
 
 	if ( ! current_user_can( 'edit_post', $attachment_id ) || ! current_user_can( 'upload_files' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
@@ -683,17 +736,29 @@ function blueworx_media_replace_notice() {
 
 	delete_transient( 'blueworx_media_replace_notice_' . $post_id );
 
-	if ( ! empty( $notice['error'] ) ) {
-		printf( '<div class="notice notice-error is-dismissible"><p>%s</p></div>', esc_html( $notice['error'] ) );
-	}
+	// .notice keeps core's placement — it is what admin_notices hoists to the
+	// top of the screen — and .bw-admin inside it is what the design system
+	// styles. Core's own notices on the same screen are untouched.
+	foreach ( array( 'error' => 'danger', 'success' => 'success' ) as $key => $tone ) {
+		if ( empty( $notice[ $key ] ) ) {
+			continue;
+		}
 
-	if ( ! empty( $notice['success'] ) ) {
-		printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $notice['success'] ) );
+		printf(
+			'<div class="notice"><div class="bw-admin">%s</div></div>',
+			blueworx_ds_notice( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
+				array(
+					'tone' => $tone,
+					'text' => $notice[ $key ],
+				)
+			)
+		);
 	}
 }
 
 if ( blueworx_feature_enabled( 'media_tools' ) && blueworx_media_replace_enabled() ) {
 	add_action( 'attachment_submitbox_misc_actions', 'blueworx_media_replace_field' );
+	add_action( 'admin_footer', 'blueworx_media_replace_form' );
 	add_action( 'admin_post_blueworx_media_replace', 'blueworx_media_replace_handle' );
 	add_action( 'admin_notices', 'blueworx_media_replace_notice' );
 }

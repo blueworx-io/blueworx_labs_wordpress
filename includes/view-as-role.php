@@ -193,38 +193,70 @@ function blueworx_view_as_render_bar() {
 	$choices = blueworx_view_as_role_choices();
 	?>
 	<div class="blueworx-view-as<?php echo '' === $current ? '' : ' is-active'; ?>">
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<input type="hidden" name="action" value="blueworx_view_as" />
-			<?php wp_nonce_field( 'blueworx_view_as' ); ?>
-			<?php if ( '' === $current ) : ?>
-				<label for="blueworx_view_as_role"><?php esc_html_e( 'View the admin as:', 'blueworx-labs-wordpress' ); ?></label>
-				<select id="blueworx_view_as_role" name="blueworx_view_as_role">
-					<option value=""><?php esc_html_e( 'Yourself', 'blueworx-labs-wordpress' ); ?></option>
-					<?php foreach ( $choices as $slug => $label ) : ?>
-						<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
-					<?php endforeach; ?>
-				</select>
-				<button type="submit" class="button button-small"><?php esc_html_e( 'Switch', 'blueworx-labs-wordpress' ); ?></button>
-			<?php else : ?>
-				<strong>
+		<div class="bw-admin">
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="bw-savebar">
+				<input type="hidden" name="action" value="blueworx_view_as" />
+				<?php wp_nonce_field( 'blueworx_view_as' ); ?>
+				<?php if ( '' === $current ) : ?>
+					<p class="bw-savebar__hint">
+						<label for="blueworx_view_as_role"><?php esc_html_e( 'View the admin as:', 'blueworx-labs-wordpress' ); ?></label>
+					</p>
+					<span class="bw-select">
+						<select class="bw-select__el" id="blueworx_view_as_role" name="blueworx_view_as_role">
+							<option value=""><?php esc_html_e( 'Yourself', 'blueworx-labs-wordpress' ); ?></option>
+							<?php foreach ( $choices as $slug => $label ) : ?>
+								<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</span>
 					<?php
-					printf(
-						/* translators: %s: role name. */
-						esc_html__( 'You are viewing this site as: %s', 'blueworx-labs-wordpress' ),
-						esc_html( $choices[ $current ] )
+					echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
+						array(
+							'label' => __( 'Switch', 'blueworx-labs-wordpress' ),
+							'type'  => 'submit',
+							'size'  => 'sm',
+						)
 					);
 					?>
-				</strong>
-				<input type="hidden" name="blueworx_view_as_role" value="" />
-				<button type="submit" class="button button-small"><?php esc_html_e( 'Back to yourself', 'blueworx-labs-wordpress' ); ?></button>
-			<?php endif; ?>
-		</form>
+				<?php else : ?>
+					<p class="bw-savebar__hint">
+						<?php
+						// A badge rather than a red bar: the warning is the same
+						// wherever the bar lands, and it no longer needs a slab of
+						// colour of its own to be read as one.
+						echo blueworx_ds_badge( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
+							sprintf(
+								/* translators: %s: role name. */
+								__( 'Viewing as %s', 'blueworx-labs-wordpress' ),
+								$choices[ $current ]
+							),
+							'danger',
+							true
+						);
+						?>
+					</p>
+					<input type="hidden" name="blueworx_view_as_role" value="" />
+					<?php
+					echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
+						array(
+							'label'   => __( 'Back to yourself', 'blueworx-labs-wordpress' ),
+							'variant' => 'primary',
+							'type'    => 'submit',
+							'size'    => 'sm',
+						)
+					);
+					?>
+				<?php endif; ?>
+			</form>
+		</div>
 	</div>
+	<?php
+	// Placement only. Everything this bar looks like now comes from the design
+	// system; what the system cannot know is that this particular bar has to
+	// pin itself over the bottom of whatever screen it lands on.
+	?>
 	<style>
-		.blueworx-view-as{position:fixed;left:0;right:0;bottom:0;z-index:99999;display:flex;gap:8px;align-items:center;
-			padding:8px 16px;background:#1d2327;color:#fff;font-size:13px;}
-		.blueworx-view-as.is-active{background:#8a2b06;}
-		.blueworx-view-as form{display:flex;gap:8px;align-items:center;margin:0;}
+		.blueworx-view-as{position:fixed;left:0;right:0;bottom:0;z-index:99999;}
 	</style>
 	<?php
 }

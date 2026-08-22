@@ -23,10 +23,17 @@
    * @return {HTMLElement} List item ready to append.
    */
   function buildRow(value, label, checked) {
-    var item = document.createElement('li');
+    // A div with a list role rather than a <li>: the design system styles the
+    // checkbox itself and owns no list, so a real <ul> would arrive with
+    // browser bullets and indentation that nothing here is meant to undo.
+    var item = document.createElement('div');
     item.className = 'blueworx-role-choice';
+    item.setAttribute('role', 'listitem');
 
+    // bw-check is the design system's checkbox; blueworx-role-choice stays as
+    // the hook this file and its tests bind to.
     var field = document.createElement('label');
+    field.className = 'bw-check';
 
     var input = document.createElement('input');
     input.type = 'checkbox';
@@ -35,6 +42,7 @@
     input.checked = checked;
 
     var text = document.createElement('span');
+    text.className = 'bw-check__text';
     text.textContent = label;
 
     field.appendChild(input);
@@ -90,21 +98,29 @@
       return a.label.localeCompare(b.label);
     });
 
-    var list = document.createElement('ul');
+    var list = document.createElement('div');
     list.className = 'blueworx-role-choices';
     list.id = 'blueworx-user-roles';
+    list.setAttribute('role', 'list');
 
     choices.forEach(function (choice) {
       list.appendChild(buildRow(choice.value, choice.label, selected.indexOf(choice.value) !== -1));
     });
 
     var help = document.createElement('p');
-    help.className = 'description blueworx-role-help';
+    help.className = 'bw-field__help blueworx-role-help';
     help.textContent = config.help;
 
+    // .bw-admin wraps our control and nothing else: the user screen around it
+    // is core's and has to stay looking like core's.
     var wrapper = document.createElement('div');
-    wrapper.appendChild(list);
-    wrapper.appendChild(help);
+    wrapper.className = 'bw-admin';
+
+    var field = document.createElement('div');
+    field.className = 'bw-field';
+    field.appendChild(list);
+    field.appendChild(help);
+    wrapper.appendChild(field);
 
     select.parentNode.insertBefore(wrapper, select);
 
