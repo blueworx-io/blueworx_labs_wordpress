@@ -212,7 +212,17 @@ function blueworx_save_feature_settings() {
 
 	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
-	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-labs-wordpress' ) );
+	// Back to the section they saved from. The screen honours ?section= on load,
+	// and an unknown value is ignored there rather than showing an empty panel,
+	// so this only ever has to be a well-formed key.
+	$redirect = admin_url( 'admin.php?page=blueworx-labs-wordpress' );
+	$section  = isset( $_POST['blueworx_section'] ) ? sanitize_key( wp_unslash( $_POST['blueworx_section'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler.
+
+	if ( '' !== $section ) {
+		$redirect = add_query_arg( 'section', $section, $redirect );
+	}
+
+	wp_safe_redirect( $redirect );
 	exit;
 }
 add_action( 'admin_post_blueworx_save_feature_settings', 'blueworx_save_feature_settings' );
@@ -456,10 +466,14 @@ function blueworx_render_enhancements_page() {
 		);
 	}
 
+	// Which section is open travels with the save, so the redirect can put the
+	// operator back where they were. Without it every save throws them to the
+	// first section, which is the whole thing the section nav exists to avoid.
 	printf(
-		'<form method="post" action="%1$s" class="bw-page__form"><input type="hidden" name="action" value="blueworx_save_feature_settings" />%2$s',
+		'<form method="post" action="%1$s" class="bw-page__form"><input type="hidden" name="action" value="blueworx_save_feature_settings" /><input type="hidden" name="blueworx_section" value="%3$s" data-blueworx-section-field />%2$s',
 		esc_url( admin_url( 'admin-post.php' ) ),
-		wp_nonce_field( 'blueworx_save_feature_settings', '_wpnonce', true, false )
+		wp_nonce_field( 'blueworx_save_feature_settings', '_wpnonce', true, false ),
+		esc_attr( $first_section )
 	);
 
 	printf(

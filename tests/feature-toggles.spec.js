@@ -55,6 +55,22 @@ test.describe('BlueWorx feature toggles', () => {
     ).toBeVisible();
   });
 
+  test('saving puts you back in the section you saved from', async ({ page }) => {
+    await gotoSettings(page);
+    await openSection(page, 'translation');
+
+    await saveEnhancements(page);
+
+    // Landing on Security after saving from Translation reads as the screen
+    // having thrown the change away, even though it saved. It also leaves every
+    // control in that section unclickable for whatever runs next.
+    await expect(page.locator('[data-blueworx-panel="translation"]')).toBeVisible();
+    await expect(page.locator('[data-blueworx-section="translation"]')).toHaveAttribute(
+      'aria-current',
+      'true'
+    );
+  });
+
   test('orphaned managed roles are absent from the Site Protection role lists', async ({ page }) => {
     await gotoSettings(page);
 
