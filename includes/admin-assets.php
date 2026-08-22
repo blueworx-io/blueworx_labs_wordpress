@@ -274,14 +274,14 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 			true
 		);
 
-		// Only the support panel renders the copy button, and the panel only
+		// Only the support panel renders copy buttons, and the panel only
 		// renders while the feature is on.
 		if ( blueworx_feature_enabled( 'support_access' ) ) {
 			wp_enqueue_script(
-				'blueworx-labs-wordpress-support-prompt',
-				BLUEWORX_LABS_URL . 'assets/js/support-prompt.js',
+				'blueworx-labs-wordpress-copy-field',
+				BLUEWORX_LABS_URL . 'assets/js/copy-field.js',
 				array(),
-				blueworx_get_admin_asset_version( 'assets/js/support-prompt.js' ),
+				blueworx_get_admin_asset_version( 'assets/js/copy-field.js' ),
 				true
 			);
 		}

@@ -318,3 +318,18 @@ export async function featureIsOn(page, feature) {
     .locator(`input.blueworx-feature-toggle[data-blueworx-feature="${feature}"]`)
     .isChecked();
 }
+
+/**
+ * Reads the freshly generated support access key.
+ *
+ * The key lives in a read-only field with a copy button beside it, not in a
+ * bare <code> block, so it is read by value rather than by text. One helper
+ * rather than twenty-odd inline reads: the panel is rebuilt often enough that
+ * the next change should only have to land here.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @return {Promise<string>} The 64-character key.
+ */
+export async function readSupportKey(page) {
+  return (await page.locator('[data-testid="bw-support-key"]').inputValue()).trim();
+}
