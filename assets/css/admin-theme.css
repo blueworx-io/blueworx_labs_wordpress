@@ -710,16 +710,19 @@ div.error {
 }
 
 /* ─── Settings-screen containers ───
-   Cache, Headless, General Settings and third-party settings screens all share
-   one shape: an <h2> followed by a .form-table that is a direct child of .wrap
-   or .wrap > form. One rule cards all of them, with no PHP and no JS wrapping of
-   markup we do not own.
+   WordPress's own settings screens, and any third-party one built the same way:
+   an <h2> followed by a .form-table inside .wrap > form. One rule cards all of
+   them, with no PHP and no JS wrapping of markup we do not own.
 
-   THE CHILD COMBINATORS ARE LOAD-BEARING. Enhancements' .form-table sits at
-   .postbox > .inside > .form-table, which is already carded. An unscoped
-   .form-table rule would paint a card inside that card. Do not relax `>` to a
-   descendant combinator. */
-.wrap > .form-table,
+   This used to card BlueWorx's screens too, through a second `.wrap > ...`
+   variant of each selector. Those screens are built from the design system now
+   and have no .form-table and no .postbox to card, so the variants went with
+   them — see tests/design-system-migration.spec.js, which holds that the four
+   rebuilt screens still render with this whole file blocked.
+
+   THE CHILD COMBINATOR IS LOAD-BEARING. A .form-table nested inside something
+   already carded would get a second card painted inside the first. Do not relax
+   `>` to a descendant combinator. */
 .wrap > form > .form-table {
 	background: #fff;
 	border-radius: var(--bw-radius-card);
@@ -729,20 +732,9 @@ div.error {
 	padding: 8px 24px;
 }
 
-.wrap > .form-table > tbody > tr > th,
 .wrap > form > .form-table > tbody > tr > th,
-.wrap > .form-table > tbody > tr > td,
 .wrap > form > .form-table > tbody > tr > td {
 	padding: 16px 10px;
-}
-
-/* Constrain every BlueWorx settings screen to a readable measure. Without this
-   the cards stretch the full viewport and .form-table's 200px th strands each
-   description far from its label — the "bad spacing" on Enhancements. */
-.wrap > form > .postbox,
-.wrap > .postbox {
-	margin-bottom: 16px;
-	max-width: var(--bw-measure);
 }
 
 .wrap > h2,
