@@ -169,7 +169,7 @@ test.describe('Support access — key lifecycle', () => {
       await frontendSelect.selectOption(['administrator']);
       await backendSelect.selectOption(['administrator']);
       await page.getByRole('button', { name: 'Save Changes' }).click();
-      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 
       await page.goto(SETTINGS_PATH);
       await page.getByRole('button', { name: 'Generate key' }).click();
@@ -1158,7 +1158,7 @@ test.describe('Support access — key lifecycle', () => {
       await frontendSelect.selectOption(['administrator']);
       await backendSelect.selectOption(['administrator']);
       await page.getByRole('button', { name: 'Save Changes' }).click();
-      await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+      await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 
       fresh = await context.browser().newContext();
       const impostor = await fresh.newPage();

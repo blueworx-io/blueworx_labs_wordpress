@@ -10,13 +10,19 @@ import {
   baseURL,
   login,
   restoreAll,
+  openSectionFor,
 } from './helpers.js';
 
-const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+// The section nav opens whichever section the URL names, so every navigation
+// in this spec lands with the Translation panel already open.
+const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress&section=translation';
 
 async function gotoSettings(page) {
   await login(page);
   await page.goto(SETTINGS_PATH);
+  // Translation is behind the section nav now; everything this spec touches
+  // lives in that panel.
+  await openSectionFor(page, 'translate');
 }
 
 test.describe('BlueWorx on-page translation — settings', () => {
@@ -67,14 +73,14 @@ test.describe('BlueWorx on-page translation — settings', () => {
 
     await detail.locator('select[name="blueworx_translate_display"]').selectOption('flags');
     await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
     await expect(detail.locator('select[name="blueworx_translate_display"]')).toHaveValue('flags');
 
     await restoreAll([
       ['switcher display style', async () => {
         await detail.locator('select[name="blueworx_translate_display"]').selectOption('text');
         await page.getByRole('button', { name: 'Save Changes' }).click();
-        await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+        await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
       }],
     ]);
   });
@@ -89,7 +95,7 @@ test.describe('BlueWorx on-page translation — settings', () => {
     await detail.locator('select[name="blueworx_translate_position"]').selectOption('top-left');
     await detail.locator('textarea[name="blueworx_translate_exclusions"]').fill('.site-brand\n  \n.sku');
     await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="ar"]')).not.toBeChecked();
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('top-left');
@@ -102,7 +108,7 @@ test.describe('BlueWorx on-page translation — settings', () => {
         await detail.locator('select[name="blueworx_translate_position"]').selectOption('bottom-right');
         await detail.locator('textarea[name="blueworx_translate_exclusions"]').fill('');
         await page.getByRole('button', { name: 'Save Changes' }).click();
-        await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+        await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
       }],
     ]);
   });
@@ -250,7 +256,7 @@ test.describe('BlueWorx on-page translation — administrators only', () => {
 
     await detail.locator(ADMIN_ONLY).setChecked(true);
     await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
     await expect(detail.locator(ADMIN_ONLY)).toBeChecked();
 
     try {
@@ -281,9 +287,10 @@ test.describe('BlueWorx on-page translation — administrators only', () => {
       await restoreAll([
         ['administrators-only setting', async () => {
           await page.goto(SETTINGS_PATH);
+          await openSectionFor(page, 'translate');
           await detail.locator(ADMIN_ONLY).setChecked(false);
           await page.getByRole('button', { name: 'Save Changes' }).click();
-          await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+          await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
         }],
       ]);
     }

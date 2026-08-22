@@ -8,7 +8,7 @@
  */
 
 import { request } from '@playwright/test';
-import { test, expect, baseURL, isPlaceholder, ADMIN_USER, ADMIN_PASS, login, restoreAll } from './helpers.js';
+import { test, expect, baseURL, isPlaceholder, ADMIN_USER, ADMIN_PASS, login, restoreAll, openSectionFor, setFeature } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
@@ -16,7 +16,7 @@ const toggleFor = (key) => `input.blueworx-feature-toggle[data-blueworx-feature=
 
 async function save(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
 test.describe('ASE replacement modules', () => {
@@ -44,6 +44,10 @@ test.describe('ASE replacement modules', () => {
       await expect(page.locator(toggleFor(key)), `${key} should be on the settings page`).toHaveCount(1);
     }
 
+    // Every toggle is in the form whatever section is open — that is what keeps
+    // the save payload complete — so presence is enough here. Media has to be
+    // opened to be seen.
+    await openSectionFor(page, 'media_tools');
     await expect(page.getByRole('heading', { name: 'Media' })).toBeVisible();
   });
 
@@ -67,6 +71,7 @@ test.describe('ASE replacement modules', () => {
   test('the revision limit saves and comes back', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
+    await openSectionFor(page, 'revisions');
 
     const field = page.locator('#blueworx_revisions_limit');
     await expect(field).toHaveCount(1);
@@ -86,6 +91,7 @@ test.describe('ASE replacement modules', () => {
         'restore the original limit',
         async () => {
           await page.goto(SETTINGS_PATH);
+          await openSectionFor(page, 'revisions');
           await page.locator('#blueworx_revisions_limit').fill(original);
           await save(page);
         },
@@ -97,6 +103,7 @@ test.describe('ASE replacement modules', () => {
     await login(page);
     await page.goto(SETTINGS_PATH);
 
+    await openSectionFor(page, 'robots_txt');
     const toggle = page.locator(toggleFor('robots_txt'));
     const wasChecked = await toggle.isChecked();
     const marker = `Disallow: /bw-playwright-${process.pid}/`;
@@ -106,9 +113,10 @@ test.describe('ASE replacement modules', () => {
       [
         'save a marker line and fetch the live file',
         async () => {
-          await toggle.setChecked(true);
+          await setFeature(page, 'robots_txt', true);
           await save(page);
 
+          await openSectionFor(page, 'robots_txt');
           const textarea = page.locator('#blueworx_robots_txt');
           await expect(textarea).toBeVisible();
           originalContent = await textarea.inputValue();
@@ -139,6 +147,7 @@ test.describe('ASE replacement modules', () => {
         'restore the content and the toggle',
         async () => {
           await page.goto(SETTINGS_PATH);
+          await openSectionFor(page, 'robots_txt');
 
           if (originalContent) {
             await page.locator('#blueworx_robots_txt').fill(originalContent);
@@ -146,7 +155,7 @@ test.describe('ASE replacement modules', () => {
             await page.goto(SETTINGS_PATH);
           }
 
-          await page.locator(toggleFor('robots_txt')).setChecked(wasChecked);
+          await setFeature(page, 'robots_txt', wasChecked);
           await save(page);
         },
       ],

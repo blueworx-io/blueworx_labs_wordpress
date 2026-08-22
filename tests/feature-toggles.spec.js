@@ -1,7 +1,18 @@
 // `test` comes from helpers.js, not '@playwright/test': it carries the fixture
 // that opts out of core's wp-admin view transitions, which otherwise freeze
 // rendering in headless Chromium and hang every actionability check.
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
+import {
+  test,
+  expect,
+  isPlaceholder,
+  ADMIN_USER,
+  ADMIN_PASS,
+  login,
+  openSection,
+  openSectionFor,
+  setFeature,
+  saveEnhancements,
+} from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
@@ -20,17 +31,44 @@ test.describe('BlueWorx feature toggles', () => {
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
 
-  test('settings page shows grouped sections and a Comments toggle', async ({ page }) => {
+  test('every section is reachable, and Comments lives in Content', async ({ page }) => {
     await gotoSettings(page);
-    await expect(page.getByRole('heading', { name: 'Security & Access' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Content' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Translation' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Notifications & Cleanup' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Performance' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Admin Menu' })).toBeVisible();
+
+    // Sections are behind a section nav now rather than stacked down one page,
+    // so what matters is that each one is offered and opens.
+    for (const [id, label] of [
+      ['security', 'Security & Access'],
+      ['content', 'Content'],
+      ['translation', 'Translation'],
+      ['notifications', 'Notifications & Cleanup'],
+      ['performance', 'Performance'],
+      ['admin_menu', 'Admin Menu'],
+    ]) {
+      await expect(page.locator(`[data-blueworx-section="${id}"]`)).toContainText(label);
+      await openSection(page, id);
+      await expect(page.getByRole('heading', { name: label })).toBeVisible();
+    }
+
+    await openSectionFor(page, 'comments');
     await expect(
       page.locator('input.blueworx-feature-toggle[data-blueworx-feature="comments"]')
     ).toBeVisible();
+  });
+
+  test('saving puts you back in the section you saved from', async ({ page }) => {
+    await gotoSettings(page);
+    await openSection(page, 'translation');
+
+    await saveEnhancements(page);
+
+    // Landing on Security after saving from Translation reads as the screen
+    // having thrown the change away, even though it saved. It also leaves every
+    // control in that section unclickable for whatever runs next.
+    await expect(page.locator('[data-blueworx-panel="translation"]')).toBeVisible();
+    await expect(page.locator('[data-blueworx-section="translation"]')).toHaveAttribute(
+      'aria-current',
+      'true'
+    );
   });
 
   test('orphaned managed roles are absent from the Site Protection role lists', async ({ page }) => {
@@ -52,21 +90,19 @@ test.describe('BlueWorx feature toggles', () => {
 
   test('toggling a feature persists after save', async ({ page }) => {
     await gotoSettings(page);
+    await openSectionFor(page, 'page_excerpts');
+
     const toggle = page.locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]');
     const wasChecked = await toggle.isChecked();
 
-    await toggle.setChecked(!wasChecked);
-    await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
-    await expect(
-      page.locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]')
-    ).toBeChecked({ checked: !wasChecked });
+    await setFeature(page, 'page_excerpts', !wasChecked);
+    await saveEnhancements(page);
+
+    await openSectionFor(page, 'page_excerpts');
+    await expect(toggle).toBeChecked({ checked: !wasChecked });
 
     // Restore original state so the test is idempotent across runs.
-    await page
-      .locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]')
-      .setChecked(wasChecked);
-    await page.getByRole('button', { name: 'Save Changes' }).click();
-    await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+    await setFeature(page, 'page_excerpts', wasChecked);
+    await saveEnhancements(page);
   });
 });

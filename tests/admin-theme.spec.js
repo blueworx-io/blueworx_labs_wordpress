@@ -11,6 +11,8 @@ import {
   LOGIN_PATH,
   login,
   cacheBust,
+  openSectionFor,
+  setFeature,
 } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
@@ -20,12 +22,15 @@ const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
  */
 async function themeToggle(page) {
   await page.goto(SETTINGS_PATH);
+  // Appearance is not the section that opens first, so the toggle is in the DOM
+  // but not on screen until its section is opened.
+  await openSectionFor(page, 'admin_theme');
   return page.locator('input.blueworx-feature-toggle[data-blueworx-feature="admin_theme"]');
 }
 
 async function saveSettings(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
 test.describe('BlueWorx admin theme', () => {
@@ -51,7 +56,7 @@ test.describe('BlueWorx admin theme', () => {
     themeIsOff = false;
     const toggle = await themeToggle(page);
     if (!(await toggle.isChecked())) {
-      await toggle.setChecked(true);
+      await setFeature(page, 'admin_theme', true);
       await saveSettings(page);
     }
   });
@@ -59,6 +64,7 @@ test.describe('BlueWorx admin theme', () => {
   test('Appearance section and admin_theme toggle render', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
+    await openSectionFor(page, 'admin_theme');
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
     await expect(
       page.locator('input.blueworx-feature-toggle[data-blueworx-feature="admin_theme"]')
@@ -71,7 +77,7 @@ test.describe('BlueWorx admin theme', () => {
     // Ensure the theme is ON.
     let toggle = await themeToggle(page);
     if (!(await toggle.isChecked())) {
-      await toggle.setChecked(true);
+      await setFeature(page, 'admin_theme', true);
       await saveSettings(page);
     }
 
@@ -83,7 +89,7 @@ test.describe('BlueWorx admin theme', () => {
     // Flagged before the save, not after: if the save itself is what fails, the
     // setting may still have landed, so the afterEach must assume the worst.
     toggle = await themeToggle(page);
-    await toggle.setChecked(false);
+    await setFeature(page, 'admin_theme', false);
     themeIsOff = true;
     await saveSettings(page);
 
@@ -95,7 +101,7 @@ test.describe('BlueWorx admin theme', () => {
     // Restore ON so the test is idempotent across runs. The afterEach is the
     // net for when this line is never reached.
     toggle = await themeToggle(page);
-    await toggle.setChecked(true);
+    await setFeature(page, 'admin_theme', true);
     await saveSettings(page);
     themeIsOff = false;
   });
