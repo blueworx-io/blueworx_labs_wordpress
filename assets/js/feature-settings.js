@@ -34,6 +34,14 @@
 				item.removeAttribute( 'aria-current' );
 			}
 		} );
+
+		// The save posts this, and the redirect brings the operator back here.
+		// Saving from Translation and landing on Security reads as the screen
+		// having lost the change, even though it saved.
+		var field = document.querySelector( '[data-blueworx-section-field]' );
+		if ( field ) {
+			field.value = id;
+		}
 	}
 
 	function start() {
