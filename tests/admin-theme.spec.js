@@ -11,6 +11,8 @@ import {
   LOGIN_PATH,
   login,
   cacheBust,
+  openSectionFor,
+  setFeature,
 } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
@@ -20,12 +22,15 @@ const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
  */
 async function themeToggle(page) {
   await page.goto(SETTINGS_PATH);
+  // Appearance is not the section that opens first, so the toggle is in the DOM
+  // but not on screen until its section is opened.
+  await openSectionFor(page, 'admin_theme');
   return page.locator('input.blueworx-feature-toggle[data-blueworx-feature="admin_theme"]');
 }
 
 async function saveSettings(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
 test.describe('BlueWorx admin theme', () => {
@@ -51,7 +56,7 @@ test.describe('BlueWorx admin theme', () => {
     themeIsOff = false;
     const toggle = await themeToggle(page);
     if (!(await toggle.isChecked())) {
-      await toggle.setChecked(true);
+      await setFeature(page, 'admin_theme', true);
       await saveSettings(page);
     }
   });
@@ -59,6 +64,7 @@ test.describe('BlueWorx admin theme', () => {
   test('Appearance section and admin_theme toggle render', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
+    await openSectionFor(page, 'admin_theme');
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
     await expect(
       page.locator('input.blueworx-feature-toggle[data-blueworx-feature="admin_theme"]')
@@ -71,7 +77,7 @@ test.describe('BlueWorx admin theme', () => {
     // Ensure the theme is ON.
     let toggle = await themeToggle(page);
     if (!(await toggle.isChecked())) {
-      await toggle.setChecked(true);
+      await setFeature(page, 'admin_theme', true);
       await saveSettings(page);
     }
 
@@ -83,7 +89,7 @@ test.describe('BlueWorx admin theme', () => {
     // Flagged before the save, not after: if the save itself is what fails, the
     // setting may still have landed, so the afterEach must assume the worst.
     toggle = await themeToggle(page);
-    await toggle.setChecked(false);
+    await setFeature(page, 'admin_theme', false);
     themeIsOff = true;
     await saveSettings(page);
 
@@ -95,7 +101,7 @@ test.describe('BlueWorx admin theme', () => {
     // Restore ON so the test is idempotent across runs. The afterEach is the
     // net for when this line is never reached.
     toggle = await themeToggle(page);
-    await toggle.setChecked(true);
+    await setFeature(page, 'admin_theme', true);
     await saveSettings(page);
     themeIsOff = false;
   });
@@ -296,28 +302,28 @@ test.describe('BlueWorx admin theme', () => {
     }
   });
 
-  test('settings screens get card containers, without nesting cards', async ({ page }) => {
+  test('core screens get card containers, and ours bring their own', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await login(page);
 
     const white = 'rgb(255, 255, 255)';
 
-    // Cache: bare form-table gets carded.
-    await page.goto('/wp-admin/admin.php?page=blueworx-cache');
-    await expect(page.locator('.wrap > .form-table').first()).toHaveCSS('background-color', white);
-
-    // General Settings (core markup) gets carded too.
+    // WordPress's own screens are still carded by the re-skin — that is the
+    // half of this the design system migration did not touch.
     await page.goto('/wp-admin/options-general.php');
     await expect(page.locator('.wrap > form > .form-table').first()).toHaveCSS('background-color', white);
 
-    // Enhancements: its form-table lives inside an already-carded .postbox.
-    // A card here means the child combinators broke and cards are nesting.
-    await page.goto(SETTINGS_PATH);
-    const nested = page.locator('.postbox .inside > .form-table').first();
-    await expect(nested).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    // Ours no longer have a form-table to card: they are built from the design
+    // system's own cards. The thing worth holding is that the re-skin does not
+    // then card the card — a second background behind the first is how nesting
+    // shows up.
+    await page.goto('/wp-admin/admin.php?page=blueworx-cache');
+    const card = page.locator('.bw-admin .bw-card').first();
+    await expect(card).toBeVisible();
+    await expect(page.locator('.bw-admin .bw-card .bw-card')).toHaveCount(0);
 
-    // And its cards must be constrained, not stretched edge-to-edge at 1600px.
-    const box = await page.locator('.postbox').first().boundingBox();
+    // And a card must be constrained, not stretched edge-to-edge at 1600px.
+    const box = await card.boundingBox();
     expect(box.width).toBeLessThan(1300);
   });
 

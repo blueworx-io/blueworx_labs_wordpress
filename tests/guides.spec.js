@@ -12,6 +12,7 @@ import {
   ADMIN_PASS,
   login,
   restoreAll,
+  setFeature,
 } from './helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +53,7 @@ async function gotoGuides(page, tab) {
 
 async function saveSettings(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
 test.describe('BlueWorx Guides page', () => {
@@ -107,13 +108,8 @@ test.describe('BlueWorx Guides page', () => {
       await login(page);
       await page.goto(SETTINGS_PATH);
 
-      const toggle = page.locator(
-        'input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]'
-      );
-      if (!(await toggle.isChecked())) {
-        await toggle.setChecked(true);
-        await saveSettings(page);
-      }
+      await setFeature(page, 'page_excerpts', true);
+      await saveSettings(page);
 
       await page.goto(`${GUIDES_PATH}&tab=content`);
       await expect(page.locator('[data-blueworx-guide="feature-page_excerpts"]')).toBeVisible();
@@ -122,9 +118,7 @@ test.describe('BlueWorx Guides page', () => {
       // the setting may still have landed, so cleanup must assume the worst.
       await page.goto(SETTINGS_PATH);
       restored = false;
-      await page
-        .locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]')
-        .setChecked(false);
+      await setFeature(page, 'page_excerpts', false);
       await saveSettings(page);
 
       await page.goto(`${GUIDES_PATH}&tab=content`);
@@ -136,9 +130,7 @@ test.describe('BlueWorx Guides page', () => {
             'page_excerpts back on',
             async () => {
               await page.goto(SETTINGS_PATH);
-              await page
-                .locator('input.blueworx-feature-toggle[data-blueworx-feature="page_excerpts"]')
-                .setChecked(true);
+              await setFeature(page, 'page_excerpts', true);
               await saveSettings(page);
             },
           ],

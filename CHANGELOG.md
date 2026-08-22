@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.4] - 2026-08-22
+
+### Changed
+- **The Enhancements screen has been rebuilt.** Sections now sit in a list down
+  the side, each showing how many of its functions are on, so you work in one
+  section at a time instead of scrolling past everything. Each function is a
+  switch with its settings underneath it, and Save stays with you at the bottom
+  of the screen rather than at the end of the page. Nothing about what the
+  functions do, or how they save, has changed. (#118)
+
 ## [1.58.3] - 2026-08-21
 
 ### Changed

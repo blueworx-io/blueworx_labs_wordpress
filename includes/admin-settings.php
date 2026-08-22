@@ -351,60 +351,219 @@ function blueworx_render_enhancements_page() {
 	if ( $notice ) {
 		delete_transient( 'blueworx_labs_notice' );
 	}
-	?>
-	<div class="wrap">
-		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-		<?php if ( $notice ) : ?>
-			<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>
-		<?php endif; ?>
-		<p><?php esc_html_e( 'Turn each function on or off. Functions left on behave exactly as before.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php if ( blueworx_feature_enabled( 'login' ) ) : ?>
-			<p><strong><?php esc_html_e( 'Active login URL:', 'blueworx-labs-wordpress' ); ?></strong>
-				<a href="<?php echo esc_url( $login_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $login_url ); ?></a></p>
-		<?php endif; ?>
 
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<input type="hidden" name="action" value="blueworx_save_feature_settings" />
-			<?php wp_nonce_field( 'blueworx_save_feature_settings' ); ?>
+	// How many of each section's functions are on, for the section nav.
+	$counts = array();
 
-			<?php foreach ( $sections as $section_id => $section_label ) : ?>
-				<div class="postbox blueworx-feature-section">
-					<div class="postbox-header"><h2 class="hndle"><?php echo esc_html( $section_label ); ?></h2></div>
-					<div class="inside">
-						<table class="form-table" role="presentation"><tbody>
-						<?php
-						foreach ( $features as $key => $feature ) :
-							if ( $feature['section'] !== $section_id ) {
-								continue;
-							}
-							$enabled = blueworx_feature_enabled( $key );
-							?>
-							<tr>
-								<th scope="row">
-									<label>
-										<input type="checkbox" name="<?php echo esc_attr( 'blueworx_feature[' . $key . ']' ); ?>" value="1" <?php checked( $enabled ); ?> class="blueworx-feature-toggle" data-blueworx-feature="<?php echo esc_attr( $key ); ?>" />
-										<?php echo esc_html( $feature['label'] ); ?>
-									</label>
-								</th>
-								<td>
-									<p class="description"><?php echo esc_html( $feature['description'] ); ?></p>
-									<?php if ( ! empty( $feature['detail'] ) ) : ?>
-										<div class="blueworx-feature-detail" data-blueworx-detail="<?php echo esc_attr( $key ); ?>" <?php echo $enabled ? '' : 'hidden'; ?>>
-											<?php blueworx_render_feature_detail( $key ); ?>
-										</div>
-									<?php endif; ?>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-						</tbody></table>
-					</div>
-				</div>
-			<?php endforeach; ?>
+	foreach ( $features as $key => $feature ) {
+		$section = $feature['section'];
 
-			<?php submit_button( esc_html__( 'Save Changes', 'blueworx-labs-wordpress' ) ); ?>
-		</form>
-	</div>
-	<?php
+		if ( ! isset( $counts[ $section ] ) ) {
+			$counts[ $section ] = array(
+				'on'    => 0,
+				'total' => 0,
+			);
+		}
+
+		++$counts[ $section ]['total'];
+
+		if ( blueworx_feature_enabled( $key ) ) {
+			++$counts[ $section ]['on'];
+		}
+	}
+
+	$header_actions = blueworx_ds_button(
+		array(
+			'label' => __( 'Read the guides', 'blueworx-labs-wordpress' ),
+			'icon'  => 'lightbulb',
+			'href'  => admin_url( 'admin.php?page=blueworx-guides' ),
+		)
+	);
+
+	echo wp_kses(
+		blueworx_ds_screen_open(
+			blueworx_ds_page_header(
+				array(
+					'title'   => __( 'Enhancements', 'blueworx-labs-wordpress' ),
+					'lede'    => __( 'Functions you can switch on one at a time. Nothing changes on the site until you save.', 'blueworx-labs-wordpress' ),
+					'actions' => $header_actions,
+				)
+			)
+		),
+		blueworx_ds_allowed_html()
+	);
+
+	if ( $notice ) {
+		echo wp_kses(
+			blueworx_ds_notice(
+				array(
+					'tone' => 'success',
+					'text' => $notice,
+				)
+			),
+			blueworx_ds_allowed_html()
+		);
+	}
+
+	if ( blueworx_feature_enabled( 'login' ) ) {
+		echo wp_kses(
+			blueworx_ds_notice(
+				array(
+					'tone'  => 'accent',
+					'title' => __( 'The way in to this site', 'blueworx-labs-wordpress' ),
+					'html'  => sprintf(
+						'<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+						esc_url( $login_url ),
+						esc_html( $login_url )
+					),
+				)
+			),
+			blueworx_ds_allowed_html()
+		);
+	}
+
+	$sections_with_features = array();
+
+	foreach ( $sections as $section_id => $section_label ) {
+		if ( isset( $counts[ $section_id ] ) ) {
+			$sections_with_features[ $section_id ] = $section_label;
+		}
+	}
+
+	$first_section = (string) array_key_first( $sections_with_features );
+
+	// Section nav. Every panel stays in the form whichever section is showing —
+	// an unchecked checkbox is indistinguishable from a missing one on save, so
+	// rendering only the visible section would switch the rest of the plugin off
+	// the first time anybody pressed Save.
+	$nav = '';
+
+	foreach ( $sections_with_features as $section_id => $section_label ) {
+		$nav .= sprintf(
+			'<button type="button" class="bw-secnav__item%1$s" data-blueworx-section="%2$s"%3$s><span>%4$s</span><span class="bw-secnav__meta">%5$s</span></button>',
+			$section_id === $first_section ? ' is-active' : '',
+			esc_attr( $section_id ),
+			$section_id === $first_section ? ' aria-current="true"' : '',
+			esc_html( $section_label ),
+			esc_html(
+				sprintf(
+					/* translators: 1: number of functions switched on, 2: number of functions in the section. */
+					__( '%1$d / %2$d', 'blueworx-labs-wordpress' ),
+					$counts[ $section_id ]['on'],
+					$counts[ $section_id ]['total']
+				)
+			)
+		);
+	}
+
+	printf(
+		'<form method="post" action="%1$s" class="bw-page__form"><input type="hidden" name="action" value="blueworx_save_feature_settings" />%2$s',
+		esc_url( admin_url( 'admin-post.php' ) ),
+		wp_nonce_field( 'blueworx_save_feature_settings', '_wpnonce', true, false )
+	);
+
+	printf(
+		'<div class="bw-page__body"><nav class="bw-secnav" aria-label="%1$s">%2$s</nav><div class="bw-panels">',
+		esc_attr__( 'Sections', 'blueworx-labs-wordpress' ),
+		wp_kses( $nav, blueworx_ds_allowed_html() )
+	);
+
+	foreach ( $sections_with_features as $section_id => $section_label ) {
+		$rows = '';
+
+		foreach ( $features as $key => $feature ) {
+			if ( $feature['section'] !== $section_id ) {
+				continue;
+			}
+
+			$enabled = blueworx_feature_enabled( $key );
+
+			$switch = sprintf(
+				'<label class="bw-switch"><input type="checkbox" role="switch" name="%1$s" value="1"%2$s class="blueworx-feature-toggle" data-blueworx-feature="%3$s" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span><span class="bw-switch__label">%4$s<small>%5$s</small></span></label>',
+				esc_attr( 'blueworx_feature[' . $key . ']' ),
+				checked( $enabled, true, false ),
+				esc_attr( $key ),
+				esc_html( $feature['label'] ),
+				esc_html( $feature['description'] )
+			);
+
+			$detail = '';
+
+			if ( ! empty( $feature['detail'] ) ) {
+				ob_start();
+				blueworx_render_feature_detail( $key );
+				$detail_html = (string) ob_get_clean();
+
+				// NOT filtered through wp_kses(). The detail panels are this
+				// plugin's own markup and escape their own values as they render;
+				// running them through an allow-list here would mean every
+				// attribute any panel ever uses has to be listed there too, and
+				// wp_kses() drops what it does not recognise in silence. The
+				// support panel alone relies on formaction, formmethod and two
+				// data attributes — a stripped formaction posts the button to the
+				// wrong handler, and nothing about the page looks wrong.
+				$detail = sprintf(
+					'<div class="blueworx-feature-detail bw-card bw-card--sunken" data-blueworx-detail="%1$s"%2$s><div class="bw-card__body">%3$s</div></div>',
+					esc_attr( $key ),
+					$enabled ? '' : ' hidden',
+					$detail_html
+				);
+			}
+
+			// One .bw-field per function: the switch on its own line with its
+			// settings beneath it, rather than a 200px label column that squeezes
+			// every function's name into four words a line.
+			$rows .= '<div class="bw-field">' . wp_kses( $switch, blueworx_ds_allowed_html() ) . $detail . '</div>';
+		}
+
+		printf(
+			'<section class="bw-card bw-settingscard" data-blueworx-panel="%1$s"%2$s><div class="bw-card__head"><div class="bw-card__titles"><p class="bw-card__eyebrow">%3$s</p><h2 class="bw-card__title">%4$s</h2></div><div class="bw-card__actions">%5$s</div></div><div class="bw-card__body bw-settingscard__body"><div class="bw-fields bw-fields--single">%6$s</div></div></section>',
+			esc_attr( $section_id ),
+			$section_id === $first_section ? '' : ' hidden',
+			esc_html__( 'Section', 'blueworx-labs-wordpress' ),
+			esc_html( $section_label ),
+			wp_kses(
+				blueworx_ds_badge(
+					sprintf(
+						/* translators: %d: number of functions switched on in this section. */
+						_n( '%d on', '%d on', $counts[ $section_id ]['on'], 'blueworx-labs-wordpress' ),
+						$counts[ $section_id ]['on']
+					),
+					$counts[ $section_id ]['on'] > 0 ? 'success' : 'neutral'
+				),
+				blueworx_ds_allowed_html()
+			),
+			// Already filtered piece by piece above: the parts this file composes
+			// go through wp_kses(), the detail panels render their own escaped
+			// markup. See the note on $detail.
+			$rows // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		);
+	}
+
+	echo '</div></div>';
+
+	// The save bar sticks to the bottom of the screen rather than sitting under
+	// whichever section happens to be open, so Save is in the same place however
+	// far down a long section you are.
+	printf(
+		'<div class="bw-savebar"><p class="bw-savebar__hint">%1$s</p>%2$s</div>',
+		esc_html__( 'Nothing changes on the site until you save.', 'blueworx-labs-wordpress' ),
+		wp_kses(
+			blueworx_ds_button(
+				array(
+					'label'   => __( 'Save Changes', 'blueworx-labs-wordpress' ),
+					'variant' => 'primary',
+					'type'    => 'submit',
+					'attrs'   => array( 'name' => 'submit' ),
+				)
+			),
+			blueworx_ds_allowed_html()
+		)
+	);
+
+	echo '</form>';
+
+	echo wp_kses( blueworx_ds_screen_close(), blueworx_ds_allowed_html() );
 }
 
 /**

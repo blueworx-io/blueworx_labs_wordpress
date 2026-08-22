@@ -53,6 +53,8 @@ function blueworx_ds_allowed_html() {
 		'data-blueworx-guide-tab'    => true,
 		'data-blueworx-guide-panel'  => true,
 		'data-blueworx-roles'        => true,
+		'data-blueworx-section'      => true,
+		'data-blueworx-panel'        => true,
 	);
 
 	// Every aria-* and data-* attribute our screens use, spelled out: wp_kses()
@@ -128,6 +130,45 @@ function blueworx_ds_allowed_html() {
 		'textarea' => array_merge( $common, array( 'name' => true, 'rows' => true, 'cols' => true, 'placeholder' => true, 'readonly' => true ) ),
 		'fieldset' => $common,
 		'legend'   => $common,
+		'br'       => array(),
+		'hr'       => $common,
+
+		// The feature detail panels render their own disclosure widgets and
+		// inline SVG. Both are ours, both are static markup, and both vanish
+		// without a trace if they are not listed here.
+		'details'  => array_merge( $common, array( 'open' => true ) ),
+		'summary'  => $common,
+		'svg'      => array_merge(
+			$common,
+			array(
+				'xmlns'             => true,
+				'width'             => true,
+				'height'            => true,
+				'viewbox'           => true,
+				'fill'              => true,
+				'stroke'            => true,
+				'stroke-width'      => true,
+				'stroke-linecap'    => true,
+				'stroke-linejoin'   => true,
+				'focusable'         => true,
+			)
+		),
+		'path'     => array(
+			'd'               => true,
+			'fill'            => true,
+			'stroke'          => true,
+			'stroke-width'    => true,
+			'stroke-linecap'  => true,
+			'stroke-linejoin' => true,
+		),
+		'circle'   => array(
+			'cx'           => true,
+			'cy'           => true,
+			'r'            => true,
+			'fill'         => true,
+			'stroke'       => true,
+			'stroke-width' => true,
+		),
 	);
 }
 

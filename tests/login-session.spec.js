@@ -13,7 +13,7 @@ const HOUR = 60 * 60;
 
 async function save(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
 /**

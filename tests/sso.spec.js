@@ -19,6 +19,8 @@ import {
   login,
   restoreAll,
   cacheBust,
+  openSectionFor,
+  setFeature,
 } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
@@ -27,7 +29,7 @@ const toggleFor = (key) => `input.blueworx-feature-toggle[data-blueworx-feature=
 
 async function save(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.locator('.notice-success').first()).toContainText('Settings saved');
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
 test.describe('Single sign-on', () => {
@@ -46,7 +48,7 @@ test.describe('Single sign-on', () => {
   test('the settings survive a save and the secret is never rendered', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await page.locator(toggleFor('sso')).setChecked(true);
+    await setFeature(page, 'sso', true);
     await page.fill('#blueworx_sso_issuer', 'https://idp.test');
     await page.fill('#blueworx_sso_client_id', 'test-client');
     await page.fill('#blueworx_sso_client_secret', 'super-secret-value');
@@ -67,7 +69,7 @@ test.describe('Single sign-on', () => {
         'sso off',
         async () => {
           await page.goto(SETTINGS_PATH);
-          await page.locator(toggleFor('sso')).setChecked(false);
+          await setFeature(page, 'sso', false);
           await save(page);
         },
       ],
@@ -77,7 +79,7 @@ test.describe('Single sign-on', () => {
   test('the joining destinations survive a save', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await page.locator(toggleFor('sso')).setChecked(true);
+    await setFeature(page, 'sso', true);
     await page.fill('#blueworx_sso_redirect_after_register', 'https://example.test/register-success/');
     await page.fill('#blueworx_sso_no_account_url', 'https://example.test/join/');
     await save(page);
@@ -95,7 +97,7 @@ test.describe('Single sign-on', () => {
           await page.goto(SETTINGS_PATH);
           await page.fill('#blueworx_sso_redirect_after_register', '');
           await page.fill('#blueworx_sso_no_account_url', '');
-          await page.locator(toggleFor('sso')).setChecked(false);
+          await setFeature(page, 'sso', false);
           await save(page);
         },
       ],
@@ -122,7 +124,7 @@ test.describe('Single sign-on flow', () => {
     const page = await browser.newPage();
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await page.locator(toggleFor('sso')).setChecked(true);
+    await setFeature(page, 'sso', true);
     await page.fill('#blueworx_sso_issuer', 'https://idp.test');
     await page.fill('#blueworx_sso_client_id', 'test-client');
     await page.fill('#blueworx_sso_client_secret', 'test-secret');
@@ -139,7 +141,7 @@ test.describe('Single sign-on flow', () => {
     const page = await browser.newPage();
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await page.locator(toggleFor('sso')).setChecked(false);
+    await setFeature(page, 'sso', false);
     await save(page);
     await page.close();
   });

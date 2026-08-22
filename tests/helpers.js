@@ -11,7 +11,9 @@ import { test as base } from '@playwright/test';
 // ADMIN_USER and fail with a ReferenceError inside a helper that looks fine.
 import { baseURL, isPlaceholder, ADMIN_USER, ADMIN_PASS, LOGIN_PATH_RAW } from './test-target.js';
 
-export { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+
+export { expect };
 
 /**
  * The `test` every spec must import — from here, NOT from '@playwright/test'.
@@ -182,4 +184,137 @@ export async function restoreAll(steps) {
       `Cleanup failed for ${errors.length} of ${steps.length} restore step(s):\n${errors.join('\n')}`
     );
   }
+}
+
+/**
+ * The Enhancements screen's section for a given feature key.
+ *
+ * Sections now sit behind a section nav rather than stacked down one long page,
+ * so a control is only reachable once its section is open. This map is the one
+ * place that knowledge lives; it mirrors blueworx_get_feature_definitions().
+ */
+const FEATURE_SECTIONS = {
+  login: 'security',
+  site_protection: 'security',
+  sso: 'security',
+  support_access: 'security',
+  user_roles: 'security',
+  view_as_role: 'security',
+  login_session: 'security',
+  login_redirect: 'security',
+  xmlrpc: 'security',
+  author_slugs: 'security',
+  rest_users: 'security',
+  application_passwords: 'security',
+  comments: 'content',
+  page_excerpts: 'content',
+  content_tools: 'content',
+  revisions: 'content',
+  robots_txt: 'content',
+  media_tools: 'media',
+  translate: 'translation',
+  emails: 'notifications',
+  profile_cleanup: 'notifications',
+  cache_auto: 'performance',
+  cache_manual: 'performance',
+  menu_editor: 'admin_menu',
+  admin_theme: 'appearance',
+  admin_bar: 'appearance',
+  dashboard_widgets: 'appearance',
+};
+
+/**
+ * Opens a section on the Enhancements screen.
+ *
+ * Every panel is in the DOM whichever section is showing — hiding rather than
+ * removing them is what keeps the form's POST payload complete — so this is a
+ * visibility concern only. Safe to call when the section is already open.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {string} section Section id, e.g. "security".
+ */
+export async function openSection(page, section) {
+  // The screen's script is enqueued in the footer, so straight after a save the
+  // nav can be on the page a moment before it is wired up. Clicking then does
+  // nothing at all, which reads exactly like a broken nav.
+  await page.waitForSelector('html[data-blueworx-sections="ready"]');
+
+  const item = page.locator(`[data-blueworx-section="${section}"]`);
+
+  if (!(await item.count())) {
+    throw new Error(`No section nav item for "${section}" — is the screen rendered?`);
+  }
+
+  await item.click();
+  await expect(page.locator(`[data-blueworx-panel="${section}"]`)).toBeVisible();
+}
+
+/**
+ * Opens whichever section holds a feature, by feature key.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {string} feature Feature key, e.g. "sso".
+ */
+export async function openSectionFor(page, feature) {
+  const section = FEATURE_SECTIONS[feature];
+
+  if (!section) {
+    throw new Error(`No section known for feature "${feature}" — add it to FEATURE_SECTIONS.`);
+  }
+
+  await openSection(page, section);
+}
+
+/**
+ * Saves the Enhancements form and waits for the confirmation.
+ *
+ * The confirmation is the design system's notice now, not WordPress's — same
+ * message, different markup.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ */
+export async function saveEnhancements(page) {
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+}
+
+/**
+ * Switches a feature on or off on the Enhancements screen.
+ *
+ * The toggles are the design system's Switch now: the real checkbox is a
+ * zero-size, transparent element behind the track it draws, so clicking the
+ * input itself lands on the track instead and times out. The label is what a
+ * person clicks, and it is what this clicks.
+ *
+ * Opens the feature's section first, and does nothing when the toggle is
+ * already in the state you asked for.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {string} feature Feature key.
+ * @param {boolean} checked Desired state.
+ */
+export async function setFeature(page, feature, checked) {
+  await openSectionFor(page, feature);
+
+  const input = page.locator(`input.blueworx-feature-toggle[data-blueworx-feature="${feature}"]`);
+
+  if ((await input.isChecked()) === checked) {
+    return;
+  }
+
+  await page.locator(`label.bw-switch:has(input[data-blueworx-feature="${feature}"])`).click();
+  await expect(input).toBeChecked({ checked });
+}
+
+/**
+ * Whether a feature is currently on.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {string} feature Feature key.
+ * @return {Promise<boolean>} True when on.
+ */
+export async function featureIsOn(page, feature) {
+  return page
+    .locator(`input.blueworx-feature-toggle[data-blueworx-feature="${feature}"]`)
+    .isChecked();
 }
