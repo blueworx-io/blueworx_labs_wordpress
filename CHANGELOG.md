@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.59.0] - 2026-08-23
+
+### Changed
+- The settings inside each function's panel on Enhancements now look like the
+  rest of the screen. They were still plain WordPress form controls — most
+  obviously the Site Protection role pickers, which were multi-select boxes
+  nobody could work out how to pick two roles in. Roles are now a simple list
+  of tick boxes, the same one used everywhere else in the plugin. The Single
+  sign-on and Translation panels got the same treatment.
+- The address to give your identity provider now has a copy button instead of
+  being a line of text to select by hand.
+
+### Fixed
+- The admin screens no longer scroll sideways on a phone. The section nav down
+  the side kept its full-width column on small screens and squashed everything
+  beside it, and on Guides the row of tabs dragged the page out to nearly four
+  times the width of the screen.
+- Added the missing guide for landing on the dashboard after signing in. Every
+  function now has one.
+
 ## [1.58.9] - 2026-08-22
 
 ### Changed

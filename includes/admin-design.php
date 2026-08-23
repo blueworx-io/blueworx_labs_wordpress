@@ -612,6 +612,427 @@ function blueworx_ds_copy_field( $args ) {
 }
 
 /**
+ * Renders a checkbox.
+ *
+ * The design system's checkbox is a <label> wrapping its input rather than a
+ * `for` pair, so callers pass the label text, not an id to point at.
+ *
+ * @param array $args {
+ *     @type string $name    Field name.
+ *     @type string $label   Visible label text.
+ *     @type string $value   Submitted value.
+ *     @type bool   $checked Whether it starts ticked.
+ *     @type string $help    Optional second line under the label.
+ *     @type array  $attrs   Extra attributes on the input.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_checkbox( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'name'    => '',
+			'label'   => '',
+			'value'   => '1',
+			'checked' => false,
+			'help'    => '',
+			'attrs'   => array(),
+		)
+	);
+
+	$text = '<span>' . esc_html( $args['label'] ) . '</span>';
+
+	if ( '' !== $args['help'] ) {
+		$text .= '<span class="bw-check__help">' . esc_html( $args['help'] ) . '</span>';
+	}
+
+	return sprintf(
+		'<label class="bw-check"><input type="checkbox" name="%1$s" value="%2$s"%3$s%4$s /><span class="bw-check__text">%5$s</span></label>',
+		esc_attr( $args['name'] ),
+		esc_attr( $args['value'] ),
+		checked( (bool) $args['checked'], true, false ),
+		blueworx_ds_attrs( $args['attrs'] ),
+		$text
+	);
+}
+
+/**
+ * Renders a radio button.
+ *
+ * Shares the checkbox's markup on purpose — the design system draws both from
+ * one class and lets the input type decide the shape.
+ *
+ * @param array $args {
+ *     @type string $name    Field name, shared across the group.
+ *     @type string $label   Visible label text.
+ *     @type string $value   Submitted value.
+ *     @type bool   $checked Whether it starts selected.
+ *     @type string $help    Optional second line under the label.
+ *     @type array  $attrs   Extra attributes on the input.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_radio( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'name'    => '',
+			'label'   => '',
+			'value'   => '',
+			'checked' => false,
+			'help'    => '',
+			'attrs'   => array(),
+		)
+	);
+
+	$text = '<span>' . esc_html( $args['label'] ) . '</span>';
+
+	if ( '' !== $args['help'] ) {
+		$text .= '<span class="bw-check__help">' . esc_html( $args['help'] ) . '</span>';
+	}
+
+	return sprintf(
+		'<label class="bw-check"><input type="radio" name="%1$s" value="%2$s"%3$s%4$s /><span class="bw-check__text">%5$s</span></label>',
+		esc_attr( $args['name'] ),
+		esc_attr( $args['value'] ),
+		checked( (bool) $args['checked'], true, false ),
+		blueworx_ds_attrs( $args['attrs'] ),
+		$text
+	);
+}
+
+/**
+ * Renders a set of radio buttons as one labelled choice.
+ *
+ * @param array $args {
+ *     @type string $name     Field name.
+ *     @type string $legend   Heading for the group.
+ *     @type array  $choices  Value => label.
+ *     @type string $selected Selected value.
+ *     @type string $help     Optional sentence under the group.
+ *     @type string $id       Base id, used to tie the group to its heading.
+ *     @type string $extra    Extra HTML placed inside the group, after the
+ *                            options — a role picker a choice depends on, say.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_radio_group( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'name'     => '',
+			'legend'   => '',
+			'choices'  => array(),
+			'selected' => '',
+			'help'     => '',
+			'id'       => '',
+			'extra'    => '',
+		)
+	);
+
+	$id      = '' !== $args['id'] ? $args['id'] : 'bw-group-' . sanitize_key( $args['name'] );
+	$buttons = '';
+
+	foreach ( (array) $args['choices'] as $value => $label ) {
+		$buttons .= blueworx_ds_radio(
+			array(
+				'name'    => $args['name'],
+				'value'   => (string) $value,
+				'label'   => (string) $label,
+				'checked' => (string) $value === (string) $args['selected'],
+			)
+		);
+	}
+
+	$help = '' !== $args['help'] ? '<p class="bw-field__help">' . esc_html( $args['help'] ) . '</p>' : '';
+
+	return sprintf(
+		'<div class="bw-field"><span class="bw-field__label" id="%1$s">%2$s</span><div class="bw-radiogroup" role="radiogroup" aria-labelledby="%1$s">%3$s</div>%4$s%5$s</div>',
+		esc_attr( $id . '-label' ),
+		esc_html( $args['legend'] ),
+		$buttons,
+		$args['extra'],
+		$help
+	);
+}
+
+/**
+ * Renders a select.
+ *
+ * @param array $args {
+ *     @type string $name     Field name.
+ *     @type string $id       Element id, for a label to point at.
+ *     @type array  $options  Value => label.
+ *     @type string $selected Selected value.
+ *     @type array  $attrs    Extra attributes on the select.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_select( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'name'     => '',
+			'id'       => '',
+			'options'  => array(),
+			'selected' => '',
+			'attrs'    => array(),
+		)
+	);
+
+	$options = '';
+
+	foreach ( (array) $args['options'] as $value => $label ) {
+		$options .= sprintf(
+			'<option value="%1$s"%2$s>%3$s</option>',
+			esc_attr( (string) $value ),
+			selected( (string) $value, (string) $args['selected'], false ),
+			esc_html( (string) $label )
+		);
+	}
+
+	return sprintf(
+		'<span class="bw-select"><select class="bw-select__el" name="%1$s"%2$s%3$s>%4$s</select>%5$s</span>',
+		esc_attr( $args['name'] ),
+		'' !== $args['id'] ? ' id="' . esc_attr( $args['id'] ) . '"' : '',
+		blueworx_ds_attrs( $args['attrs'] ),
+		$options,
+		blueworx_ds_icon( 'chevron-down', 14 )
+	);
+}
+
+/**
+ * Renders a text-shaped input.
+ *
+ * @param array $args {
+ *     @type string $type  Input type.
+ *     @type string $name  Field name.
+ *     @type string $id    Element id.
+ *     @type string $value Current value.
+ *     @type bool   $mono  Whether to use the monospace variant.
+ *     @type bool   $small Whether to use the short variant.
+ *     @type array  $attrs Extra attributes, e.g. min, max, placeholder.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_input( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'type'  => 'text',
+			'name'  => '',
+			'id'    => '',
+			'value' => '',
+			'mono'  => false,
+			'small' => false,
+			'attrs' => array(),
+		)
+	);
+
+	$class  = 'bw-input';
+	$class .= $args['mono'] ? ' bw-input--mono' : '';
+	$class .= $args['small'] ? ' bw-input--sm' : '';
+
+	return sprintf(
+		'<input type="%1$s" class="%2$s" name="%3$s"%4$s value="%5$s"%6$s />',
+		esc_attr( $args['type'] ),
+		esc_attr( $class ),
+		esc_attr( $args['name'] ),
+		'' !== $args['id'] ? ' id="' . esc_attr( $args['id'] ) . '"' : '',
+		esc_attr( (string) $args['value'] ),
+		blueworx_ds_attrs( $args['attrs'] )
+	);
+}
+
+/**
+ * Renders a textarea.
+ *
+ * @param array $args {
+ *     @type string $name  Field name.
+ *     @type string $id    Element id.
+ *     @type string $value Current value.
+ *     @type int    $rows  Visible rows.
+ *     @type bool   $mono  Whether to use the monospace variant.
+ *     @type array  $attrs Extra attributes.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_textarea( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'name'  => '',
+			'id'    => '',
+			'value' => '',
+			'rows'  => 6,
+			'mono'  => false,
+			'attrs' => array(),
+		)
+	);
+
+	return sprintf(
+		'<textarea class="%1$s" name="%2$s"%3$s rows="%4$d"%5$s>%6$s</textarea>',
+		esc_attr( 'bw-textarea' . ( $args['mono'] ? ' bw-textarea--mono' : '' ) ),
+		esc_attr( $args['name'] ),
+		'' !== $args['id'] ? ' id="' . esc_attr( $args['id'] ) . '"' : '',
+		(int) $args['rows'],
+		blueworx_ds_attrs( $args['attrs'] ),
+		esc_textarea( (string) $args['value'] )
+	);
+}
+
+/**
+ * Wraps a control with its label and help text.
+ *
+ * @param array $args {
+ *     @type string $label   Label text. An empty label renders no element.
+ *     @type string $for     Id of the control the label points at.
+ *     @type string $control Control HTML, already escaped by its own helper.
+ *     @type string $help    Optional sentence under the control.
+ *     @type bool   $wide    Whether the field spans both grid columns.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_field( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'label'   => '',
+			'for'     => '',
+			'control' => '',
+			'help'    => '',
+			'wide'    => false,
+		)
+	);
+
+	$label = '';
+
+	if ( '' !== $args['label'] ) {
+		$label = sprintf(
+			'<label class="bw-field__label"%1$s>%2$s</label>',
+			'' !== $args['for'] ? ' for="' . esc_attr( $args['for'] ) . '"' : '',
+			esc_html( $args['label'] )
+		);
+	}
+
+	$help = '' !== $args['help'] ? '<p class="bw-field__help">' . esc_html( $args['help'] ) . '</p>' : '';
+
+	return sprintf(
+		'<div class="bw-field%1$s">%2$s%3$s%4$s</div>',
+		$args['wide'] ? ' bw-field--wide' : '',
+		$label,
+		$args['control'],
+		$help
+	);
+}
+
+/**
+ * Renders a group of related checkboxes under one heading.
+ *
+ * A role picker, or any "tick the ones that apply" list. It replaces the native
+ * multi-select these panels used to carry: a multi-select never hints that
+ * ctrl-click is how a second option gets picked, and on a phone it collapses to
+ * a control most people cannot operate at all.
+ *
+ * `role="group"` with a pointed-at label rather than fieldset and legend: the
+ * design system styles neither, so a real fieldset would arrive with a browser
+ * border, and removing it means writing CSS this file is not allowed to write.
+ *
+ * @param array $args {
+ *     @type string $name     Field name. Rendered with a [] suffix.
+ *     @type string $legend   Heading for the group.
+ *     @type array  $choices  Value => label.
+ *     @type array  $selected Values that start ticked.
+ *     @type string $help     Optional sentence under the group.
+ *     @type string $id       Base id, used to tie the group to its heading.
+ *     @type array  $attrs    Extra attributes on the wrapper.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_choice_group( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'name'     => '',
+			'legend'   => '',
+			'choices'  => array(),
+			'selected' => array(),
+			'help'     => '',
+			'id'       => '',
+			'attrs'    => array(),
+		)
+	);
+
+	$id       = '' !== $args['id'] ? $args['id'] : 'bw-group-' . sanitize_key( $args['name'] );
+	$selected = array_map( 'strval', (array) $args['selected'] );
+	$boxes    = '';
+
+	foreach ( (array) $args['choices'] as $value => $label ) {
+		$boxes .= blueworx_ds_checkbox(
+			array(
+				'name'    => $args['name'] . '[]',
+				'value'   => (string) $value,
+				'label'   => (string) $label,
+				'checked' => in_array( (string) $value, $selected, true ),
+			)
+		);
+	}
+
+	$help = '' !== $args['help'] ? '<p class="bw-field__help">' . esc_html( $args['help'] ) . '</p>' : '';
+
+	return sprintf(
+		'<div class="bw-field" role="group" aria-labelledby="%1$s"%2$s><span class="bw-field__label" id="%1$s">%3$s</span><div class="bw-radiogroup">%4$s</div>%5$s</div>',
+		esc_attr( $id . '-label' ),
+		blueworx_ds_attrs( $args['attrs'] ),
+		esc_html( $args['legend'] ),
+		$boxes,
+		$help
+	);
+}
+
+/**
+ * Renders a label-left, control-right settings row.
+ *
+ * The shape a long list of settings wants, and the one that stacks cleanly on a
+ * phone. Use blueworx_ds_field() inside a .bw-fields grid for short two-column
+ * forms instead.
+ *
+ * @param array $args {
+ *     @type string $label   Label text.
+ *     @type string $for     Id of the control the label points at.
+ *     @type string $control Control HTML.
+ *     @type string $help    Optional sentence under the control.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_form_row( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'label'   => '',
+			'for'     => '',
+			'control' => '',
+			'help'    => '',
+		)
+	);
+
+	$label = sprintf(
+		'<label class="bw-formrow__label"%1$s>%2$s</label>',
+		'' !== $args['for'] ? ' for="' . esc_attr( $args['for'] ) . '"' : '',
+		esc_html( $args['label'] )
+	);
+
+	$help = '' !== $args['help'] ? '<p class="bw-formrow__help">' . esc_html( $args['help'] ) . '</p>' : '';
+
+	return sprintf(
+		'<div class="bw-formrow">%1$s<div class="bw-formrow__control">%2$s%3$s</div></div>',
+		$label,
+		$args['control'],
+		$help
+	);
+}
+
+/**
  * Builds an attribute string.
  *
  * @param array $attrs Attribute name => value. A true value renders the name

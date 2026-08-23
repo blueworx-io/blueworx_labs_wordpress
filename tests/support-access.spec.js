@@ -11,6 +11,8 @@ import {
   cacheBust,
   LOGIN_PATH,
   readSupportKey,
+  readCheckedGroup,
+  setCheckedGroup,
 } from './helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -183,8 +185,6 @@ test.describe('Support access — key lifecycle', () => {
 
     const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
     const backendToggle = page.locator('input[name="blueworx_backend_protection_enabled"]');
-    const frontendSelect = page.locator('select[name="blueworx_frontend_protection_roles[]"]');
-    const backendSelect = page.locator('select[name="blueworx_backend_protection_roles[]"]');
 
     // Capture the operator's original Site Protection configuration so it can
     // be restored exactly, whatever it was, even if this test fails partway
@@ -192,8 +192,8 @@ test.describe('Support access — key lifecycle', () => {
     const original = {
       frontendEnabled: await frontendToggle.isChecked(),
       backendEnabled: await backendToggle.isChecked(),
-      frontendRoles: await frontendSelect.evaluate((el) => Array.from(el.selectedOptions).map((o) => o.value)),
-      backendRoles: await backendSelect.evaluate((el) => Array.from(el.selectedOptions).map((o) => o.value)),
+      frontendRoles: await readCheckedGroup(page, 'blueworx_frontend_protection_roles'),
+      backendRoles: await readCheckedGroup(page, 'blueworx_backend_protection_roles'),
     };
 
     let key = '';
@@ -204,8 +204,8 @@ test.describe('Support access — key lifecycle', () => {
       // account's identity, not an accidental role-list match.
       await frontendToggle.setChecked(true);
       await backendToggle.setChecked(true);
-      await frontendSelect.selectOption(['administrator']);
-      await backendSelect.selectOption(['administrator']);
+      await setCheckedGroup(page, 'blueworx_frontend_protection_roles', ['administrator']);
+      await setCheckedGroup(page, 'blueworx_backend_protection_roles', ['administrator']);
       await page.getByRole('button', { name: 'Save Changes' }).click();
       await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 
@@ -248,9 +248,7 @@ test.describe('Support access — key lifecycle', () => {
             await page
               .locator('input[name="blueworx_frontend_protection_enabled"]')
               .setChecked(original.frontendEnabled);
-            await page
-              .locator('select[name="blueworx_frontend_protection_roles[]"]')
-              .selectOption(original.frontendRoles);
+            await setCheckedGroup(page, 'blueworx_frontend_protection_roles', original.frontendRoles);
             await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
 
@@ -267,9 +265,7 @@ test.describe('Support access — key lifecycle', () => {
             await page
               .locator('input[name="blueworx_backend_protection_enabled"]')
               .setChecked(original.backendEnabled);
-            await page
-              .locator('select[name="blueworx_backend_protection_roles[]"]')
-              .selectOption(original.backendRoles);
+            await setCheckedGroup(page, 'blueworx_backend_protection_roles', original.backendRoles);
             await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
 
@@ -1171,18 +1167,12 @@ test.describe('Support access — key lifecycle', () => {
     await page.goto(CONSOLE_PATH);
     const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
     const backendToggle = page.locator('input[name="blueworx_backend_protection_enabled"]');
-    const frontendSelect = page.locator('select[name="blueworx_frontend_protection_roles[]"]');
-    const backendSelect = page.locator('select[name="blueworx_backend_protection_roles[]"]');
 
     const original = {
       frontendEnabled: await frontendToggle.isChecked(),
       backendEnabled: await backendToggle.isChecked(),
-      frontendRoles: await frontendSelect.evaluate((el) =>
-        Array.from(el.selectedOptions).map((o) => o.value)
-      ),
-      backendRoles: await backendSelect.evaluate((el) =>
-        Array.from(el.selectedOptions).map((o) => o.value)
-      ),
+      frontendRoles: await readCheckedGroup(page, 'blueworx_frontend_protection_roles'),
+      backendRoles: await readCheckedGroup(page, 'blueworx_backend_protection_roles'),
     };
 
     const password = impostorSupportUser('create');
@@ -1193,8 +1183,8 @@ test.describe('Support access — key lifecycle', () => {
     try {
       await frontendToggle.setChecked(true);
       await backendToggle.setChecked(true);
-      await frontendSelect.selectOption(['administrator']);
-      await backendSelect.selectOption(['administrator']);
+      await setCheckedGroup(page, 'blueworx_frontend_protection_roles', ['administrator']);
+      await setCheckedGroup(page, 'blueworx_backend_protection_roles', ['administrator']);
       await page.getByRole('button', { name: 'Save Changes' }).click();
       await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 
@@ -1255,15 +1245,11 @@ test.describe('Support access — key lifecycle', () => {
             await page
               .locator('input[name="blueworx_frontend_protection_enabled"]')
               .setChecked(original.frontendEnabled);
-            await page
-              .locator('select[name="blueworx_frontend_protection_roles[]"]')
-              .selectOption(original.frontendRoles);
+            await setCheckedGroup(page, 'blueworx_frontend_protection_roles', original.frontendRoles);
             await page
               .locator('input[name="blueworx_backend_protection_enabled"]')
               .setChecked(original.backendEnabled);
-            await page
-              .locator('select[name="blueworx_backend_protection_roles[]"]')
-              .selectOption(original.backendRoles);
+            await setCheckedGroup(page, 'blueworx_backend_protection_roles', original.backendRoles);
             await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
 

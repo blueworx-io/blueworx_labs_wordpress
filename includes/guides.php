@@ -245,6 +245,9 @@ function blueworx_get_feature_guide_bodies() {
 		'login_session'         => '<p>' . esc_html__( 'Decides how long somebody stays signed in before WordPress asks for their password again. Out of the box that is two days, which on a site people dip in and out of feels like being logged out constantly.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'Pick a length that matches how the site is used. A longer session is more convenient and slightly less safe on a shared computer, so choose "Until they sign out" only where everyone has their own machine. The change applies the next time each person signs in.', 'blueworx-labs-wordpress' ) . '</p>',
 
+		'login_redirect'        => '<p>' . esc_html__( 'Booking, shop and membership plugins often take over where people land after signing in, so an editor who signs in to write a page arrives on a bookings dashboard or a shop account page instead.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'This puts anyone who works in the admin area on the dashboard instead. Customers are left where the shop or booking plugin wanted them, and a link that asked for a particular page still goes to that page.', 'blueworx-labs-wordpress' ) . '</p>',
+
 		'view_as_role'          => '<p>' . esc_html__( 'Lets you look at the admin area the way one of your other roles sees it, so you can check what an editor or a member can actually reach before you tell them.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'A bar along the bottom of the screen shows which role you are viewing as and puts you back with one click. It can only ever show you less than you normally see, never more, so it cannot be used to gain access to anything.', 'blueworx-labs-wordpress' ) . '</p>',
 

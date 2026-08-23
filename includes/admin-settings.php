@@ -581,49 +581,26 @@ function blueworx_render_enhancements_page() {
 }
 
 /**
+ * Stacks a panel's fields.
+ *
+ * One column, and the grid's own gap between fields — so a panel spaces itself
+ * the way the rest of the screen does rather than relying on paragraph margins.
+ *
+ * @param string $fields Field HTML.
+ * @return string HTML.
+ */
+function blueworx_detail_stack( $fields ) {
+	return '<div class="bw-fields bw-fields--single">' . $fields . '</div>';
+}
+
+/**
  * Renders the nested detail controls for a feature.
  *
  * @param string $key Feature key.
  * @return void
  */
 function blueworx_render_feature_detail( $key ) {
-	if ( 'login' === $key ) {
-		?>
-		<p>
-			<label for="blueworx_login_slug"><?php esc_html_e( 'Login slug', 'blueworx-labs-wordpress' ); ?></label><br />
-			<input type="text" id="blueworx_login_slug" name="blueworx_login_slug" class="regular-text" value="<?php echo esc_attr( blueworx_login_slug() ); ?>" />
-			<span class="description"><?php echo esc_html( home_url( '/' ) ); ?>&hellip;</span>
-		</p>
-		<?php
-		return;
-	}
-
-	if ( 'site_protection' === $key ) {
-		$role_choices = blueworx_get_site_protection_role_choices();
-		foreach ( array(
-			'frontend' => __( 'Frontend protection', 'blueworx-labs-wordpress' ),
-			'backend'  => __( 'Backend protection', 'blueworx-labs-wordpress' ),
-		) as $area => $label ) :
-			$selected_roles = blueworx_get_site_protection_roles( $area );
-			?>
-			<p>
-				<label>
-					<input type="checkbox" name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_enabled' ); ?>" value="1" <?php checked( blueworx_site_protection_enabled( $area ) ); ?> />
-					<?php echo esc_html( $label ); ?>
-				</label>
-			</p>
-			<p>
-				<select name="<?php echo esc_attr( 'blueworx_' . $area . '_protection_roles[]' ); ?>" multiple size="4" aria-label="<?php echo esc_attr( $label ); ?>">
-					<?php foreach ( $role_choices as $role_slug => $role_label ) : ?>
-						<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $selected_roles, true ) ); ?>><?php echo esc_html( $role_label ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</p>
-			<?php
-		endforeach;
-		return;
-	}
-
+	// Three panels own their whole surface and render themselves.
 	if ( 'sso' === $key ) {
 		blueworx_sso_render_detail();
 		return;
@@ -634,199 +611,414 @@ function blueworx_render_feature_detail( $key ) {
 		return;
 	}
 
-	if ( 'application_passwords' === $key ) {
-		?>
-		<p>
-			<label>
-				<input type="checkbox" name="blueworx_show_application_passwords" value="1" <?php checked( blueworx_show_application_passwords_for_admins() ); ?> />
-				<?php esc_html_e( 'Show Application Passwords for admins', 'blueworx-labs-wordpress' ); ?>
-			</label>
-		</p>
-		<?php
-		return;
-	}
-
 	if ( 'translate' === $key ) {
 		blueworx_translate_render_detail();
 		return;
 	}
 
+	$html = blueworx_get_feature_detail_html( $key );
+
+	if ( '' !== $html ) {
+		echo wp_kses( $html, blueworx_ds_allowed_html() );
+	}
+}
+
+/**
+ * Builds the detail controls for a feature.
+ *
+ * Every control comes from the design system helpers, so a panel reads as part
+ * of the screen around it rather than as a WordPress options form dropped into
+ * a card. Nothing here renders a bare input, and nothing here writes CSS.
+ *
+ * @param string $key Feature key.
+ * @return string HTML, or an empty string when the feature has no detail.
+ */
+function blueworx_get_feature_detail_html( $key ) {
+	if ( 'login' === $key ) {
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'label'   => __( 'Login slug', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_login_slug',
+					'control' => blueworx_ds_input(
+						array(
+							'name'  => 'blueworx_login_slug',
+							'id'    => 'blueworx_login_slug',
+							'value' => blueworx_login_slug(),
+							'mono'  => true,
+						)
+					),
+					'help'    => sprintf(
+						/* translators: %s: the full sign-in address, e.g. https://example.com/my-login. */
+						__( 'Your sign-in page becomes %s. The default WordPress login stops working, so keep this somewhere safe.', 'blueworx-labs-wordpress' ),
+						home_url( '/' ) . blueworx_login_slug()
+					),
+				)
+			)
+		);
+	}
+
+	if ( 'site_protection' === $key ) {
+		$role_choices = blueworx_get_site_protection_role_choices();
+		$areas        = array(
+			'frontend' => array(
+				'toggle' => __( 'Protect the front of the site', 'blueworx-labs-wordpress' ),
+				'roles'  => __( 'Roles that can view the site', 'blueworx-labs-wordpress' ),
+			),
+			'backend'  => array(
+				'toggle' => __( 'Protect the admin area', 'blueworx-labs-wordpress' ),
+				'roles'  => __( 'Roles that can reach the admin area', 'blueworx-labs-wordpress' ),
+			),
+		);
+
+		$fields = '';
+
+		foreach ( $areas as $area => $labels ) {
+			$fields .= blueworx_ds_field(
+				array(
+					'control' => blueworx_ds_checkbox(
+						array(
+							'name'    => 'blueworx_' . $area . '_protection_enabled',
+							'label'   => $labels['toggle'],
+							'checked' => blueworx_site_protection_enabled( $area ),
+						)
+					),
+				)
+			);
+
+			$fields .= blueworx_ds_choice_group(
+				array(
+					'name'     => 'blueworx_' . $area . '_protection_roles',
+					'id'       => 'blueworx-' . $area . '-roles',
+					'legend'   => $labels['roles'],
+					'choices'  => $role_choices,
+					'selected' => blueworx_get_site_protection_roles( $area ),
+					'attrs'    => array( 'data-blueworx-roles' => $area ),
+					'help'     => __( 'Tick at least one role. With none ticked, nobody gets in at all.', 'blueworx-labs-wordpress' ),
+				)
+			);
+		}
+
+		return blueworx_detail_stack( $fields );
+	}
+
+	if ( 'application_passwords' === $key ) {
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'control' => blueworx_ds_checkbox(
+						array(
+							'name'    => 'blueworx_show_application_passwords',
+							'label'   => __( 'Show Application Passwords for admins', 'blueworx-labs-wordpress' ),
+							'checked' => blueworx_show_application_passwords_for_admins(),
+						)
+					),
+				)
+			)
+		);
+	}
+
 	if ( 'cache_manual' === $key ) {
-		?>
-		<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-cache' ) ); ?>"><?php esc_html_e( 'Open Cache page', 'blueworx-labs-wordpress' ); ?></a></p>
-		<?php
-		return;
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Cache page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'refresh-cw',
+				'href'  => admin_url( 'admin.php?page=blueworx-cache' ),
+			)
+		);
 	}
 
 	if ( 'menu_editor' === $key ) {
-		?>
-		<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=blueworx-edit-menu' ) ); ?>"><?php esc_html_e( 'Open Edit Menu page', 'blueworx-labs-wordpress' ); ?></a></p>
-		<?php
-		return;
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Edit Menu page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'list',
+				'href'  => admin_url( 'admin.php?page=blueworx-edit-menu' ),
+			)
+		);
 	}
 
 	if ( 'login_session' === $key ) {
-		$current = blueworx_login_session_choice();
-		?>
-		<p>
-			<label for="blueworx_login_session"><?php esc_html_e( 'Stay logged in for', 'blueworx-labs-wordpress' ); ?></label><br />
-			<select id="blueworx_login_session" name="blueworx_login_session">
-				<?php foreach ( blueworx_login_session_choices() as $value => $label ) : ?>
-					<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current, $value ); ?>><?php echo esc_html( $label ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</p>
-		<p class="description"><?php esc_html_e( 'Applies from the next time somebody signs in. Anyone already signed in keeps their current session until it runs out.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php
-		return;
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'label'   => __( 'Stay signed in for', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_login_session',
+					'control' => blueworx_ds_select(
+						array(
+							'name'     => 'blueworx_login_session',
+							'id'       => 'blueworx_login_session',
+							'options'  => blueworx_login_session_choices(),
+							'selected' => blueworx_login_session_choice(),
+						)
+					),
+					'help'    => __( 'Applies from the next time somebody signs in. Anyone already signed in keeps their current session until it runs out.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		);
 	}
 
 	if ( 'admin_bar' === $key ) {
 		$removed = blueworx_admin_bar_removed_nodes();
-		$mode    = blueworx_admin_bar_front_end_mode();
-		$roles   = blueworx_admin_bar_front_end_hidden_roles();
-		?>
-		<fieldset>
-			<legend><strong><?php esc_html_e( 'Take these out of the toolbar', 'blueworx-labs-wordpress' ); ?></strong></legend>
-			<?php foreach ( blueworx_admin_bar_removable_nodes() as $node => $label ) : ?>
-				<p><label>
-					<input type="checkbox" name="blueworx_admin_bar_removed_nodes[]" value="<?php echo esc_attr( $node ); ?>" <?php checked( in_array( $node, $removed, true ) ); ?> />
-					<?php echo esc_html( $label ); ?>
-				</label></p>
-			<?php endforeach; ?>
-			<p><label>
-				<input type="checkbox" name="blueworx_admin_bar_hide_howdy" value="1" <?php checked( blueworx_admin_bar_hide_howdy() ); ?> />
-				<?php esc_html_e( 'Drop the "Howdy," greeting', 'blueworx-labs-wordpress' ); ?>
-			</label></p>
-			<p><label>
-				<input type="checkbox" name="blueworx_admin_bar_hide_help" value="1" <?php checked( blueworx_admin_bar_hide_help() ); ?> />
-				<?php esc_html_e( 'Remove the Help tab and drawer', 'blueworx-labs-wordpress' ); ?>
-			</label></p>
-		</fieldset>
-		<fieldset style="margin-top:12px;">
-			<legend><strong><?php esc_html_e( 'Hide the toolbar on the front of the site', 'blueworx-labs-wordpress' ); ?></strong></legend>
-			<p><label>
-				<input type="radio" name="blueworx_admin_bar_front_end_mode" value="off" <?php checked( $mode, 'off' ); ?> />
-				<?php esc_html_e( 'Show it to everyone signed in (WordPress default)', 'blueworx-labs-wordpress' ); ?>
-			</label></p>
-			<p><label>
-				<input type="radio" name="blueworx_admin_bar_front_end_mode" value="all_but_admin" <?php checked( $mode, 'all_but_admin' ); ?> />
-				<?php esc_html_e( 'Hide it for everyone except administrators', 'blueworx-labs-wordpress' ); ?>
-			</label></p>
-			<p><label>
-				<input type="radio" name="blueworx_admin_bar_front_end_mode" value="roles" <?php checked( $mode, 'roles' ); ?> />
-				<?php esc_html_e( 'Hide it for these roles only', 'blueworx-labs-wordpress' ); ?>
-			</label></p>
-			<p>
-				<select name="blueworx_admin_bar_front_end_roles[]" multiple size="4" aria-label="<?php esc_attr_e( 'Roles the toolbar is hidden for', 'blueworx-labs-wordpress' ); ?>">
-					<?php foreach ( blueworx_get_site_protection_role_choices() as $role_slug => $role_label ) : ?>
-						<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $roles, true ) ); ?>><?php echo esc_html( $role_label ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</p>
-			<p class="description"><?php esc_html_e( 'A BlueWorx support session always keeps its toolbar, so the read-only indicator and the button that ends the session stay visible.', 'blueworx-labs-wordpress' ); ?></p>
-		</fieldset>
-		<?php
-		return;
+		$boxes   = '';
+
+		foreach ( blueworx_admin_bar_removable_nodes() as $node => $label ) {
+			$boxes .= blueworx_ds_checkbox(
+				array(
+					'name'    => 'blueworx_admin_bar_removed_nodes[]',
+					'value'   => $node,
+					'label'   => $label,
+					'checked' => in_array( $node, $removed, true ),
+				)
+			);
+		}
+
+		$boxes .= blueworx_ds_checkbox(
+			array(
+				'name'    => 'blueworx_admin_bar_hide_howdy',
+				'label'   => __( 'Drop the "Howdy," greeting', 'blueworx-labs-wordpress' ),
+				'checked' => blueworx_admin_bar_hide_howdy(),
+			)
+		);
+
+		$boxes .= blueworx_ds_checkbox(
+			array(
+				'name'    => 'blueworx_admin_bar_hide_help',
+				'label'   => __( 'Remove the Help tab and drawer', 'blueworx-labs-wordpress' ),
+				'checked' => blueworx_admin_bar_hide_help(),
+			)
+		);
+
+		$fields = sprintf(
+			'<div class="bw-field" role="group" aria-labelledby="%1$s"><span class="bw-field__label" id="%1$s">%2$s</span><div class="bw-radiogroup">%3$s</div></div>',
+			'blueworx-admin-bar-nodes-label',
+			esc_html__( 'Take these out of the toolbar', 'blueworx-labs-wordpress' ),
+			$boxes
+		);
+
+		$fields .= blueworx_ds_radio_group(
+			array(
+				'name'     => 'blueworx_admin_bar_front_end_mode',
+				'id'       => 'blueworx-admin-bar-mode',
+				'legend'   => __( 'Hide the toolbar on the front of the site', 'blueworx-labs-wordpress' ),
+				'selected' => blueworx_admin_bar_front_end_mode(),
+				'choices'  => array(
+					'off'           => __( 'Show it to everyone signed in (WordPress default)', 'blueworx-labs-wordpress' ),
+					'all_but_admin' => __( 'Hide it for everyone except administrators', 'blueworx-labs-wordpress' ),
+					'roles'         => __( 'Hide it for these roles only', 'blueworx-labs-wordpress' ),
+				),
+				'extra'    => blueworx_ds_choice_group(
+					array(
+						'name'     => 'blueworx_admin_bar_front_end_roles',
+						'id'       => 'blueworx-admin-bar-roles',
+						'legend'   => __( 'Roles the toolbar is hidden for', 'blueworx-labs-wordpress' ),
+						'choices'  => blueworx_get_site_protection_role_choices(),
+						'selected' => blueworx_admin_bar_front_end_hidden_roles(),
+					)
+				),
+				'help'     => __( 'A BlueWorx support session always keeps its toolbar, so the read-only indicator and the button that ends the session stay visible.', 'blueworx-labs-wordpress' ),
+			)
+		);
+
+		return blueworx_detail_stack( $fields );
 	}
 
 	if ( 'dashboard_widgets' === $key ) {
-		$removed = blueworx_dashboard_removed_widgets();
-		?>
-		<fieldset>
-			<legend><strong><?php esc_html_e( 'Remove these dashboard panels', 'blueworx-labs-wordpress' ); ?></strong></legend>
-			<?php foreach ( blueworx_dashboard_removable_widgets() as $widget => $label ) : ?>
-				<p><label>
-					<input type="checkbox" name="blueworx_dashboard_removed_widgets[]" value="<?php echo esc_attr( $widget ); ?>" <?php checked( in_array( $widget, $removed, true ) ); ?> />
-					<?php echo esc_html( $label ); ?>
-				</label></p>
-			<?php endforeach; ?>
-		</fieldset>
-		<p class="description"><?php esc_html_e( 'A panel removed here is gone for everyone, not just hidden behind Screen Options. Panels belonging to a plugin that is switched off are ignored.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php
-		return;
+		return blueworx_detail_stack(
+			blueworx_ds_choice_group(
+				array(
+					'name'     => 'blueworx_dashboard_removed_widgets',
+					'id'       => 'blueworx-dashboard-widgets',
+					'legend'   => __( 'Remove these dashboard panels', 'blueworx-labs-wordpress' ),
+					'choices'  => blueworx_dashboard_removable_widgets(),
+					'selected' => blueworx_dashboard_removed_widgets(),
+					'help'     => __( 'A panel removed here is gone for everyone, not just hidden behind Screen Options. Panels belonging to a plugin that is switched off are ignored.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		);
 	}
 
 	if ( 'robots_txt' === $key ) {
-		?>
-		<?php if ( blueworx_robots_txt_file_exists() ) : ?>
-			<p class="notice notice-warning" style="padding:8px;">
-				<?php esc_html_e( 'There is a real robots.txt file on the server. WordPress serves that file instead, so anything saved here will have no effect until it is removed.', 'blueworx-labs-wordpress' ); ?>
-			</p>
-		<?php endif; ?>
-		<?php if ( ! get_option( 'blog_public' ) ) : ?>
-			<p class="notice notice-warning" style="padding:8px;">
-				<?php esc_html_e( 'This site is set to discourage search engines, under Settings > Reading. What you save here is served anyway, so if the site is meant to stay out of search results, say so in the box below as well.', 'blueworx-labs-wordpress' ); ?>
-			</p>
-		<?php endif; ?>
-		<p>
-			<label for="blueworx_robots_txt"><?php esc_html_e( 'robots.txt content', 'blueworx-labs-wordpress' ); ?></label><br />
-			<textarea id="blueworx_robots_txt" name="blueworx_robots_txt" rows="10" class="large-text code"><?php echo esc_textarea( blueworx_robots_txt_content() ); ?></textarea>
-		</p>
-		<p class="description">
-			<?php esc_html_e( 'Replaces the file WordPress generates. If an SEO plugin also writes robots rules, check the result at /robots.txt after saving — whichever runs last wins.', 'blueworx-labs-wordpress' ); ?>
-			<a href="<?php echo esc_url( home_url( '/robots.txt' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View the live file', 'blueworx-labs-wordpress' ); ?></a>
-		</p>
-		<?php
-		return;
+		$fields = '';
+
+		if ( blueworx_robots_txt_file_exists() ) {
+			$fields .= blueworx_ds_notice(
+				array(
+					'tone' => 'warning',
+					'text' => __( 'There is a real robots.txt file on the server. WordPress serves that file instead, so anything saved here will have no effect until it is removed.', 'blueworx-labs-wordpress' ),
+				)
+			);
+		}
+
+		if ( ! get_option( 'blog_public' ) ) {
+			$fields .= blueworx_ds_notice(
+				array(
+					'tone' => 'warning',
+					'text' => __( 'This site is set to discourage search engines, under Settings > Reading. What you save here is served anyway, so if the site is meant to stay out of search results, say so in the box below as well.', 'blueworx-labs-wordpress' ),
+				)
+			);
+		}
+
+		$fields .= blueworx_ds_field(
+			array(
+				'label'   => __( 'robots.txt content', 'blueworx-labs-wordpress' ),
+				'for'     => 'blueworx_robots_txt',
+				'control' => blueworx_ds_textarea(
+					array(
+						'name'  => 'blueworx_robots_txt',
+						'id'    => 'blueworx_robots_txt',
+						'value' => blueworx_robots_txt_content(),
+						'rows'  => 10,
+						'mono'  => true,
+					)
+				),
+				'help'    => __( 'Replaces the file WordPress generates. If an SEO plugin also writes robots rules, check the result at /robots.txt after saving — whichever runs last wins.', 'blueworx-labs-wordpress' ),
+			)
+		);
+
+		$fields .= blueworx_ds_button(
+			array(
+				'label'   => __( 'View the live file', 'blueworx-labs-wordpress' ),
+				'icon'    => 'external-link',
+				'variant' => 'ghost',
+				'size'    => 'sm',
+				'href'    => home_url( '/robots.txt' ),
+				'attrs'   => array(
+					'target' => '_blank',
+					'rel'    => 'noopener noreferrer',
+				),
+			)
+		);
+
+		return blueworx_detail_stack( $fields );
 	}
 
 	if ( 'media_tools' === $key ) {
 		list( $max_width, $max_height ) = blueworx_media_max_dimensions();
-		$svg_roles                      = blueworx_media_svg_roles();
-		?>
-		<p><label>
-			<input type="checkbox" name="blueworx_media_replace_enabled" value="1" <?php checked( blueworx_media_replace_enabled() ); ?> />
-			<?php esc_html_e( 'Allow a file to be replaced in place', 'blueworx-labs-wordpress' ); ?>
-		</label></p>
-		<p><label>
-			<input type="checkbox" name="blueworx_media_max_dimensions_enabled" value="1" <?php checked( blueworx_media_max_dimensions_enabled() ); ?> />
-			<?php esc_html_e( 'Shrink oversized images as they are uploaded', 'blueworx-labs-wordpress' ); ?>
-		</label></p>
-		<p>
-			<label for="blueworx_media_max_width"><?php esc_html_e( 'Largest width', 'blueworx-labs-wordpress' ); ?></label>
-			<input type="number" min="1" max="10000" id="blueworx_media_max_width" name="blueworx_media_max_width" value="<?php echo esc_attr( (string) $max_width ); ?>" class="small-text" />
-			<label for="blueworx_media_max_height"><?php esc_html_e( 'Largest height', 'blueworx-labs-wordpress' ); ?></label>
-			<input type="number" min="1" max="10000" id="blueworx_media_max_height" name="blueworx_media_max_height" value="<?php echo esc_attr( (string) $max_height ); ?>" class="small-text" />
-			<span class="description"><?php esc_html_e( 'pixels', 'blueworx-labs-wordpress' ); ?></span>
-		</p>
-		<p><strong><?php esc_html_e( 'Allow SVG uploads for these roles', 'blueworx-labs-wordpress' ); ?></strong></p>
-		<p>
-			<select name="blueworx_media_svg_roles[]" multiple size="4" aria-label="<?php esc_attr_e( 'Roles allowed to upload SVG files', 'blueworx-labs-wordpress' ); ?>">
-				<?php foreach ( blueworx_get_site_protection_role_choices() as $role_slug => $role_label ) : ?>
-					<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( in_array( $role_slug, $svg_roles, true ) ); ?>><?php echo esc_html( $role_label ); ?></option>
-				<?php endforeach; ?>
-			</select>
-		</p>
-		<p class="description"><?php esc_html_e( 'Select nothing to switch SVG uploads off, which is the default. An SVG is a document that can carry code, so every one uploaded is stripped of anything that could run before it is stored. Only grant this to roles you trust with the whole site.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php
-		return;
+
+		$fields = blueworx_ds_field(
+			array(
+				'control' => blueworx_ds_checkbox(
+					array(
+						'name'    => 'blueworx_media_replace_enabled',
+						'label'   => __( 'Allow a file to be replaced in place', 'blueworx-labs-wordpress' ),
+						'checked' => blueworx_media_replace_enabled(),
+					)
+				) . blueworx_ds_checkbox(
+					array(
+						'name'    => 'blueworx_media_max_dimensions_enabled',
+						'label'   => __( 'Shrink oversized images as they are uploaded', 'blueworx-labs-wordpress' ),
+						'checked' => blueworx_media_max_dimensions_enabled(),
+					)
+				),
+			)
+		);
+
+		$fields .= blueworx_ds_field(
+			array(
+				'label'   => __( 'Largest width', 'blueworx-labs-wordpress' ),
+				'for'     => 'blueworx_media_max_width',
+				'control' => blueworx_ds_input(
+					array(
+						'type'  => 'number',
+						'name'  => 'blueworx_media_max_width',
+						'id'    => 'blueworx_media_max_width',
+						'value' => (string) $max_width,
+						'small' => true,
+						'attrs' => array(
+							'min' => '1',
+							'max' => '10000',
+						),
+					)
+				),
+				'help'    => __( 'In pixels.', 'blueworx-labs-wordpress' ),
+			)
+		);
+
+		$fields .= blueworx_ds_field(
+			array(
+				'label'   => __( 'Largest height', 'blueworx-labs-wordpress' ),
+				'for'     => 'blueworx_media_max_height',
+				'control' => blueworx_ds_input(
+					array(
+						'type'  => 'number',
+						'name'  => 'blueworx_media_max_height',
+						'id'    => 'blueworx_media_max_height',
+						'value' => (string) $max_height,
+						'small' => true,
+						'attrs' => array(
+							'min' => '1',
+							'max' => '10000',
+						),
+					)
+				),
+				'help'    => __( 'In pixels.', 'blueworx-labs-wordpress' ),
+			)
+		);
+
+		$fields .= blueworx_ds_choice_group(
+			array(
+				'name'     => 'blueworx_media_svg_roles',
+				'id'       => 'blueworx-media-svg-roles',
+				'legend'   => __( 'Allow SVG uploads for these roles', 'blueworx-labs-wordpress' ),
+				'choices'  => blueworx_get_site_protection_role_choices(),
+				'selected' => blueworx_media_svg_roles(),
+				'help'     => __( 'Tick nothing to switch SVG uploads off, which is the default. An SVG is a document that can carry code, so every one uploaded is stripped of anything that could run before it is stored. Only grant this to roles you trust with the whole site.', 'blueworx-labs-wordpress' ),
+			)
+		);
+
+		return blueworx_detail_stack( $fields );
 	}
 
 	if ( 'content_tools' === $key ) {
-		?>
-		<p><label>
-			<input type="checkbox" name="blueworx_duplicate_enabled" value="1" <?php checked( blueworx_duplicate_enabled() ); ?> />
-			<?php esc_html_e( 'Show a Duplicate link on pages, posts and custom items', 'blueworx-labs-wordpress' ); ?>
-		</label></p>
-		<p><label>
-			<input type="checkbox" name="blueworx_external_permalinks_enabled" value="1" <?php checked( blueworx_external_permalinks_enabled() ); ?> />
-			<?php esc_html_e( 'Let an item point at an address on another site', 'blueworx-labs-wordpress' ); ?>
-		</label></p>
-		<p class="description"><?php esc_html_e( 'The second one adds a "Link to another site" box to the editor. Anyone clicking that item goes straight to the address you put there. Leave it off unless you need it.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php
-		return;
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'control' => blueworx_ds_checkbox(
+						array(
+							'name'    => 'blueworx_duplicate_enabled',
+							'label'   => __( 'Show a Duplicate link on pages, posts and custom items', 'blueworx-labs-wordpress' ),
+							'checked' => blueworx_duplicate_enabled(),
+						)
+					) . blueworx_ds_checkbox(
+						array(
+							'name'    => 'blueworx_external_permalinks_enabled',
+							'label'   => __( 'Let an item point at an address on another site', 'blueworx-labs-wordpress' ),
+							'checked' => blueworx_external_permalinks_enabled(),
+							'help'    => __( 'Adds a "Link to another site" box to the editor. Anyone clicking that item goes straight to the address you put there.', 'blueworx-labs-wordpress' ),
+						)
+					),
+				)
+			)
+		);
 	}
 
 	if ( 'revisions' === $key ) {
-		?>
-		<p>
-			<label for="blueworx_revisions_limit"><?php esc_html_e( 'Saved versions to keep per item', 'blueworx-labs-wordpress' ); ?></label>
-			<input type="number" min="0" max="500" id="blueworx_revisions_limit" name="blueworx_revisions_limit" value="<?php echo esc_attr( (string) blueworx_revisions_to_keep() ); ?>" class="small-text" />
-		</p>
-		<p class="description"><?php esc_html_e( 'Applies to versions saved from now on — versions already stored are left alone. Set it to 0 to stop keeping versions at all.', 'blueworx-labs-wordpress' ); ?></p>
-		<?php
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'label'   => __( 'Saved versions to keep per item', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_revisions_limit',
+					'control' => blueworx_ds_input(
+						array(
+							'type'  => 'number',
+							'name'  => 'blueworx_revisions_limit',
+							'id'    => 'blueworx_revisions_limit',
+							'value' => (string) blueworx_revisions_to_keep(),
+							'small' => true,
+							'attrs' => array(
+								'min' => '0',
+								'max' => '500',
+							),
+						)
+					),
+					'help'    => __( 'Applies to versions saved from now on — versions already stored are left alone. Set it to 0 to stop keeping versions at all.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		);
 	}
+
+	return '';
 }
 
 /**
