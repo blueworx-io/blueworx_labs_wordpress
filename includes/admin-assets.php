@@ -39,7 +39,7 @@ function blueworx_get_admin_asset_version( $relative_path ) {
 function blueworx_admin_design_screens() {
 	return array(
 		'toplevel_page_blueworx-labs-wordpress',
-		'blueworx_page_blueworx-guides',
+		'toplevel_page_blueworx-guides',
 		'blueworx_page_blueworx-edit-menu',
 		'blueworx_page_blueworx-cache',
 		'blueworx_page_blueworx-support',
@@ -166,7 +166,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		'toplevel_page_blueworx-labs-wordpress',
 		'blueworx_page_blueworx-edit-menu',
 		'blueworx_page_blueworx-cache',
-		'blueworx_page_blueworx-guides',
+		'toplevel_page_blueworx-guides',
 		'blueworx_page_blueworx-support',
 		'blueworx_page_blueworx-sso',
 		'profile.php',
@@ -330,7 +330,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 	}
 
 
-	if ( 'blueworx_page_blueworx-guides' === $hook_suffix ) {
+	if ( 'toplevel_page_blueworx-guides' === $hook_suffix ) {
 		wp_enqueue_script(
 			'blueworx-labs-wordpress-guides',
 			BLUEWORX_LABS_URL . 'assets/js/guides.js',

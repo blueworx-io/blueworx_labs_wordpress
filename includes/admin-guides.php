@@ -15,21 +15,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Adds Guides to the BlueWorx menu.
+ * Adds Guides to the sidebar as a top-level row.
  *
- * Registered after blueworx_register_settings_page() so it sits below the
- * screens it explains.
+ * The design puts Guides in the Overview group beside Dashboard and BlueWorx
+ * rather than nested under BlueWorx: it explains the whole site, not only this
+ * plugin's screens, and other plugins register guides into it too.
+ *
+ * The page slug does not change, so admin.php?page=blueworx-guides and every
+ * link or bookmark to it still resolve. What does change is the screen's hook
+ * suffix, which WordPress derives from the parent — it is now
+ * toplevel_page_blueworx-guides, and includes/admin-assets.php gates this
+ * screen's stylesheet and script on that string.
+ *
+ * Registered at priority 11, after blueworx_register_settings_page(), and at
+ * position 58.1 so it sits directly below BlueWorx (58) on a site running with
+ * the admin theme switched off, where the group ordering filter never runs.
  *
  * @return void
  */
 function blueworx_register_guides_page() {
-	add_submenu_page(
-		'blueworx-labs-wordpress',
+	add_menu_page(
 		esc_html__( 'Guides', 'blueworx-labs-wordpress' ),
 		esc_html__( 'Guides', 'blueworx-labs-wordpress' ),
 		'manage_options',
 		'blueworx-guides',
-		'blueworx_render_guides_page'
+		'blueworx_render_guides_page',
+		'none',
+		58.1
 	);
 }
 add_action( 'admin_menu', 'blueworx_register_guides_page', 11 );

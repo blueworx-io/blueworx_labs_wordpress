@@ -19,6 +19,7 @@ function blueworx_get_default_admin_menu_order() {
 	return array(
 		'index.php',
 		'blueworx-labs-wordpress',
+		'blueworx-guides',
 		'edit.php',
 		'upload.php',
 		'edit.php?post_type=page',
@@ -125,6 +126,7 @@ function blueworx_get_default_visible_admin_menu_slugs() {
 	return array(
 		'index.php',
 		'blueworx-labs-wordpress',
+		'blueworx-guides',
 		'edit.php',
 		'upload.php',
 		'edit.php?post_type=page',

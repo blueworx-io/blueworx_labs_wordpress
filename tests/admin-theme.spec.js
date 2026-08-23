@@ -454,6 +454,35 @@ test.describe('BlueWorx admin theme', () => {
     await expect(row).not.toHaveClass(/bw-group-start/);
   });
 
+  test('Guides is its own row in Overview, directly below BlueWorx', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const slugs = await page
+      .locator('#adminmenu > li.menu-top > a.menu-top')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+
+    const blueworx = slugs.findIndex((h) => h && h.includes('page=blueworx-labs-wordpress'));
+    const guides = slugs.findIndex((h) => h && h.includes('page=blueworx-guides'));
+
+    expect(blueworx).toBeGreaterThanOrEqual(0);
+    expect(guides).toBe(blueworx + 1);
+
+    // Same group as BlueWorx, so it must not open one of its own.
+    await expect(page.locator('#adminmenu > li.menu-top').nth(guides)).not.toHaveClass(
+      /bw-group-start/
+    );
+
+    // And it has left the BlueWorx submenu. Scoped to that row: add_menu_page()
+    // gives Guides a self-titled submenu of its own, which an unscoped href
+    // match would hit.
+    await expect(
+      page.locator(
+        '#adminmenu > li.menu-top:has(> a[href*="page=blueworx-labs-wordpress"]) .wp-submenu a[href*="page=blueworx-guides"]'
+      )
+    ).toHaveCount(0);
+  });
+
   test('every top-level row is the same height, and none overhangs the sidebar', async ({
     page,
   }) => {

@@ -21,6 +21,9 @@ versioning.
   can be dragged sideways when there are more than fit.
 
 ### Changed
+- Guides is now its own item in the side menu, sitting just below BlueWorx,
+  instead of being tucked inside the BlueWorx menu. The address for it has not
+  changed, so existing links and bookmarks still work.
 - The side menu matches the design: the row you are on carries the highlight on
   its own, and the item above it gets a quieter wash instead of a second one.
 - On a phone the menu is now a drawer that slides in over the page from a
