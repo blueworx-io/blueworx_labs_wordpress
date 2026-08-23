@@ -243,7 +243,9 @@ function blueworx_sso_render_detail() {
 		)
 	);
 
-	echo wp_kses( blueworx_detail_stack( $fields ), blueworx_ds_allowed_html() );
+	// Not wp_kses() — see the note in blueworx_render_feature_detail(). The copy
+	// field's hooks are exactly what an allow-list drops without a word.
+	echo blueworx_detail_stack( $fields ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
 	blueworx_sso_render_log();
 
@@ -309,10 +311,11 @@ function blueworx_sso_render_detail() {
 
 	$advanced .= '<p class="bw-field__help">' . esc_html__( 'Leave the addresses blank unless your provider does not publish its own configuration.', 'blueworx-labs-wordpress' ) . '</p>';
 
+	// Not wp_kses() — same reasoning as the fields above.
 	printf(
 		'<details class="blueworx-sso-advanced"><summary>%1$s</summary>%2$s</details>',
 		esc_html__( 'Advanced', 'blueworx-labs-wordpress' ),
-		wp_kses( blueworx_detail_stack( $advanced ), blueworx_ds_allowed_html() )
+		blueworx_detail_stack( $advanced ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	);
 }
 

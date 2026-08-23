@@ -368,7 +368,8 @@ function blueworx_translate_render_detail() {
 		)
 	);
 
-	echo wp_kses( blueworx_detail_stack( $fields ), blueworx_ds_allowed_html() );
+	// Not wp_kses() — see the note in blueworx_render_feature_detail().
+	echo blueworx_detail_stack( $fields ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }
 
 /**

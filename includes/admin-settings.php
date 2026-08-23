@@ -619,7 +619,11 @@ function blueworx_render_feature_detail( $key ) {
 	$html = blueworx_get_feature_detail_html( $key );
 
 	if ( '' !== $html ) {
-		echo wp_kses( $html, blueworx_ds_allowed_html() );
+		// Not wp_kses(): the design system helpers escape everything they emit,
+		// and an allow-list silently drops what it does not recognise — the copy
+		// button's data-blueworx-copy among it, which leaves a button that looks
+		// right and copies nothing. Same reasoning as the support panel.
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 }
 
@@ -693,7 +697,6 @@ function blueworx_get_feature_detail_html( $key ) {
 					'legend'   => $labels['roles'],
 					'choices'  => $role_choices,
 					'selected' => blueworx_get_site_protection_roles( $area ),
-					'attrs'    => array( 'data-blueworx-roles' => $area ),
 					'help'     => __( 'Tick at least one role. With none ticked, nobody gets in at all.', 'blueworx-labs-wordpress' ),
 				)
 			);
