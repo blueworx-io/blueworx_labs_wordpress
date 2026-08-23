@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.9] - 2026-08-22
+
+### Changed
+- **Tidy-up only — nothing looks or behaves differently.** The old stylesheet
+  still had rules for the BlueWorx screens as they used to be built. Those are
+  gone, and there is now a test that fails if a BlueWorx screen starts leaning
+  on it again. (#122)
+
 ## [1.58.8] - 2026-08-22
 
 ### Fixed
