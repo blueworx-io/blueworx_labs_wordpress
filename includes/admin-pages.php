@@ -146,7 +146,6 @@ function blueworx_render_sso_page() {
 		)
 	);
 
-
 	if ( ! blueworx_feature_enabled( 'sso' ) ) {
 		echo wp_kses(
 			blueworx_ds_notice(
