@@ -284,14 +284,19 @@ function blueworx_external_url_render_box( $post ) {
 	$value = (string) get_post_meta( $post->ID, BLUEWORX_EXTERNAL_URL_META, true );
 
 	wp_nonce_field( 'blueworx_external_url_' . $post->ID, 'blueworx_external_url_nonce' );
+
+	// The metabox frame is core's; only what is inside it is ours, so .bw-admin
+	// wraps the field and stops there.
 	?>
-	<p>
-		<label class="screen-reader-text" for="blueworx_external_url"><?php esc_html_e( 'External address', 'blueworx-labs-wordpress' ); ?></label>
-		<input type="url" class="widefat" id="blueworx_external_url" name="blueworx_external_url" value="<?php echo esc_attr( $value ); ?>" placeholder="https://" />
-	</p>
-	<p class="description">
-		<?php esc_html_e( 'Fill this in and anyone clicking this item in a menu or a listing goes straight to that address instead. Leave it empty for normal behaviour.', 'blueworx-labs-wordpress' ); ?>
-	</p>
+	<div class="bw-admin">
+		<div class="bw-field">
+			<label class="screen-reader-text" for="blueworx_external_url"><?php esc_html_e( 'External address', 'blueworx-labs-wordpress' ); ?></label>
+			<input type="url" class="bw-input" id="blueworx_external_url" name="blueworx_external_url" value="<?php echo esc_attr( $value ); ?>" placeholder="https://" />
+			<p class="bw-field__help">
+				<?php esc_html_e( 'Fill this in and anyone clicking this item in a menu or a listing goes straight to that address instead. Leave it empty for normal behaviour.', 'blueworx-labs-wordpress' ); ?>
+			</p>
+		</div>
+	</div>
 	<?php
 }
 

@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.58.8] - 2026-08-22
+
+### Fixed
+- **Replacing a media file works again.** The Replace button on an attachment
+  sent you to the Posts list with nothing replaced and nothing said. It had
+  never worked from that screen.
+
+### Changed
+- **The BlueWorx controls inside WordPress's own screens now match the rest of
+  BlueWorx.** The replace-file box, the external address field, the multi-role
+  tick list and the view-as-a-role bar all look like the plugin they belong to.
+  The screens around them are untouched. (#121)
+
 ## [1.58.7] - 2026-08-22
 
 ### Changed
