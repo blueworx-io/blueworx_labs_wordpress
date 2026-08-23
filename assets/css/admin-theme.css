@@ -296,12 +296,13 @@ body.wp-admin #wpwrap {
 #adminmenuback::before {
 	content: "";
 	position: absolute;
-	top: -25px;
-	right: -45px;
-	width: 150px;
-	height: 150px;
+	top: -70px;
+	right: -90px;
+	width: 210px;
+	height: 210px;
 	border-radius: 50%;
-	background: #1d2043;
+	background: #A5A7FF;
+	opacity: .12;
 	pointer-events: none;
 }
 
@@ -331,9 +332,9 @@ body.wp-admin #wpwrap {
 
 #adminmenu a.menu-top,
 #adminmenu div.wp-menu-name {
-	color: rgba(255, 255, 255, .65);
+	color: rgba(255, 255, 255, .62);
 	font-family: var(--bw-font-ui);
-	font-size: 14px;
+	font-size: 13.5px;
 	font-weight: 500;
 }
 
@@ -379,14 +380,24 @@ body.wp-admin #wpwrap {
 	color: #fff;
 }
 
-/* Active — opaque indigo. Nothing composites beneath it. */
+/* Active — opaque indigo. Nothing composites beneath it. Only the row you are
+   actually on gets the brand pill. */
 #adminmenu li.current > a.menu-top,
+#adminmenu li.current > a.menu-top:hover {
+	background: var(--bw-primary);
+	color: #fff;
+	border-radius: 10px;
+	box-shadow: none;
+}
+
+/* Parent of the active row — a much quieter fill. Two brand pills stacked (the
+   parent and the sub-item inside it) read as two separate destinations; the
+   design gives the parent a wash and lets the active child carry the state. */
 #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
 #adminmenu li.wp-has-current-submenu.wp-menu-open > a.wp-has-current-submenu,
-#adminmenu li.current > a.menu-top:hover,
 #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu:hover,
 #adminmenu a.wp-has-current-submenu:focus {
-	background: var(--bw-primary);
+	background: rgba(255, 255, 255, .06);
 	color: #fff;
 	border-radius: 10px;
 	box-shadow: none;
@@ -418,7 +429,7 @@ body.wp-admin #wpwrap {
 }
 
 #adminmenu .wp-submenu a {
-	color: rgba(255, 255, 255, .55);
+	color: rgba(255, 255, 255, .5);
 	font-size: 13px;
 }
 
@@ -1014,11 +1025,11 @@ body.latepoint-admin #wpcontent {
 	margin-top: 14px;
 	padding: 0 12px 8px;
 	font-family: var(--bw-font-ui);
-	font-size: 10.5px;
+	font-size: 11px;
 	font-weight: 600;
-	letter-spacing: 1.2px;
+	letter-spacing: .06em;
 	text-transform: uppercase;
-	color: rgba(255, 255, 255, .32);
+	color: rgba(255, 255, 255, .38);
 	/* A heading is not a destination. It rides on the group's first item, so it
 	   must never swallow that item's click or hover. */
 	pointer-events: none;
@@ -1501,4 +1512,226 @@ body.latepoint-admin #wpcontent {
 	margin-top: 6px;
 	color: var(--bw-muted);
 	font-size: 12px;
+}
+
+/* ─── Mobile: the admin menu as a drawer ───
+   Below 900px the sidebar slides in over the page instead of sitting beside it,
+   and the BlueWorx top bar carries the hamburger that opens it.
+
+   Everything here is gated on `html.bw-drawer-ready`, which assets/js/admin-drawer.js
+   sets once it has bound the toggle. That gate is the whole safety story: taking
+   WordPress's admin bar away on a phone also takes away its responsive menu
+   button, so the native bar is only allowed to go once something else can open
+   the menu. No JS, no class, no change — the phone keeps WordPress's own bar. */
+
+.bw-topbar-toggle {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	flex: none;
+	margin-right: 4px;
+	padding: 0;
+	border: 0;
+	border-radius: 10px;
+	background: none;
+	color: var(--bw-charcoal);
+	cursor: pointer;
+	transition: background 120ms ease;
+}
+
+.bw-topbar-toggle:hover,
+.bw-topbar-toggle:focus-visible {
+	background: #F7F8FC;
+}
+
+.bw-scrim {
+	position: fixed;
+	inset: 0;
+	z-index: 9994;
+	background: rgba(10, 12, 41, .45);
+	border: 0;
+	padding: 0;
+}
+
+.bw-scrim[hidden] {
+	display: none;
+}
+
+@media only screen and (max-width: 900px) {
+	html.bw-drawer-ready #wpadminbar {
+		display: none;
+	}
+
+	html.bw-drawer-ready.wp-toolbar {
+		padding-top: 0;
+	}
+
+	html.bw-drawer-ready {
+		--wp-admin--admin-bar--height: 0px;
+	}
+
+	/* The bar spans the full width on a phone — there is no sidebar beside it to
+	   leave room for, because the sidebar is now on top of the page, not next to
+	   it. 58px and a tighter gutter, per the design. */
+	html.bw-drawer-ready .bw-topbar {
+		display: flex;
+		left: 0;
+		height: 58px;
+		padding: 0 14px;
+	}
+
+	html.bw-drawer-ready .bw-topbar-toggle {
+		display: inline-flex;
+	}
+
+	/* Only the icon at this width: the label is the third thing competing for a
+	   390px bar, and the icon already says it. */
+	html.bw-drawer-ready .bw-topbar-site span:not(.screen-reader-text),
+	html.bw-drawer-ready .bw-user-name {
+		display: none;
+	}
+
+	/* The drawer itself. The brand block is a fixed sibling of the menu rather
+	   than a child of it, so it is moved by the same transform — otherwise it
+	   stays welded to the top-left of the viewport while the menu slides out
+	   from under it. */
+	html.bw-drawer-ready #adminmenumain,
+	html.bw-drawer-ready .bw-brand {
+		position: fixed;
+		left: 0;
+		width: 264px;
+		/* Above the top bar, not under it. The drawer is one panel running from
+		   the very top of the screen, and the bar it covers carries the hamburger
+		   that opened it — leaving that clickable under an open drawer is how you
+		   get a menu that reopens itself. */
+		z-index: 9995;
+		transform: translateX(-100%);
+		transition: transform 240ms ease;
+	}
+
+	html.bw-drawer-ready #adminmenumain {
+		top: 0;
+		bottom: 0;
+		overflow-y: auto;
+		padding-top: 58px;
+		background: var(--bw-charcoal);
+		box-shadow: 0 20px 50px rgba(10, 12, 41, .35);
+	}
+
+	html.bw-drawer-ready .bw-brand {
+		height: 58px;
+		width: 264px;
+		z-index: 9996;
+	}
+
+	html.bw-drawer-open #adminmenumain,
+	html.bw-drawer-open .bw-brand {
+		transform: translateX(0);
+	}
+
+	/* Core hides the menu off-screen at its own breakpoint and shifts it back in
+	   with .auto-fold / .folded, and below 783px it drops #adminmenuwrap out of
+	   the layout entirely and parks #adminmenu at left:-190px until body carries
+	   .wp-responsive-open. All of that has to be undone here or the drawer slides
+	   in empty — the panel is ours, the list inside it is still core's. */
+	html.bw-drawer-ready #adminmenuback,
+	html.bw-drawer-ready #adminmenuwrap {
+		display: block;
+		position: static;
+		width: 100%;
+		margin: 0;
+	}
+
+	html.bw-drawer-ready #adminmenu {
+		position: static;
+		left: auto;
+		margin: 0;
+		display: block;
+	}
+
+	html.bw-drawer-ready .bw-brand {
+		display: flex;
+	}
+
+	html.bw-drawer-ready #adminmenu,
+	html.bw-drawer-ready #adminmenu li.menu-top {
+		width: auto;
+		float: none;
+	}
+
+	/* The page takes the full width — nothing is beside it any more. */
+	html.bw-drawer-ready #wpcontent,
+	html.bw-drawer-ready #wpfooter {
+		margin-left: 0;
+		padding-top: 58px;
+	}
+
+	/* Sub-items are always listed under an open parent in the drawer. A fly-out
+	   anchored to a 264px panel on a 390px screen has nowhere to fly to. */
+	html.bw-drawer-ready #adminmenu .wp-submenu {
+		position: static;
+		width: auto;
+		box-shadow: none;
+	}
+
+	/* Core's own phone styling bumps every row to 16px with big padding and
+	   floats the icon, which lands the glyph on top of the label. The drawer is
+	   the desktop sidebar at a different width, so it keeps the desktop metrics. */
+	html.bw-drawer-ready #adminmenu a.menu-top {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 0;
+		padding: 9px 12px;
+		font-size: 13.5px;
+		line-height: 1.4;
+	}
+
+	html.bw-drawer-ready #adminmenu .wp-menu-image {
+		/* Core parks the glyph with position:absolute at this width, which drops it
+		   on top of the first letter of the label. */
+		position: static;
+		float: none;
+		width: 20px;
+		height: 20px;
+		min-width: 20px;
+		padding: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	html.bw-drawer-ready #adminmenu div.wp-menu-name {
+		padding: 0;
+		font-size: 13.5px;
+	}
+
+	html.bw-drawer-ready #adminmenu .wp-submenu a {
+		padding: 6px 12px 6px 44px;
+		font-size: 13px;
+	}
+
+	/* The drawer is fixed, so it adds nothing to the page's own width. Core's
+	   folded-menu margins do, and they are what pushes the page sideways once
+	   the sidebar is no longer beside it. */
+	html.bw-drawer-ready.auto-fold #wpcontent,
+	html.bw-drawer-ready.auto-fold #wpfooter,
+	html.bw-drawer-ready #wpcontent,
+	html.bw-drawer-ready #wpfooter {
+		margin-left: 0;
+	}
+
+	html.bw-drawer-ready #wpbody-content,
+	html.bw-drawer-ready #wpbody {
+		overflow-x: hidden;
+	}
+}
+
+@media only screen and (max-width: 900px) and (prefers-reduced-motion: reduce) {
+	html.bw-drawer-ready #adminmenumain,
+	html.bw-drawer-ready .bw-brand {
+		transition: none;
+	}
 }

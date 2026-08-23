@@ -93,6 +93,14 @@ function blueworx_enqueue_admin_theme() {
 		blueworx_get_admin_asset_version( 'assets/js/admin-menu-flyout.js' ),
 		true
 	);
+
+	wp_enqueue_script(
+		'blueworx-admin-drawer',
+		BLUEWORX_LABS_URL . 'assets/js/admin-drawer.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/admin-drawer.js' ),
+		true
+	);
 }
 add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
 
@@ -601,6 +609,12 @@ function blueworx_render_admin_topbar() {
 		</span>
 	</div>
 	<div class="bw-topbar">
+		<button type="button" class="bw-topbar-toggle" data-blueworx-drawer-toggle aria-controls="adminmenumain">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true" focusable="false">
+				<path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path>
+			</svg>
+			<span class="screen-reader-text"><?php esc_html_e( 'Menu', 'blueworx-labs-wordpress' ); ?></span>
+		</button>
 		<div class="bw-topbar-title"><?php echo esc_html( $page_title ); ?></div>
 		<div class="bw-topbar-actions">
 			<a class="bw-topbar-site" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener noreferrer">
@@ -626,6 +640,7 @@ function blueworx_render_admin_topbar() {
 			</details>
 		</div>
 	</div>
+	<div class="bw-scrim" data-blueworx-drawer-scrim hidden></div>
 	<?php
 }
 add_action( 'in_admin_header', 'blueworx_render_admin_topbar', 5 );
