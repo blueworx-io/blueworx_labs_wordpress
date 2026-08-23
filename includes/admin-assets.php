@@ -138,9 +138,9 @@ add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_design_system' );
 /**
  * Serves the icon module as a real ES module.
  *
- * wp_enqueue_script() has no module type of its own on the WordPress versions
- * this plugin supports, and the file uses `export`, so without this the browser
- * rejects it on the first export statement.
+ * On the WordPress versions this plugin supports, wp_enqueue_script() has no
+ * module type of its own, and the file uses `export`, so without this the
+ * browser rejects it on the first export statement.
  *
  * @param string $tag    Script tag.
  * @param string $handle Script handle.
@@ -328,7 +328,6 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 			);
 		}
 	}
-
 
 	if ( 'toplevel_page_blueworx-guides' === $hook_suffix ) {
 		wp_enqueue_script(
