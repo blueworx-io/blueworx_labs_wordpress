@@ -59,6 +59,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/sso/settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/cache-refresh.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-settings.php';
 require_once BLUEWORX_LABS_PATH . 'includes/guides.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-pages.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-guides.php';
 require_once BLUEWORX_LABS_PATH . 'includes/disable-comments.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
