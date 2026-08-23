@@ -86,6 +86,16 @@ function blueworx_enqueue_admin_theme() {
 		blueworx_get_admin_asset_version( 'assets/css/admin-theme.css' )
 	);
 
+	// The patterns the designs introduced that the shared system does not carry
+	// yet. Loaded after it, so it can lean on its tokens — see the file header
+	// and BlueWorx > System additions.
+	wp_enqueue_style(
+		'blueworx-admin-additions',
+		BLUEWORX_LABS_URL . 'assets/css/admin-additions.css',
+		array( 'blueworx-admin-design' ),
+		blueworx_get_admin_asset_version( 'assets/css/admin-additions.css' )
+	);
+
 	wp_enqueue_script(
 		'blueworx-admin-menu-flyout',
 		BLUEWORX_LABS_URL . 'assets/js/admin-menu-flyout.js',

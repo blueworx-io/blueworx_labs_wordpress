@@ -1,0 +1,157 @@
+/* Patterns these screens needed that the shared design system does not have yet.
+ *
+ * assets/blueworx-admin-design.css is taken verbatim from the foundation and is
+ * not ours to edit — anything written there is lost at the next sync. So the
+ * components the designs introduced live here instead, in one file, using the
+ * system's own tokens and naming so they drop straight in once they are folded
+ * back upstream.
+ *
+ * Everything in this file is listed on BlueWorx > System additions. If you add
+ * something here, add it there too, or the debt stops being visible.
+ */
+
+/* ─── Role pill ───
+   Who can do the thing. Guides put them in a card footer, page headers put them
+   beside the title, and both cap the list at three with an expander — a section
+   can carry eight roles and a wrapped wall of pills buries the guide itself. */
+.bw-rolepills {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 0;
+}
+
+.bw-rolepill {
+	display: inline-flex;
+	align-items: center;
+	font-size: 11px;
+	line-height: 1;
+	font-weight: 600;
+	padding: 4px 9px;
+	border-radius: var(--bw-radius-pill);
+	background: var(--bw-surface-sunken);
+	color: var(--bw-text-muted);
+	border: 1px solid var(--bw-border);
+	white-space: nowrap;
+}
+
+/* A class with its own display beats the browser's [hidden] rule, so the
+   overflow pills need this or every role renders and the expander is a lie. */
+.bw-rolepill[hidden] {
+	display: none;
+}
+
+/* Administrator is the one worth picking out: it is the answer to "can I do
+   this?" for the person most likely to be reading. */
+.bw-rolepill--admin {
+	background: var(--bw-brand-wash);
+	color: var(--bw-text-accent);
+	border-color: transparent;
+}
+
+.bw-rolepill--more {
+	background: var(--bw-surface-card);
+	color: var(--bw-text-accent);
+	border-style: dashed;
+	cursor: pointer;
+	font-family: inherit;
+	transition: var(--bw-transition-control);
+}
+
+.bw-rolepill--more:hover,
+.bw-rolepill--more:focus-visible {
+	background: var(--bw-brand-wash);
+	border-style: solid;
+}
+
+/* ─── Page access row ───
+   The role list for the screen itself, hard right of the title and top-aligned
+   with it. It wraps its pills rather than pushing the header wider. */
+.bw-pageaccess {
+	order: 1;
+	margin-left: auto;
+	align-self: flex-start;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+	flex: 0 1 auto;
+	min-width: 0;
+	justify-content: flex-end;
+}
+
+.bw-pageaccess__label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: var(--bw-text-faint);
+	white-space: nowrap;
+}
+
+/* ─── Guide grid ───
+   Two equal columns once there is room for them. align-items:start stops a
+   short card stretching to match a tall neighbour, and the body growing is what
+   lines the footers up within a row. */
+.bw-guidegrid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+	align-items: start;
+}
+
+@media (min-width: 1000px) {
+	.bw-guidegrid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.bw-guidegrid > .bw-card {
+	display: flex;
+	flex-direction: column;
+}
+
+.bw-guidegrid > .bw-card > .bw-card__body {
+	flex: 1 1 auto;
+}
+
+/* The footer carries two things that must not collide: the role pills, which
+   wrap, and one action, which does not. */
+.bw-guidegrid > .bw-card > .bw-card__foot {
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.bw-guide__body p {
+	font-size: var(--bw-size-body);
+	line-height: var(--bw-lh-body);
+	max-width: var(--bw-content-max);
+	color: var(--bw-text-body);
+}
+
+/* ─── Drag-scrollable tab bar ───
+   More tabs than fit is normal here, and a scrollbar under them read as a
+   rendering fault. The bar scrolls by dragging instead, with the bar itself
+   kept out of the column's flex sizing — as a flex item that can shrink, the
+   scroll container collapses to nothing. */
+.bw-tabs--drag {
+	flex: none;
+	scrollbar-width: none;
+	cursor: grab;
+	touch-action: pan-x;
+}
+
+.bw-tabs--drag::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+}
+
+.bw-tabs--drag.is-dragging {
+	cursor: grabbing;
+}
+
+.bw-tabs--drag .bw-tab {
+	user-select: none;
+}

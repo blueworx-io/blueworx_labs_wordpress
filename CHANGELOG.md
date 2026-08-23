@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.60.0] - 2026-08-23
+
+### Added
+- Support access and single sign-on now have pages of their own under BlueWorx,
+  rather than being panels buried in a list of twenty-seven switches. The
+  Enhancements switch still turns each one on and off.
+- Two reference screens: Embedded controls, which lists every place the plugin
+  puts something inside one of WordPress's own screens, and System additions,
+  which records the components these designs needed that the shared design
+  system does not carry yet.
+- Guides now say who can do the thing each one describes. The roles are worked
+  out from this site's own capabilities, so a site that has added or changed a
+  role gets pills that match it.
+- Guides show a read time, sit in two columns on a wide screen, and their tabs
+  can be dragged sideways when there are more than fit.
+
+### Changed
+- The side menu matches the design: the row you are on carries the highlight on
+  its own, and the item above it gets a quieter wash instead of a second one.
+- On a phone the menu is now a drawer that slides in over the page from a
+  button in the BlueWorx bar. WordPress's own bar is only taken away once that
+  button is working, so there is no way to end up on a phone with no menu.
+
 ## [1.58.9] - 2026-08-22
 
 ### Changed

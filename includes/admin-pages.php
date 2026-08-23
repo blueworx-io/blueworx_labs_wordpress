@@ -49,10 +49,11 @@ function blueworx_open_admin_page( $args ) {
 	echo blueworx_ds_screen_open( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		blueworx_ds_page_header(
 			array(
-				'eyebrow' => __( 'BlueWorx', 'blueworx-labs-wordpress' ),
-				'title'   => $args['title'],
-				'lede'    => $args['lede'],
-				'actions' => $args['actions'],
+				'eyebrow'    => __( 'BlueWorx', 'blueworx-labs-wordpress' ),
+				'title'      => $args['title'],
+				'lede'       => $args['lede'],
+				'actions'    => $args['actions'],
+				'capability' => 'manage_options',
 			)
 		)
 	);

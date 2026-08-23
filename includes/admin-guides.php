@@ -100,8 +100,9 @@ function blueworx_render_guides_page() {
 
 	$header = blueworx_ds_page_header(
 		array(
-			'title' => __( 'Guides', 'blueworx-labs-wordpress' ),
-			'lede'  => __( 'How to use this site and everything BlueWorx adds to it. Switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
+			'title'      => __( 'Guides', 'blueworx-labs-wordpress' ),
+			'lede'       => __( 'One tab per section you have something switched on in. Switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
+			'capability' => 'read',
 		)
 	);
 
@@ -172,15 +173,17 @@ function blueworx_render_guides_page() {
 	// flex row (main plus sidebar), so they have to share a .bw-panels column or
 	// the tabs become a narrow left-hand rail.
 	printf(
-		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-tabs bw-tabs--inset" aria-label="%1$s">%2$s</nav>',
+		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-tabs bw-tabs--inset bw-tabs--drag" aria-label="%1$s" data-blueworx-guide-tabs>%2$s</nav>',
 		esc_attr__( 'Guide sections', 'blueworx-labs-wordpress' ),
 		wp_kses( $tab_html, blueworx_ds_allowed_html() )
 	);
 
 	printf(
-		'<div class="bw-guides bw-panels" data-blueworx-guide-panel="%s">',
+		'<div class="bw-guidegrid bw-guides" data-blueworx-guide-panel="%s">',
 		esc_attr( $active )
 	);
+
+	$sections = blueworx_get_feature_sections();
 
 	foreach ( $guides as $guide ) {
 		if ( $guide['tab'] !== $active ) {
@@ -191,18 +194,59 @@ function blueworx_render_guides_page() {
 		// to safe post markup — no scripts, no event handlers. Unchanged.
 		$body = wp_kses_post( $guide['body'] );
 
-		echo wp_kses(
-			blueworx_ds_card(
-				array(
-					'eyebrow' => isset( $tabs[ $guide['tab'] ] ) ? $tabs[ $guide['tab'] ] : '',
-					'title'   => $guide['title'],
-					'body'    => $body,
-					// Kept from the old markup: other plugins and the tests both
-					// address guides by id, and that is not ours to break.
-					'attrs'   => array( 'data-blueworx-guide' => $guide['id'] ),
-				)
+		$minutes = blueworx_guide_read_time( $guide['body'] );
+
+		$read_time = blueworx_ds_badge(
+			sprintf(
+				/* translators: %d: how many minutes the guide takes to read. */
+				_n( '%d min read', '%d min read', $minutes, 'blueworx-labs-wordpress' ),
+				$minutes
 			),
-			blueworx_ds_allowed_html()
+			'neutral'
+		);
+
+		// Who can actually do the thing the guide describes, worked out from
+		// this site's own roles rather than a list written down here.
+		$pills = blueworx_ds_role_pills(
+			blueworx_roles_with_capability( blueworx_guide_tab_capability( $guide['tab'] ) ),
+			'guide:' . $guide['id']
+		);
+
+		$action = '';
+
+		if ( isset( $sections[ $guide['tab'] ] ) ) {
+			$action = blueworx_ds_button(
+				array(
+					'label' => sprintf(
+						/* translators: %s: a settings section name, e.g. "Security & Access". */
+						__( 'Open %s', 'blueworx-labs-wordpress' ),
+						$sections[ $guide['tab'] ]
+					),
+					'icon'  => 'arrow-right',
+					'href'  => add_query_arg(
+						array(
+							'page'    => 'blueworx-labs-wordpress',
+							'section' => $guide['tab'],
+						),
+						admin_url( 'admin.php' )
+					),
+				)
+			);
+		}
+
+		// Not wp_kses(): the badge, the pills and the button all carry
+		// attributes the allow-list would drop in silence.
+		echo blueworx_ds_card( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			array(
+				'eyebrow' => isset( $tabs[ $guide['tab'] ] ) ? $tabs[ $guide['tab'] ] : '',
+				'title'   => $guide['title'],
+				'actions' => $read_time,
+				'body'    => '<div class="bw-guide__body">' . $body . '</div>',
+				'footer'  => $pills . $action,
+				// Kept from the old markup: other plugins and the tests both
+				// address guides by id, and that is not ours to break.
+				'attrs'   => array( 'data-blueworx-guide' => $guide['id'] ),
+			)
 		);
 	}
 

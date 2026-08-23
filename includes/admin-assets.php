@@ -42,6 +42,8 @@ function blueworx_admin_design_screens() {
 		'blueworx_page_blueworx-guides',
 		'blueworx_page_blueworx-edit-menu',
 		'blueworx_page_blueworx-cache',
+		'blueworx_page_blueworx-support',
+		'blueworx_page_blueworx-sso',
 	);
 }
 
@@ -164,6 +166,9 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		'toplevel_page_blueworx-labs-wordpress',
 		'blueworx_page_blueworx-edit-menu',
 		'blueworx_page_blueworx-cache',
+		'blueworx_page_blueworx-guides',
+		'blueworx_page_blueworx-support',
+		'blueworx_page_blueworx-sso',
 		'profile.php',
 		'user-edit.php',
 	);
@@ -324,6 +329,32 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		}
 	}
 
+
+	if ( 'blueworx_page_blueworx-guides' === $hook_suffix ) {
+		wp_enqueue_script(
+			'blueworx-labs-wordpress-guides',
+			BLUEWORX_LABS_URL . 'assets/js/guides.js',
+			array(),
+			blueworx_get_admin_asset_version( 'assets/js/guides.js' ),
+			true
+		);
+
+		return;
+	}
+
+	// Support access and single sign-on both render a copy field on their own
+	// page now, not just inside the Enhancements panel.
+	if ( in_array( $hook_suffix, array( 'blueworx_page_blueworx-support', 'blueworx_page_blueworx-sso' ), true ) ) {
+		wp_enqueue_script(
+			'blueworx-labs-wordpress-copy-field',
+			BLUEWORX_LABS_URL . 'assets/js/copy-field.js',
+			array(),
+			blueworx_get_admin_asset_version( 'assets/js/copy-field.js' ),
+			true
+		);
+
+		return;
+	}
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {
 		// No stylesheet of its own any more: the screen is built from the design
 		// system, which blueworx_enqueue_admin_design_system() loads here whether
