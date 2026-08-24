@@ -344,3 +344,138 @@ function blueworx_get_wordpress_basics_guides() {
 		),
 	);
 }
+
+/**
+ * The capability a tab's guides actually describe.
+ *
+ * The role pills on a guide are the user-facing answer to "can I do this?", so
+ * they are worked out from capabilities rather than written down: a site that
+ * has added a Shop manager role, or taken upload_files off Authors, gets pills
+ * that match its own setup instead of ours.
+ *
+ * @param string $tab Tab id.
+ * @return string Capability name.
+ */
+function blueworx_guide_tab_capability( $tab ) {
+	$map = array(
+		'getting-started' => 'read',
+		'security'        => 'manage_options',
+		'content'         => 'edit_posts',
+		'media'           => 'upload_files',
+		'translation'     => 'edit_posts',
+		'notifications'   => 'manage_options',
+		'performance'     => 'manage_options',
+		'admin_menu'      => 'manage_options',
+		'appearance'      => 'edit_theme_options',
+	);
+
+	/**
+	 * Filters the capability a guide tab describes.
+	 *
+	 * @param string $capability Capability name.
+	 * @param string $tab        Tab id.
+	 */
+	return (string) apply_filters(
+		'blueworx_guide_tab_capability',
+		isset( $map[ $tab ] ) ? $map[ $tab ] : 'manage_options',
+		$tab
+	);
+}
+
+/**
+ * The roles on this site that hold a capability.
+ *
+ * Administrator is listed first when it is in the set — it is the answer most
+ * people are looking for, and the design gives it its own pill.
+ *
+ * @param string $capability Capability name.
+ * @return array Role display names, keyed by slug.
+ */
+function blueworx_roles_with_capability( $capability ) {
+	$roles = array();
+
+	foreach ( get_editable_roles() as $slug => $role ) {
+		if ( empty( $role['capabilities'][ $capability ] ) ) {
+			continue;
+		}
+
+		$roles[ $slug ] = translate_user_role( $role['name'] );
+	}
+
+	if ( isset( $roles['administrator'] ) ) {
+		$admin = $roles['administrator'];
+		unset( $roles['administrator'] );
+		$roles = array( 'administrator' => $admin ) + $roles;
+	}
+
+	return $roles;
+}
+
+/**
+ * How long a guide takes to read, in whole minutes.
+ *
+ * @param string $body Guide body HTML.
+ * @return int Minutes, never less than one.
+ */
+function blueworx_guide_read_time( $body ) {
+	$words = str_word_count( wp_strip_all_tags( (string) $body ) );
+
+	return max( 1, (int) ceil( $words / 200 ) );
+}
+
+/**
+ * Renders a capped list of role pills with an expander.
+ *
+ * The full list is always in the markup — the overflow pills are rendered with
+ * `hidden` rather than left out. With the script absent you get every role,
+ * which is the honest fallback; leaving them out would give you a "+3 more"
+ * button that does nothing.
+ *
+ * @param array  $roles Role display names, keyed by slug.
+ * @param string $key   Unique key for this list, so two lists on one screen
+ *                      expand independently.
+ * @param int    $cap   How many to show before the expander.
+ * @return string HTML.
+ */
+function blueworx_ds_role_pills( $roles, $key, $cap = 3 ) {
+	if ( empty( $roles ) ) {
+		return '';
+	}
+
+	$names  = array_values( $roles );
+	$slugs  = array_keys( $roles );
+	$hidden = max( 0, count( $names ) - $cap );
+	$pills  = '';
+
+	foreach ( $names as $index => $name ) {
+		$is_extra = $index >= $cap;
+
+		$pills .= sprintf(
+			'<span class="bw-rolepill%1$s"%2$s>%3$s</span>',
+			'administrator' === $slugs[ $index ] ? ' bw-rolepill--admin' : '',
+			$is_extra ? ' hidden data-blueworx-role-extra' : '',
+			esc_html( $name )
+		);
+	}
+
+	if ( $hidden > 0 ) {
+		$more = sprintf(
+			/* translators: %d: how many further roles there are. */
+			__( '+%d more', 'blueworx-labs-wordpress' ),
+			$hidden
+		);
+
+		$pills .= sprintf(
+			'<button type="button" class="bw-rolepill bw-rolepill--more" data-blueworx-roles-more aria-expanded="false" data-more-label="%1$s" data-fewer-label="%2$s">%1$s</button>',
+			esc_attr( $more ),
+			esc_attr__( 'Show fewer', 'blueworx-labs-wordpress' )
+		);
+	}
+
+	return sprintf(
+		'<span class="bw-rolepills" data-blueworx-roles="%1$s" title="%2$s">%3$s</span>',
+		esc_attr( $key ),
+		esc_attr( implode( ', ', $names ) ),
+		$pills
+	);
+}

@@ -56,6 +56,49 @@ function blueworx_register_settings_page() {
 			'blueworx_render_cache_page'
 		);
 	}
+
+	add_submenu_page(
+		'blueworx-labs-wordpress',
+		esc_html__( 'Support access', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Support access', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-support',
+		'blueworx_render_support_page'
+	);
+
+	// Registered under the BlueWorx menu while the function is on, and under no
+	// parent while it is off — which keeps the address working so the screen can
+	// explain itself, without listing a settings page for something that is not
+	// running. remove_submenu_page() is not the same thing: it takes the page out
+	// of $_registered_pages too, and the address then answers "you are not
+	// allowed", which reads like a permissions fault rather than a switched-off
+	// function.
+	add_submenu_page(
+		blueworx_feature_enabled( 'sso' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Single sign-on', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Single sign-on', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-sso',
+		'blueworx_render_sso_page'
+	);
+
+	add_submenu_page(
+		'blueworx-labs-wordpress',
+		esc_html__( 'Embedded controls', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Embedded controls', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-embedded',
+		'blueworx_render_embedded_page'
+	);
+
+	add_submenu_page(
+		'blueworx-labs-wordpress',
+		esc_html__( 'System additions', 'blueworx-labs-wordpress' ),
+		esc_html__( 'System additions', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-additions',
+		'blueworx_render_additions_page'
+	);
 }
 add_action( 'admin_menu', 'blueworx_register_settings_page' );
 

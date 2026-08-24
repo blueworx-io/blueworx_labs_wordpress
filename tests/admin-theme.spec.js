@@ -170,13 +170,21 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('#dashboard_quick_press')).toBeHidden();
   });
 
-  test('mobile keeps the native admin bar so the menu toggle still works', async ({ page }) => {
+  test('mobile swaps the native admin bar for the BlueWorx bar and its drawer', async ({ page }) => {
     await login(page);
     await page.setViewportSize({ width: 480, height: 900 });
     await page.goto(DASH_PATH);
 
-    await expect(page.locator('.bw-topbar')).toBeHidden();
-    await expect(page.locator('#wpadminbar')).toBeVisible();
+    // This used to assert the opposite: the native bar stayed on a phone
+    // because its toggle was the only way to reach the menu. The drawer is that
+    // way in now, so the bar can go — but only once the script that opens the
+    // drawer has said it is ready. That gate is the safety property worth
+    // testing, so it is asserted before anything else.
+    await expect(page.locator('html.bw-drawer-ready')).toHaveCount(1);
+
+    await expect(page.locator('.bw-topbar')).toBeVisible();
+    await expect(page.locator('[data-blueworx-drawer-toggle]')).toBeVisible();
+    await expect(page.locator('#wpadminbar')).toBeHidden();
   });
 
   test('login screen is branded', async ({ page, context }) => {
@@ -264,7 +272,9 @@ test.describe('BlueWorx admin theme', () => {
     // Hover must not composite a second translucent layer over the active pill.
     expect(after).toBe(before);
     // And the active pill is the design's opaque indigo, not a 22% wash.
-    expect(before).toBe('rgb(79, 70, 229)');
+    // The wash, not the brand pill: the row you are ON carries the pill, and the
+    // parent above it gets this instead. Hover must still not move it.
+    expect(before).toBe('rgba(255, 255, 255, 0.06)');
   });
 
   // The icon-swap ($menu field 6 = 'none') runs in this task; the actual SVG
@@ -357,8 +367,9 @@ test.describe('BlueWorx admin theme', () => {
       };
     });
 
-    expect(style.letterSpacing).toBe('1.2px');
-    expect(style.fontSize).toBe('10.5px');
+    // .06em at 11px, per the design.
+    expect(style.letterSpacing).toBe('0.66px');
+    expect(style.fontSize).toBe('11px');
     expect(style.fontWeight).toBe('600');
     // Inert: the heading must not swallow its host item's click.
     expect(style.pointerEvents).toBe('none');
@@ -441,6 +452,35 @@ test.describe('BlueWorx admin theme', () => {
     // And it is inside Overview — so it must not start a group of its own.
     const row = page.locator('#adminmenu > li.menu-top').nth(blueworx);
     await expect(row).not.toHaveClass(/bw-group-start/);
+  });
+
+  test('Guides is its own row in Overview, directly below BlueWorx', async ({ page }) => {
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    const slugs = await page
+      .locator('#adminmenu > li.menu-top > a.menu-top')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+
+    const blueworx = slugs.findIndex((h) => h && h.includes('page=blueworx-labs-wordpress'));
+    const guides = slugs.findIndex((h) => h && h.includes('page=blueworx-guides'));
+
+    expect(blueworx).toBeGreaterThanOrEqual(0);
+    expect(guides).toBe(blueworx + 1);
+
+    // Same group as BlueWorx, so it must not open one of its own.
+    await expect(page.locator('#adminmenu > li.menu-top').nth(guides)).not.toHaveClass(
+      /bw-group-start/
+    );
+
+    // And it has left the BlueWorx submenu. Scoped to that row: add_menu_page()
+    // gives Guides a self-titled submenu of its own, which an unscoped href
+    // match would hit.
+    await expect(
+      page.locator(
+        '#adminmenu > li.menu-top:has(> a[href*="page=blueworx-labs-wordpress"]) .wp-submenu a[href*="page=blueworx-guides"]'
+      )
+    ).toHaveCount(0);
   });
 
   test('every top-level row is the same height, and none overhangs the sidebar', async ({
@@ -797,8 +837,10 @@ test.describe('BlueWorx admin theme', () => {
 
     await login(page);
 
-    // Auto-folded: a 36px rail, so the labels must be gone.
-    await page.setViewportSize({ width: 900, height: 900 });
+    // Auto-folded: a 36px rail, so the labels must be gone. 940px, not 900:
+    // at 900 and below the sidebar is a drawer now, not a folded rail, so
+    // there is no rail there to measure.
+    await page.setViewportSize({ width: 940, height: 900 });
     await page.goto(DASH_PATH);
 
     let state = await labelDisplays();

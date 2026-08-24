@@ -77,6 +77,8 @@ function blueworx_get_admin_menu_icon_paths() {
 		'index.php'               => '<rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect>',
 		// BlueWorx console — layout-panel-top.
 		'blueworx-labs-wordpress' => '<rect x="3" y="3" width="18" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect>',
+		// Guides — book-open.
+		'blueworx-guides'         => '<path d="M12 7.5v12"></path><path d="M3 5.5h5a4 4 0 014 2 4 4 0 014-2h5v12h-5a4 4 0 00-4 2 4 4 0 00-4-2H3z"></path>',
 		// Posts — document.
 		'edit.php'                => '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h7M9 8h3"></path>',
 		// Media — image.

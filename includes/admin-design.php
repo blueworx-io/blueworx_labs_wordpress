@@ -53,6 +53,12 @@ function blueworx_ds_allowed_html() {
 		'data-blueworx-guide-tab'    => true,
 		'data-blueworx-guide-panel'  => true,
 		'data-blueworx-roles'        => true,
+		'data-blueworx-roles-more'   => true,
+		'data-blueworx-role-extra'   => true,
+		'data-blueworx-guide-tabs'   => true,
+		'data-more-label'            => true,
+		'data-fewer-label'           => true,
+		'data-testid'                => true,
 		'data-blueworx-section'      => true,
 		'data-blueworx-panel'        => true,
 
@@ -413,10 +419,11 @@ function blueworx_ds_page_header( $args ) {
 	$args = wp_parse_args(
 		$args,
 		array(
-			'eyebrow' => 'BlueWorx',
-			'title'   => '',
-			'lede'    => '',
-			'actions' => '',
+			'eyebrow'    => 'BlueWorx',
+			'title'      => '',
+			'lede'       => '',
+			'actions'    => '',
+			'capability' => '',
 		)
 	);
 
@@ -432,11 +439,29 @@ function blueworx_ds_page_header( $args ) {
 		$titles .= '<p class="bw-pagehead__lede">' . esc_html( $args['lede'] ) . '</p>';
 	}
 
+	// Who can reach this screen, worked out from the capability it is registered
+	// with rather than written down. "Only administrators can see this" is a
+	// question people ask about every settings screen, and answering it in the
+	// header is cheaper than answering it in support.
+	$access = '';
+
+	if ( '' !== $args['capability'] && function_exists( 'blueworx_roles_with_capability' ) ) {
+		$roles = blueworx_roles_with_capability( $args['capability'] );
+
+		if ( ! empty( $roles ) ) {
+			$access = sprintf(
+				'<div class="bw-pageaccess"><span class="bw-pageaccess__label">%1$s</span>%2$s</div>',
+				esc_html__( 'Page access:', 'blueworx-labs-wordpress' ),
+				blueworx_ds_role_pills( $roles, 'page:' . sanitize_key( $args['title'] ) )
+			);
+		}
+	}
+
 	$actions = '' !== $args['actions']
 		? '<div class="bw-pagehead__actions">' . $args['actions'] . '</div>'
 		: '';
 
-	return '<header class="bw-pagehead"><div class="bw-pagehead__titles">' . $titles . '</div>' . $actions . '</header>';
+	return '<header class="bw-pagehead"><div class="bw-pagehead__titles">' . $titles . '</div>' . $access . $actions . '</header>';
 }
 
 /**
