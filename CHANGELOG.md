@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.2] - 2026-08-24
+
+### Changed
+- The plugin now carries the shared design system guardrail: an admin screen
+  that is not built from the BlueWorx design system is refused as it is written,
+  rather than being found later. Nothing on the site changes.
+- Our checks now run against a named release of the shared foundation rather than
+  a tag that had been left behind since the start of August, so the design system
+  is checked on every pull request. The check that our admin screens are built
+  from the design system reports without blocking while the re-skin catches up.
+
 ## [1.61.1] - 2026-08-24
 
 ### Fixed
