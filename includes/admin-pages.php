@@ -114,6 +114,11 @@ function blueworx_render_support_page() {
 		return;
 	}
 
+	// The panel is nothing but submit buttons, and a submit button outside a
+	// form is inert — it renders correctly, takes the click and does nothing.
+	// On Enhancements it inherits the settings form; here it needs its own.
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin.php?page=blueworx-support' ) ) . '">';
+
 	echo '<section class="bw-card"><div class="bw-card__head"><div class="bw-card__titles">';
 	echo '<p class="bw-card__eyebrow">' . esc_html__( 'Read-only, and only while the window is open', 'blueworx-labs-wordpress' ) . '</p>';
 	echo '<h2 class="bw-card__title">' . esc_html__( 'BlueWorx support access', 'blueworx-labs-wordpress' ) . '</h2>';
@@ -122,6 +127,8 @@ function blueworx_render_support_page() {
 	blueworx_support_render_panel();
 
 	echo '</div></section>';
+
+	echo '</form>';
 
 	blueworx_close_admin_page();
 }

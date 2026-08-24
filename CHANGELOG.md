@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.1] - 2026-08-24
+
+### Fixed
+- **Support access works again on its own screen.** The Generate key button,
+  and the ones for opening and revoking, did nothing at all when clicked. The
+  panel had moved onto a page of its own without the form its buttons need, so
+  they took the click and went nowhere. The same buttons on Enhancements were
+  never affected.
+
 ## [1.61.0] - 2026-08-24
 
 ### Changed

@@ -1463,7 +1463,17 @@ function blueworx_support_claude_prompt( $key = '' ) {
  * @return void
  */
 function blueworx_support_render_panel() {
-	$self_url  = admin_url( 'admin.php?page=blueworx-labs-wordpress' );
+	// This panel renders on two screens now — Enhancements and Support access —
+	// so "post back to this page" cannot be a fixed address. $plugin_page is the
+	// current page slug, already sanitised by wp-admin/admin.php, which is why
+	// this reads it rather than $_GET.
+	$page = isset( $GLOBALS['plugin_page'] ) ? (string) $GLOBALS['plugin_page'] : '';
+
+	if ( '' === $page ) {
+		$page = 'blueworx-labs-wordpress';
+	}
+
+	$self_url  = admin_url( 'admin.php?page=' . rawurlencode( $page ) );
 	$open      = blueworx_support_access_open();
 	$has_key   = blueworx_support_has_key();
 	$new_key   = $GLOBALS['blueworx_support_new_key'];
