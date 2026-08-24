@@ -107,7 +107,11 @@ test.describe('Single sign-on', () => {
   test('the callback URL is shown for copying', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await expect(page.locator('.blueworx-sso-callback-url')).toContainText('blueworx_sso=callback');
+    // A read-only field with a copy button beside it now, not a <code> block:
+    // the address exists to be pasted into somebody else's control panel.
+    await expect(page.locator('[data-testid="blueworx-sso-callback-url"]')).toHaveValue(
+      /blueworx_sso=callback/
+    );
   });
 });
 

@@ -333,3 +333,44 @@ export async function featureIsOn(page, feature) {
 export async function readSupportKey(page) {
   return (await page.locator('[data-testid="bw-support-key"]').inputValue()).trim();
 }
+
+/**
+ * Reads the ticked values of a design system checkbox group.
+ *
+ * The role pickers were native multi-selects until the panels moved onto the
+ * design system. They are checkbox groups now, so a test that wants "which
+ * roles are allowed" asks for the ticked boxes rather than the selected
+ * options.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {string} name Field name, without the trailing [].
+ * @return {Promise<string[]>} Ticked values, in document order.
+ */
+export async function readCheckedGroup(page, name) {
+  return page
+    .locator(`input[name="${name}[]"]:checked`)
+    .evaluateAll((boxes) => boxes.map((box) => box.value));
+}
+
+/**
+ * Ticks exactly these values in a checkbox group, clearing every other box.
+ *
+ * Mirrors selectOption() on the multi-select it replaced: what is not listed
+ * ends up unticked, so a caller restoring a captured state gets that state and
+ * not a union with whatever was already there.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {string} name Field name, without the trailing [].
+ * @param {string[]} values Values to leave ticked.
+ * @return {Promise<void>}
+ */
+export async function setCheckedGroup(page, name, values) {
+  const boxes = page.locator(`input[name="${name}[]"]`);
+  const total = await boxes.count();
+
+  for (let index = 0; index < total; index += 1) {
+    const box = boxes.nth(index);
+    // eslint-disable-next-line no-await-in-loop
+    await box.setChecked(values.includes(await box.inputValue()));
+  }
+}

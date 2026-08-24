@@ -290,56 +290,86 @@ function blueworx_translate_save_settings( $post ) {
  * @return void
  */
 function blueworx_translate_render_detail() {
-	$supported  = blueworx_translate_supported_languages();
-	$selected   = blueworx_translate_languages();
-	$positions  = blueworx_translate_positions();
-	$position   = blueworx_translate_position();
-	$styles     = blueworx_translate_display_styles();
-	$display    = blueworx_translate_display();
-	$exclusions = blueworx_translate_exclusions();
-	?>
-	<p class="description">
-		<?php esc_html_e( 'Adds a floating language button to the site. Translation happens in the visitor\'s own browser, so there is no cost and no data leaves their device. Works in Chrome and Edge 138 or newer; in other browsers the button does not appear. Search engines still only see the original language.', 'blueworx-labs-wordpress' ); ?>
-	</p>
-	<fieldset>
-		<legend><?php esc_html_e( 'Languages offered', 'blueworx-labs-wordpress' ); ?></legend>
-		<?php foreach ( $supported as $code => $label ) : ?>
-			<label style="display:inline-block;min-width:9em;">
-				<input type="checkbox" name="blueworx_translate_languages[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $selected, true ) ); ?> />
-				<?php echo esc_html( $label ); ?>
-			</label>
-		<?php endforeach; ?>
-	</fieldset>
-	<p>
-		<label>
-			<input type="checkbox" name="blueworx_translate_admin_only" value="1" <?php checked( blueworx_translate_admin_only() ); ?> />
-			<?php esc_html_e( 'Only show the switcher to site administrators', 'blueworx-labs-wordpress' ); ?>
-		</label><br />
-		<span class="description"><?php esc_html_e( 'For trying the switcher out on a live site before opening it up. Visitors and other logged-in users see no button at all, and none of its code is loaded for them.', 'blueworx-labs-wordpress' ); ?></span>
-	</p>
-	<p>
-		<label for="blueworx_translate_position"><?php esc_html_e( 'Button position', 'blueworx-labs-wordpress' ); ?></label><br />
-		<select id="blueworx_translate_position" name="blueworx_translate_position">
-			<?php foreach ( $positions as $value => $label ) : ?>
-				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $position, $value ); ?>><?php echo esc_html( $label ); ?></option>
-			<?php endforeach; ?>
-		</select>
-	</p>
-	<p>
-		<label for="blueworx_translate_display"><?php esc_html_e( 'Show languages as', 'blueworx-labs-wordpress' ); ?></label><br />
-		<select id="blueworx_translate_display" name="blueworx_translate_display">
-			<?php foreach ( $styles as $value => $label ) : ?>
-				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $display, $value ); ?>><?php echo esc_html( $label ); ?></option>
-			<?php endforeach; ?>
-		</select><br />
-		<span class="description"><?php esc_html_e( 'Applies on desktop. On phones the switcher always shows flags only, to save space. Windows has no flag glyphs and shows the two-letter country code instead.', 'blueworx-labs-wordpress' ); ?></span>
-	</p>
-	<p>
-		<label for="blueworx_translate_exclusions"><?php esc_html_e( 'Never translate (one CSS selector per line)', 'blueworx-labs-wordpress' ); ?></label><br />
-		<textarea id="blueworx_translate_exclusions" name="blueworx_translate_exclusions" class="large-text code" rows="4"><?php echo esc_textarea( implode( "\n", $exclusions ) ); ?></textarea>
-		<span class="description"><?php esc_html_e( 'Use for brand names, product codes and anything that must stay as written. Code, pre and elements marked translate="no" or .notranslate are always skipped.', 'blueworx-labs-wordpress' ); ?></span>
-	</p>
-	<?php
+	$fields = blueworx_ds_notice(
+		array(
+			'tone' => 'info',
+			'text' => __( 'Adds a floating language button to the site. Translation happens in the visitor\'s own browser, so there is no cost and no data leaves their device. Works in Chrome and Edge 138 or newer; in other browsers the button does not appear. Search engines still only see the original language.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
+	$fields .= blueworx_ds_choice_group(
+		array(
+			'name'     => 'blueworx_translate_languages',
+			'id'       => 'blueworx-translate-languages',
+			'legend'   => __( 'Languages offered', 'blueworx-labs-wordpress' ),
+			'choices'  => blueworx_translate_supported_languages(),
+			'selected' => blueworx_translate_languages(),
+		)
+	);
+
+	$fields .= blueworx_ds_field(
+		array(
+			'control' => blueworx_ds_checkbox(
+				array(
+					'name'    => 'blueworx_translate_admin_only',
+					'label'   => __( 'Only show the switcher to site administrators', 'blueworx-labs-wordpress' ),
+					'checked' => blueworx_translate_admin_only(),
+					'help'    => __( 'For trying the switcher out on a live site before opening it up. Visitors and other logged-in users see no button at all, and none of its code is loaded for them.', 'blueworx-labs-wordpress' ),
+				)
+			),
+		)
+	);
+
+	$fields .= blueworx_ds_field(
+		array(
+			'label'   => __( 'Button position', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_translate_position',
+			'control' => blueworx_ds_select(
+				array(
+					'name'     => 'blueworx_translate_position',
+					'id'       => 'blueworx_translate_position',
+					'options'  => blueworx_translate_positions(),
+					'selected' => blueworx_translate_position(),
+				)
+			),
+		)
+	);
+
+	$fields .= blueworx_ds_field(
+		array(
+			'label'   => __( 'Show languages as', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_translate_display',
+			'control' => blueworx_ds_select(
+				array(
+					'name'     => 'blueworx_translate_display',
+					'id'       => 'blueworx_translate_display',
+					'options'  => blueworx_translate_display_styles(),
+					'selected' => blueworx_translate_display(),
+				)
+			),
+			'help'    => __( 'Applies on desktop. On phones the switcher always shows flags only, to save space. Windows has no flag glyphs and shows the two-letter country code instead.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
+	$fields .= blueworx_ds_field(
+		array(
+			'label'   => __( 'Never translate (one CSS selector per line)', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_translate_exclusions',
+			'control' => blueworx_ds_textarea(
+				array(
+					'name'  => 'blueworx_translate_exclusions',
+					'id'    => 'blueworx_translate_exclusions',
+					'value' => implode( "\n", blueworx_translate_exclusions() ),
+					'rows'  => 4,
+					'mono'  => true,
+				)
+			),
+			'help'    => __( 'Use for brand names, product codes and anything that must stay as written. Code, pre and elements marked translate="no" or .notranslate are always skipped.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
+	// Not wp_kses() — see the note in blueworx_render_feature_detail().
+	echo blueworx_detail_stack( $fields ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }
 
 /**

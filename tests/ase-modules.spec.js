@@ -186,6 +186,8 @@ test.describe('ASE replacement modules', () => {
 
     await expect(page.locator('input[name="blueworx_media_replace_enabled"]')).toHaveCount(1);
     await expect(page.locator('#blueworx_media_max_width')).toHaveCount(1);
-    await expect(page.locator('select[name="blueworx_media_svg_roles[]"]')).toHaveCount(1);
+    await expect(
+      page.locator('input[type="checkbox"][name="blueworx_media_svg_roles[]"]').first()
+    ).toHaveCount(1);
   });
 });
