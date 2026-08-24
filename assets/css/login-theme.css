@@ -23,33 +23,21 @@
  * replace the branding the panel was carrying.
  */
 
+/* Everything comes from the shared design system, which this file loads after.
+   Only the panel width is ours — see the note in admin-theme.css for why a name
+   this plugin owns must not use the --bw- prefix. */
 :root {
-	--bw-primary: #4F46E5;
-	--bw-primary-dark: #4338CA;
-	--bw-primary-light: #A5B4FC;
-	--bw-charcoal: #0A0C29;
-	--bw-lavender: #E8E7F7;
-	--bw-surface: #F5F6FF;
-	--bw-body: #4C4C4C;
-	--bw-muted: #667085;
-	--bw-border: #EFEFF0;
-	--bw-success: #01824C;
-	--bw-error: #FF302F;
-	--bw-shadow-card: 0 1px 2px rgba(10, 12, 41, .04), 0 4px 12px rgba(10, 12, 41, .05);
-	--bw-font-head: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--bw-font-ui: "Inter", -apple-system, sans-serif;
-	--bw-font-body: "Sora", -apple-system, sans-serif;
-	--bw-panel-width: 44%;
+	--bwt-panel-width: 44%;
 }
 
 html {
-	background: var(--bw-surface);
+	background: var(--bw-canvas);
 }
 
 body.login {
-	background: var(--bw-surface);
-	font-family: var(--bw-font-ui);
-	color: var(--bw-body);
+	background: var(--bw-canvas);
+	font-family: var(--bw-font-body);
+	color: var(--bw-text-body);
 }
 
 /* ─── Brand panel ─── */
@@ -59,9 +47,9 @@ body.login {
 	top: 0;
 	bottom: 0;
 	left: 0;
-	width: var(--bw-panel-width);
+	width: var(--bwt-panel-width);
 	padding: 56px;
-	background: var(--bw-charcoal);
+	background: var(--bw-ink);
 	overflow: hidden;
 	z-index: 1;
 }
@@ -102,7 +90,7 @@ body.login {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	font-family: var(--bw-font-head);
+	font-family: var(--bw-font-display);
 	font-size: 17px;
 	font-weight: 700;
 	line-height: 1.2;
@@ -116,7 +104,7 @@ body.login {
 }
 
 .bw-login-brand:focus-visible {
-	outline: 2px solid var(--bw-primary-light);
+	outline: 2px solid var(--bw-brand-line);
 	outline-offset: 4px;
 	border-radius: 4px;
 }
@@ -129,7 +117,7 @@ body.login {
 	width: 36px;
 	height: 36px;
 	border-radius: 10px;
-	background: var(--bw-primary);
+	background: var(--bw-brand);
 	color: #fff;
 	font-size: 17px;
 	font-weight: 700;
@@ -150,7 +138,7 @@ body.login {
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.3;
-	color: var(--bw-primary-light);
+	color: var(--bw-brand-line);
 }
 
 .bw-login-headline {
@@ -195,7 +183,7 @@ body.login {
 		justify-content: center;
 		min-height: 100vh;
 		margin: 0;
-		padding: 40px 40px 40px calc(var(--bw-panel-width) + 40px);
+		padding: 40px 40px 40px calc(var(--bwt-panel-width) + 40px);
 	}
 
 	body.login #login {
@@ -248,11 +236,11 @@ body.login h1 a {
 	background-image: none;
 	text-indent: 0;
 	overflow: visible;
-	font-family: var(--bw-font-head);
+	font-family: var(--bw-font-display);
 	font-weight: 700;
 	font-size: 18px;
 	line-height: 1.25;
-	color: var(--bw-charcoal);
+	color: var(--bw-ink);
 	text-decoration: none;
 }
 
@@ -264,7 +252,7 @@ body.login h1 a::before {
 	width: 34px;
 	height: 34px;
 	border-radius: 9px;
-	background: var(--bw-primary);
+	background: var(--bw-brand);
 	color: #fff;
 	font-size: 16px;
 	font-weight: 700;
@@ -278,14 +266,14 @@ body.login h1 a::before {
 	font-weight: 700;
 	line-height: 1.25;
 	letter-spacing: -.01em;
-	color: var(--bw-charcoal);
+	color: var(--bw-ink);
 }
 
 .bw-login-subtitle {
 	margin: 0 0 22px;
 	font-size: 13px;
 	line-height: 1.5;
-	color: var(--bw-muted);
+	color: var(--bw-text-muted);
 }
 
 /* ─── Form ─── */
@@ -299,7 +287,7 @@ body.login form {
 }
 
 body.login label {
-	color: var(--bw-charcoal);
+	color: var(--bw-ink);
 	font-size: 13px;
 	font-weight: 600;
 }
@@ -312,13 +300,13 @@ body.login input[type="email"] {
 	margin: 6px 0 16px;
 	padding: 11px 14px;
 	background: #fff;
-	border: 1px solid var(--bw-border);
+	border: 1px solid var(--bw-line);
 	border-radius: 8px;
 	box-shadow: none;
-	font-family: var(--bw-font-ui);
+	font-family: var(--bw-font-body);
 	font-size: 15px;
 	line-height: 1.4;
-	color: var(--bw-charcoal);
+	color: var(--bw-ink);
 }
 
 body.login form .input::placeholder,
@@ -331,22 +319,22 @@ body.login form .input:focus,
 body.login input[type="text"]:focus,
 body.login input[type="password"]:focus,
 body.login input[type="email"]:focus {
-	border-color: var(--bw-primary);
+	border-color: var(--bw-brand);
 	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
 	outline: 2px solid transparent;
 }
 
 body.login input[type="checkbox"] {
 	border-radius: 4px;
-	border-color: var(--bw-border);
+	border-color: var(--bw-line);
 }
 
 body.login input[type="checkbox"]:checked::before {
-	color: var(--bw-primary);
+	color: var(--bw-brand);
 }
 
 body.login input[type="checkbox"]:focus {
-	border-color: var(--bw-primary);
+	border-color: var(--bw-brand);
 	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
 }
 
@@ -362,7 +350,7 @@ body.login p.submit {
 }
 
 body.login .forgetmenot label {
-	color: var(--bw-body);
+	color: var(--bw-text-body);
 	font-weight: 400;
 }
 
@@ -381,7 +369,7 @@ body.login .bw-login-forgot {
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.5;
-	color: var(--bw-primary);
+	color: var(--bw-brand);
 	text-decoration: none;
 }
 
@@ -394,7 +382,7 @@ body.login .user-pass-wrap > .bw-login-forgot {
 
 body.login .bw-login-forgot:hover,
 body.login .bw-login-forgot:focus {
-	color: var(--bw-primary-dark);
+	color: var(--bw-brand-deep);
 	text-decoration: underline;
 }
 
@@ -406,12 +394,12 @@ body.login .wp-pwd {
 body.login .wp-pwd .button.wp-hide-pw {
 	border: none;
 	background: transparent;
-	color: var(--bw-muted);
+	color: var(--bw-text-muted);
 	box-shadow: none;
 }
 
 body.login .wp-pwd .button.wp-hide-pw:hover {
-	color: var(--bw-primary);
+	color: var(--bw-brand);
 	background: transparent;
 }
 
@@ -427,8 +415,8 @@ body.login #wp-submit {
 	width: 100%;
 	height: auto;
 	padding: 13px 20px;
-	background: var(--bw-charcoal);
-	border: 1px solid var(--bw-charcoal);
+	background: var(--bw-ink);
+	border: 1px solid var(--bw-ink);
 	border-radius: 10px;
 	box-shadow: none;
 	text-shadow: none;
@@ -443,8 +431,8 @@ body.login .wp-core-ui .button-primary:hover,
 body.login .wp-core-ui .button-primary:focus,
 body.login #wp-submit:hover,
 body.login #wp-submit:focus {
-	background: var(--bw-primary-dark);
-	border-color: var(--bw-primary-dark);
+	background: var(--bw-brand-deep);
+	border-color: var(--bw-brand-deep);
 	color: #fff;
 }
 
@@ -455,19 +443,19 @@ body.login #login_error,
 body.login .success {
 	margin: 0 0 16px;
 	padding: 12px 16px;
-	background: var(--bw-surface);
+	background: var(--bw-canvas);
 	border: none;
-	border-left: 4px solid var(--bw-primary);
+	border-left: 4px solid var(--bw-brand);
 	border-radius: 12px;
 	box-shadow: none;
 	font-size: 13px;
 	line-height: 1.6;
-	color: var(--bw-body);
+	color: var(--bw-text-body);
 	word-wrap: break-word;
 }
 
 body.login #login_error {
-	border-left-color: var(--bw-error);
+	border-left-color: var(--bw-danger);
 }
 
 body.login .notice-success,
@@ -482,13 +470,13 @@ body.login #backtoblog {
 	padding: 0;
 	text-align: center;
 	font-size: 13px;
-	color: var(--bw-muted);
+	color: var(--bw-text-muted);
 }
 
 body.login #nav {
 	margin-top: 20px;
 	padding-top: 18px;
-	border-top: 1px solid var(--bw-border);
+	border-top: 1px solid var(--bw-line);
 }
 
 /* Registration closed plus the lost-password link moved up to the password row
@@ -505,13 +493,13 @@ body.login #backtoblog {
 
 body.login #nav a,
 body.login #backtoblog a {
-	color: var(--bw-primary);
+	color: var(--bw-brand);
 	font-weight: 600;
 	text-decoration: none;
 }
 
 body.login #backtoblog a {
-	color: var(--bw-muted);
+	color: var(--bw-text-muted);
 	font-weight: 400;
 }
 
@@ -519,7 +507,7 @@ body.login #nav a:hover,
 body.login #nav a:focus,
 body.login #backtoblog a:hover,
 body.login #backtoblog a:focus {
-	color: var(--bw-primary-dark);
+	color: var(--bw-brand-deep);
 	text-decoration: underline;
 }
 
@@ -534,7 +522,7 @@ body.login .language-switcher {
 }
 
 body.login .language-switcher select {
-	border: 1px solid var(--bw-border);
+	border: 1px solid var(--bw-line);
 	border-radius: 8px;
 }
 
@@ -551,7 +539,7 @@ body.login .blueworx-sso-button {
 	gap: 8px;
 	margin: 16px 0 0;
 	padding: 10px 16px;
-	border: 1px solid var(--bw-border);
+	border: 1px solid var(--bw-line);
 	border-radius: 8px;
 	background: #fff;
 	color: var(--bw-text);
@@ -561,8 +549,8 @@ body.login .blueworx-sso-button {
 
 body.login .blueworx-sso-button:hover,
 body.login .blueworx-sso-button:focus {
-	border-color: var(--bw-primary);
-	color: var(--bw-primary-dark);
+	border-color: var(--bw-brand);
+	color: var(--bw-brand-deep);
 }
 
 body.login .blueworx-sso-button__icon {

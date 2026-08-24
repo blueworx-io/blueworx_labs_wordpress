@@ -133,7 +133,7 @@ add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
  * Values are literals (not the --bw-* custom properties) on purpose: those
  * properties are defined in the external sheet, which is exactly the resource
  * that may be late here. Keep the 60px top bar height in sync with
- * --bw-topbar-h in admin-theme.css.
+ * --bwt-topbar-h in admin-theme.css.
  *
  * The block/site editor's `.interface-interface-skeleton` offset is mirrored
  * here too. The skeleton itself is not in the DOM until the editor's own JS

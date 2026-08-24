@@ -18,17 +18,17 @@
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 6px;
+	gap: var(--bw-space-3);
 	min-width: 0;
 }
 
 .bw-rolepill {
 	display: inline-flex;
 	align-items: center;
-	font-size: 11px;
+	font-size: var(--bw-size-xs);
 	line-height: 1;
 	font-weight: 600;
-	padding: 4px 9px;
+	padding: var(--bw-space-2) var(--bw-space-5);
 	border-radius: var(--bw-radius-pill);
 	background: var(--bw-surface-sunken);
 	color: var(--bw-text-muted);
@@ -55,7 +55,7 @@
 	color: var(--bw-text-accent);
 	border-style: dashed;
 	cursor: pointer;
-	font-family: inherit;
+	font-family: var(--bw-font-body);
 	transition: var(--bw-transition-control);
 }
 
@@ -74,7 +74,7 @@
 	align-self: flex-start;
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: var(--bw-space-3);
 	flex-wrap: wrap;
 	flex: 0 1 auto;
 	min-width: 0;
@@ -82,7 +82,7 @@
 }
 
 .bw-pageaccess__label {
-	font-size: 11px;
+	font-size: var(--bw-size-xs);
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: .04em;
@@ -97,7 +97,7 @@
 .bw-guidegrid {
 	display: grid;
 	grid-template-columns: 1fr;
-	gap: 16px;
+	gap: var(--bw-space-7);
 	align-items: start;
 }
 
@@ -121,7 +121,7 @@
 .bw-guidegrid > .bw-card > .bw-card__foot {
 	justify-content: space-between;
 	flex-wrap: wrap;
-	gap: 16px;
+	gap: var(--bw-space-7);
 }
 
 .bw-guide__body p {

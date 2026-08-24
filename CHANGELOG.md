@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.3] - 2026-08-24
+
+### Fixed
+- **The admin screens now use the right brand colours and typeface.** The
+  BlueWorx re-skin was quietly overriding the shared design system, so panels
+  built on the system rendered with the wrong green, the wrong border and the
+  wrong card shadow, and body text in the heading face rather than the reading
+  one. Nothing about the layout changes; the colours and type are simply the
+  ones they were meant to be. The same applied to the sign-in screen.
+
 ## [1.61.2] - 2026-08-24
 
 ### Changed
