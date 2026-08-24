@@ -271,10 +271,25 @@ test.describe('BlueWorx admin theme', () => {
 
     // Hover must not composite a second translucent layer over the active pill.
     expect(after).toBe(before);
-    // And the active pill is the design's opaque indigo, not a 22% wash.
+
     // The wash, not the brand pill: the row you are ON carries the pill, and the
     // parent above it gets this instead. Hover must still not move it.
-    expect(before).toBe('rgba(255, 255, 255, 0.06)');
+    //
+    // Asked for as a colour rather than as a string. The rule behind it now
+    // reads `color-mix(in srgb, var(--bw-white) 6%, transparent)` instead of an
+    // rgba() literal, and the browser serialises that as `color(srgb 1 1 1 /
+    // 0.06)` — the same colour, spelled differently. Resolving the expected
+    // value through the same engine keeps this pinned to 6% white without
+    // pinning it to one browser's spelling.
+    const sixPercentWhite = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = 'color-mix(in srgb, #fff 6%, transparent)';
+      document.body.append(probe);
+      const value = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return value;
+    });
+    expect(before).toBe(sixPercentWhite);
   });
 
   // The icon-swap ($menu field 6 = 'none') runs in this task; the actual SVG

@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.4] - 2026-08-24
+
+### Changed
+- **The admin re-skin now takes its colours, spacing and type from the shared
+  design system** rather than from values written into its own stylesheet. The
+  admin looks a touch flatter — corners are slightly less round — and the
+  greens, ambers and blues are the same ones the rest of the plugin uses.
+
 ## [1.61.3] - 2026-08-24
 
 ### Fixed
