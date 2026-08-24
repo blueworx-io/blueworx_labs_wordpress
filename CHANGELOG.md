@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.5] - 2026-08-24
+
+### Changed
+- **The sign-in screen now takes its colours, spacing and type from the shared
+  design system** too, finishing the job the previous two releases started. The
+  split-screen layout is unchanged.
+
 ## [1.61.4] - 2026-08-24
 
 ### Changed
