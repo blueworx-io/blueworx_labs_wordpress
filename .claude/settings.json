@@ -43,5 +43,18 @@
     "superpowers:executing-plans": "on",
     "superpowers:requesting-code-review": "on",
     "graphify": "on"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/admin-ui-adherence.mjs"
+          }
+        ]
+      }
+    ]
   }
 }

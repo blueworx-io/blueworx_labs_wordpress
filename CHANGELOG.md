@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.2] - 2026-08-24
+
+### Changed
+- The plugin now carries the shared design system guardrail: an admin screen
+  that is not built from the BlueWorx design system is refused as it is written,
+  rather than being found later. Nothing on the site changes.
+
 ## [1.61.1] - 2026-08-24
 
 ### Fixed
