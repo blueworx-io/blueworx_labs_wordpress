@@ -118,9 +118,14 @@ function blueworx_user_roles_enqueue( $hook_suffix ) {
 	// place to look when the Role row renders oddly.
 	wp_add_inline_style(
 		'common',
-		'.blueworx-role-choices{margin:0 0 6px;max-width:32em;}
-.blueworx-role-choices li{margin:0 0 4px;}
-.blueworx-role-choices label{display:flex;align-items:center;gap:8px;}
+		// Tokens carry a fallback here, unlike everywhere else. This rides on
+		// core's `common` stylesheet so it renders on the Users screens whether
+		// or not the design system is loaded — and it is not, when the admin
+		// re-skin is switched off. A bare var() would resolve to nothing there
+		// and the whole declaration would be dropped, taking the spacing with it.
+		'.blueworx-role-choices{margin:0 0 var(--bw-space-3, 6px);max-width:32em;}
+.blueworx-role-choices li{margin:0 0 var(--bw-space-2, 4px);}
+.blueworx-role-choices label{display:flex;align-items:center;gap:var(--bw-space-4, 8px);}
 .blueworx-role-help{margin-top:0;}'
 	);
 }
