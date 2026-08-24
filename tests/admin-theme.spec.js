@@ -797,7 +797,7 @@ test.describe('BlueWorx admin theme', () => {
     // Below 961px the sidebar is always in its folded state, and folded's 36px
     // happens to equal core's own folded admin-menu width — so this state
     // needs no left-offset override, only pinning: a future change to
-    // --bw-sidebar-w or the breakpoints could silently break the agreement.
+    // --bwt-sidebar-w or the breakpoints could silently break the agreement.
     await page.setViewportSize({ width: 900, height: 700 });
     await login(page);
     await page.goto('/wp-admin/post-new.php');
