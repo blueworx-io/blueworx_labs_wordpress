@@ -77,8 +77,8 @@ body.wp-admin #wpwrap {
 	   it), so a solid fill here no longer cuts across the disc. */
 	background: var(--bw-ink);
 	align-items: center;
-	gap: 10px;
-	padding: 0 12px;
+	gap: var(--bw-space-5);
+	padding: 0 var(--bw-space-6);
 	z-index: 9991;
 	overflow: hidden;
 }
@@ -86,15 +86,15 @@ body.wp-admin #wpwrap {
 .bw-brand-mark {
 	width: 34px;
 	height: 34px;
-	border-radius: 9px;
+	border-radius: var(--bw-radius-md);
 	background: var(--bw-brand);
-	color: #fff;
+	color: var(--bw-white);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 16px;
+	font-size: var(--bw-size-h3);
 	flex-shrink: 0;
 }
 
@@ -105,10 +105,10 @@ body.wp-admin #wpwrap {
 }
 
 .bw-brand-name {
-	color: #fff;
+	color: var(--bw-white);
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 14px;
+	font-size: var(--bw-size-lede);
 	line-height: 1.25;
 	white-space: nowrap;
 	overflow: hidden;
@@ -116,8 +116,8 @@ body.wp-admin #wpwrap {
 }
 
 .bw-brand-sub {
-	color: rgba(255, 255, 255, .45);
-	font-size: 11px;
+	color: color-mix(in srgb, var(--bw-white) 45%, transparent);
+	font-size: var(--bw-size-xs);
 	line-height: 1.3;
 }
 
@@ -126,19 +126,19 @@ body.wp-admin #wpwrap {
 	top: 0;
 	right: 0;
 	height: var(--bwt-topbar-h);
-	background: #fff;
+	background: var(--bw-white);
 	border-bottom: 1px solid var(--bw-line);
 	align-items: center;
 	justify-content: space-between;
-	gap: 16px;
-	padding: 0 24px;
+	gap: var(--bw-space-7);
+	padding: 0 var(--bw-space-9);
 	z-index: 9990;
 }
 
 .bw-topbar-title {
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 18px;
+	font-size: var(--bw-size-h3);
 	color: var(--bw-ink);
 	white-space: nowrap;
 	overflow: hidden;
@@ -148,21 +148,21 @@ body.wp-admin #wpwrap {
 .bw-topbar-actions {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: var(--bw-space-6);
 	flex-shrink: 0;
 }
 
 .bw-topbar-site {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: var(--bw-space-3);
 	background: var(--bw-ink);
-	color: #fff !important;
-	border-radius: 10px;
-	padding: 9px 16px;
+	color: var(--bw-white) !important;
+	border-radius: var(--bw-radius-md);
+	padding: 9px var(--bw-space-7);
 	font-family: var(--bw-font-body);
 	font-weight: 600;
-	font-size: 13px;
+	font-size: var(--bw-size-body);
 	text-decoration: none;
 	white-space: nowrap;
 }
@@ -170,7 +170,7 @@ body.wp-admin #wpwrap {
 .bw-topbar-site:hover,
 .bw-topbar-site:focus {
 	background: var(--bw-brand-deep);
-	color: #fff !important;
+	color: var(--bw-white) !important;
 	text-decoration: none;
 }
 
@@ -182,10 +182,10 @@ body.wp-admin #wpwrap {
 .bw-user-summary {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--bw-space-4);
 	cursor: pointer;
-	padding: 5px 8px;
-	border-radius: 10px;
+	padding: 5px var(--bw-space-4);
+	border-radius: var(--bw-radius-md);
 	list-style: none;
 	user-select: none;
 }
@@ -213,17 +213,17 @@ body.wp-admin #wpwrap {
 	height: 30px;
 	border-radius: 50%;
 	background: var(--bw-brand-deep);
-	color: #fff;
+	color: var(--bw-white);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
+	font-size: var(--bw-size-sm);
 	font-weight: 600;
 	flex-shrink: 0;
 }
 
 .bw-user-name {
-	font-size: 13px;
+	font-size: var(--bw-size-body);
 	font-weight: 500;
 	color: var(--bw-ink);
 	white-space: nowrap;
@@ -234,19 +234,19 @@ body.wp-admin #wpwrap {
 	right: 0;
 	top: calc(100% + 6px);
 	min-width: 172px;
-	background: #fff;
+	background: var(--bw-white);
 	border: 1px solid var(--bw-line);
-	border-radius: 12px;
+	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
-	padding: 6px;
+	padding: var(--bw-space-3);
 	z-index: 10001;
 }
 
 .bw-user-menu a {
 	display: block;
-	padding: 8px 10px;
-	border-radius: 8px;
-	font-size: 13px;
+	padding: var(--bw-space-4) var(--bw-space-5);
+	border-radius: var(--bw-radius-md);
+	font-size: var(--bw-size-body);
 	color: var(--bw-ink);
 	text-decoration: none;
 }
@@ -284,7 +284,7 @@ body.wp-admin #wpwrap {
 	width: 210px;
 	height: 210px;
 	border-radius: 50%;
-	background: #A5A7FF;
+	background: var(--bw-brand);
 	opacity: .12;
 	pointer-events: none;
 }
@@ -309,15 +309,15 @@ body.wp-admin #wpwrap {
 }
 
 #adminmenu li.menu-top {
-	margin: 0 8px 2px;
-	border-radius: 10px;
+	margin: 0 var(--bw-space-4) var(--bw-space-1);
+	border-radius: var(--bw-radius-md);
 }
 
 #adminmenu a.menu-top,
 #adminmenu div.wp-menu-name {
-	color: rgba(255, 255, 255, .62);
+	color: color-mix(in srgb, var(--bw-white) 62%, transparent);
 	font-family: var(--bw-font-body);
-	font-size: 13.5px;
+	font-size: 13.var(--bw-size-xs);
 	font-weight: 500;
 }
 
@@ -354,13 +354,13 @@ body.wp-admin #wpwrap {
 #adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:hover,
 #adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:focus,
 #adminmenu li.opensub:not(.current) > a.menu-top {
-	background: rgba(255, 255, 255, .06);
-	color: #fff;
+	background: color-mix(in srgb, var(--bw-white) 6%, transparent);
+	color: var(--bw-white);
 }
 
 #adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:hover div.wp-menu-name,
 #adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:focus div.wp-menu-name {
-	color: #fff;
+	color: var(--bw-white);
 }
 
 /* Active — opaque indigo. Nothing composites beneath it. Only the row you are
@@ -368,8 +368,8 @@ body.wp-admin #wpwrap {
 #adminmenu li.current > a.menu-top,
 #adminmenu li.current > a.menu-top:hover {
 	background: var(--bw-brand);
-	color: #fff;
-	border-radius: 10px;
+	color: var(--bw-white);
+	border-radius: var(--bw-radius-md);
 	box-shadow: none;
 }
 
@@ -380,15 +380,15 @@ body.wp-admin #wpwrap {
 #adminmenu li.wp-has-current-submenu.wp-menu-open > a.wp-has-current-submenu,
 #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu:hover,
 #adminmenu a.wp-has-current-submenu:focus {
-	background: rgba(255, 255, 255, .06);
-	color: #fff;
-	border-radius: 10px;
+	background: color-mix(in srgb, var(--bw-white) 6%, transparent);
+	color: var(--bw-white);
+	border-radius: var(--bw-radius-md);
 	box-shadow: none;
 }
 
 #adminmenu li.current > a.menu-top div.wp-menu-name,
 #adminmenu li.wp-has-current-submenu div.wp-menu-name {
-	color: #fff;
+	color: var(--bw-white);
 	font-weight: 600;
 }
 
@@ -408,23 +408,23 @@ body.wp-admin #wpwrap {
 
 /* Submenus. */
 #adminmenu .wp-submenu {
-	border-radius: 10px;
+	border-radius: var(--bw-radius-md);
 }
 
 #adminmenu .wp-submenu a {
-	color: rgba(255, 255, 255, .5);
-	font-size: 13px;
+	color: color-mix(in srgb, var(--bw-white) 50%, transparent);
+	font-size: var(--bw-size-body);
 }
 
 #adminmenu .wp-submenu a:hover,
 #adminmenu .wp-submenu a:focus {
-	color: #fff;
+	color: var(--bw-white);
 }
 
 #adminmenu .wp-submenu li.current a,
 #adminmenu .wp-submenu li.current a:hover,
 #adminmenu .wp-submenu li.current a:focus {
-	color: #fff;
+	color: var(--bw-white);
 	font-weight: 600;
 }
 
@@ -443,7 +443,7 @@ body.wp-admin #wpwrap {
 		background: transparent;
 		margin-left: 24px;
 		padding-left: 14px;
-		border-left: 1px solid rgba(255, 255, 255, .14);
+		border-left: 1px solid color-mix(in srgb, var(--bw-white) 14%, transparent);
 		border-radius: 0;
 	}
 
@@ -467,7 +467,7 @@ body.wp-admin #wpwrap {
 }
 
 #collapse-button {
-	color: rgba(255, 255, 255, .45);
+	color: color-mix(in srgb, var(--bw-white) 45%, transparent);
 }
 
 /* Belt-and-braces: if anything re-renders the admin bar, keep it out of the way
@@ -480,7 +480,7 @@ body.wp-admin #wpwrap {
 .postbox,
 #dashboard-widgets .postbox,
 .stuffbox {
-	background: #fff;
+	background: var(--bw-white);
 	border: none;
 	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
@@ -497,7 +497,7 @@ body.wp-admin #wpwrap {
 }
 
 .wp-list-table {
-	background: #fff;
+	background: var(--bw-white);
 	border: none;
 	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
@@ -533,7 +533,7 @@ body.wp-admin #wpwrap {
 .wp-core-ui .page-title-action {
 	background: var(--bw-ink);
 	border-color: var(--bw-ink);
-	color: #fff;
+	color: var(--bw-white);
 	border-radius: var(--bw-radius-md);
 	box-shadow: none;
 	text-shadow: none;
@@ -552,13 +552,13 @@ body.wp-admin #wpwrap {
 .wp-core-ui .page-title-action:active {
 	background: var(--bw-brand-deep);
 	border-color: var(--bw-brand-deep);
-	color: #fff;
+	color: var(--bw-white);
 	border-radius: var(--bw-radius-md);
 }
 
 .wp-core-ui .button,
 .wp-core-ui .button-secondary {
-	background: #fff;
+	background: var(--bw-white);
 	border-color: var(--bw-ink);
 	color: var(--bw-ink);
 	border-radius: var(--bw-radius-md);
@@ -603,7 +603,7 @@ body.wp-admin #wpwrap {
 .wp-admin select:focus,
 .wp-admin textarea:focus {
 	border-color: var(--bw-brand);
-	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--bw-brand) 25%, transparent);
 	outline: 2px solid transparent; /* keeps a visible focus indicator in forced-colors mode */
 }
 
@@ -614,7 +614,7 @@ body.wp-admin #wpwrap {
 .wp-admin input[type="checkbox"]:focus,
 .wp-admin input[type="radio"]:focus {
 	border-color: var(--bw-brand);
-	box-shadow: 0 0 0 2px rgba(79, 70, 229, .25);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--bw-brand) 25%, transparent);
 }
 
 /* ─── Headings & notices ─── */
@@ -628,7 +628,7 @@ body.wp-admin #wpwrap {
 .notice,
 div.updated,
 div.error {
-	border-radius: 12px;
+	border-radius: var(--bw-radius-lg);
 	border-left-width: 4px;
 	box-shadow: var(--bw-shadow-card);
 }
@@ -670,16 +670,16 @@ div.error {
 .bw-stat-grid {
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
-	gap: 16px;
+	gap: var(--bw-space-7);
 }
 
 .bw-stat-card {
 	display: block;
 	text-decoration: none;
-	background: #fff;
+	background: var(--bw-white);
 	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
-	padding: 20px;
+	padding: var(--bw-space-8);
 	transition: box-shadow .2s ease;
 }
 
@@ -692,15 +692,15 @@ div.error {
 .bw-stat-num {
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 28px;
+	font-size: var(--bw-size-h1);
 	line-height: 1.1;
 	color: var(--bw-ink);
 }
 
 .bw-stat-label {
-	font-size: 13px;
+	font-size: var(--bw-size-body);
 	color: var(--bw-text-muted);
-	margin-top: 4px;
+	margin-top: var(--bw-space-2);
 }
 
 /* ─── Settings-screen containers ───
@@ -718,17 +718,17 @@ div.error {
    already carded would get a second card painted inside the first. Do not relax
    `>` to a descendant combinator. */
 .wrap > form > .form-table {
-	background: #fff;
+	background: var(--bw-white);
 	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
-	margin-top: 12px;
+	margin-top: var(--bw-space-6);
 	max-width: var(--bwt-measure);
-	padding: 8px 24px;
+	padding: var(--bw-space-4) var(--bw-space-9);
 }
 
 .wrap > form > .form-table > tbody > tr > th,
 .wrap > form > .form-table > tbody > tr > td {
-	padding: 16px 10px;
+	padding: var(--bw-space-7) var(--bw-space-5);
 }
 
 .wrap > h2,
@@ -737,11 +737,11 @@ div.error {
 }
 
 .postbox-header {
-	padding: 4px 8px;
+	padding: var(--bw-space-2) var(--bw-space-4);
 }
 
 .postbox .inside {
-	padding: 4px 20px 16px;
+	padding: var(--bw-space-2) var(--bw-space-8) var(--bw-space-7);
 }
 
 /* ─── Responsive ─── */
@@ -1006,13 +1006,13 @@ body.latepoint-admin #wpcontent {
 	content: var(--bw-group-label, "");
 	display: block;
 	margin-top: 14px;
-	padding: 0 12px 8px;
+	padding: 0 var(--bw-space-6) var(--bw-space-4);
 	font-family: var(--bw-font-body);
-	font-size: 11px;
+	font-size: var(--bw-size-xs);
 	font-weight: 600;
 	letter-spacing: .06em;
 	text-transform: uppercase;
-	color: rgba(255, 255, 255, .38);
+	color: color-mix(in srgb, var(--bw-white) 38%, transparent);
 	/* A heading is not a destination. It rides on the group's first item, so it
 	   must never swallow that item's click or hover. */
 	pointer-events: none;
@@ -1020,7 +1020,7 @@ body.latepoint-admin #wpcontent {
 
 /* The first heading needs no top gap — the brand block already spaces it. */
 #adminmenu li.bw-group-start:first-child::before {
-	margin-top: 4px;
+	margin-top: var(--bw-space-2);
 }
 
 
@@ -1030,9 +1030,9 @@ body.latepoint-admin #wpcontent {
 #adminmenu a.menu-top {
 	align-items: center;
 	display: flex;
-	gap: 12px;
-	font-size: 14px;
-	padding: 10px 12px;
+	gap: var(--bw-space-6);
+	font-size: var(--bw-size-lede);
+	padding: var(--bw-space-5) var(--bw-space-6);
 	transition: background 200ms ease, color 200ms ease;
 }
 
@@ -1066,7 +1066,7 @@ body.latepoint-admin #wpcontent {
    the box above only constrains the slot, so the padding has to go too or the
    glyph overflows it. */
 #adminmenu div.wp-menu-image::before {
-	font-size: 20px;
+	font-size: var(--bw-size-h2);
 	line-height: 20px;
 	padding: 0;
 }
@@ -1079,7 +1079,7 @@ body.latepoint-admin #wpcontent {
 	align-items: center;
 	display: flex;
 	flex: 1;
-	gap: 8px;
+	gap: var(--bw-space-4);
 	padding: 0;
 	width: auto;
 }
@@ -1092,24 +1092,24 @@ body.latepoint-admin #wpcontent {
    below the label's line box; do not swap it back for padding + line-height. */
 .bwx-badge {
 	align-items: center;
-	background: rgba(255, 255, 255, .08);
-	border-radius: 9999px;
-	color: rgba(255, 255, 255, .55);
+	background: color-mix(in srgb, var(--bw-white) 8%, transparent);
+	border-radius: var(--bw-radius-lg);
+	color: color-mix(in srgb, var(--bw-white) 55%, transparent);
 	display: inline-flex;
-	font-size: 11px;
+	font-size: var(--bw-size-xs);
 	font-weight: 600;
 	height: 18px;
 	justify-content: center;
 	line-height: 1;
 	margin-left: auto;
 	min-width: 18px;
-	padding: 0 6px;
+	padding: 0 var(--bw-space-3);
 }
 
 #adminmenu li.current .bwx-badge,
 #adminmenu li.wp-has-current-submenu .bwx-badge {
-	background: rgba(255, 255, 255, .22);
-	color: #fff;
+	background: color-mix(in srgb, var(--bw-white) 22%, transparent);
+	color: var(--bw-white);
 }
 
 /* ─── Sidebar: Collapse Menu ───
@@ -1133,27 +1133,27 @@ body.latepoint-admin #wpcontent {
 
 /* ─── Sidebar: Log Out ─── */
 #adminmenu li.bw-logout {
-	border-top: 1px solid rgba(255, 255, 255, .08);
-	margin: 12px 8px 8px;
-	padding-top: 8px;
+	border-top: 1px solid color-mix(in srgb, var(--bw-white) 8%, transparent);
+	margin: var(--bw-space-6) var(--bw-space-4) var(--bw-space-4);
+	padding-top: var(--bw-space-4);
 }
 
 #adminmenu li.bw-logout a {
 	align-items: center;
-	border-radius: 10px;
-	color: rgba(255, 255, 255, .62);
+	border-radius: var(--bw-radius-md);
+	color: color-mix(in srgb, var(--bw-white) 62%, transparent);
 	display: flex;
-	font-size: 14px;
+	font-size: var(--bw-size-lede);
 	font-weight: 500;
-	gap: 12px;
-	padding: 10px 12px;
+	gap: var(--bw-space-6);
+	padding: var(--bw-space-5) var(--bw-space-6);
 	text-decoration: none;
 }
 
 #adminmenu li.bw-logout a:hover,
 #adminmenu li.bw-logout a:focus {
-	background: rgba(255, 255, 255, .06);
-	color: #fff;
+	background: color-mix(in srgb, var(--bw-white) 6%, transparent);
+	color: var(--bw-white);
 }
 
 /* Folded: labels, badges and headings collapse; icons remain. */
@@ -1244,19 +1244,19 @@ body.latepoint-admin #wpcontent {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 20px;
+	gap: var(--bw-space-8);
 	flex-wrap: wrap;
 	background-color: var(--bw-ink);
-	background-image: radial-gradient(280px 280px at 92% -60%, rgba(79, 70, 229, .5) 0%, rgba(79, 70, 229, .12) 55%, transparent 75%);
+	background-image: radial-gradient(280px 280px at 92% -60%, color-mix(in srgb, var(--bw-brand) 50%, transparent) 0%, color-mix(in srgb, var(--bw-brand) 12%, transparent) 55%, transparent 75%);
 	border-radius: var(--bw-radius-lg);
 	padding: 22px 26px;
-	margin: 8px 0 24px;
+	margin: var(--bw-space-4) 0 var(--bw-space-9);
 }
 
 .bw-profile-hero-id {
 	display: flex;
 	align-items: center;
-	gap: 16px;
+	gap: var(--bw-space-7);
 	min-width: 0;
 }
 
@@ -1266,47 +1266,47 @@ body.latepoint-admin #wpcontent {
 	height: 54px;
 	border-radius: 50%;
 	background: var(--bw-brand);
-	color: #fff;
+	color: var(--bw-white);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 20px;
+	font-size: var(--bw-size-h2);
 }
 
 .bw-profile-hero-name {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 10px;
-	color: #fff;
+	gap: var(--bw-space-5);
+	color: var(--bw-white);
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 20px;
+	font-size: var(--bw-size-h2);
 	line-height: 1.2;
 }
 
 .bw-profile-role {
 	font-family: var(--bw-font-body);
-	font-size: 11px;
+	font-size: var(--bw-size-xs);
 	font-weight: 600;
 	letter-spacing: .02em;
-	color: #fff;
-	background: rgba(99, 102, 241, .9);
-	padding: 3px 10px;
-	border-radius: 999px;
+	color: var(--bw-white);
+	background: color-mix(in srgb, var(--bw-brand) 90%, transparent);
+	padding: 3px var(--bw-space-5);
+	border-radius: var(--bw-radius-pill);
 }
 
 .bw-profile-hero-meta {
-	margin-top: 4px;
-	color: rgba(255, 255, 255, .6);
-	font-size: 13px;
+	margin-top: var(--bw-space-2);
+	color: color-mix(in srgb, var(--bw-white) 60%, transparent);
+	font-size: var(--bw-size-body);
 }
 
 .bw-profile-hero-actions {
 	display: flex;
-	gap: 10px;
+	gap: var(--bw-space-5);
 	flex-shrink: 0;
 }
 
@@ -1316,41 +1316,41 @@ body.latepoint-admin #wpcontent {
 	justify-content: center;
 	border: 1px solid transparent;
 	border-radius: var(--bw-radius-md);
-	padding: 9px 16px;
+	padding: 9px var(--bw-space-7);
 	font-family: var(--bw-font-body);
-	font-size: 13px;
+	font-size: var(--bw-size-body);
 	font-weight: 600;
 	text-decoration: none;
 	cursor: pointer;
 }
 
 .bw-profile-hero .bwx-btn-ghost {
-	color: #fff;
+	color: var(--bw-white);
 	background: transparent;
-	border-color: rgba(255, 255, 255, .25);
+	border-color: color-mix(in srgb, var(--bw-white) 25%, transparent);
 }
 
 .bw-profile-hero .bwx-btn-ghost:hover,
 .bw-profile-hero .bwx-btn-ghost:focus {
-	background: rgba(255, 255, 255, .08);
-	color: #fff;
+	background: color-mix(in srgb, var(--bw-white) 8%, transparent);
+	color: var(--bw-white);
 }
 
 .bw-profile-hero .bwx-btn-primary {
-	color: #fff;
+	color: var(--bw-white);
 	background: var(--bw-brand);
 }
 
 .bw-profile-hero .bwx-btn-primary:hover,
 .bw-profile-hero .bwx-btn-primary:focus {
 	background: var(--bw-brand-deep);
-	color: #fff;
+	color: var(--bw-white);
 }
 
 .bw-profile-grid {
 	display: grid;
 	grid-template-columns: 2fr 1fr;
-	gap: 24px;
+	gap: var(--bw-space-9);
 	align-items: start;
 }
 
@@ -1362,37 +1362,37 @@ body.latepoint-admin #wpcontent {
 
 .bw-profile-col {
 	display: grid;
-	gap: 24px;
+	gap: var(--bw-space-9);
 	min-width: 0;
 }
 
 .bw-profile-back {
 	display: inline-block;
-	margin-bottom: 12px;
-	font-size: 13px;
+	margin-bottom: var(--bw-space-6);
+	font-size: var(--bw-size-body);
 	font-weight: 600;
 	text-decoration: none;
 }
 
 .bw-profile-card {
-	background: #fff;
+	background: var(--bw-white);
 	border: 1px solid var(--bw-line);
 	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
-	padding: 22px 24px;
+	padding: 22px var(--bw-space-9);
 }
 
 .bw-profile-card-title {
-	margin: 0 0 6px;
+	margin: 0 0 var(--bw-space-3);
 	font-family: var(--bw-font-display);
 	font-weight: 700;
-	font-size: 16px;
+	font-size: var(--bw-size-h3);
 	color: var(--bw-ink);
 }
 
 .bw-profile-card .form-table th {
 	padding-bottom: 7px;
-	font-size: 12.5px;
+	font-size: 12.var(--bw-size-xs);
 }
 
 /* Flatten WordPress's two-column .form-table into stacked, label-above fields.
@@ -1412,7 +1412,7 @@ body.latepoint-admin #wpcontent {
 .bw-profile-card .form-table > tbody {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 14px 16px;
+	gap: 14px var(--bw-space-7);
 }
 
 /* Full width by default; only the explicitly paired fields share a row.
@@ -1438,13 +1438,13 @@ body.latepoint-admin #wpcontent {
 }
 
 .bw-profile-card-sub {
-	margin: -8px 0 16px;
+	margin: -var(--bw-space-4) 0 var(--bw-space-7);
 	color: var(--bw-text-muted);
-	font-size: 12px;
+	font-size: var(--bw-size-sm);
 }
 
 .bw-profile-danger {
-	border-color: rgba(255, 48, 47, .35);
+	border-color: color-mix(in srgb, var(--bw-danger) 35%, transparent);
 }
 
 .bw-profile-danger .bwx-btn-danger {
@@ -1452,17 +1452,17 @@ body.latepoint-admin #wpcontent {
 	align-items: center;
 	border: 1px solid var(--bw-danger);
 	border-radius: var(--bw-radius-md);
-	padding: 9px 16px;
+	padding: 9px var(--bw-space-7);
 	color: var(--bw-danger);
 	background: transparent;
-	font-size: 13px;
+	font-size: var(--bw-size-body);
 	font-weight: 600;
 	text-decoration: none;
 }
 
 .bw-profile-danger .bwx-btn-danger:hover,
 .bw-profile-danger .bwx-btn-danger:focus {
-	color: #fff;
+	color: var(--bw-white);
 	background: var(--bw-danger);
 }
 
@@ -1474,9 +1474,9 @@ body.latepoint-admin #wpcontent {
 }
 
 .bw-profile-card .form-table th {
-	padding-bottom: 6px;
+	padding-bottom: var(--bw-space-3);
 	font-family: var(--bw-font-body);
-	font-size: 12px;
+	font-size: var(--bw-size-sm);
 	font-weight: 600;
 	color: var(--bw-ink);
 }
@@ -1492,9 +1492,9 @@ body.latepoint-admin #wpcontent {
 }
 
 .bw-profile-card .form-table td .description {
-	margin-top: 6px;
+	margin-top: var(--bw-space-3);
 	color: var(--bw-text-muted);
-	font-size: 12px;
+	font-size: var(--bw-size-sm);
 }
 
 /* ─── Mobile: the admin menu as a drawer ───
@@ -1514,10 +1514,10 @@ body.latepoint-admin #wpcontent {
 	width: 34px;
 	height: 34px;
 	flex: none;
-	margin-right: 4px;
+	margin-right: var(--bw-space-2);
 	padding: 0;
 	border: 0;
-	border-radius: 10px;
+	border-radius: var(--bw-radius-md);
 	background: none;
 	color: var(--bw-ink);
 	cursor: pointer;
@@ -1526,14 +1526,14 @@ body.latepoint-admin #wpcontent {
 
 .bw-topbar-toggle:hover,
 .bw-topbar-toggle:focus-visible {
-	background: #F7F8FC;
+	background: var(--bw-canvas);
 }
 
 .bw-scrim {
 	position: fixed;
 	inset: 0;
 	z-index: 9994;
-	background: rgba(10, 12, 41, .45);
+	background: color-mix(in srgb, var(--bw-ink) 45%, transparent);
 	border: 0;
 	padding: 0;
 }
@@ -1600,7 +1600,7 @@ body.latepoint-admin #wpcontent {
 		overflow-y: auto;
 		padding-top: 58px;
 		background: var(--bw-ink);
-		box-shadow: 0 20px 50px rgba(10, 12, 41, .35);
+		box-shadow: 0 20px 50px color-mix(in srgb, var(--bw-ink) 35%, transparent);
 	}
 
 	html.bw-drawer-ready .bw-brand {

@@ -120,9 +120,19 @@ they have opposite answers.
   here: the block prints ahead of the stylesheet precisely so the geometry is
   right on first paint, so it cannot reference a custom property the stylesheet
   has not defined yet. These findings are accepted permanently, not fixed.
-- **Three hand-drawn `<svg>` icons become the system's icon pattern** — an `i`
-  element with `class="bw-icon"` and a `data-lucide` name. This is a real
-  finding and is fixed with PR 2.
+- **The three hand-drawn `<svg>` icons stay as they are.** The intent was to
+  move them to the system's `data-lucide` pattern, and that turns out to be
+  wrong here. The system's icon module is enqueued only on BlueWorx screens,
+  while the topbar these icons live in renders on *every* admin page — and the
+  markup degrades to an empty span without the module. Converting them would
+  delete the menu, view-site and chevron icons from most of wp-admin.
+
+  Loading the module everywhere would fix that, but it makes chrome icons wait
+  on JavaScript, and this same file goes to unusual lengths (the inline
+  critical-CSS block) to get the chrome right on first paint. Trading that for
+  tidiness is the wrong way round. The `hand-svg` findings are accepted for
+  these three, on the same reasoning as `stray-admin-css`: this is WordPress
+  chrome, not one of our screens.
 
 ### What this does not change
 
