@@ -15,21 +15,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Adds Guides to the BlueWorx menu.
+ * Adds Guides to the sidebar as a top-level row.
  *
- * Registered after blueworx_register_settings_page() so it sits below the
- * screens it explains.
+ * The design puts Guides in the Overview group beside Dashboard and BlueWorx
+ * rather than nested under BlueWorx: it explains the whole site, not only this
+ * plugin's screens, and other plugins register guides into it too.
+ *
+ * The page slug does not change, so admin.php?page=blueworx-guides and every
+ * link or bookmark to it still resolve. What does change is the screen's hook
+ * suffix, which WordPress derives from the parent — it is now
+ * toplevel_page_blueworx-guides, and includes/admin-assets.php gates this
+ * screen's stylesheet and script on that string.
+ *
+ * Registered at priority 11, after blueworx_register_settings_page(), and at
+ * position 58.1 so it sits directly below BlueWorx (58) on a site running with
+ * the admin theme switched off, where the group ordering filter never runs.
  *
  * @return void
  */
 function blueworx_register_guides_page() {
-	add_submenu_page(
-		'blueworx-labs-wordpress',
+	add_menu_page(
 		esc_html__( 'Guides', 'blueworx-labs-wordpress' ),
 		esc_html__( 'Guides', 'blueworx-labs-wordpress' ),
 		'manage_options',
 		'blueworx-guides',
-		'blueworx_render_guides_page'
+		'blueworx_render_guides_page',
+		'none',
+		58.1
 	);
 }
 add_action( 'admin_menu', 'blueworx_register_guides_page', 11 );
@@ -100,8 +112,9 @@ function blueworx_render_guides_page() {
 
 	$header = blueworx_ds_page_header(
 		array(
-			'title' => __( 'Guides', 'blueworx-labs-wordpress' ),
-			'lede'  => __( 'How to use this site and everything BlueWorx adds to it. Switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
+			'title'      => __( 'Guides', 'blueworx-labs-wordpress' ),
+			'lede'       => __( 'One tab per section you have something switched on in. Switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
+			'capability' => 'read',
 		)
 	);
 
@@ -172,15 +185,17 @@ function blueworx_render_guides_page() {
 	// flex row (main plus sidebar), so they have to share a .bw-panels column or
 	// the tabs become a narrow left-hand rail.
 	printf(
-		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-tabs bw-tabs--inset" aria-label="%1$s">%2$s</nav>',
+		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-tabs bw-tabs--inset bw-tabs--drag" aria-label="%1$s" data-blueworx-guide-tabs>%2$s</nav>',
 		esc_attr__( 'Guide sections', 'blueworx-labs-wordpress' ),
 		wp_kses( $tab_html, blueworx_ds_allowed_html() )
 	);
 
 	printf(
-		'<div class="bw-guides bw-panels" data-blueworx-guide-panel="%s">',
+		'<div class="bw-guidegrid bw-guides" data-blueworx-guide-panel="%s">',
 		esc_attr( $active )
 	);
+
+	$sections = blueworx_get_feature_sections();
 
 	foreach ( $guides as $guide ) {
 		if ( $guide['tab'] !== $active ) {
@@ -191,18 +206,59 @@ function blueworx_render_guides_page() {
 		// to safe post markup — no scripts, no event handlers. Unchanged.
 		$body = wp_kses_post( $guide['body'] );
 
-		echo wp_kses(
-			blueworx_ds_card(
-				array(
-					'eyebrow' => isset( $tabs[ $guide['tab'] ] ) ? $tabs[ $guide['tab'] ] : '',
-					'title'   => $guide['title'],
-					'body'    => $body,
-					// Kept from the old markup: other plugins and the tests both
-					// address guides by id, and that is not ours to break.
-					'attrs'   => array( 'data-blueworx-guide' => $guide['id'] ),
-				)
+		$minutes = blueworx_guide_read_time( $guide['body'] );
+
+		$read_time = blueworx_ds_badge(
+			sprintf(
+				/* translators: %d: how many minutes the guide takes to read. */
+				_n( '%d min read', '%d min read', $minutes, 'blueworx-labs-wordpress' ),
+				$minutes
 			),
-			blueworx_ds_allowed_html()
+			'neutral'
+		);
+
+		// Who can actually do the thing the guide describes, worked out from
+		// this site's own roles rather than a list written down here.
+		$pills = blueworx_ds_role_pills(
+			blueworx_roles_with_capability( blueworx_guide_tab_capability( $guide['tab'] ) ),
+			'guide:' . $guide['id']
+		);
+
+		$action = '';
+
+		if ( isset( $sections[ $guide['tab'] ] ) ) {
+			$action = blueworx_ds_button(
+				array(
+					'label' => sprintf(
+						/* translators: %s: a settings section name, e.g. "Security & Access". */
+						__( 'Open %s', 'blueworx-labs-wordpress' ),
+						$sections[ $guide['tab'] ]
+					),
+					'icon'  => 'arrow-right',
+					'href'  => add_query_arg(
+						array(
+							'page'    => 'blueworx-labs-wordpress',
+							'section' => $guide['tab'],
+						),
+						admin_url( 'admin.php' )
+					),
+				)
+			);
+		}
+
+		// Not wp_kses(): the badge, the pills and the button all carry
+		// attributes the allow-list would drop in silence.
+		echo blueworx_ds_card( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			array(
+				'eyebrow' => isset( $tabs[ $guide['tab'] ] ) ? $tabs[ $guide['tab'] ] : '',
+				'title'   => $guide['title'],
+				'actions' => $read_time,
+				'body'    => '<div class="bw-guide__body">' . $body . '</div>',
+				'footer'  => $pills . $action,
+				// Kept from the old markup: other plugins and the tests both
+				// address guides by id, and that is not ours to break.
+				'attrs'   => array( 'data-blueworx-guide' => $guide['id'] ),
+			)
 		);
 	}
 
