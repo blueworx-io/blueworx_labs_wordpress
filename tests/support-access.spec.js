@@ -67,6 +67,20 @@ function supportAccessProbe(command) {
 
 const CONSOLE_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
+/**
+ * The support access panel, as opposed to any other panel on the same screen.
+ *
+ * Every feature's detail panel draws from the same design system now, so a bare
+ * `.bw-notice--info` matches whichever panels happen to be showing a note today
+ * — and the second one to appear turns a passing assertion into a strict mode
+ * violation halfway through this test, which leaves a live key behind and takes
+ * the rest of the file down with it.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @return {import('@playwright/test').Locator} The panel.
+ */
+const supportPanel = (page) => page.locator('[data-blueworx-detail="support_access"]');
+
 test.describe('Support access — key lifecycle', () => {
   test.skip(isPlaceholder, 'No real site configured');
 
@@ -122,11 +136,11 @@ test.describe('Support access — key lifecycle', () => {
     await expect(page.locator('[data-blueworx-copy="bw-support-key"]')).toBeVisible();
 
     // A key with the window shut is a real state and has to read as one.
-    await expect(page.locator('.bw-notice--info')).toContainText('shut');
+    await expect(supportPanel(page).locator('.bw-notice--info')).toContainText('shut');
 
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
     await expect(page.locator('[data-testid="bw-support-expiry"]')).toContainText('open until');
-    await expect(page.locator('.bw-notice--success .bw-badge')).toContainText('Open');
+    await expect(supportPanel(page).locator('.bw-notice--success .bw-badge')).toContainText('Open');
 
     // The buttons carry their own formaction. Without it they post to the
     // enhancements handler, which redirects — the page would still look fine
