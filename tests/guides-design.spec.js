@@ -70,9 +70,15 @@ test.describe('the Guides screen as designed', () => {
     // Three roles plus the expander, which is itself a pill.
     await expect(card.locator('.bw-rolepill:visible')).toHaveCount(4);
 
+    // How many roles there are is a property of the site, not of this screen:
+    // a stock WordPress has five, and an install that has added its own has
+    // more. The full set is always in the markup with the overflow hidden, so
+    // count it rather than pin a number that only holds where this was written.
+    const all = await card.locator('.bw-rolepill').count();
+
     await more.click();
     await expect(more).toHaveText('Show fewer');
-    await expect(card.locator('.bw-rolepill:visible')).toHaveCount(7);
+    await expect(card.locator('.bw-rolepill:visible')).toHaveCount(all);
 
     await more.click();
     await expect(card.locator('.bw-rolepill:visible')).toHaveCount(4);
