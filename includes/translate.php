@@ -297,13 +297,50 @@ function blueworx_translate_render_detail() {
 		)
 	);
 
+	// The chosen languages read as a row of chips rather than as ticks scattered
+	// through a list of thirty. The tick boxes are still what saves — the chips
+	// untick them — so the panel works with no script at all, and a chip is not
+	// a second place the setting is stored.
+	$chosen    = blueworx_translate_languages();
+	$supported = blueworx_translate_supported_languages();
+	$chips     = '';
+
+	foreach ( $chosen as $code ) {
+		if ( ! isset( $supported[ $code ] ) ) {
+			continue;
+		}
+
+		$chips .= sprintf(
+			'<span class="bw-chip">%1$s<button class="bw-chip__x" type="button" data-blueworx-chip-for="%2$s" aria-label="%3$s">%4$s</button></span>',
+			esc_html( $supported[ $code ] ),
+			esc_attr( (string) $code ),
+			esc_attr(
+				sprintf(
+					/* translators: %s: a language name. */
+					__( 'Remove %s', 'blueworx-labs-wordpress' ),
+					$supported[ $code ]
+				)
+			),
+			blueworx_ds_icon( 'x', 14 )
+		);
+	}
+
+	$fields .= blueworx_ds_field(
+		array(
+			'label'   => __( 'Languages offered', 'blueworx-labs-wordpress' ),
+			'control' => '' !== $chips
+				? '<div class="bw-chips" data-blueworx-chips="blueworx_translate_languages">' . $chips . '</div>'
+				: '<p class="bw-field__help">' . esc_html__( 'None yet. Tick one below.', 'blueworx-labs-wordpress' ) . '</p>',
+		)
+	);
+
 	$fields .= blueworx_ds_choice_group(
 		array(
 			'name'     => 'blueworx_translate_languages',
 			'id'       => 'blueworx-translate-languages',
-			'legend'   => __( 'Languages offered', 'blueworx-labs-wordpress' ),
-			'choices'  => blueworx_translate_supported_languages(),
-			'selected' => blueworx_translate_languages(),
+			'legend'   => __( 'Add or remove a language', 'blueworx-labs-wordpress' ),
+			'choices'  => $supported,
+			'selected' => $chosen,
 		)
 	);
 

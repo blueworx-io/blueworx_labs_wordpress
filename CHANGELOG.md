@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.63.0] - 2026-08-25
+
+### Changed
+- **Enhancements is rebuilt the way it was designed.** Each function is now its
+  own card, with its name and description beside the switch instead of crammed
+  into its label, and its settings open in a panel underneath that belongs to
+  it. A section can be switched off in one go, and each says how many of its
+  functions are on.
+- **The login panel gives you the whole sign-in address to copy**, instead of
+  just the last part of it, and the notice repeating it at the top of the
+  screen has gone.
+- **Image sizing is one slider** — the longest edge — rather than a separate
+  width and height that only ever mattered when they disagreed.
+- **Chosen translation languages read as a row you can remove from**, rather
+  than ticks scattered through a list of thirty.
+
+### Added
+- **Administrators can be signed out sooner than everybody else.** Theirs is
+  the account that can change the site.
 ## [1.62.0] - 2026-08-25
 
 ### Added
