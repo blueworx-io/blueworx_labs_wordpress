@@ -15,9 +15,9 @@
    ours, and they use the --bwt- prefix: a --bw- name declared here would
    override the system's own for every component on the page. */
 :root {
-	--bwt-topbar-h: 60px;
+	--bwt-topbar-h: 64px;
 	--bwt-sidebar-w: 232px;
-	--bwt-measure: 1200px;
+
 }
 
 /* ─── Box model ───
@@ -136,6 +136,29 @@ body.wp-admin #wpwrap {
 }
 
 .bw-topbar-title {
+	display: flex;
+	align-items: center;
+	gap: var(--bw-space-4);
+	min-width: 0;
+	overflow: hidden;
+}
+
+/* The site's name and the chevron are context, not the heading. They go first
+   when the window narrows; the screen you are on never does. */
+.bw-topbar-crumb {
+	display: inline-flex;
+	align-items: center;
+	font-family: var(--bw-font-body);
+	font-weight: 400;
+	font-size: var(--bw-size-body);
+	color: var(--bw-text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.bw-topbar-here {
 	font-family: var(--bw-font-display);
 	font-weight: 700;
 	font-size: var(--bw-size-h3);
@@ -143,6 +166,28 @@ body.wp-admin #wpwrap {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	flex: 0 1 auto;
+}
+
+@media only screen and (max-width: 960px) {
+	.bw-topbar-crumb {
+		display: none;
+	}
+}
+
+/* Viewing as another role. The whole point is that it is never out of sight,
+   so it sits with the avatar rather than in a bar along the bottom. */
+.bw-topbar-viewas {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bw-space-4);
+	margin: 0;
+}
+
+@media only screen and (max-width: 782px) {
+	.bw-topbar-viewas .bw-btn--link {
+		display: none;
+	}
 }
 
 .bw-topbar-actions {
@@ -702,18 +747,12 @@ div.error {
 	border-radius: var(--bw-radius-lg);
 	box-shadow: var(--bw-shadow-card);
 	margin-top: var(--bw-space-6);
-	max-width: var(--bwt-measure);
 	padding: var(--bw-space-4) var(--bw-space-9);
 }
 
 .wrap > form > .form-table > tbody > tr > th,
 .wrap > form > .form-table > tbody > tr > td {
 	padding: var(--bw-space-7) var(--bw-space-5);
-}
-
-.wrap > h2,
-.wrap > form > h2 {
-	max-width: var(--bwt-measure);
 }
 
 .postbox-header {

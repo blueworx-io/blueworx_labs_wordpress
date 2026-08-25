@@ -69,5 +69,23 @@ function blueworx_get_admin_menu_badge_counts() {
 		$counts['plugins.php'] = $active;
 	}
 
+	// Comments waiting on somebody, not comments in total: a badge is a job to
+	// do. A site with four thousand approved comments and none pending has
+	// nothing here that needs attention.
+	$pending = (int) wp_count_comments()->moderated;
+	if ( $pending > 0 ) {
+		$counts['edit-comments.php'] = $pending;
+	}
+
+	// Updates available, from core's own count.
+	if ( function_exists( 'wp_get_update_data' ) ) {
+		$updates = wp_get_update_data();
+		$total   = isset( $updates['counts']['total'] ) ? (int) $updates['counts']['total'] : 0;
+
+		if ( $total > 0 ) {
+			$counts['update-core.php'] = $total;
+		}
+	}
+
 	return $counts;
 }

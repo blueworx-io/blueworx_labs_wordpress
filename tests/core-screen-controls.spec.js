@@ -115,11 +115,18 @@ test.describe('BlueWorx controls inside core screens', () => {
       await bar.getByRole('button', { name: 'Switch' }).click();
 
       // The way out has to be visible from inside, or the feature is a trap.
-      await expect(bar.locator('.bw-badge')).toContainText(/subscriber/i);
-      await expect(bar.getByRole('button', { name: 'Back to yourself' })).toBeVisible();
+      // It lives in the top bar now, beside who you are, rather than in a bar
+      // along the bottom — which is where you look to find out who you are.
+      const pill = page.locator('.bw-topbar-viewas');
+      await expect(pill.locator('.bw-badge')).toContainText(/subscriber/i);
+      await expect(pill.getByRole('button', { name: 'Return to my own view' })).toBeVisible();
 
-      await bar.getByRole('button', { name: 'Back to yourself' }).click();
-      await expect(bar.locator('select#blueworx_view_as_role')).toBeVisible();
+      // And the picker's bar is gone while you are in a role — an empty bar
+      // pinned across the screen would say nothing.
+      await expect(bar).toHaveCount(0);
+
+      await pill.getByRole('button', { name: 'Return to my own view' }).click();
+      await expect(page.locator('.blueworx-view-as select#blueworx_view_as_role')).toBeVisible();
     } finally {
       if (!wasOn) {
         await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');

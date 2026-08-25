@@ -176,6 +176,49 @@ function blueworx_view_as_handle() {
 }
 
 /**
+ * The "viewing as" pill for the admin top bar.
+ *
+ * Only ever rendered while a role is being viewed. The picker that gets you
+ * INTO a role stays in the bar below — it is a form with a select in it, and a
+ * top bar is not where a form belongs. What has to be visible the whole time is
+ * that you are in a role and how to leave, and that is this.
+ *
+ * @return string HTML, or an empty string.
+ */
+function blueworx_view_as_topbar_pill() {
+	if ( ! function_exists( 'blueworx_view_as_available' ) || ! blueworx_view_as_available() ) {
+		return '';
+	}
+
+	$current = blueworx_view_as_current_role();
+
+	if ( '' === $current ) {
+		return '';
+	}
+
+	$choices = blueworx_view_as_role_choices();
+
+	if ( ! isset( $choices[ $current ] ) ) {
+		return '';
+	}
+
+	return sprintf(
+		'<form class="bw-topbar-viewas" method="post" action="%1$s">%2$s<input type="hidden" name="action" value="blueworx_view_as" /><input type="hidden" name="blueworx_view_as_role" value="" /><span class="bw-badge bw-badge--accent">%3$s%4$s</span><button type="submit" class="bw-btn bw-btn--link bw-btn--sm">%5$s</button></form>',
+		esc_url( admin_url( 'admin-post.php' ) ),
+		wp_nonce_field( 'blueworx_view_as', '_wpnonce', true, false ),
+		blueworx_ds_icon( 'eye', 14 ),
+		esc_html(
+			sprintf(
+				/* translators: %s: role name. */
+				__( 'Viewing as %s', 'blueworx-labs-wordpress' ),
+				$choices[ $current ]
+			)
+		),
+		esc_html__( 'Return to my own view', 'blueworx-labs-wordpress' )
+	);
+}
+
+/**
  * Renders the switch, and the way out of it, in the admin footer.
  *
  * A bar rather than a toolbar node: the point of the feature is that you can
@@ -190,14 +233,21 @@ function blueworx_view_as_render_bar() {
 	}
 
 	$current = blueworx_view_as_current_role();
+
+	// While a role IS being viewed, the top bar carries the pill and the way
+	// out. This bar is only the picker that gets you in, so it has nothing to
+	// say — and an empty bar pinned across the screen is worse than no bar.
+	if ( '' !== $current ) {
+		return;
+	}
+
 	$choices = blueworx_view_as_role_choices();
 	?>
-	<div class="blueworx-view-as<?php echo '' === $current ? '' : ' is-active'; ?>">
+	<div class="blueworx-view-as">
 		<div class="bw-admin">
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="bw-savebar">
 				<input type="hidden" name="action" value="blueworx_view_as" />
 				<?php wp_nonce_field( 'blueworx_view_as' ); ?>
-				<?php if ( '' === $current ) : ?>
 					<p class="bw-savebar__hint">
 						<label for="blueworx_view_as_role"><?php esc_html_e( 'View the admin as:', 'blueworx-labs-wordpress' ); ?></label>
 					</p>
@@ -224,35 +274,6 @@ function blueworx_view_as_render_bar() {
 						)
 					);
 					?>
-				<?php else : ?>
-					<p class="bw-savebar__hint">
-						<?php
-						// A badge rather than a red bar: the warning is the same
-						// wherever the bar lands, and it no longer needs a slab of
-						// colour of its own to be read as one.
-						echo blueworx_ds_badge( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
-							sprintf(
-								/* translators: %s: role name. */
-								__( 'Viewing as %s', 'blueworx-labs-wordpress' ),
-								$choices[ $current ]
-							),
-							'danger',
-							true
-						);
-						?>
-					</p>
-					<input type="hidden" name="blueworx_view_as_role" value="" />
-					<?php
-					echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
-						array(
-							'label'   => __( 'Back to yourself', 'blueworx-labs-wordpress' ),
-							'variant' => 'primary',
-							'type'    => 'submit',
-							'size'    => 'sm',
-						)
-					);
-					?>
-				<?php endif; ?>
 			</form>
 		</div>
 	</div>

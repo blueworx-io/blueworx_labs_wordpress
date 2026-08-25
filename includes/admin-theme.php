@@ -122,7 +122,7 @@ add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
  * external sheet can apply a few frames (sometimes seconds) after first paint. In
  * that gap WordPress paints its native chrome: the dark #wpadminbar shows as a
  * stray full-width line under the top bar, and the sidebar, not yet offset below
- * the fixed 60px header, overlaps it. This handful of rules is printed inline in
+ * the fixed 64px header, overlaps it. This handful of rules is printed inline in
  * the document head, so it cannot be deferred or async-loaded and lands in the
  * first paint, holding the corrected geometry until the full sheet arrives.
  *
@@ -132,7 +132,7 @@ add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
  *
  * Values are literals (not the --bw-* custom properties) on purpose: those
  * properties are defined in the external sheet, which is exactly the resource
- * that may be late here. Keep the 60px top bar height in sync with
+ * that may be late here. Keep the 64px top bar height in sync with
  * --bwt-topbar-h in admin-theme.css.
  *
  * The block/site editor's `.interface-interface-skeleton` offset is mirrored
@@ -161,12 +161,12 @@ function blueworx_print_admin_theme_critical_css() {
 		@media only screen and (min-width: 783px) {
 			#wpadminbar { display: none !important; }
 			html.wp-toolbar { padding-top: 0 !important; }
-			#wpcontent { padding-top: 60px; }
+			#wpcontent { padding-top: 64px; }
 			#adminmenuback,
 			#adminmenuwrap { position: fixed !important; bottom: 0 !important; height: auto !important; }
 			#adminmenuback { top: 0 !important; }
-			#adminmenuwrap { top: 60px !important; left: 0; }
-			body.block-editor-page:not(.is-fullscreen-mode) .interface-interface-skeleton { top: 60px; }
+			#adminmenuwrap { top: 64px !important; left: 0; }
+			body.block-editor-page:not(.is-fullscreen-mode) .interface-interface-skeleton { top: 64px; }
 		}
 	</style>
 	<?php
@@ -625,8 +625,24 @@ function blueworx_render_admin_topbar() {
 			</svg>
 			<span class="screen-reader-text"><?php esc_html_e( 'Menu', 'blueworx-labs-wordpress' ); ?></span>
 		</button>
-		<div class="bw-topbar-title"><?php echo esc_html( $page_title ); ?></div>
+		<div class="bw-topbar-title">
+			<?php
+			// The site's own name, then the screen. Two spans and a chevron, so
+			// the title says where you are rather than only what you are looking
+			// at. Both collapse on a narrow window; see admin-theme.css.
+			?>
+			<span class="bw-topbar-crumb"><?php echo esc_html( $site_name ); ?></span>
+			<span class="bw-topbar-crumb" aria-hidden="true">
+				<?php echo wp_kses( blueworx_ds_icon( 'chevron-right', 14 ), blueworx_ds_allowed_html() ); ?>
+			</span>
+			<span class="bw-topbar-here"><?php echo esc_html( $page_title ); ?></span>
+		</div>
 		<div class="bw-topbar-actions">
+			<?php
+			// Viewing as another role belongs here, beside who you are, not in a
+			// bar pinned across the bottom of every screen.
+			echo wp_kses( blueworx_view_as_topbar_pill(), blueworx_ds_allowed_html() );
+			?>
 			<a class="bw-topbar-site" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener noreferrer">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="15" height="15" aria-hidden="true" focusable="false">
 					<path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path>
@@ -637,7 +653,7 @@ function blueworx_render_admin_topbar() {
 			</a>
 			<details class="bw-user">
 				<summary class="bw-user-summary">
-					<span class="bw-user-avatar" aria-hidden="true"><?php echo esc_html( $initials ); ?></span>
+					<span class="bw-avatar bw-user-avatar" aria-hidden="true"><?php echo esc_html( $initials ); ?></span>
 					<span class="bw-user-name"><?php echo esc_html( $user->display_name ); ?></span>
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true" focusable="false">
 						<path d="M6 9l6 6 6-6"></path>

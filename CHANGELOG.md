@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.67.0] - 2026-08-25
+
+### Changed
+- **The top bar says where you are**, not only what you are looking at — the
+  site's name, then the screen.
+- **"Viewing as" moved to the top bar**, beside who you are, instead of a bar
+  pinned across the bottom of every screen. The picker that gets you into a
+  role stays where it was.
+- **Admin screens use the whole window.** They were capped at 1200px wide.
+
+### Added
+- **Comments and Updates now carry a count in the sidebar**, like Posts and
+  Pages already did. Comments counts what is waiting on you, not the total.
+
 ## [1.63.0] - 2026-08-25
 
 ### Changed
