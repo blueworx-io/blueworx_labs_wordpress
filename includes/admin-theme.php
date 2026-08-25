@@ -1122,3 +1122,177 @@ function blueworx_print_admin_menu_logout() {
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_action( 'admin_footer', 'blueworx_print_admin_menu_logout' );
 }
+
+/**
+ * The group heading a core screen belongs under.
+ *
+ * Taken from the sidebar group the screen's own menu sits in, not from a list
+ * written down here. That is what makes it work for a custom post type, or for
+ * a screen registered by a plugin nobody has seen yet: whatever group the menu
+ * editor puts that menu in is the word above its heading.
+ *
+ * @return string Group label, or an empty string when the screen has no menu.
+ */
+function blueworx_core_screen_eyebrow() {
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+	if ( ! $screen ) {
+		return '';
+	}
+
+	$slug = blueworx_core_screen_menu_slug( $screen );
+
+	if ( '' === $slug ) {
+		return '';
+	}
+
+	$groups = blueworx_get_admin_menu_groups();
+	$group  = blueworx_get_admin_menu_group_for_slug( $slug );
+
+	return isset( $groups[ $group ] ) ? $groups[ $group ] : '';
+}
+
+/**
+ * The top-level menu slug a screen belongs to.
+ *
+ * WordPress records the parent file for most screens; where it does not, the
+ * screen's base names the file. Post-type screens are normalised to the
+ * edit.php?post_type= form the group rules are written against.
+ *
+ * @param WP_Screen $screen Current screen.
+ * @return string Menu slug, or an empty string.
+ */
+function blueworx_core_screen_menu_slug( $screen ) {
+	$parent = isset( $screen->parent_file ) ? (string) $screen->parent_file : '';
+
+	if ( '' !== $parent ) {
+		return $parent;
+	}
+
+	$base = isset( $screen->base ) ? (string) $screen->base : '';
+
+	if ( '' === $base ) {
+		return '';
+	}
+
+	$post_type = isset( $screen->post_type ) ? (string) $screen->post_type : '';
+
+	if ( 'edit' === $base && '' !== $post_type ) {
+		return 'post' === $post_type ? 'edit.php' : 'edit.php?post_type=' . $post_type;
+	}
+
+	return $base . '.php';
+}
+
+/**
+ * The eyebrow and page-access row for a core screen, as HTML.
+ *
+ * Two of the three things the designs put above a heading. The third — a
+ * one-line explanation of the screen — is hand-written copy, and there is no
+ * honest way to produce one for a custom post type or a plugin screen nobody
+ * here has seen. A wrong or empty lede on those is worse than none on any.
+ *
+ * @return string HTML, or an empty string when there is nothing to say.
+ */
+function blueworx_core_screen_header_html() {
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+	// Our own screens already render a full header of their own.
+	if ( ! $screen || false !== strpos( (string) $screen->id, 'blueworx' ) ) {
+		return '';
+	}
+
+	$eyebrow = blueworx_core_screen_eyebrow();
+
+	if ( '' === $eyebrow ) {
+		return '';
+	}
+
+	return '<p class="bw-pagehead__eyebrow">' . esc_html( $eyebrow ) . '</p>'
+		. blueworx_ds_page_access(
+			blueworx_core_screen_capability( $screen ),
+			'screen:' . sanitize_key( (string) $screen->id )
+		);
+}
+
+/**
+ * The capability a screen was registered with.
+ *
+ * WP_Screen does not carry one — it knows what the screen IS, not who may see
+ * it. The menu registry does: every entry in $menu and $submenu holds its
+ * capability at index 1, which is the same value WordPress itself checks before
+ * letting somebody load the page.
+ *
+ * @param WP_Screen $screen Current screen.
+ * @return string Capability, or an empty string when the screen has no menu entry.
+ */
+function blueworx_core_screen_capability( $screen ) {
+	global $menu, $submenu;
+
+	$file   = isset( $GLOBALS['pagenow'] ) ? (string) $GLOBALS['pagenow'] : '';
+	$parent = blueworx_core_screen_menu_slug( $screen );
+
+	// Submenus first: a screen nested under another is registered with its own
+	// capability, which is often narrower than its parent's.
+	foreach ( (array) $submenu as $entries ) {
+		foreach ( (array) $entries as $entry ) {
+			if ( ! isset( $entry[2], $entry[1] ) ) {
+				continue;
+			}
+
+			if ( $entry[2] === $parent || ( '' !== $file && $entry[2] === $file ) ) {
+				return (string) $entry[1];
+			}
+		}
+	}
+
+	foreach ( (array) $menu as $entry ) {
+		if ( ! isset( $entry[2], $entry[1] ) ) {
+			continue;
+		}
+
+		if ( $entry[2] === $parent ) {
+			return (string) $entry[1];
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Hands the core-screen header to the script that places it.
+ *
+ * Placed by script because the heading belongs to core and there is no hook
+ * between the opening .wrap and the h1 inside it. The markup is built and
+ * escaped in PHP; the script only moves it. Passed through
+ * wp_add_inline_script rather than printed, so nothing here puts a script tag
+ * or an event handler into the page.
+ *
+ * @return void
+ */
+function blueworx_enqueue_core_screen_header() {
+	if ( ! blueworx_admin_theme_enabled() ) {
+		return;
+	}
+
+	$html = blueworx_core_screen_header_html();
+
+	if ( '' === $html ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'blueworx-core-pagehead',
+		BLUEWORX_LABS_URL . 'assets/js/core-pagehead.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/core-pagehead.js' ),
+		true
+	);
+
+	wp_add_inline_script(
+		'blueworx-core-pagehead',
+		'window.blueworxCorePagehead = ' . wp_json_encode( $html ) . ';',
+		'before'
+	);
+}
+add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_core_screen_header', 20 );

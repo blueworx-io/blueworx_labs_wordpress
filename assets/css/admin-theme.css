@@ -568,9 +568,210 @@ body.wp-admin #wpwrap {
 	color: var(--bw-ink);
 }
 
+/* ─── The controls around a list table ───
+   Everything above styles the table. These are the things around it that the
+   designs redraw too — the filter links, the bulk-action bar, the row actions,
+   the search box and the pager.
+
+   CSS only, onto WordPress's own class names. None of this markup is ours to
+   emit: core builds it, third-party list tables build it the same way, and a
+   plugin that tried to replace it would have to replace every list table on
+   every screen. So each one is mapped onto the design system component the
+   canvas draws it as, and nothing is wrapped or rewritten.
+
+   This does add to the count of core selectors we style, which is the reason
+   the adherence check runs as a warning here. It should not grow unnoticed. */
+
+/* Filter links — All | Published | Draft, and the role list on Users. Tabs, as
+   the canvas draws them, rather than a row of separated links. */
+.subsubsub {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bw-space-2);
+	margin: 0 0 var(--bw-space-7);
+	padding: 0;
+	font-size: var(--bw-size-body);
+	color: var(--bw-text-muted);
+}
+
+.subsubsub li {
+	margin: 0;
+	white-space: nowrap;
+}
+
+/* The separators are literal " | " text nodes between the links, so they are
+   hidden rather than removed — there is nothing here to remove them from. */
+.subsubsub li::after {
+	content: none;
+}
+
+.subsubsub a {
+	display: inline-block;
+	padding: var(--bw-space-4) var(--bw-space-6);
+	border-radius: var(--bw-radius-pill);
+	color: var(--bw-text-muted);
+	text-decoration: none;
+	transition: var(--bw-transition-control);
+}
+
+.subsubsub a:hover,
+.subsubsub a:focus {
+	background: var(--bw-surface-sunken);
+	color: var(--bw-text-body);
+	text-decoration: none;
+}
+
+.subsubsub a.current {
+	background: var(--bw-brand-wash);
+	color: var(--bw-text-accent);
+	font-weight: var(--bw-weight-medium);
+}
+
+.subsubsub .count {
+	color: var(--bw-text-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+/* The bulk-action bar and the pager share the tablenav strip. */
+.tablenav {
+	display: flex;
+	align-items: center;
+	gap: var(--bw-space-6);
+	height: auto;
+	margin: var(--bw-space-7) 0;
+	padding: 0;
+}
+
+.tablenav .actions {
+	display: flex;
+	align-items: center;
+	gap: var(--bw-space-4);
+	padding: 0;
+}
+
+.tablenav .tablenav-pages {
+	margin-left: auto;
+	float: none;
+	display: flex;
+	align-items: center;
+	gap: var(--bw-space-4);
+	font-variant-numeric: tabular-nums;
+}
+
+.tablenav .displaying-num {
+	color: var(--bw-text-muted);
+	font-size: var(--bw-size-sm);
+}
+
 .tablenav .tablenav-pages a,
-.tablenav .tablenav-pages span.current {
-	border-radius: var(--bw-radius-md);
+.tablenav .tablenav-pages span.tablenav-pages-navspan {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--bw-control-h-sm);
+	height: var(--bw-control-h-sm);
+	padding: 0 var(--bw-space-4);
+	border: 1px solid var(--bw-border-field);
+	border-radius: var(--bw-radius-sm);
+	background: var(--bw-control-bg);
+	color: var(--bw-text-body);
+	text-decoration: none;
+	transition: var(--bw-transition-control);
+}
+
+.tablenav .tablenav-pages a:hover,
+.tablenav .tablenav-pages a:focus {
+	background: var(--bw-control-bg-hover);
+	border-color: var(--bw-border-strong);
+	color: var(--bw-text-body);
+	text-decoration: none;
+}
+
+.tablenav .tablenav-pages span.tablenav-pages-navspan {
+	opacity: var(--bw-disabled-opacity);
+}
+
+/* Row actions — Edit · View · Trash under a row's title. */
+.row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bw-space-3);
+	font-size: var(--bw-size-sm);
+	color: var(--bw-text-faint);
+	padding: var(--bw-space-2) 0 0;
+}
+
+.row-actions span::after {
+	color: var(--bw-text-faint);
+}
+
+.row-actions a {
+	color: var(--bw-text-link);
+	text-decoration: none;
+}
+
+.row-actions a:hover,
+.row-actions a:focus {
+	text-decoration: underline;
+}
+
+.row-actions .trash a,
+.row-actions .delete a,
+.row-actions .spam a {
+	color: var(--bw-text-danger);
+}
+
+/* The search box, as the design system's input with its button beside it. */
+.search-box {
+	display: flex;
+	align-items: center;
+	gap: var(--bw-space-4);
+	float: none;
+	margin: 0 0 var(--bw-space-7);
+}
+
+.search-box input[type="search"],
+.search-box input[type="text"] {
+	height: var(--bw-control-h);
+	padding: 0 12px;
+	border: 1px solid var(--bw-border-field);
+	border-radius: var(--bw-control-radius);
+	background: var(--bw-control-bg);
+	color: var(--bw-control-text);
+	font-family: var(--bw-font-body);
+	font-size: var(--bw-size-input);
+	transition: var(--bw-transition-control);
+}
+
+.search-box input[type="search"]:focus,
+.search-box input[type="text"]:focus {
+	border-color: var(--bw-focus-color);
+	outline: var(--bw-focus-width) solid var(--bw-focus-color);
+	outline-offset: var(--bw-focus-offset);
+}
+
+/* Author and commenter cells, as the person component. */
+.column-author a,
+.column-username a,
+.author strong {
+	color: var(--bw-text-body);
+}
+
+.wp-list-table .column-username img,
+.wp-list-table .column-author img,
+.wp-list-table .column-comment .avatar {
+	border-radius: var(--bw-radius-pill);
+}
+
+/* Site Health's score, as the progress bar's track and fill. */
+.health-check-body .site-health-progress {
+	color: var(--bw-brand);
+}
+
+.site-health-progress svg circle.bar {
+	stroke: var(--bw-brand);
 }
 
 /* ─── Buttons ─── */
@@ -1724,4 +1925,17 @@ body.latepoint-admin #wpcontent {
 	html.bw-drawer-ready .bw-brand {
 		transition: none;
 	}
+}
+
+/* The BlueWorx eyebrow and page-access row above a core screen's heading. The
+   heading stays WordPress's; this sits above it, spaced as a page header is. */
+.bw-core-pagehead {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bw-space-4);
+	margin: var(--bw-space-7) 0 var(--bw-space-3);
+}
+
+.bw-core-pagehead:empty {
+	display: none;
 }

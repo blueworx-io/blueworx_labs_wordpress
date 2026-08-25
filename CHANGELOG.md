@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.70.0] - 2026-08-25
+
+### Changed
+- **The controls around every list screen are BlueWorx now, not WordPress.**
+  The filter links, the bulk-action bar, the row actions under each row, the
+  search box and the pager all match the table they sit around. Covers posts,
+  pages, media, comments, users, plugins and site health.
+
+### Added
+- **Every WordPress screen says which part of the site it belongs to**, and who
+  can reach it — the same two lines the BlueWorx screens carry. Both are worked
+  out from the screen itself, so they are right on a custom post type and on
+  screens belonging to plugins we have never seen.
 ## [1.69.0] - 2026-08-25
 
 ### Added
