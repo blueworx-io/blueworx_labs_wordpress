@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.62.0] - 2026-08-25
+
+### Added
+- **Edit Menu can send an item straight to another group**, with two new arrows
+  on every row. Before, you had to walk it past every other item first. There is
+  also a Reset to WordPress order button, and a Discard changes button beside
+  Save.
+- **The Cache screen says when the cache was last refreshed by hand.** Nothing
+  on the site was recording it.
+
+### Changed
+- **The Cache screen is narrower and calmer** — one column, and it now warns
+  that the first visitor to each page waits a moment after a refresh.
+- **Edit Menu rows show each menu's own icon**, and each group says how many
+  items are in it.
+- **The two reference screens are titled the way the designs title them.**
+
 ## [1.61.11] - 2026-08-25
 
 ### Added

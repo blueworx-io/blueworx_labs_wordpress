@@ -33,6 +33,11 @@ function blueworx_is_breeze_active() {
 }
 
 /**
+ * Option holding the time of the last manual refresh, as a Unix timestamp.
+ */
+const BLUEWORX_CACHE_REFRESHED_OPTION = 'blueworx_cache_last_refreshed';
+
+/**
  * Handles the manual cache refresh button on BlueWorx > Cache.
  *
  * @return void
@@ -46,9 +51,33 @@ function blueworx_handle_manual_cache_refresh() {
 
 	check_admin_referer( 'blueworx_clear_cache_now' );
 	blueworx_refresh_manual_cache();
+
+	// When it last happened is the one thing somebody comes to this screen to
+	// find out, and nothing was recording it.
+	update_option( BLUEWORX_CACHE_REFRESHED_OPTION, time(), false );
+
 	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Breeze full-cache clearing is used when available; otherwise the homepage and WordPress object cache are refreshed.', 'blueworx-labs-wordpress' ), 30 );
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-cache' ) );
 	exit;
+}
+
+/**
+ * When the cache was last refreshed by hand, as a human-readable phrase.
+ *
+ * @return string Localised "x ago" phrase, or an empty string when it never has.
+ */
+function blueworx_cache_last_refreshed_label() {
+	$when = (int) get_option( BLUEWORX_CACHE_REFRESHED_OPTION, 0 );
+
+	if ( $when <= 0 ) {
+		return '';
+	}
+
+	return sprintf(
+		/* translators: %s: how long ago, e.g. "5 mins". */
+		__( '%s ago', 'blueworx-labs-wordpress' ),
+		human_time_diff( $when, time() )
+	);
 }
 if ( blueworx_feature_enabled( 'cache_manual' ) ) {
 	add_action( 'admin_post_blueworx_clear_cache_now', 'blueworx_handle_manual_cache_refresh' );

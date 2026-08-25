@@ -351,16 +351,28 @@ function blueworx_ds_icon_button( $args ) {
 /**
  * Renders a badge.
  *
+ * A badge takes either a dot or a leading icon, never both: they occupy the
+ * same slot and say the same kind of thing. The dot wins if both are passed.
+ *
  * @param string $label Badge text.
  * @param string $tone  neutral|success|warning|danger|accent|info.
  * @param bool   $dot   Whether to show the status dot.
+ * @param string $icon  Optional leading Lucide icon name.
  * @return string HTML.
  */
-function blueworx_ds_badge( $label, $tone = 'neutral', $dot = false ) {
+function blueworx_ds_badge( $label, $tone = 'neutral', $dot = false, $icon = '' ) {
+	$lead = '';
+
+	if ( $dot ) {
+		$lead = '<span class="bw-badge__dot"></span>';
+	} elseif ( '' !== $icon ) {
+		$lead = blueworx_ds_icon( $icon, 14 );
+	}
+
 	return sprintf(
 		'<span class="bw-badge bw-badge--%1$s">%2$s%3$s</span>',
 		esc_attr( $tone ),
-		$dot ? '<span class="bw-badge__dot"></span>' : '',
+		$lead,
 		esc_html( $label )
 	);
 }
