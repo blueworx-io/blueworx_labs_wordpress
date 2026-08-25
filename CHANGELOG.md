@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.9] - 2026-08-25
+
+### Fixed
+- **Dropdowns draw their arrow inside the box again.** It had been falling out
+  and landing underneath every dropdown in the plugin, and the one on the
+  role-view bar had no arrow at all.
+- **Icons are sized by the design system rather than by a width written into
+  the markup**, which is also what puts empty-state icons back in the right
+  colour.
+
 ## [1.61.8] - 2026-08-25
 
 ### Changed

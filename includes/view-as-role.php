@@ -208,6 +208,12 @@ function blueworx_view_as_render_bar() {
 								<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
 							<?php endforeach; ?>
 						</select>
+						<?php
+						// The chevron is the component's, not decoration: the field
+						// is appearance:none, so without it the select has no arrow
+						// at all and does not read as a dropdown.
+						echo wp_kses( blueworx_ds_icon( 'chevron-down', 14, 'bw-select__arrow' ), blueworx_ds_allowed_html() );
+						?>
 					</span>
 					<?php
 					echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
