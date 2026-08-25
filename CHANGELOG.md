@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.11] - 2026-08-25
+
+### Added
+- **Four new parts of the shared design system are now available to these
+  screens** — the function card, the section header, the two-column settings
+  row and the product tab row, plus a narrow one-column page. Nothing uses
+  them yet; this only brings them in.
+
 ## [1.61.9] - 2026-08-25
 
 ### Fixed
