@@ -53,7 +53,8 @@ test.describe('Guides — products and topics', () => {
 
     const topicsAfter = await page.locator('[data-blueworx-guide-tabs] .bw-tab').allInnerTexts();
     expect(topicsAfter).not.toEqual(topicsBefore);
-    expect(topicsAfter.join(' ')).toContain('Writing');
+    // The tab bar uppercases its labels in CSS, so compare without case.
+    expect(topicsAfter.join(' ').toLowerCase()).toContain('writing');
 
     // And the cards showing belong to that product.
     await expect(page.locator('[data-blueworx-guide]').first()).toBeVisible();
