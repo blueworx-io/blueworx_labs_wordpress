@@ -31,7 +31,9 @@ test.describe('icons carry the class their component positions them by', () => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress&section=security');
 
-    const wrap = page.locator('.bw-select').first();
+    // :visible matters — a feature's settings panel is in the DOM but hidden
+    // until its switch is on, so .first() otherwise lands on a collapsed one.
+    const wrap = page.locator('.bw-select:visible').first();
     await expect(wrap).toBeVisible();
 
     const arrow = wrap.locator('.bw-select__arrow');
