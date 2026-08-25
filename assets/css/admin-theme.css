@@ -18,6 +18,16 @@
 	--bwt-topbar-h: 64px;
 	--bwt-sidebar-w: 232px;
 
+	/* What sits above the content column, so a full-bleed screen knows how tall
+	   the rest of the window is. Below 783px that is WordPress's own admin bar;
+	   above it, our top bar has replaced it. */
+	--bwt-shell-top: 46px;
+
+	/* How much room the View as role bar takes across the bottom. It is fixed,
+	   so nothing gets out of its way on its own, and a full-bleed screen runs to
+	   the very bottom edge — without this reservation the bar lands on top of
+	   the page save bar and the Save button cannot be clicked. */
+	--bwt-viewas-h: 73px;
 }
 
 /* ─── Box model ───
@@ -1938,4 +1948,48 @@ body.latepoint-admin #wpcontent {
 
 .bw-core-pagehead:empty {
 	display: none;
+}
+
+/* ─── Full-bleed BlueWorx screens ───
+   The design has the page header, body and save bar running flush to the
+   sidebar and the top bar: the only gutter is the 24px inside the page itself.
+   WordPress's `.wrap` margins and #wpcontent padding sit outside that and inset
+   every screen, so they are cancelled here — on our screens only, marked by the
+   bw-fullbleed body class from includes/admin-assets.php. Every other admin
+   screen keeps core's spacing untouched.
+
+   #wpbody-content becomes the column the page fills, so a short screen still
+   reaches the foot of the window and the sticky save bar has somewhere to
+   stick. Without that height the bar simply ends wherever the content does,
+   which is what left it floating mid-page. */
+body.bw-fullbleed #wpcontent {
+	padding-left: 0;
+}
+
+body.bw-fullbleed #wpbody-content {
+	display: flex;
+	flex-direction: column;
+	min-height: calc(100vh - var(--bwt-shell-top));
+	padding-bottom: 0;
+}
+
+body.bw-fullbleed .wrap.bw-page {
+	margin: 0;
+	min-height: 0;
+	flex: 1 1 auto;
+}
+
+/* Notices are moved here by WordPress, to just after the .wp-header-end marker
+   the page header now prints. They are the only thing between the header and
+   the body, so they carry the page gutter themselves. */
+body.bw-fullbleed .bw-page > .notice,
+body.bw-fullbleed .bw-page > div.updated,
+body.bw-fullbleed .bw-page > div.error {
+	margin: var(--bw-space-9) var(--bw-pad) 0;
+}
+
+@media only screen and (min-width: 783px) {
+	:root {
+		--bwt-shell-top: var(--bwt-topbar-h);
+	}
 }

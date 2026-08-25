@@ -27,12 +27,17 @@ function blueworx_get_admin_asset_version( $relative_path ) {
 }
 
 /**
- * The four BlueWorx screens the shared admin design system may style.
+ * The BlueWorx screens the shared admin design system may style.
  *
  * Deliberately a short, explicit list rather than a prefix match. The system's
  * component styles are opt-in: they belong on screens this plugin owns
  * end-to-end, and nowhere near WordPress's own screens, where they would
  * restyle furniture we do not control.
+ *
+ * Embedded controls and System additions were missing from this list and only
+ * looked right because the view-as-role clause below happened to load the
+ * stylesheet anyway. They own their whole screen like the rest, so they are
+ * named here rather than left depending on an unrelated function being on.
  *
  * @return string[] Admin hook suffixes.
  */
@@ -44,8 +49,33 @@ function blueworx_admin_design_screens() {
 		'blueworx_page_blueworx-cache',
 		'blueworx_page_blueworx-support',
 		'blueworx_page_blueworx-sso',
+		'blueworx_page_blueworx-embedded',
+		'blueworx_page_blueworx-additions',
 	);
 }
+
+/**
+ * Marks the screens that own their whole page, so the shell can run flush.
+ *
+ * The design has the page header, body and save bar touching the sidebar and
+ * the top bar, with the only gutter being the 24px inside the page itself.
+ * WordPress's own `.wrap` margins and `#wpcontent` padding sit outside that and
+ * inset every screen, so they are cancelled — but only on these screens, never
+ * on WordPress's own.
+ *
+ * @param string $classes Space-separated body classes.
+ * @return string Body classes.
+ */
+function blueworx_admin_full_bleed_body_class( $classes ) {
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+	if ( ! $screen || ! in_array( $screen->id, blueworx_admin_design_screens(), true ) ) {
+		return $classes;
+	}
+
+	return trim( $classes . ' bw-fullbleed' );
+}
+add_filter( 'admin_body_class', 'blueworx_admin_full_bleed_body_class' );
 
 /**
  * WordPress's own screens where this plugin renders a control of its own.

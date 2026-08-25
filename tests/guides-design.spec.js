@@ -95,15 +95,19 @@ test.describe('the Guides screen as designed', () => {
     // would not know the difference.
     await page.goto(`${GUIDES}&tab=getting-started`);
     const everyone = await page.locator('.bw-guidegrid > .bw-card').first().getAttribute('data-blueworx-guide');
-    // Scoped to the grid: page headers carry a role list of their own now, and
-    // an unscoped .bw-rolepills matches that one first.
+    // Scoped to the grid the chosen topic is showing in: page headers carry a
+    // role list of their own, and every topic's grid is on the page now with
+    // all but one hidden — so an unscoped .bw-rolepills reads the wrong topic.
     const openRoles = await page
-      .locator('.bw-guidegrid .bw-rolepills')
+      .locator('.bw-guidegrid:not([hidden]) .bw-rolepills')
       .first()
       .getAttribute('title');
 
     await page.goto(`${GUIDES}&tab=security`);
-    const adminRoles = await page.locator('.bw-guidegrid .bw-rolepills').first().getAttribute('title');
+    const adminRoles = await page
+      .locator('.bw-guidegrid:not([hidden]) .bw-rolepills')
+      .first()
+      .getAttribute('title');
 
     expect(everyone, 'no guide rendered to read roles from').toBeTruthy();
     expect(adminRoles).toContain('Administrator');

@@ -65,6 +65,30 @@
 	border-style: solid;
 }
 
+/* ─── Page header rows ───
+   The design lays the header out as a wrapping row: the title block and the
+   page-access pills share the first line, and any buttons take a full line of
+   their own underneath, hard right. Without the wrap the buttons fall in beside
+   the lede and stop wherever its text happens to end, which is the middle of
+   the header rather than either edge. */
+.bw-pagehead {
+	flex-wrap: wrap;
+	row-gap: var(--bw-space-6);
+}
+
+.bw-pagehead__titles {
+	flex: 1 1 380px;
+	min-width: 0;
+}
+
+.bw-pagehead__actions {
+	order: 2;
+	flex: 0 0 100%;
+	flex-wrap: wrap;
+	row-gap: var(--bw-space-5);
+	justify-content: flex-end;
+}
+
 /* ─── Page access row ───
    The role list for the screen itself, hard right of the title and top-aligned
    with it. It wraps its pills rather than pushing the header wider. */
@@ -75,7 +99,16 @@
 	display: flex;
 	align-items: center;
 	gap: var(--bw-space-3);
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+	flex: 0 1 auto;
+	min-width: 0;
+	justify-content: flex-end;
+}
+
+/* The label and its pills are one line. The pills carry a wrapper of their own
+   for the expander's script hooks, and as a flex item that could not shrink it
+   took the whole group to a second line and stranded the label above it. */
+.bw-pageaccess .bw-rolepills {
 	flex: 0 1 auto;
 	min-width: 0;
 	justify-content: flex-end;
@@ -124,11 +157,42 @@
 	gap: var(--bw-space-7);
 }
 
+/* Guide prose sets its own rhythm. Left to WordPress's default paragraph margin
+   the two paragraphs drift apart and the card gains a gap above its footer that
+   nothing else on the screen has. */
 .bw-guide__body p {
 	font-size: var(--bw-size-body);
 	line-height: var(--bw-lh-body);
 	max-width: var(--bw-content-max);
 	color: var(--bw-text-body);
+	margin: 0 0 var(--bw-space-6);
+}
+
+.bw-guide__body p:last-child {
+	margin-bottom: 0;
+}
+
+/* ─── Guides section band ───
+   Section and topic are a white band under the page header, full width with a
+   hairline along the bottom — the header's own continuation, not two rows of
+   controls floating on the canvas. Section sits above topic because it is the
+   coarser of the two choices. */
+.bw-guidebar {
+	flex: none;
+	background: var(--bw-surface-card);
+	border-bottom: 1px solid var(--bw-border);
+}
+
+.bw-guidebar .bw-tabs {
+	background: none;
+	border-bottom: 0;
+}
+
+/* Only the panel for the chosen topic is on screen. Every panel is rendered, so
+   switching topic is instant; without the script the server has already hidden
+   all but one and each tab is still a real address. */
+.bw-guidegrid[hidden] {
+	display: none;
 }
 
 /* ─── Drag-scrollable tab bar ───
@@ -154,4 +218,79 @@
 
 .bw-tabs--drag .bw-tab {
 	user-select: none;
+}
+
+/* ─── Enhancements column ───
+   .bw-page__body is a flex row, so anything inside it has to be told to grow.
+   Left to size itself the two-column wrapper stops at its content width and the
+   function cards end two-thirds of the way across the screen. */
+.bw-page__body > .bw-panels-row {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+/* The section header card and the stack below it are one panel, and the panel
+   is what carries the gap between them. Without it they sit flush together
+   while the cards underneath are spaced, which reads as inconsistent because it
+   is. The [hidden] guard is needed because a display of our own beats the
+   browser's rule for it, and every section but one is hidden. */
+.bw-panels > [data-blueworx-panel] {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bw-stack-gap);
+}
+
+.bw-panels > [data-blueworx-panel][hidden] {
+	display: none;
+}
+
+/* Three measurements the shared system carries at the wrong number for these
+   cards. Overridden here rather than edited in assets/blueworx-admin-design.css,
+   which is the foundation's copy and not ours to change — they belong upstream
+   and should be sent back there. */
+.bw-fnstack {
+	gap: 14px;
+}
+
+.bw-fncard {
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+.bw-fncard__row {
+	padding: 18px var(--bw-panel-pad);
+}
+
+/* ─── Edit Menu buckets ───
+   A grid that fills the width, not one bucket per row. Each bucket holds a short
+   list, and stacking them wastes the very screen the reordering happens on. */
+.bw-menu-editor {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: var(--bw-space-8);
+	align-items: start;
+}
+
+/* A menu label is one line that gives way, not a field that pushes the row
+   wider. Without this a long name runs on under the Locked badge. */
+.bw-menu-editor .bw-repeater__fields {
+	flex-wrap: nowrap;
+	min-width: 0;
+}
+
+.bw-menu-editor-label {
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ─── Support access card ───
+   Title first, caption under it — the reverse of the system's card, which leads
+   with its eyebrow. The switch for the function itself sits in the head, so the
+   screen is switched on where you are standing rather than from a strip above
+   the card. */
+.bw-supportcard .bw-card__titles {
+	flex-direction: column-reverse;
 }
