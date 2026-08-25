@@ -34,7 +34,7 @@ jobs:
       # Bump this whenever the design system changes upstream: the sync check
       # compares our copy against the foundation AT THIS REF, so a component
       # added upstream and copied here fails until the ref moves with it.
-      foundation_ref: v1.5.0
+      foundation_ref: v1.6.0
       # Our design system copy matches the foundation, so the sync check stays
       # strict (its default). Adherence is the one we cannot pass yet: the admin
       # re-skin is still hand-styled, and the components we invented for it are
