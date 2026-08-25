@@ -55,11 +55,15 @@ add_action( 'admin_menu', 'blueworx_register_guides_page', 11 );
  * @param array $guides Normalized guides.
  * @return array Tab labels keyed by tab id.
  */
-function blueworx_get_populated_guide_tabs( $guides ) {
-	$tabs   = blueworx_get_guide_tabs();
+function blueworx_get_populated_guide_tabs( $guides, $product = '' ) {
+	$tabs   = blueworx_get_all_guide_tabs();
 	$counts = array();
 
 	foreach ( $guides as $guide ) {
+		if ( '' !== $product && $guide['product'] !== $product ) {
+			continue;
+		}
+
 		$counts[ $guide['tab'] ] = true;
 	}
 
@@ -77,6 +81,52 @@ function blueworx_get_populated_guide_tabs( $guides ) {
 	}
 
 	return $populated;
+}
+
+/**
+ * Gets the products that actually have guides, in display order.
+ *
+ * @param array $guides Normalized guides.
+ * @return array Product labels keyed by key.
+ */
+function blueworx_get_populated_guide_products( $guides ) {
+	$products = blueworx_get_guide_products();
+	$live     = array();
+
+	foreach ( $guides as $guide ) {
+		$live[ $guide['product'] ] = true;
+	}
+
+	$populated = array();
+
+	foreach ( $products as $key => $label ) {
+		if ( isset( $live[ $key ] ) ) {
+			$populated[ $key ] = $label;
+		}
+	}
+
+	return $populated;
+}
+
+/**
+ * Resolves the product to show from the query string.
+ *
+ * @param array $products Populated products.
+ * @return string Product key, always one that exists.
+ */
+function blueworx_current_guide_product( $products ) {
+	if ( empty( $products ) ) {
+		return '';
+	}
+
+	// Read-only navigation state, so no nonce: there is nothing to forge.
+	$requested = isset( $_GET['product'] ) ? sanitize_key( wp_unslash( $_GET['product'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+	if ( isset( $products[ $requested ] ) ) {
+		return $requested;
+	}
+
+	return (string) array_key_first( $products );
 }
 
 /**
@@ -106,14 +156,16 @@ function blueworx_current_guide_tab( $tabs ) {
  * @return void
  */
 function blueworx_render_guides_page() {
-	$guides = blueworx_get_guides();
-	$tabs   = blueworx_get_populated_guide_tabs( $guides );
-	$active = blueworx_current_guide_tab( $tabs );
+	$guides   = blueworx_get_guides();
+	$products = blueworx_get_populated_guide_products( $guides );
+	$product  = blueworx_current_guide_product( $products );
+	$tabs     = blueworx_get_populated_guide_tabs( $guides, $product );
+	$active   = blueworx_current_guide_tab( $tabs );
 
 	$header = blueworx_ds_page_header(
 		array(
 			'title'      => __( 'Guides', 'blueworx-labs-wordpress' ),
-			'lede'       => __( 'One tab per section you have something switched on in. Switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
+			'lede'       => __( 'Pick a section along the top, then a topic below it. BlueWorx topics follow what you have switched on — switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
 			'capability' => 'read',
 		)
 	);
@@ -150,8 +202,44 @@ function blueworx_render_guides_page() {
 	$counts = array();
 
 	foreach ( $guides as $guide ) {
+		if ( $guide['product'] !== $product ) {
+			continue;
+		}
+
 		$tab            = isset( $tabs[ $guide['tab'] ] ) ? $guide['tab'] : BLUEWORX_GUIDES_FALLBACK_TAB;
 		$counts[ $tab ] = isset( $counts[ $tab ] ) ? $counts[ $tab ] + 1 : 1;
+	}
+
+	// How many topics sit behind each product, for the row above the tabs.
+	$product_counts = array();
+
+	foreach ( $guides as $guide ) {
+		$key                    = $guide['product'];
+		$product_counts[ $key ] = isset( $product_counts[ $key ] ) ? $product_counts[ $key ] + 1 : 1;
+	}
+
+	// Anchors, for the same reason the topic tabs are: a real URL somebody can
+	// be sent, and a screen that works with JavaScript off.
+	$product_html = '';
+
+	foreach ( $products as $key => $label ) {
+		$product_url = add_query_arg(
+			array(
+				'page'    => 'blueworx-guides',
+				'product' => $key,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		$product_html .= sprintf(
+			'<a class="bw-prodtab%1$s" href="%2$s" data-blueworx-guide-product="%3$s"%4$s>%5$s<span class="bw-prodtab__count">%6$s</span></a>',
+			$key === $product ? ' is-active' : '',
+			esc_url( $product_url ),
+			esc_attr( $key ),
+			$key === $product ? ' aria-current="page"' : '',
+			esc_html( $label ),
+			esc_html( (string) ( isset( $product_counts[ $key ] ) ? $product_counts[ $key ] : 0 ) )
+		);
 	}
 
 	// Anchors, not the design system's buttons. Each tab is a real URL somebody
@@ -162,8 +250,9 @@ function blueworx_render_guides_page() {
 	foreach ( $tabs as $id => $label ) {
 		$url = add_query_arg(
 			array(
-				'page' => 'blueworx-guides',
-				'tab'  => $id,
+				'page'    => 'blueworx-guides',
+				'product' => $product,
+				'tab'     => $id,
 			),
 			admin_url( 'admin.php' )
 		);
@@ -185,8 +274,11 @@ function blueworx_render_guides_page() {
 	// flex row (main plus sidebar), so they have to share a .bw-panels column or
 	// the tabs become a narrow left-hand rail.
 	printf(
-		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-tabs bw-tabs--inset bw-tabs--drag" aria-label="%1$s" data-blueworx-guide-tabs>%2$s</nav>',
+		'<div class="bw-page__body"><div class="bw-panels"><nav class="bw-prodtabs bw-prodtabs--inset" aria-label="%1$s" data-blueworx-guide-products><span class="bw-prodtabs__label">%2$s</span>%3$s</nav><nav class="bw-tabs bw-tabs--inset bw-tabs--drag" aria-label="%4$s" data-blueworx-guide-tabs>%5$s</nav>',
 		esc_attr__( 'Guide sections', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Section:', 'blueworx-labs-wordpress' ),
+		wp_kses( $product_html, blueworx_ds_allowed_html() ),
+		esc_attr__( 'Guide topics', 'blueworx-labs-wordpress' ),
 		wp_kses( $tab_html, blueworx_ds_allowed_html() )
 	);
 
@@ -198,7 +290,7 @@ function blueworx_render_guides_page() {
 	$sections = blueworx_get_feature_sections();
 
 	foreach ( $guides as $guide ) {
-		if ( $guide['tab'] !== $active ) {
+		if ( $guide['product'] !== $product || $guide['tab'] !== $active ) {
 			continue;
 		}
 
@@ -226,7 +318,24 @@ function blueworx_render_guides_page() {
 
 		$action = '';
 
-		if ( isset( $sections[ $guide['tab'] ] ) ) {
+		// A guide about a WordPress screen sends you to that screen. A guide
+		// about one of our functions sends you to its section on Enhancements.
+		$screens = array(
+			'wp-writing' => 'edit.php',
+			'wp-media'   => 'upload.php',
+			'wp-people'  => 'users.php',
+			'wp-upkeep'  => 'site-health.php',
+		);
+
+		if ( isset( $screens[ $guide['tab'] ] ) ) {
+			$action = blueworx_ds_button(
+				array(
+					'label' => __( 'Open the screen', 'blueworx-labs-wordpress' ),
+					'icon'  => 'arrow-right',
+					'href'  => admin_url( $screens[ $guide['tab'] ] ),
+				)
+			);
+		} elseif ( isset( $sections[ $guide['tab'] ] ) ) {
 			$action = blueworx_ds_button(
 				array(
 					'label' => sprintf(
