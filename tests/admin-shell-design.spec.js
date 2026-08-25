@@ -119,7 +119,7 @@ test.describe('the admin shell as designed', () => {
     await page.goto(ENHANCEMENTS);
 
     const bar = await page.evaluate(() => {
-      const found = document.querySelector('.bw-savebar');
+      const found = document.querySelector('.bw-page .bw-savebar');
       const page_ = document.querySelector('.bw-page');
 
       if (!found || !page_) {
@@ -129,17 +129,45 @@ test.describe('the admin shell as designed', () => {
       const a = found.getBoundingClientRect();
       const b = page_.getBoundingClientRect();
 
+      // The View as role bar is fixed across the bottom on every admin screen
+      // when that feature is on, so the floor is its top edge, not the window's.
+      const roleBar = document.querySelector('.blueworx-view-as');
+      const floor = roleBar ? roleBar.getBoundingClientRect().top : window.innerHeight;
+
       return {
         left: a.left - b.left,
         right: b.right - a.right,
-        fromBottom: window.innerHeight - a.bottom,
+        fromFloor: floor - a.bottom,
       };
     });
 
     expect(bar, 'no save bar on Enhancements').not.toBeNull();
     expect(bar.left, 'the save bar is inset from the left').toBeLessThanOrEqual(1);
     expect(bar.right, 'the save bar is inset from the right').toBeLessThanOrEqual(1);
-    expect(bar.fromBottom, 'the save bar floats short of the bottom').toBeLessThanOrEqual(2);
+    expect(bar.fromFloor, 'the save bar floats short of the bottom').toBeLessThanOrEqual(2);
+  });
+
+  // The screen now runs to the bottom edge of the window, and the View as role
+  // bar is fixed there and painted above everything. Left to itself it covers
+  // the save bar completely and Save cannot be clicked at all.
+  test('the role bar does not cover the save button', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await login(page);
+    await page.goto(ENHANCEMENTS);
+
+    const roleBar = page.locator('.blueworx-view-as');
+    test.skip((await roleBar.count()) === 0, 'View as role is switched off on this site.');
+
+    const save = page.locator('.bw-page .bw-savebar').getByRole('button', { name: 'Save Changes' });
+    const a = await save.boundingBox();
+    const b = await roleBar.boundingBox();
+
+    expect(a, 'no Save Changes button on Enhancements').not.toBeNull();
+    expect(a.y + a.height, 'the role bar overlaps the save button').toBeLessThanOrEqual(b.y + 1);
+
+    // And the button really is reachable, which is what the overlap cost.
+    await expect(save).toBeVisible();
+    await save.click({ trial: true, timeout: 5000 });
   });
 });
 

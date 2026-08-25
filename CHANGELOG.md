@@ -13,7 +13,9 @@ versioning.
   column with the rest of the screen left empty. Enhancements stopped
   two-thirds of the way across. All of them run the full width now.
 - **The Save bar sits on the bottom of the window** and spans it, instead of
-  floating short of the bottom with a gap underneath.
+  floating short of the bottom with a gap underneath. Where the “View as role”
+  bar is switched on it now sits just above it, rather than underneath it where
+  Save could not be clicked at all.
 - **Warnings from other plugins no longer split the page title in half.** They
   appear under the heading, where they belong.
 - **Buttons at the top of a screen line up with its right edge**, on a row of

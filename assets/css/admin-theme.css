@@ -22,7 +22,12 @@
 	   the rest of the window is. Below 783px that is WordPress's own admin bar;
 	   above it, our top bar has replaced it. */
 	--bwt-shell-top: 46px;
-	--bwt-savebar-h: 68px;
+
+	/* How much room the View as role bar takes across the bottom. It is fixed,
+	   so nothing gets out of its way on its own, and a full-bleed screen runs to
+	   the very bottom edge — without this reservation the bar lands on top of
+	   the page save bar and the Save button cannot be clicked. */
+	--bwt-viewas-h: 73px;
 }
 
 /* ─── Box model ───

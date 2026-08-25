@@ -281,9 +281,24 @@ function blueworx_view_as_render_bar() {
 	// Placement only. Everything this bar looks like now comes from the design
 	// system; what the system cannot know is that this particular bar has to
 	// pin itself over the bottom of whatever screen it lands on.
+	//
+	// And because it is fixed, it takes no room in the flow. A BlueWorx screen
+	// runs to the bottom edge of the window and ends in a save bar of its own,
+	// so the two land on top of each other and the Save button stops being
+	// clickable. The reservation belongs here, with the bar that causes it: it
+	// is printed only when this bar is actually on screen.
+	//
+	// Two rules, because the page save bar is pinned two different ways. It
+	// sticks to the bottom of the window while there is more page below, so it
+	// needs an offset; and it comes to rest at the end of the screen once you
+	// reach the bottom, so the screen needs to end that much higher. Padding on
+	// the column does neither — the column is sized by a min-height, so padding
+	// just grows it downwards and nothing moves.
 	?>
 	<style>
 		.blueworx-view-as{position:fixed;left:0;right:0;bottom:0;z-index:99999;}
+		body.bw-fullbleed .wrap.bw-page{margin-bottom:var(--bwt-viewas-h,73px);}
+		body.bw-fullbleed .bw-page .bw-savebar{bottom:var(--bwt-viewas-h,73px);}
 	</style>
 	<?php
 }

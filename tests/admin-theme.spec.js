@@ -347,9 +347,27 @@ test.describe('BlueWorx admin theme', () => {
     await expect(card).toBeVisible();
     await expect(page.locator('.bw-admin .bw-card .bw-card')).toHaveCount(0);
 
-    // And a card must be constrained, not stretched edge-to-edge at 1600px.
-    const box = await card.boundingBox();
-    expect(box.width).toBeLessThan(1300);
+    // And a card is inset from the edges of the screen rather than running
+    // edge-to-edge. It used to be checked as a width under 1300px, which was
+    // really testing the 760px column these screens were pinned to; the screens
+    // fill the width now, so the gutter is the thing that actually holds.
+    const inset = await page.evaluate(() => {
+      const el = document.querySelector(".bw-admin .bw-card");
+      const shell = document.querySelector(".bw-page");
+
+      if (!el || !shell) {
+        return null;
+      }
+
+      const a = el.getBoundingClientRect();
+      const b = shell.getBoundingClientRect();
+
+      return { left: a.left - b.left, right: b.right - a.right };
+    });
+
+    expect(inset, "no card inside .bw-page").not.toBeNull();
+    expect(inset.left, "the card runs to the left edge").toBeGreaterThanOrEqual(8);
+    expect(inset.right, "the card runs to the right edge").toBeGreaterThanOrEqual(8);
   });
 
   test('sidebar has a Log Out row with a nonced URL', async ({ page }) => {
