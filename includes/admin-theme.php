@@ -1208,10 +1208,55 @@ function blueworx_core_screen_header_html() {
 		return '';
 	}
 
-	$capability = isset( $screen->capability ) ? (string) $screen->capability : '';
-
 	return '<p class="bw-pagehead__eyebrow">' . esc_html( $eyebrow ) . '</p>'
-		. blueworx_ds_page_access( $capability, 'screen:' . sanitize_key( (string) $screen->id ) );
+		. blueworx_ds_page_access(
+			blueworx_core_screen_capability( $screen ),
+			'screen:' . sanitize_key( (string) $screen->id )
+		);
+}
+
+/**
+ * The capability a screen was registered with.
+ *
+ * WP_Screen does not carry one — it knows what the screen IS, not who may see
+ * it. The menu registry does: every entry in $menu and $submenu holds its
+ * capability at index 1, which is the same value WordPress itself checks before
+ * letting somebody load the page.
+ *
+ * @param WP_Screen $screen Current screen.
+ * @return string Capability, or an empty string when the screen has no menu entry.
+ */
+function blueworx_core_screen_capability( $screen ) {
+	global $menu, $submenu;
+
+	$file   = isset( $GLOBALS['pagenow'] ) ? (string) $GLOBALS['pagenow'] : '';
+	$parent = blueworx_core_screen_menu_slug( $screen );
+
+	// Submenus first: a screen nested under another is registered with its own
+	// capability, which is often narrower than its parent's.
+	foreach ( (array) $submenu as $entries ) {
+		foreach ( (array) $entries as $entry ) {
+			if ( ! isset( $entry[2], $entry[1] ) ) {
+				continue;
+			}
+
+			if ( $entry[2] === $parent || ( '' !== $file && $entry[2] === $file ) ) {
+				return (string) $entry[1];
+			}
+		}
+	}
+
+	foreach ( (array) $menu as $entry ) {
+		if ( ! isset( $entry[2], $entry[1] ) ) {
+			continue;
+		}
+
+		if ( $entry[2] === $parent ) {
+			return (string) $entry[1];
+		}
+	}
+
+	return '';
 }
 
 /**
