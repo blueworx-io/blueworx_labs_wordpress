@@ -21,7 +21,6 @@ versioning.
   items are in it.
 - **The two reference screens are titled the way the designs title them.**
 
-## [1.61.10] - 2026-08-25
 ## [1.61.11] - 2026-08-25
 
 ### Added

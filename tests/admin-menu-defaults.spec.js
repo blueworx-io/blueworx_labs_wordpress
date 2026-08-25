@@ -196,7 +196,7 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     const second = await rows.nth(1).getAttribute('data-slug');
 
     await rows.nth(1).locator('button.bw-menu-editor-up').click();
-    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
 
     // Reloaded from the saved option, not from whatever the page still had in
@@ -207,7 +207,7 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
 
     // Put it back, and confirm the restore landed rather than assuming it.
     await rows.nth(1).locator('button.bw-menu-editor-up').click();
-    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
     await page.goto(EDIT_MENU_PATH);
     await expect(rows.first()).toHaveAttribute('data-slug', first);
@@ -280,7 +280,7 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
       item.dispatchEvent(new Event('drop', { bubbles: true }));
     });
 
-    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
 
     await page.goto('/wp-admin/index.php');
@@ -310,7 +310,7 @@ test.describe('BlueWorx default admin-menu arrangement', () => {
     // reducedMotion in playwright.config.js is silently ignored. An honest click
     // works here now, and if this ever hangs again it is a real regression and
     // must not be forced away.
-    await page.getByRole('button', { name: 'Save Menu Settings' }).click();
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(page.locator('.bw-notice--success')).toContainText('Menu settings saved');
 
     await page.goto('/wp-admin/index.php');
