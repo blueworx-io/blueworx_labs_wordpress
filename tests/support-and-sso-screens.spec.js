@@ -48,12 +48,16 @@ test.describe('Support access', () => {
     await page.goto(SUPPORT);
 
     const own = page.locator('[data-testid="bw-support-feature"]');
-    await expect(own).toBeVisible();
+    await expect(own).toBeAttached();
+
+    // The input sits behind its own track, which is how every switch in the
+    // design system is drawn — click the label, not the box.
+    const flip = () => page.locator('label.bw-switch:has([data-testid="bw-support-feature"])').click();
 
     const wasOn = await own.isChecked();
 
     try {
-      await own.setChecked(!wasOn);
+      await flip();
       await page.getByRole('button', { name: 'Save', exact: true }).click();
 
       await page.goto(SETTINGS);
@@ -64,7 +68,7 @@ test.describe('Support access', () => {
       await page.goto(SUPPORT);
       const now = page.locator('[data-testid="bw-support-feature"]');
       if ((await now.count()) && (await now.isChecked()) !== wasOn) {
-        await now.setChecked(wasOn);
+        await flip();
         await page.getByRole('button', { name: 'Save', exact: true }).click();
       }
     }
