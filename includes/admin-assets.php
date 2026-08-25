@@ -151,10 +151,37 @@ function blueworx_enqueue_admin_design_system( $hook_suffix ) {
 	}
 
 	blueworx_enqueue_admin_design_style();
+	blueworx_enqueue_admin_design_icons();
 
-	// Icons are inlined as SVG by the design system's own module, which upgrades
-	// any [data-lucide] element. Shipped as a module because that is how the
-	// system publishes it; the markup degrades to an empty span without it.
+	// The "+N more" dropdown on a role list. Loaded with the system rather than
+	// per screen: a page header, a guide card and the Enhancements panels all
+	// render role lists, and the button used to be wired up on Guides alone.
+	wp_enqueue_script(
+		'blueworx-role-pills',
+		BLUEWORX_LABS_URL . 'assets/js/role-pills.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/role-pills.js' ),
+		true
+	);
+}
+add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_design_system' );
+
+/**
+ * Enqueues the design system's icon module.
+ *
+ * Icons are inlined as SVG by the system's own module, which upgrades any
+ * [data-lucide] element. Shipped as a module because that is how the system
+ * publishes it; the markup degrades to an empty span without it.
+ *
+ * Its own function because two callers need it. The screens that load the whole
+ * design system are one; the admin re-skin is the other — its top bar renders on
+ * every admin screen and puts an icon in the breadcrumb, and on the screens that
+ * do not load the system that icon was an empty span, so the site name and the
+ * screen name ran together with no divider between them.
+ *
+ * @return void
+ */
+function blueworx_enqueue_admin_design_icons() {
 	wp_enqueue_script(
 		'blueworx-admin-design-icons',
 		BLUEWORX_LABS_URL . 'assets/js/blueworx-admin-design-icons.js',
@@ -163,7 +190,6 @@ function blueworx_enqueue_admin_design_system( $hook_suffix ) {
 		true
 	);
 }
-add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_design_system' );
 
 /**
  * Serves the icon module as a real ES module.

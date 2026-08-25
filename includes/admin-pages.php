@@ -423,7 +423,7 @@ function blueworx_render_additions_page() {
 		array(
 			__( 'Role pill', 'blueworx-labs-wordpress' ),
 			__( 'Guides and page headers both have to say who can do a thing, and a section can carry eight roles.', 'blueworx-labs-wordpress' ),
-			__( 'Resting, Administrator, "+N more", expanded', 'blueworx-labs-wordpress' ),
+			__( 'Resting, Administrator, "+N more", dropdown open', 'blueworx-labs-wordpress' ),
 		),
 		array(
 			__( 'Page access row', 'blueworx-labs-wordpress' ),

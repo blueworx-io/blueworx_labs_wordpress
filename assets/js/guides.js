@@ -1,41 +1,11 @@
 /**
  * The two bits of the Guides screen that need a pointer.
  *
- * Both degrade to nothing: the tabs are real links that scroll normally without
- * this file, and the role list renders its full set server-side with the extra
- * pills hidden — so with the script absent you get every role rather than a
- * "+2 more" button that does nothing.
+ * Degrades to nothing: the tabs are real links that scroll normally without this
+ * file, and every topic's cards are already on the page.
  */
 (function () {
   'use strict';
-
-  /* ─── Role pills ─── */
-
-  document.addEventListener('click', function (event) {
-    var button = event.target.closest('[data-blueworx-roles-more]');
-
-    if (!button) {
-      return;
-    }
-
-    var group = button.closest('[data-blueworx-roles]');
-
-    if (!group) {
-      return;
-    }
-
-    var expanded = 'true' === button.getAttribute('aria-expanded');
-    var hidden = group.querySelectorAll('[data-blueworx-role-extra]');
-
-    Array.prototype.forEach.call(hidden, function (pill) {
-      pill.hidden = expanded;
-    });
-
-    button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-    button.textContent = expanded
-      ? button.getAttribute('data-more-label')
-      : button.getAttribute('data-fewer-label');
-  });
 
   /* ─── Drag-scrollable tabs ─── */
 

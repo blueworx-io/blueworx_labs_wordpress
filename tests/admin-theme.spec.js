@@ -127,6 +127,22 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('.bw-user-menu a', { hasText: 'Log Out' })).toBeVisible();
   });
 
+  test('the breadcrumb keeps its divider on a WordPress screen', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await login(page);
+
+    // Tools, not one of ours: the divider is a design-system icon, and the icon
+    // module used to be loaded on BlueWorx screens only — so everywhere else it
+    // was an empty span and the site name ran straight into the screen name.
+    await page.goto('/wp-admin/tools.php');
+
+    const divider = page.locator('.bw-topbar-crumb [data-lucide="chevron-right"] svg');
+    await expect(divider).toHaveCount(1);
+
+    const drawn = await divider.evaluate((el) => el.getBoundingClientRect().width);
+    expect(drawn, 'the divider is in the markup but has no size').toBeGreaterThan(4);
+  });
+
   test('critical layout CSS is inlined in the head before the stylesheet loads', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await login(page);

@@ -12,8 +12,9 @@
 
 /* ─── Role pill ───
    Who can do the thing. Guides put them in a card footer, page headers put them
-   beside the title, and both cap the list at three with an expander — a section
-   can carry eight roles and a wrapped wall of pills buries the guide itself. */
+   beside the title, and both show three and hang the rest in a dropdown — a
+   section can carry eight roles and a wrapped wall of pills buries the guide
+   itself. */
 .bw-rolepills {
 	display: flex;
 	align-items: center;
@@ -36,8 +37,8 @@
 	white-space: nowrap;
 }
 
-/* A class with its own display beats the browser's [hidden] rule, so the
-   overflow pills need this or every role renders and the expander is a lie. */
+/* A class with its own display beats the browser's [hidden] rule, so both the
+   dropdown and anything hidden inside it need saying twice. */
 .bw-rolepill[hidden] {
 	display: none;
 }
@@ -63,6 +64,37 @@
 .bw-rolepill--more:focus-visible {
 	background: var(--bw-brand-wash);
 	border-style: solid;
+}
+
+/* ─── Overflow roles ───
+   The roles past the third open in a panel under the button rather than
+   unfolding into the row: a page header's pills sit beside the title, and
+   growing the row sideways pushed the title along with it. */
+.bw-rolemore {
+	position: relative;
+	display: inline-flex;
+}
+
+.bw-roledrop {
+	position: absolute;
+	top: calc(100% + var(--bw-space-3));
+	right: 0;
+	z-index: 30;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bw-space-3);
+	width: max-content;
+	max-width: 240px;
+	padding: var(--bw-space-5);
+	border-radius: var(--bw-radius-md);
+	background: var(--bw-surface-card);
+	border: 1px solid var(--bw-border);
+	box-shadow: var(--bw-shadow-overlay);
+}
+
+.bw-roledrop[hidden] {
+	display: none;
 }
 
 /* ─── Page header rows ───
