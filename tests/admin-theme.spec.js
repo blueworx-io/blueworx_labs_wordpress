@@ -83,7 +83,7 @@ test.describe('BlueWorx admin theme', () => {
 
     await page.goto(DASH_PATH);
     await expect(page.locator('link#blueworx-admin-theme-css')).toHaveCount(1);
-    await expect(page.locator('.bw-stat-grid')).toBeVisible();
+    await expect(page.locator('#blueworx_dashboard_stats .bw-stats')).toBeVisible();
 
     // Turn it OFF — stylesheet, hero tiles, and custom chrome disappear.
     // Flagged before the save, not after: if the save itself is what fails, the
@@ -95,7 +95,7 @@ test.describe('BlueWorx admin theme', () => {
 
     await page.goto(DASH_PATH);
     await expect(page.locator('link#blueworx-admin-theme-css')).toHaveCount(0);
-    await expect(page.locator('.bw-stat-grid')).toHaveCount(0);
+    await expect(page.locator('#blueworx_dashboard_stats .bw-stats')).toHaveCount(0);
     await expect(page.locator('.bw-topbar')).toHaveCount(0);
 
     // Restore ON so the test is idempotent across runs. The afterEach is the
@@ -161,7 +161,7 @@ test.describe('BlueWorx admin theme', () => {
     await page.goto(DASH_PATH);
 
     // The BlueWorx hero tiles (our "At a Glance") are part of the default layout.
-    await expect(page.locator('.bw-stat-grid')).toBeVisible();
+    await expect(page.locator('#blueworx_dashboard_stats .bw-stats')).toBeVisible();
 
     // Quick Draft is hidden by default via default_hidden_meta_boxes. toBeHidden
     // passes whether the box is display:none or absent. This asserts the default
@@ -962,5 +962,43 @@ test.describe('BlueWorx admin theme', () => {
     const box = await layout.boundingBox();
     expect(box.x).toBe(0);
     expect(box.y).toBe(0);
+  });
+
+  test('the comments tile says so when comments are switched off', async ({ page }) => {
+    // A zero on the comments tile means one of two things — nobody has
+    // commented, or comments are off entirely. The footnote is what tells them
+    // apart, so it has to track the function rather than the count.
+    await login(page);
+
+    let commentsOff = null;
+
+    try {
+      await page.goto(SETTINGS_PATH);
+      await openSectionFor(page, 'comments');
+      await setFeature(page, 'comments', true);
+      commentsOff = true;
+      await saveSettings(page);
+
+      await page.goto(DASH_PATH);
+      const tile = page.locator('#blueworx_dashboard_stats .bw-stat', { hasText: 'Comments' });
+      await expect(tile.locator('.bw-stat__foot')).toHaveText('Comments are switched off');
+
+      await page.goto(SETTINGS_PATH);
+      await openSectionFor(page, 'comments');
+      await setFeature(page, 'comments', false);
+      commentsOff = false;
+      await saveSettings(page);
+
+      await page.goto(DASH_PATH);
+      await expect(tile.locator('.bw-stat__foot')).toHaveCount(0);
+    } finally {
+      // Never leave the site's comments off because an assertion failed.
+      if (commentsOff) {
+        await page.goto(SETTINGS_PATH);
+        await openSectionFor(page, 'comments');
+        await setFeature(page, 'comments', false);
+        await page.getByRole('button', { name: 'Save Changes' }).click();
+      }
+    }
   });
 });

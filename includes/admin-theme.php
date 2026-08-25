@@ -708,6 +708,10 @@ add_action( 'wp_dashboard_setup', 'blueworx_customise_dashboard', 20 );
 /**
  * Renders the four hero stat tiles with live counts.
  *
+ * The design system's stat card, not tiles of our own: it already has the
+ * label, the figure and the footnote line, and it lays itself out. The tiles
+ * stay links because that is what people use them for.
+ *
  * @return void
  */
 function blueworx_render_dashboard_stats() {
@@ -719,36 +723,55 @@ function blueworx_render_dashboard_stats() {
 	$tiles = array(
 		array(
 			'count' => $posts,
+			'icon'  => 'file-text',
 			'label' => __( 'Posts', 'blueworx-labs-wordpress' ),
 			'url'   => admin_url( 'edit.php' ),
+			'foot'  => '',
 		),
 		array(
 			'count' => $pages,
+			'icon'  => 'file',
 			'label' => __( 'Pages', 'blueworx-labs-wordpress' ),
 			'url'   => admin_url( 'edit.php?post_type=page' ),
+			'foot'  => '',
 		),
 		array(
 			'count' => $comments,
+			'icon'  => 'message-square',
 			'label' => __( 'Comments', 'blueworx-labs-wordpress' ),
 			'url'   => admin_url( 'edit-comments.php' ),
+			// A zero here means one of two very different things. Say which.
+			'foot'  => blueworx_feature_enabled( 'comments' )
+				? __( 'Comments are switched off', 'blueworx-labs-wordpress' )
+				: '',
 		),
 		array(
 			'count' => $attachments,
-			'label' => __( 'Media Items', 'blueworx-labs-wordpress' ),
+			'icon'  => 'image',
+			'label' => __( 'Media items', 'blueworx-labs-wordpress' ),
 			'url'   => admin_url( 'upload.php' ),
+			'foot'  => '',
 		),
 	);
 
-	echo '<div class="bw-stat-grid">';
+	$html = '';
+
 	foreach ( $tiles as $tile ) {
-		printf(
-			'<a class="bw-stat-card" href="%1$s"><div class="bw-stat-num">%2$s</div><div class="bw-stat-label">%3$s</div></a>',
+		$foot = '' !== $tile['foot']
+			? '<p class="bw-stat__foot">' . esc_html( $tile['foot'] ) . '</p>'
+			: '';
+
+		$html .= sprintf(
+			'<a class="bw-stat" href="%1$s"><span class="bw-stat__label">%2$s%3$s</span><div class="bw-stat__row"><p class="bw-stat__value">%4$s</p></div>%5$s</a>',
 			esc_url( $tile['url'] ),
+			blueworx_ds_icon( $tile['icon'], 14 ),
+			esc_html( $tile['label'] ),
 			esc_html( number_format_i18n( $tile['count'] ) ),
-			esc_html( $tile['label'] )
+			$foot
 		);
 	}
-	echo '</div>';
+
+	echo wp_kses( '<div class="bw-stats">' . $html . '</div>', blueworx_ds_allowed_html() );
 }
 
 /**
