@@ -38,6 +38,7 @@ function blueworx_open_admin_page( $args ) {
 	$args = wp_parse_args(
 		$args,
 		array(
+			'eyebrow' => 'BlueWorx',
 			'title'   => '',
 			'lede'    => '',
 			'actions' => '',
@@ -49,7 +50,7 @@ function blueworx_open_admin_page( $args ) {
 	echo blueworx_ds_screen_open( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		blueworx_ds_page_header(
 			array(
-				'eyebrow'    => __( 'BlueWorx', 'blueworx-labs-wordpress' ),
+				'eyebrow'    => $args['eyebrow'],
 				'title'      => $args['title'],
 				'lede'       => $args['lede'],
 				'actions'    => $args['actions'],
@@ -288,8 +289,9 @@ function blueworx_embedded_control_map() {
 function blueworx_render_embedded_page() {
 	blueworx_open_admin_page(
 		array(
-			'title' => __( 'Embedded controls', 'blueworx-labs-wordpress' ),
-			'lede'  => __( 'Where this plugin puts things inside WordPress\'s own screens. Switch a function off and its control goes with it.', 'blueworx-labs-wordpress' ),
+			'eyebrow' => __( 'Reference', 'blueworx-labs-wordpress' ),
+			'title'   => __( 'Controls inside WordPress screens', 'blueworx-labs-wordpress' ),
+			'lede'    => __( 'Where this plugin puts things inside WordPress\'s own screens. Switch a function off and its control goes with it.', 'blueworx-labs-wordpress' ),
 		)
 	);
 
@@ -334,10 +336,9 @@ function blueworx_render_embedded_page() {
 	// Not wp_kses(): the badges carry attributes the allow-list does not know.
 	echo blueworx_ds_card( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		array(
-			'eyebrow' => __( 'Reference', 'blueworx-labs-wordpress' ),
-			'title'   => __( 'Controls inside WordPress screens', 'blueworx-labs-wordpress' ),
-			'body'    => $table,
-			'flush'   => true,
+			'title' => __( 'Where they appear', 'blueworx-labs-wordpress' ),
+			'body'  => $table,
+			'flush' => true,
 		)
 	);
 
@@ -352,8 +353,9 @@ function blueworx_render_embedded_page() {
 function blueworx_render_additions_page() {
 	blueworx_open_admin_page(
 		array(
-			'title' => __( 'System additions', 'blueworx-labs-wordpress' ),
-			'lede'  => __( 'What these screens needed that the shared design system did not already have. Anything listed here should go back into the system.', 'blueworx-labs-wordpress' ),
+			'eyebrow' => __( 'Handover', 'blueworx-labs-wordpress' ),
+			'title'   => __( 'Added to the design system', 'blueworx-labs-wordpress' ),
+			'lede'    => __( 'What these screens needed that the shared design system did not already have. Anything listed here should go back into the system.', 'blueworx-labs-wordpress' ),
 		)
 	);
 
@@ -378,11 +380,7 @@ function blueworx_render_additions_page() {
 			__( 'Two equal columns from 1000px, with card footers lining up.', 'blueworx-labs-wordpress' ),
 			__( 'One column, two columns', 'blueworx-labs-wordpress' ),
 		),
-		array(
-			__( 'Function card', 'blueworx-labs-wordpress' ),
-			__( 'A switch with its own settings underneath, revealed only while it is on.', 'blueworx-labs-wordpress' ),
-			__( 'Off, on, on with settings', 'blueworx-labs-wordpress' ),
-		),
+
 		array(
 			__( 'Side nav', 'blueworx-labs-wordpress' ),
 			__( 'The admin menu as the design draws it: groups, counts and sub-items.', 'blueworx-labs-wordpress' ),
@@ -416,7 +414,6 @@ function blueworx_render_additions_page() {
 
 	echo blueworx_ds_card( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		array(
-			'eyebrow' => __( 'Handover', 'blueworx-labs-wordpress' ),
 			'title'   => __( 'New components', 'blueworx-labs-wordpress' ),
 			'actions' => blueworx_ds_badge( (string) count( $additions ), 'accent' ),
 			'body'    => $table,
@@ -427,12 +424,13 @@ function blueworx_render_additions_page() {
 	echo wp_kses(
 		blueworx_ds_card(
 			array(
-				'eyebrow' => __( 'Handover', 'blueworx-labs-wordpress' ),
-				'title'   => __( 'Nothing else was invented', 'blueworx-labs-wordpress' ),
+				'title' => __( 'Nothing else was invented', 'blueworx-labs-wordpress' ),
 				'body'    => '<p class="bw-field__help">'
 					. esc_html__( 'Every other control on these screens is stock design system — page header, card, settings card, field, switch, checkbox, radio, select, notice, empty state, badge, chip, table, description list and tabs.', 'blueworx-labs-wordpress' )
 					. '</p><p class="bw-field__help">'
 					. esc_html__( 'The stylesheet is taken verbatim from the shared system. Anything in the table above is a local addition and should be folded back in, or the next sync will drop it.', 'blueworx-labs-wordpress' )
+					. '</p><p class="bw-field__help">'
+					. esc_html__( 'The function card, the section header, the two-column settings row and the product tab row started here and now live in the shared system, so they are no longer listed above.', 'blueworx-labs-wordpress' )
 					. '</p>',
 			)
 		),

@@ -157,6 +157,36 @@ if ( blueworx_feature_enabled( 'menu_editor' ) ) {
 }
 
 /**
+ * Puts the sidebar back the way WordPress left it.
+ *
+ * Deletes the three options rather than writing defaults into them: with
+ * nothing saved, the grouping rules and WordPress's own order take over again,
+ * which is the same state a site that has never touched this screen is in.
+ *
+ * @return void
+ */
+function blueworx_reset_edit_menu_page() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
+	}
+
+	check_admin_referer( 'blueworx_reset_admin_menu_order' );
+
+	delete_option( 'blueworx_admin_menu_order' );
+	delete_option( 'blueworx_hidden_admin_menu_items' );
+	delete_option( 'blueworx_admin_menu_groups' );
+	delete_option( 'blueworx_admin_menu_customized' );
+
+	set_transient( 'blueworx_admin_menu_order_notice', __( 'The sidebar is back to the WordPress order.', 'blueworx-labs-wordpress' ), 30 );
+
+	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-edit-menu' ) );
+	exit;
+}
+if ( blueworx_feature_enabled( 'menu_editor' ) ) {
+	add_action( 'admin_post_blueworx_reset_admin_menu_order', 'blueworx_reset_edit_menu_page' );
+}
+
+/**
  * Gets all roles that can be selected for site protection.
  *
  * @return array Role labels keyed by role slug.
@@ -1088,8 +1118,9 @@ function blueworx_render_cache_page() {
 		blueworx_ds_screen_open(
 			blueworx_ds_page_header(
 				array(
-					'title' => __( 'Cache', 'blueworx-labs-wordpress' ),
-					'lede'  => __( 'What gets refreshed on its own, and a button for when you would rather not wait.', 'blueworx-labs-wordpress' ),
+					'title'      => __( 'Cache', 'blueworx-labs-wordpress' ),
+					'lede'       => __( 'Refresh the cache by hand when something looks stale on the front of the site.', 'blueworx-labs-wordpress' ),
+					'capability' => 'manage_options',
 				)
 			)
 		)
@@ -1109,7 +1140,7 @@ function blueworx_render_cache_page() {
 	// Status reads as a description list rather than a form table: none of it is
 	// editable, and the old two-column table implied it was.
 	$rows = array(
-		__( 'Automatic refresh', 'blueworx-labs-wordpress' ) => blueworx_ds_badge( __( 'On', 'blueworx-labs-wordpress' ), 'success', true )
+		__( 'Automatic refresh', 'blueworx-labs-wordpress' ) => blueworx_ds_badge( __( 'Enabled', 'blueworx-labs-wordpress' ), 'success', true )
 			. '<p class="bw-field__help">'
 			. esc_html__( 'When a page or post changes, this plugin refreshes the edited page, the homepage, and the listing pages it appears on.', 'blueworx-labs-wordpress' )
 			. '</p>',
@@ -1117,7 +1148,9 @@ function blueworx_render_cache_page() {
 			$breeze_active
 				? __( 'Detected', 'blueworx-labs-wordpress' )
 				: __( 'Not detected', 'blueworx-labs-wordpress' ),
-			$breeze_active ? 'success' : 'neutral',
+			// Amber, not grey: a missing Breeze is not neutral information — it is
+			// the reason a refresh clears less than somebody expects it to.
+			$breeze_active ? 'success' : 'warning',
 			true
 		)
 			. '<p class="bw-field__help">'
@@ -1141,14 +1174,36 @@ function blueworx_render_cache_page() {
 		)
 	);
 
+	$last = blueworx_cache_last_refreshed_label();
+
+	// The card foot pushes its first child hard left, so the hint sits opposite
+	// the button rather than beside it.
+	$footer = sprintf(
+		'<span class="bw-savebar__hint" data-testid="bw-cache-last">%s</span>',
+		'' !== $last
+			? esc_html(
+				sprintf(
+					/* translators: %s: how long ago, e.g. "5 mins ago". */
+					__( 'Last refreshed %s', 'blueworx-labs-wordpress' ),
+					$last
+				)
+			)
+			: esc_html__( 'Never refreshed by hand', 'blueworx-labs-wordpress' )
+	) . $form;
+
 	echo wp_kses(
-		'<div class="bw-page__body"><div class="bw-panels">'
+		'<div class="bw-page__body bw-page__body--single"><div class="bw-panels">'
 			. blueworx_ds_card(
 				array(
-					'eyebrow' => __( 'Cache', 'blueworx-labs-wordpress' ),
-					'title'   => __( 'Refreshing', 'blueworx-labs-wordpress' ),
-					'body'    => blueworx_ds_description_list( $rows ),
-					'footer'  => $form,
+					'title'  => __( 'Status', 'blueworx-labs-wordpress' ),
+					'body'   => blueworx_ds_description_list( $rows ),
+					'footer' => $footer,
+				)
+			)
+			. blueworx_ds_notice(
+				array(
+					'tone' => 'info',
+					'text' => __( 'A refresh clears every cached page. The first visitor to each page waits a moment longer while it is rebuilt.', 'blueworx-labs-wordpress' ),
 				)
 			)
 			. '</div></div>',
@@ -1220,8 +1275,19 @@ function blueworx_render_edit_menu_page() {
 		blueworx_ds_screen_open(
 			blueworx_ds_page_header(
 				array(
-					'title' => __( 'Edit Menu', 'blueworx-labs-wordpress' ),
-					'lede'  => __( 'Drag an item into another group to move it, or use the arrows. Anything left in Hidden stays out of the sidebar.', 'blueworx-labs-wordpress' ),
+					'title'      => __( 'Edit Menu', 'blueworx-labs-wordpress' ),
+					'lede'       => __( 'Drag an item into another group to move it, or use the arrows. Anything left in Hidden stays out of the sidebar.', 'blueworx-labs-wordpress' ),
+					'capability' => 'manage_options',
+					'actions'    => blueworx_ds_button(
+						array(
+							'label' => __( 'Reset to WordPress order', 'blueworx-labs-wordpress' ),
+							'icon'  => 'rotate-ccw',
+							'href'  => wp_nonce_url(
+								add_query_arg( 'action', 'blueworx_reset_admin_menu_order', admin_url( 'admin-post.php' ) ),
+								'blueworx_reset_admin_menu_order'
+							),
+						)
+					),
 				)
 			)
 		)
@@ -1263,7 +1329,14 @@ function blueworx_render_edit_menu_page() {
 			. '</p>'
 			. blueworx_ds_button(
 				array(
-					'label'   => __( 'Save Menu Settings', 'blueworx-labs-wordpress' ),
+					'label'   => __( 'Discard changes', 'blueworx-labs-wordpress' ),
+					'variant' => 'ghost',
+					'href'    => admin_url( 'admin.php?page=blueworx-edit-menu' ),
+				)
+			)
+			. blueworx_ds_button(
+				array(
+					'label'   => __( 'Save changes', 'blueworx-labs-wordpress' ),
 					'variant' => 'primary',
 					'type'    => 'submit',
 				)
@@ -1299,12 +1372,23 @@ function blueworx_render_menu_editor_group( $group, $label, $items ) {
 
 		$row = '<span class="bw-repeater__grip">' . blueworx_ds_icon( 'grip-vertical', 16 ) . '</span>';
 
+		// The menu's own icon, so a row is recognisable as the thing it moves
+		// rather than as a line of text. Only mapped core slugs have one; a
+		// third-party menu simply has no glyph here.
+		$menu_icon = blueworx_get_admin_menu_icon( $slug, 18 );
+
+		if ( '' !== $menu_icon ) {
+			$row .= '<span class="bw-icon bw-icon--18">'
+				. wp_kses( $menu_icon, blueworx_get_svg_kses_allowlist() )
+				. '</span>';
+		}
+
 		$row .= '<div class="bw-repeater__fields"><span class="bw-menu-editor-label">' . esc_html( $item_label ) . '</span></div>';
 
 		// Locked items are refused by the save handler, so say so here rather
 		// than letting someone drag one into Hidden and wonder why it came back.
 		if ( $is_locked ) {
-			$row .= blueworx_ds_badge( __( 'Always shown', 'blueworx-labs-wordpress' ), 'neutral' );
+			$row .= blueworx_ds_badge( __( 'Locked', 'blueworx-labs-wordpress' ), 'neutral', false, 'lock' );
 		}
 
 		$row .= blueworx_ds_icon_button(
@@ -1324,6 +1408,29 @@ function blueworx_render_menu_editor_group( $group, $label, $items ) {
 				'label' => sprintf( __( 'Move %s down', 'blueworx-labs-wordpress' ), $item_label ),
 				'size'  => 'sm',
 				'class' => 'bw-menu-editor-down',
+			)
+		);
+
+		// Up and down cross into the next group only once you reach the end of
+		// this one. These two send an item straight there, which is what moving
+		// between groups actually means to the person doing it.
+		$row .= blueworx_ds_icon_button(
+			array(
+				'icon'  => 'chevron-left',
+				/* translators: %s: menu item name. */
+				'label' => sprintf( __( 'Move %s to the previous group', 'blueworx-labs-wordpress' ), $item_label ),
+				'size'  => 'sm',
+				'class' => 'bw-menu-editor-prev',
+			)
+		);
+
+		$row .= blueworx_ds_icon_button(
+			array(
+				'icon'  => 'chevron-right',
+				/* translators: %s: menu item name. */
+				'label' => sprintf( __( 'Move %s to the next group', 'blueworx-labs-wordpress' ), $item_label ),
+				'size'  => 'sm',
+				'class' => 'bw-menu-editor-next',
 			)
 		);
 
@@ -1354,7 +1461,7 @@ function blueworx_render_menu_editor_group( $group, $label, $items ) {
 	$rows .= sprintf(
 		'<p class="bw-repeater__empty bw-menu-editor-empty"%1$s>%2$s</p>',
 		'' === $rows ? '' : ' hidden',
-		esc_html__( 'Drag something here.', 'blueworx-labs-wordpress' )
+		esc_html__( 'Nothing here. Drop an item in, or send one across with the arrows.', 'blueworx-labs-wordpress' )
 	);
 
 	return blueworx_ds_card(
@@ -1363,6 +1470,8 @@ function blueworx_render_menu_editor_group( $group, $label, $items ) {
 				? __( 'Out of the sidebar', 'blueworx-labs-wordpress' )
 				: __( 'Group', 'blueworx-labs-wordpress' ),
 			'title'   => $label,
+			// How many are in here, without counting the rows by eye.
+			'actions' => blueworx_ds_badge( (string) count( $items ), 'neutral' ),
 			'body'    => '<div class="bw-repeater bw-menu-editor-list" role="list">' . $rows . '</div>',
 			'class'   => 'bw-menu-editor-group',
 			'attrs'   => array( 'data-group' => $group ),

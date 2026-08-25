@@ -57,6 +57,8 @@
 		// The "drag something here" line is what gives an empty group enough
 		// height to be a drop target, so it lives inside the list and is hidden
 		// rather than removed once the group has rows.
+		syncGroupButtons();
+
 		editor.querySelectorAll( '.bw-menu-editor-list' ).forEach( function ( list ) {
 			var empty = list.querySelector( '.bw-menu-editor-empty' );
 
@@ -149,18 +151,73 @@
 		syncAll();
 	}
 
-	editor.addEventListener( 'click', function ( event ) {
-		var button = event.target.closest( '.bw-menu-editor-up, .bw-menu-editor-down' );
+	/**
+	 * Sends a row straight to the previous or next group.
+	 *
+	 * Different from move(): up and down only cross a boundary once you have
+	 * reached the end of a group, which means walking a row past every item in
+	 * it. This is what "put this in Content" actually means to somebody.
+	 *
+	 * @param {HTMLElement} item      Row element.
+	 * @param {number}      direction -1 previous group, 1 next group.
+	 */
+	function moveToGroup( item, direction ) {
+		var all = lists();
+		var index = all.indexOf( item.parentElement );
+		var target = all[ index + direction ];
 
-		if ( ! button ) {
+		if ( ! target ) {
+			return;
+		}
+
+		appendRow( target, item );
+		syncAll();
+	}
+
+	/**
+	 * Greys out the moves that would go nowhere.
+	 */
+	function syncGroupButtons() {
+		var all = lists();
+
+		all.forEach( function ( list, index ) {
+			list.querySelectorAll( '.bw-menu-editor-item' ).forEach( function ( item ) {
+				var prev = item.querySelector( '.bw-menu-editor-prev' );
+				var next = item.querySelector( '.bw-menu-editor-next' );
+
+				if ( prev ) {
+					prev.disabled = 0 === index;
+				}
+
+				if ( next ) {
+					next.disabled = index === all.length - 1;
+				}
+			} );
+		} );
+	}
+
+	editor.addEventListener( 'click', function ( event ) {
+		var button = event.target.closest(
+			'.bw-menu-editor-up, .bw-menu-editor-down, .bw-menu-editor-prev, .bw-menu-editor-next'
+		);
+
+		if ( ! button || button.disabled ) {
 			return;
 		}
 
 		event.preventDefault();
 
 		var item = button.closest( '.bw-menu-editor-item' );
+
 		// classList.contains takes a class NAME, not a selector — no leading dot.
-		move( item, button.classList.contains( 'bw-menu-editor-up' ) ? -1 : 1 );
+		if ( button.classList.contains( 'bw-menu-editor-prev' ) ) {
+			moveToGroup( item, -1 );
+		} else if ( button.classList.contains( 'bw-menu-editor-next' ) ) {
+			moveToGroup( item, 1 );
+		} else {
+			move( item, button.classList.contains( 'bw-menu-editor-up' ) ? -1 : 1 );
+		}
+
 		button.focus();
 	} );
 
