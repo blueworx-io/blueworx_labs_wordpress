@@ -667,40 +667,20 @@ div.error {
 	padding: 0;
 }
 
-.bw-stat-grid {
-	display: grid;
-	grid-template-columns: repeat(2, 1fr);
-	gap: var(--bw-space-7);
-}
-
-.bw-stat-card {
-	display: block;
+/* The stat card is the design system's; only the link affordance is ours. The
+   dashboard tiles are anchors so the whole tile is a click target, and the
+   system's card has no link state because on its own screens it is not one.
+   Nothing here restyles the card — it removes the base underline and gives the
+   hover the raised shadow the system already defines. */
+.bw-stats > a.bw-stat {
 	text-decoration: none;
-	background: var(--bw-white);
-	border-radius: var(--bw-radius-lg);
-	box-shadow: var(--bw-shadow-card);
-	padding: var(--bw-space-8);
 	transition: box-shadow .2s ease;
 }
 
-.bw-stat-card:hover,
-.bw-stat-card:focus {
+.bw-stats > a.bw-stat:hover,
+.bw-stats > a.bw-stat:focus-visible {
 	text-decoration: none;
 	box-shadow: var(--bw-shadow-raised);
-}
-
-.bw-stat-num {
-	font-family: var(--bw-font-display);
-	font-weight: 700;
-	font-size: var(--bw-size-h1);
-	line-height: 1.1;
-	color: var(--bw-ink);
-}
-
-.bw-stat-label {
-	font-size: var(--bw-size-body);
-	color: var(--bw-text-muted);
-	margin-top: var(--bw-space-2);
 }
 
 /* ─── Settings-screen containers ───
@@ -978,18 +958,6 @@ body.latepoint-admin #wpcontent {
 @media only screen and (min-width: 783px) {
 	html.wp-toolbar body.latepoint-admin {
 		margin-top: 0;
-	}
-}
-
-@media only screen and (max-width: 1100px) {
-	.bw-stat-grid {
-		grid-template-columns: repeat(2, 1fr);
-	}
-}
-
-@media only screen and (max-width: 782px) {
-	.bw-stat-grid {
-		grid-template-columns: 1fr;
 	}
 }
 

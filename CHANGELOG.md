@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.61.8] - 2026-08-25
+
+### Changed
+- **The dashboard tiles are now the shared design system's**, so they match
+  every other panel rather than being a set of our own. Each tile gains a small
+  icon, and the comments tile now says when comments are switched off — a zero
+  there used to mean either nobody had commented or comments were off, with no
+  way to tell which.
+
 ## [1.61.5] - 2026-08-24
 
 ### Changed
