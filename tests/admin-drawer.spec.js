@@ -77,6 +77,42 @@ test.describe('the admin menu on a phone', () => {
     expect(await overflow(), 'the page scrolls sideways with the drawer open').toBeLessThanOrEqual(1);
   });
 
+  test('an open drawer leaves the top bar whole', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+
+    await page.locator('[data-blueworx-drawer-toggle]').click();
+    await expect(page.locator('html.bw-drawer-open')).toHaveCount(1);
+
+    // The drawer used to run from the very top of the screen and cover the left
+    // of the bar, cutting the site name off mid-word.
+    const clear = await page.evaluate(() => {
+      const bar = document.querySelector('.bw-topbar');
+      const brand = document.querySelector('.bw-brand');
+      const menu = document.getElementById('adminmenumain');
+
+      if (!bar || !brand || !menu) {
+        return null;
+      }
+
+      const bottom = bar.getBoundingClientRect().bottom;
+
+      return {
+        brand: brand.getBoundingClientRect().top >= bottom - 1,
+        menu: menu.getBoundingClientRect().top >= bottom - 1,
+      };
+    });
+
+    expect(clear, 'no drawer chrome to measure').not.toBeNull();
+    expect(clear.brand, 'the drawer head sits over the top bar').toBe(true);
+    expect(clear.menu, 'the drawer panel sits over the top bar').toBe(true);
+
+    // The whole breadcrumb is readable, not clipped by the panel over it.
+    const crumb = page.locator('.bw-topbar-here');
+    await expect(crumb).toBeVisible();
+  });
+
   test('the desktop sidebar is left alone', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await login(page);

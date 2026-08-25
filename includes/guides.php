@@ -761,17 +761,21 @@ function blueworx_guide_read_time( $body ) {
 }
 
 /**
- * Renders a capped list of role pills with an expander.
+ * Renders a capped list of role pills, the rest behind a "+N more" dropdown.
  *
- * The full list is always in the markup — the overflow pills are rendered with
- * `hidden` rather than left out. With the script absent you get every role,
- * which is the honest fallback; leaving them out would give you a "+3 more"
- * button that does nothing.
+ * Three pills, then a button that opens the remainder in a small panel under
+ * itself. It used to unfold them into the row instead, which pushed a page
+ * header's title sideways and wrapped a guide card's footer onto three lines
+ * the moment anybody asked who else could do the thing.
+ *
+ * The overflow roles are always in the markup, and the group still carries the
+ * full list as its title, so with the script absent hovering it still answers
+ * the question rather than leaving a button that does nothing.
  *
  * @param array  $roles Role display names, keyed by slug.
  * @param string $key   Unique key for this list, so two lists on one screen
- *                      expand independently.
- * @param int    $cap   How many to show before the expander.
+ *                      open independently.
+ * @param int    $cap   How many to show before the dropdown.
  * @return string HTML.
  */
 function blueworx_ds_role_pills( $roles, $key, $cap = 3 ) {
@@ -779,33 +783,45 @@ function blueworx_ds_role_pills( $roles, $key, $cap = 3 ) {
 		return '';
 	}
 
-	$names  = array_values( $roles );
-	$slugs  = array_keys( $roles );
-	$hidden = max( 0, count( $names ) - $cap );
-	$pills  = '';
+	$names = array_values( $roles );
+	$slugs = array_keys( $roles );
+	$pills = '';
 
-	foreach ( $names as $index => $name ) {
-		$is_extra = $index >= $cap;
-
+	foreach ( array_slice( $names, 0, $cap ) as $index => $name ) {
 		$pills .= sprintf(
-			'<span class="bw-rolepill%1$s"%2$s>%3$s</span>',
+			'<span class="bw-rolepill%1$s">%2$s</span>',
 			'administrator' === $slugs[ $index ] ? ' bw-rolepill--admin' : '',
-			$is_extra ? ' hidden data-blueworx-role-extra' : '',
 			esc_html( $name )
 		);
 	}
 
-	if ( $hidden > 0 ) {
+	$extra = array_slice( $names, $cap );
+
+	if ( ! empty( $extra ) ) {
 		$more = sprintf(
 			/* translators: %d: how many further roles there are. */
 			__( '+%d more', 'blueworx-labs-wordpress' ),
-			$hidden
+			count( $extra )
 		);
 
+		// Derived from the caller's key rather than counted up, so the same list
+		// gets the same id on every render and two lists on one screen never
+		// collide.
+		$panel_id = 'bw-roledrop-' . substr( md5( $key ), 0, 8 );
+		$hidden   = '';
+
+		foreach ( $extra as $name ) {
+			$hidden .= '<span class="bw-rolepill">' . esc_html( $name ) . '</span>';
+		}
+
 		$pills .= sprintf(
-			'<button type="button" class="bw-rolepill bw-rolepill--more" data-blueworx-roles-more aria-expanded="false" data-more-label="%1$s" data-fewer-label="%2$s">%1$s</button>',
-			esc_attr( $more ),
-			esc_attr__( 'Show fewer', 'blueworx-labs-wordpress' )
+			'<span class="bw-rolemore">'
+				. '<button type="button" class="bw-rolepill bw-rolepill--more" data-blueworx-roles-more aria-expanded="false" aria-haspopup="true" aria-controls="%1$s">%2$s</button>'
+				. '<span class="bw-roledrop" id="%1$s" data-blueworx-roles-extra hidden>%3$s</span>'
+			. '</span>',
+			esc_attr( $panel_id ),
+			esc_html( $more ),
+			$hidden
 		);
 	}
 

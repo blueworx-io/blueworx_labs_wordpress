@@ -1781,6 +1781,11 @@ body.latepoint-admin #wpcontent {
 		left: 0;
 		height: 58px;
 		padding: 0 14px;
+		/* Above the drawer and its scrim. The bar says which site and which
+		   screen you are on, and an open drawer used to cover the left of it and
+		   cut the site name off mid-word. The hamburger staying reachable is the
+		   point rather than a risk: it closes the drawer it opened. */
+		z-index: 9997;
 	}
 
 	html.bw-drawer-ready .bw-topbar-toggle {
@@ -1803,19 +1808,20 @@ body.latepoint-admin #wpcontent {
 		position: fixed;
 		left: 0;
 		width: 264px;
-		/* Above the top bar, not under it. The drawer is one panel running from
-		   the very top of the screen, and the bar it covers carries the hamburger
-		   that opened it — leaving that clickable under an open drawer is how you
-		   get a menu that reopens itself. */
+		/* Under the top bar and below it on the screen. The drawer is a panel
+		   hung from the foot of the bar, so the bar stays whole and readable
+		   with the menu open. */
+		top: 58px;
 		z-index: 9995;
 		transform: translateX(-100%);
 		transition: transform 240ms ease;
 	}
 
 	html.bw-drawer-ready #adminmenumain {
-		top: 0;
 		bottom: 0;
 		overflow-y: auto;
+		/* Room for the brand block, which is a fixed sibling sitting at the head
+		   of the panel rather than a child scrolling with the menu. */
 		padding-top: 58px;
 		background: var(--bw-ink);
 		box-shadow: 0 20px 50px color-mix(in srgb, var(--bw-ink) 35%, transparent);
@@ -1825,6 +1831,12 @@ body.latepoint-admin #wpcontent {
 		height: 58px;
 		width: 264px;
 		z-index: 9996;
+	}
+
+	/* The scrim starts below the bar for the same reason: a dimmed top bar reads
+	   as part of the covered page rather than as the chrome you steer with. */
+	html.bw-drawer-ready .bw-scrim {
+		top: 58px;
 	}
 
 	html.bw-drawer-open #adminmenumain,
@@ -1935,19 +1947,6 @@ body.latepoint-admin #wpcontent {
 	html.bw-drawer-ready .bw-brand {
 		transition: none;
 	}
-}
-
-/* The BlueWorx eyebrow and page-access row above a core screen's heading. The
-   heading stays WordPress's; this sits above it, spaced as a page header is. */
-.bw-core-pagehead {
-	display: flex;
-	flex-direction: column;
-	gap: var(--bw-space-4);
-	margin: var(--bw-space-7) 0 var(--bw-space-3);
-}
-
-.bw-core-pagehead:empty {
-	display: none;
 }
 
 /* ─── Full-bleed BlueWorx screens ───

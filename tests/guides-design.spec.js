@@ -62,26 +62,40 @@ test.describe('the Guides screen as designed', () => {
     await login(page);
     await page.goto(`${GUIDES}&tab=getting-started`);
 
-    const card = page.locator('.bw-guidegrid > .bw-card').first();
+    const card = page.locator('.bw-guidegrid:not([hidden]) > .bw-card').first();
     const more = card.locator('[data-blueworx-roles-more]');
 
-    await expect(more, 'nothing to expand — this tab should overflow three roles').toHaveCount(1);
+    await expect(more, 'nothing to open — this tab should overflow three roles').toHaveCount(1);
 
-    // Three roles plus the expander, which is itself a pill.
+    // Three roles plus the button, which is itself a pill.
     await expect(card.locator('.bw-rolepill:visible')).toHaveCount(4);
 
-    // How many roles there are is a property of the site, not of this screen:
-    // a stock WordPress has five, and an install that has added its own has
-    // more. The full set is always in the markup with the overflow hidden, so
-    // count it rather than pin a number that only holds where this was written.
-    const all = await card.locator('.bw-rolepill').count();
+    const drop = card.locator('.bw-roledrop');
+    await expect(drop).toBeHidden();
+
+    // The rest open under the button rather than unfolding into the row, so the
+    // row is still three pills wide with the panel showing.
+    await more.click();
+    await expect(drop).toBeVisible();
+    await expect(more).toHaveAttribute('aria-expanded', 'true');
+    await expect(card.locator('.bw-rolepills > .bw-rolepill:visible')).toHaveCount(3);
+
+    // Everything the row left out is in the panel, and nothing is repeated.
+    const shown = await card.locator('.bw-rolepills > .bw-rolepill').allInnerTexts();
+    const hidden = await drop.locator('.bw-rolepill').allInnerTexts();
+    const all = (await card.locator('.bw-rolepills').getAttribute('title')).split(', ');
+
+    expect(hidden.length, 'the panel is empty').toBeGreaterThan(0);
+    expect(shown.concat(hidden).sort()).toEqual(all.slice().sort());
+
+    // Escape closes it, and clicking elsewhere does too.
+    await page.keyboard.press('Escape');
+    await expect(drop).toBeHidden();
 
     await more.click();
-    await expect(more).toHaveText('Show fewer');
-    await expect(card.locator('.bw-rolepill:visible')).toHaveCount(all);
-
-    await more.click();
-    await expect(card.locator('.bw-rolepill:visible')).toHaveCount(4);
+    await expect(drop).toBeVisible();
+    await page.locator('.bw-pagehead__h1').click();
+    await expect(drop).toBeHidden();
 
     // Administrator is the answer most people came for, so it is picked out.
     await expect(card.locator('.bw-rolepill--admin').first()).toBeVisible();

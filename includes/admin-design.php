@@ -54,12 +54,10 @@ function blueworx_ds_allowed_html() {
 		'data-blueworx-guide-panel'  => true,
 		'data-blueworx-roles'        => true,
 		'data-blueworx-roles-more'   => true,
-		'data-blueworx-role-extra'   => true,
+		'data-blueworx-roles-extra'  => true,
 		'data-blueworx-guide-tabs'   => true,
 		'data-blueworx-guide-products' => true,
 		'data-blueworx-guide-product'  => true,
-		'data-more-label'            => true,
-		'data-fewer-label'           => true,
 		'data-testid'                => true,
 		'data-blueworx-section'      => true,
 		'data-blueworx-panel'        => true,
@@ -89,6 +87,7 @@ function blueworx_ds_allowed_html() {
 		'aria-selected'    => true,
 		'aria-disabled'    => true,
 		'aria-live'        => true,
+		'aria-haspopup'     => true,
 	);
 
 	$common = array_merge( $global, $aria );

@@ -8,76 +8,53 @@ import {
 } from './helpers.js';
 
 /**
- * WordPress's own screens get the BlueWorx eyebrow and page-access row.
+ * WordPress's own screens keep their own heading, and nothing else.
  *
- * Both are worked out rather than written down — the eyebrow from the sidebar
- * group the screen's menu sits in, the access row from the capability the
- * screen is registered with. That is what makes them right on a custom post
- * type, or on a screen belonging to a plugin nobody here has seen.
+ * We used to add a BlueWorx eyebrow and a page-access row above the heading of
+ * every core screen. It read as though the screen were ours when it is not, so
+ * both were taken away again: those two belong on BlueWorx screens only.
  *
- * The one-line lede the designs also show is deliberately not here: there is no
- * honest way to write one for a screen we do not know about.
+ * The rest of the re-skin on core screens stays — this is about what we add
+ * above the heading, not about how the screen is styled.
  */
 
-const SCREENS = [
-  ['/wp-admin/edit.php', 'Content'],
-  ['/wp-admin/upload.php', 'Content'],
-  ['/wp-admin/users.php', 'Site'],
-  ['/wp-admin/plugins.php', 'Site'],
-  ['/wp-admin/options-general.php', 'Site'],
+const CORE_SCREENS = [
+  '/wp-admin/index.php',
+  '/wp-admin/edit.php',
+  '/wp-admin/upload.php',
+  '/wp-admin/users.php',
+  '/wp-admin/plugins.php',
+  '/wp-admin/options-general.php',
 ];
 
-test.describe('core screens carry a BlueWorx header', () => {
+test.describe('core screens carry no BlueWorx header', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
 
-  for (const [path, group] of SCREENS) {
-    test(`${path} says it belongs to ${group}`, async ({ page }) => {
+  for (const path of CORE_SCREENS) {
+    test(`${path} adds no title block and no page access`, async ({ page }) => {
       await login(page);
       await page.goto(path);
 
-      const head = page.locator('.bw-core-pagehead');
-      await expect(head).toHaveCount(1);
-      await expect(head.locator('.bw-pagehead__eyebrow')).toHaveText(group);
+      // The re-skin is on: without this the screen would be bare of our markup
+      // for the wrong reason and the assertions below would prove nothing.
+      await expect(page.locator('link#blueworx-admin-theme-css')).toHaveCount(1);
 
-      // Above the heading, not below it.
-      const eyebrowBox = await head.boundingBox();
-      const headingBox = await page.locator('.wrap > h1, .wrap > h2').first().boundingBox();
-      expect(eyebrowBox.y).toBeLessThan(headingBox.y);
+      await expect(page.locator('.bw-pagehead__eyebrow')).toHaveCount(0);
+      await expect(page.locator('.bw-pageaccess')).toHaveCount(0);
+
+      // The screen's own heading is untouched.
+      await expect(page.locator('.wrap > h1, .wrap > h2').first()).toBeVisible();
     });
   }
 
-  test('the access row names roles, not a capability', async ({ page }) => {
-    await login(page);
-    await page.goto('/wp-admin/plugins.php');
-
-    const access = page.locator('.bw-core-pagehead .bw-pageaccess');
-    await expect(access).toHaveCount(1);
-    await expect(access.locator('.bw-rolepill').first()).toContainText(/administrator/i);
-
-    // The capability itself must never leak into the page.
-    await expect(access).not.toContainText('activate_plugins');
-  });
-
-  test('our own screens are left alone — they have a header already', async ({ page }) => {
+  test('a BlueWorx screen still has both', async ({ page }) => {
     await login(page);
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
 
-    await expect(page.locator('.bw-core-pagehead')).toHaveCount(0);
     await expect(page.locator('.bw-pagehead__eyebrow')).toHaveCount(1);
-  });
-
-  test('nothing is added with the admin theme switched off', async ({ page }) => {
-    await login(page);
-    await page.goto('/wp-admin/edit.php');
-
-    // Sanity: the script only ever runs behind the theme flag, so the marker
-    // and the stylesheet have to agree with each other.
-    const themed = await page.locator('link#blueworx-admin-theme-css').count();
-    const heads = await page.locator('.bw-core-pagehead').count();
-
-    expect(themed > 0 ? heads : 0).toBe(heads);
+    await expect(page.locator('.bw-pageaccess')).toHaveCount(1);
   });
 });

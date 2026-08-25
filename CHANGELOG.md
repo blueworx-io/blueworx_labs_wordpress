@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.72.0] - 2026-08-25
+
+### Fixed
+- **The menu no longer covers the bar across the top.** Open the menu on a
+  narrow window and it slid over the bar, cutting the site name off mid-word.
+  It now hangs below the bar, which stays whole and usable.
+- **WordPress’s own screens keep their own heading.** The BlueWorx line and the
+  “Page access” row we were adding above it have gone; they belong on BlueWorx
+  screens, and on a WordPress screen they read as though the screen were ours.
+- **The arrow between the site name and the screen name is back.** On most
+  screens it was missing and the two names ran together.
+
+### Changed
+- **“+N more” roles open in a small dropdown** instead of unfolding into the
+  row, where they pushed the page title sideways and wrapped a guide card onto
+  three lines. Three roles are shown, the rest are one click away, and the
+  button now works on every screen rather than only on Guides.
+
 ## [1.71.0] - 2026-08-25
 
 ### Fixed
