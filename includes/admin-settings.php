@@ -248,7 +248,7 @@ function blueworx_save_feature_settings() {
 	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
-		update_option( 'blueworx_feature_' . $key, isset( $posted[ $key ] ) ? '1' : '0' );
+		blueworx_set_feature_enabled( $key, isset( $posted[ $key ] ) );
 	}
 
 	// Login detail: editable slug.

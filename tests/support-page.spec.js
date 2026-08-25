@@ -44,7 +44,7 @@ test.describe('Support access — its own screen', () => {
 
     // Restore: this suite shares one site, and a key left behind changes what
     // every later support test sees.
-    await page.getByRole('button', { name: 'Revoke key' }).click();
+    await page.getByRole('button', { name: 'Revoke access' }).click();
     await expect(page.getByRole('button', { name: 'Generate key' })).toBeVisible();
   });
 
@@ -62,7 +62,7 @@ test.describe('Support access — its own screen', () => {
       page.getByRole('button', { name: 'Allow support access for 24 hours' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Revoke key' }).click();
+    await page.getByRole('button', { name: 'Revoke access' }).click();
     await expect(page.getByRole('button', { name: 'Generate key' })).toBeVisible();
   });
 });

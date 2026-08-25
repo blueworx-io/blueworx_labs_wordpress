@@ -249,3 +249,25 @@ function blueworx_get_feature_default( $key ) {
 function blueworx_feature_enabled( $key ) {
 	return '0' !== get_option( 'blueworx_feature_' . $key, blueworx_get_feature_default( $key ) );
 }
+
+/**
+ * Switches one function on or off.
+ *
+ * The only writer of a feature option. Enhancements posts the whole registry;
+ * a screen that owns a single function posts just that one — and two places
+ * writing the same option directly is how switches start disagreeing with each
+ * other. Both go through here instead.
+ *
+ * @param string $key Feature key.
+ * @param bool   $on  Whether the function should run.
+ * @return void
+ */
+function blueworx_set_feature_enabled( $key, $on ) {
+	$key = sanitize_key( (string) $key );
+
+	if ( '' === $key || ! isset( blueworx_get_feature_definitions()[ $key ] ) ) {
+		return;
+	}
+
+	update_option( 'blueworx_feature_' . $key, $on ? '1' : '0' );
+}

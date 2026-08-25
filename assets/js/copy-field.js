@@ -130,3 +130,56 @@
     start();
   }
 })();
+
+/**
+ * The support key's "I have copied it" confirmation.
+ *
+ * The key is shown exactly once. Nothing here can stop somebody navigating
+ * away, but it does stop them doing it without noticing — which is the failure
+ * this screen actually sees.
+ */
+( function () {
+	'use strict';
+
+	function start() {
+		var box = document.querySelector( '[data-blueworx-key-copied]' );
+		var done = document.querySelector( '[data-blueworx-key-done]' );
+		var wrap = document.querySelector( '[data-blueworx-key-confirm]' );
+
+		if ( ! box || ! done || ! wrap ) {
+			return;
+		}
+
+		box.addEventListener( 'change', function () {
+			done.disabled = ! box.checked;
+		} );
+
+		done.addEventListener( 'click', function () {
+			if ( ! box.checked ) {
+				return;
+			}
+
+			// The reveal and its confirmation go together. What stays is the
+			// state list, which never showed the key in the first place.
+			var reveal = document.querySelector( '#bw-support-key' );
+			var field = reveal ? reveal.closest( '.bw-copyfield' ) : null;
+			var notice = wrap.parentElement ? wrap.parentElement.querySelector( '.bw-notice--warning' ) : null;
+
+			if ( field ) {
+				field.remove();
+			}
+
+			if ( notice ) {
+				notice.remove();
+			}
+
+			wrap.remove();
+		} );
+	}
+
+	if ( 'loading' === document.readyState ) {
+		document.addEventListener( 'DOMContentLoaded', start );
+	} else {
+		start();
+	}
+}() );

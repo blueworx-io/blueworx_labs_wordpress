@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.69.0] - 2026-08-25
+
+### Added
+- **Support access can be switched on from its own screen**, instead of sending
+  you to Enhancements and back. Switching it off there also shuts any window
+  that was open.
+- **The Support screen says what the state actually is** — whether a key
+  exists and when it was made, whether the window is open, and when somebody
+  last signed in with one.
+- **Copying the support key now asks you to confirm you have it.** It is shown
+  once and never again.
+- **Sign-on offers a provider by name** — Microsoft Entra ID, Google Workspace,
+  Okta, or any OpenID Connect provider. You no longer have to go and find a
+  discovery address.
+- **The WordPress password form can be hidden** once one administrator has
+  actually signed in through the provider. Until then the switch refuses,
+  because before that it is a way to lock everybody out.
+
+### Changed
+- **Revoke says what it revokes** — access, not just the key.
+- **Advanced on the sign-on screen looks like the rest of the plugin**, rather
+  than a browser's own disclosure triangle.
+
 ## [1.68.0] - 2026-08-25
 
 ### Added

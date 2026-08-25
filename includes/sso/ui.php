@@ -131,3 +131,31 @@ function blueworx_sso_button_allowed_html() {
 		'path' => array( 'd' => array() ),
 	);
 }
+
+/**
+ * Hides the WordPress password form on the sign-in screen.
+ *
+ * CSS rather than removing the markup: the form is what every password manager,
+ * every "lost your password" flow and every fallback below depends on, and a
+ * setting that deletes it leaves nothing to fall back TO.
+ *
+ * ?blueworx-password=1 always shows it again. That escape hatch is the only
+ * reason this setting is safe to offer at all — it means the worst case is an
+ * administrator who has to be told about a query string, not one who has lost
+ * the site.
+ *
+ * @return void
+ */
+function blueworx_sso_maybe_hide_password_form() {
+	if ( ! function_exists( 'blueworx_sso_hide_password_form' ) || ! blueworx_sso_hide_password_form() ) {
+		return;
+	}
+
+	// Read-only: it decides whether a form is painted, nothing is written.
+	if ( isset( $_GET['blueworx-password'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return;
+	}
+
+	echo '<style id="blueworx-sso-hide-password">#loginform p:not(.blueworx-sso-actions),#loginform .user-pass-wrap,#loginform .forgetmenot,#loginform .submit{display:none}</style>';
+}
+add_action( 'login_head', 'blueworx_sso_maybe_hide_password_form' );
