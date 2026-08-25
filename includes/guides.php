@@ -59,12 +59,333 @@ function blueworx_get_guide_tabs() {
 }
 
 /**
+ * The guides that are not about this plugin.
+ *
+ * WordPress topics show on every site. The SureCart and SureForms sets are
+ * filtered out unless those plugins are running, which is decided once in
+ * blueworx_get_guide_products() rather than repeated here.
+ *
+ * @return array List of guides.
+ */
+function blueworx_get_other_product_guides() {
+	$guides = array(
+		array(
+			'id'      => 'wp-writing-blocks',
+			'title'   => __( 'Writing a page, block by block', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-writing',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'A page is built from blocks — a heading, a paragraph, an image, a button. Press the black + at the top left to add one, or type / on an empty line and start naming what you want.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Nothing is live until you press Publish or Update. Save draft keeps your work without showing it to anybody, and Preview opens it exactly as a visitor would see it.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-writing-links',
+			'title'   => __( 'Links, headings and the things that break', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-writing',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'Select some text and press Ctrl+K, or Cmd+K on a Mac, to make it a link. Start typing a page name and the site offers its own pages — always pick one from that list rather than pasting an address, so the link follows the page if it is ever renamed.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Use one Heading 1 per page and go down in order. Skipping from a Heading 1 to a Heading 3 because it looked the right size is the most common reason a page is hard to use with a screen reader.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-media-uploads',
+			'title'   => __( 'Adding images without slowing the site down', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-media',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'Upload the best version you have and let the site make the smaller ones. It keeps a set of sizes for every image and serves whichever fits the space, so a photo straight off a camera is not what a visitor downloads.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Give every image alt text that says what is in it. Screen readers read it aloud and search engines read it too. A decorative flourish can be left empty; a photograph of your team cannot.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-media-replacing',
+			'title'   => __( 'Replacing a file people already have the link to', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-media',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'Deleting a file and uploading a new one gives it a new address, and every link and embed pointing at the old one stops working. Nothing warns you when that happens.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Open the file in the media library and use Replace file instead. The address stays the same, so a price list you have emailed to two hundred people keeps working.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-people-roles',
+			'title'   => __( 'Which role to give somebody', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-people',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'Administrator can change anything, including installing plugins and removing other people. Editor can publish and edit anyone else\'s content but cannot touch settings. Author can publish their own. Contributor can write but not publish. Subscriber can only sign in.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Give the smallest role that lets somebody do their job. Most people who say they need admin need Editor, and an extra administrator is an extra way for the site to be taken over.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-people-leaving',
+			'title'   => __( 'When somebody leaves', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-people',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'Delete the account rather than changing its password. WordPress asks what to do with anything they wrote — choose another person and their posts are reassigned rather than deleted with them.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Do it the day they leave. A dormant account with a known password is the most common way a site is broken into months after anybody was still watching.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-upkeep-updates',
+			'title'   => __( 'Updates, and which ones can wait', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-upkeep',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'A security release is not the same as a feature release. If an update says it fixes a vulnerability, apply it now. Everything else can wait for whoever looks after the site.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Never update a plugin for the first time an hour before something important. Where the site has a staging copy, updates are tried there first and reach the live site afterwards.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'wp-upkeep-health',
+			'title'   => __( 'Reading Site Health without panicking', 'blueworx-labs-wordpress' ),
+			'tab'     => 'wp-upkeep',
+			'product' => 'wordpress',
+			'body'    => '<p>' . esc_html__( 'Site Health lists critical issues and recommended improvements. Critical means something is actually broken. Recommended usually means a setting could be better, and a site can run for years with several of them showing.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'The score is not a grade. Do not chase it. Read the critical list, ignore the number, and send anything you do not understand to whoever maintains the site.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'sc-products-plans',
+			'title'   => __( 'Products, prices and plans', 'blueworx-labs-wordpress' ),
+			'tab'     => 'sc-products',
+			'product' => 'surecart',
+			'body'    => '<p>' . esc_html__( 'A product is the thing being sold. A price is what it costs, and one product can carry several — a monthly price and an annual one, say. Changing a price does not change what anybody already pays; it only affects new purchases.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'To stop selling something, archive the product rather than deleting it. Deleting takes its order history with it.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'sc-orders-refunds',
+			'title'   => __( 'Orders, customers and refunds', 'blueworx-labs-wordpress' ),
+			'tab'     => 'sc-orders',
+			'product' => 'surecart',
+			'body'    => '<p>' . esc_html__( 'Every order shows what was bought, what was paid and who paid it. A refund is issued from the order itself and goes back to the card that paid, which can take a few working days to appear.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Cancelling a subscription and refunding a payment are separate actions. Cancelling stops the next payment; it does not return the last one.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'sc-payments-test',
+			'title'   => __( 'Test mode, and how to tell you are in it', 'blueworx-labs-wordpress' ),
+			'tab'     => 'sc-payments',
+			'product' => 'surecart',
+			'body'    => '<p>' . esc_html__( 'In test mode no real money moves and no real card is charged. It is the right way to check a checkout works before opening it up.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Test orders never become live ones. Before you take a real payment, switch test mode off and place one small real order yourself — a checkout left in test mode looks entirely normal to a customer, right up until you wonder where the money is.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'sf-forms-entries',
+			'title'   => __( 'Building a form and finding what it collected', 'blueworx-labs-wordpress' ),
+			'tab'     => 'sf-forms',
+			'product' => 'sureforms',
+			'body'    => '<p>' . esc_html__( 'Build the form, then place it on a page with its block. Every submission is stored under Entries as well as emailed, which matters the day an email does not arrive.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Label every field with what you actually want, not with a placeholder inside the box. A placeholder disappears the moment somebody starts typing, which is exactly when they need it.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+		array(
+			'id'      => 'sf-spam-notifications',
+			'title'   => __( 'Spam, and where the notification goes', 'blueworx-labs-wordpress' ),
+			'tab'     => 'sf-spam',
+			'product' => 'sureforms',
+			'body'    => '<p>' . esc_html__( 'Turn the spam protection on before the form goes live, not after. A public form without it starts collecting rubbish within days.', 'blueworx-labs-wordpress' ) . '</p>'
+				. '<p>' . esc_html__( 'Check where the notification email is sent, and send yourself a test. A form quietly delivering to somebody who left last year is the most common fault there is, and nothing on the site looks wrong while it happens.', 'blueworx-labs-wordpress' ) . '</p>',
+		),
+	);
+
+	$products = blueworx_get_guide_products();
+
+	return array_values(
+		array_filter(
+			$guides,
+			static function ( $guide ) use ( $products ) {
+				return isset( $products[ $guide['product'] ] );
+			}
+		)
+	);
+}
+
+/**
+ * The WordPress topics, which every site has.
+ *
+ * @return array Tab labels keyed by tab id.
+ */
+function blueworx_get_wordpress_guide_tabs() {
+	return array(
+		'wp-writing' => __( 'Writing & editing', 'blueworx-labs-wordpress' ),
+		'wp-media'   => __( 'Media library', 'blueworx-labs-wordpress' ),
+		'wp-people'  => __( 'Users & roles', 'blueworx-labs-wordpress' ),
+		'wp-upkeep'  => __( 'Updates & health', 'blueworx-labs-wordpress' ),
+	);
+}
+
+/**
+ * The SureCart topics. Only reached when SureCart is running.
+ *
+ * @return array Tab labels keyed by tab id.
+ */
+function blueworx_get_surecart_guide_tabs() {
+	return array(
+		'sc-products' => __( 'Products & plans', 'blueworx-labs-wordpress' ),
+		'sc-orders'   => __( 'Orders & customers', 'blueworx-labs-wordpress' ),
+		'sc-payments' => __( 'Payments & test mode', 'blueworx-labs-wordpress' ),
+	);
+}
+
+/**
+ * The SureForms topics. Only reached when SureForms is running.
+ *
+ * @return array Tab labels keyed by tab id.
+ */
+function blueworx_get_sureforms_guide_tabs() {
+	return array(
+		'sf-forms' => __( 'Forms & entries', 'blueworx-labs-wordpress' ),
+		'sf-spam'  => __( 'Spam & notifications', 'blueworx-labs-wordpress' ),
+	);
+}
+
+/**
+ * Every tab on the screen, whichever product it belongs to.
+ *
+ * @return array Tab labels keyed by tab id.
+ */
+function blueworx_get_all_guide_tabs() {
+	$tabs = blueworx_get_guide_tabs() + blueworx_get_wordpress_guide_tabs();
+
+	if ( blueworx_guide_product_is_active( 'surecart' ) ) {
+		$tabs += blueworx_get_surecart_guide_tabs();
+	}
+
+	if ( blueworx_guide_product_is_active( 'sureforms' ) ) {
+		$tabs += blueworx_get_sureforms_guide_tabs();
+	}
+
+	return $tabs;
+}
+
+/**
+ * Gets the guide products, in display order.
+ *
+ * A product is the thing a guide is about — this plugin, WordPress itself, or
+ * another plugin the site runs. It is the coarser of the two levels on the
+ * Guides screen: pick a product along the top, then a topic below it.
+ *
+ * A product whose plugin is not active never appears. Nobody needs guides for
+ * software they do not have.
+ *
+ * @return array Product labels keyed by product key.
+ */
+function blueworx_get_guide_products() {
+	$products = array(
+		'blueworx'  => __( 'BlueWorx', 'blueworx-labs-wordpress' ),
+		'wordpress' => __( 'WordPress', 'blueworx-labs-wordpress' ),
+	);
+
+	if ( blueworx_guide_product_is_active( 'surecart' ) ) {
+		$products['surecart'] = __( 'SureCart', 'blueworx-labs-wordpress' );
+	}
+
+	if ( blueworx_guide_product_is_active( 'sureforms' ) ) {
+		$products['sureforms'] = __( 'SureForms', 'blueworx-labs-wordpress' );
+	}
+
+	/**
+	 * Filters the guide products.
+	 *
+	 * @param array $products Product labels keyed by key, in display order.
+	 */
+	$products = apply_filters( 'blueworx_guide_products', $products );
+
+	$clean = array();
+
+	foreach ( (array) $products as $key => $label ) {
+		$key = sanitize_key( (string) $key );
+
+		if ( '' === $key || ! is_string( $label ) || '' === trim( $label ) ) {
+			continue;
+		}
+
+		$clean[ $key ] = $label;
+	}
+
+	return $clean;
+}
+
+/**
+ * Whether a plugin a product's guides describe is actually running.
+ *
+ * Checked by class and by constant rather than by plugin path, because a
+ * plugin's folder is not something we control and a renamed one would silently
+ * hide its guides.
+ *
+ * @param string $product Product key.
+ * @return bool True when the plugin is active.
+ */
+function blueworx_guide_product_is_active( $product ) {
+	$signatures = array(
+		'surecart'  => array( 'classes' => array( 'SureCart' ), 'constants' => array( 'SURECART_PLUGIN_FILE' ) ),
+		'sureforms' => array( 'classes' => array( 'SRFM_Loader' ), 'constants' => array( 'SRFM_FILE' ) ),
+	);
+
+	if ( ! isset( $signatures[ $product ] ) ) {
+		return false;
+	}
+
+	foreach ( $signatures[ $product ]['classes'] as $class ) {
+		if ( class_exists( $class ) ) {
+			return true;
+		}
+	}
+
+	foreach ( $signatures[ $product ]['constants'] as $constant ) {
+		if ( defined( $constant ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * The product a tab belongs to.
+ *
+ * Every BlueWorx feature section is ours; anything a third party registers is
+ * theirs unless they say otherwise.
+ *
+ * @param string $tab Tab id.
+ * @return string Product key.
+ */
+function blueworx_guide_product_for_tab( $tab ) {
+	$map = blueworx_get_guide_tab_products();
+
+	return isset( $map[ $tab ] ) ? $map[ $tab ] : 'blueworx';
+}
+
+/**
+ * The product each tab belongs to.
+ *
+ * @return array Product keys by tab id.
+ */
+function blueworx_get_guide_tab_products() {
+	$map = array();
+
+	foreach ( array_keys( blueworx_get_guide_tabs() ) as $tab ) {
+		$map[ $tab ] = 'blueworx';
+	}
+
+	foreach ( array_keys( blueworx_get_wordpress_guide_tabs() ) as $tab ) {
+		$map[ $tab ] = 'wordpress';
+	}
+
+	foreach ( array_keys( blueworx_get_surecart_guide_tabs() ) as $tab ) {
+		$map[ $tab ] = 'surecart';
+	}
+
+	foreach ( array_keys( blueworx_get_sureforms_guide_tabs() ) as $tab ) {
+		$map[ $tab ] = 'sureforms';
+	}
+
+	/**
+	 * Filters which product each guide tab belongs to.
+	 *
+	 * @param array $map Product keys by tab id.
+	 */
+	return apply_filters( 'blueworx_guide_tab_products', $map );
+}
+
+/**
  * Gets every guide to display, in tab order.
  *
  * @return array List of guides, each with id, title, tab, body and feature.
  */
 function blueworx_get_guides() {
-	$guides = array_merge( blueworx_get_wordpress_basics_guides(), blueworx_get_feature_guides() );
+	$guides = array_merge(
+		blueworx_get_wordpress_basics_guides(),
+		blueworx_get_feature_guides(),
+		blueworx_get_other_product_guides()
+	);
 
 	/**
 	 * Filters the registered guides.
@@ -99,7 +420,9 @@ function blueworx_get_guides() {
  * @return array Normalized guides, in tab order then registration order.
  */
 function blueworx_normalize_guides( $guides ) {
-	$tabs  = blueworx_get_guide_tabs();
+	// Every product's tabs, not only ours: a WordPress or SureCart guide naming
+	// its own tab would otherwise be swept into the fallback.
+	$tabs  = blueworx_get_all_guide_tabs();
 	$clean = array();
 	$seen  = array();
 	$order = array_keys( $tabs );
@@ -137,6 +460,7 @@ function blueworx_normalize_guides( $guides ) {
 			'id'      => $id,
 			'title'   => $title,
 			'tab'     => $tab,
+			'product' => isset( $guide['product'] ) ? sanitize_key( $guide['product'] ) : blueworx_guide_product_for_tab( $tab ),
 			'body'    => $body,
 			'feature' => $feature,
 		);
@@ -367,6 +691,19 @@ function blueworx_guide_tab_capability( $tab ) {
 		'performance'     => 'manage_options',
 		'admin_menu'      => 'manage_options',
 		'appearance'      => 'edit_theme_options',
+
+		// The other products' topics. Same rule: the capability somebody needs
+		// to do the thing the guide describes, so the role pills on the card are
+		// worked out from this site's own roles rather than written down.
+		'wp-writing'      => 'edit_posts',
+		'wp-media'        => 'upload_files',
+		'wp-people'       => 'list_users',
+		'wp-upkeep'       => 'update_core',
+		'sc-products'     => 'manage_options',
+		'sc-orders'       => 'manage_options',
+		'sc-payments'     => 'manage_options',
+		'sf-forms'        => 'edit_posts',
+		'sf-spam'         => 'manage_options',
 	);
 
 	/**

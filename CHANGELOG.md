@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.68.0] - 2026-08-25
+
+### Added
+- **Guides now covers more than this plugin.** Pick a section along the top —
+  BlueWorx, WordPress, and SureCart or SureForms where the site runs them —
+  then a topic below it.
+- **Thirteen new guides**, covering writing and editing, the media library,
+  users and roles, updates and health, and the SureCart and SureForms basics.
+  Guides for a plugin the site does not have never appear.
 ## [1.67.0] - 2026-08-25
 
 ### Changed

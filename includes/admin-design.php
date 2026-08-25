@@ -56,6 +56,8 @@ function blueworx_ds_allowed_html() {
 		'data-blueworx-roles-more'   => true,
 		'data-blueworx-role-extra'   => true,
 		'data-blueworx-guide-tabs'   => true,
+		'data-blueworx-guide-products' => true,
+		'data-blueworx-guide-product'  => true,
 		'data-more-label'            => true,
 		'data-fewer-label'           => true,
 		'data-testid'                => true,
