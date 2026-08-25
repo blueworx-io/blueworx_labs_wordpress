@@ -573,6 +573,54 @@ function blueworx_ds_card( $args ) {
 }
 
 /**
+ * Renders a disclosure panel.
+ *
+ * A native <details> is the right element — it works with no script and the
+ * browser handles the keyboard — but the browser also draws its own triangle
+ * and its own focus ring, neither of which is ours. The design system's
+ * accordion classes go on top of it, so the behaviour stays the browser's and
+ * the look stays the system's.
+ *
+ * @param array $args {
+ *     @type string $title Panel heading.
+ *     @type string $sub   Optional line under the heading.
+ *     @type string $body  Panel contents, already escaped.
+ *     @type bool   $open  Whether it starts open.
+ *     @type string $class Extra class, for a caller that addresses its own panel.
+ *     @type array  $attrs Extra attributes.
+ * }
+ * @return string HTML.
+ */
+function blueworx_ds_accordion( $args ) {
+	$args = wp_parse_args(
+		$args,
+		array(
+			'title' => '',
+			'sub'   => '',
+			'body'  => '',
+			'open'  => false,
+			'class' => '',
+			'attrs' => array(),
+		)
+	);
+
+	$sub = '' !== $args['sub']
+		? '<span class="bw-accordion__sub">' . esc_html( $args['sub'] ) . '</span>'
+		: '';
+
+	return sprintf(
+		'<details class="bw-accordion%7$s"%1$s%2$s><summary class="bw-accordion__head"><span class="bw-accordion__title">%3$s%4$s</span>%5$s</summary><div class="bw-accordion__body">%6$s</div></details>',
+		$args['open'] ? ' open' : '',
+		blueworx_ds_attrs( $args['attrs'] ),
+		esc_html( $args['title'] ),
+		$sub,
+		blueworx_ds_icon( 'chevron-down', 18, 'bw-accordion__chev' ),
+		$args['body'],
+		'' !== $args['class'] ? ' ' . esc_attr( $args['class'] ) : ''
+	);
+}
+
+/**
  * Renders a description list.
  *
  * @param array $rows Term => value HTML. Values are not escaped, so callers can
@@ -694,12 +742,13 @@ function blueworx_ds_checkbox( $args ) {
 	$args = wp_parse_args(
 		$args,
 		array(
-			'name'    => '',
-			'label'   => '',
-			'value'   => '1',
-			'checked' => false,
-			'help'    => '',
-			'attrs'   => array(),
+			'name'     => '',
+			'label'    => '',
+			'value'    => '1',
+			'checked'  => false,
+			'disabled' => false,
+			'help'     => '',
+			'attrs'    => array(),
 		)
 	);
 
@@ -710,10 +759,11 @@ function blueworx_ds_checkbox( $args ) {
 	}
 
 	return sprintf(
-		'<label class="bw-check"><input type="checkbox" name="%1$s" value="%2$s"%3$s%4$s /><span class="bw-check__text">%5$s</span></label>',
+		'<label class="bw-check"><input type="checkbox" name="%1$s" value="%2$s"%3$s%4$s%5$s /><span class="bw-check__text">%6$s</span></label>',
 		esc_attr( $args['name'] ),
 		esc_attr( $args['value'] ),
 		checked( (bool) $args['checked'], true, false ),
+		disabled( (bool) $args['disabled'], true, false ),
 		blueworx_ds_attrs( $args['attrs'] ),
 		$text
 	);

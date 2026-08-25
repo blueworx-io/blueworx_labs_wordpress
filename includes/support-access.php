@@ -524,6 +524,91 @@ function blueworx_support_handle_actions() {
 add_action( 'admin_init', 'blueworx_support_handle_actions' );
 
 /**
+ * The most recent time one of these events happened.
+ *
+ * Read from the audit log rather than from a second option of its own: the log
+ * is already the record of what happened and when, and a parallel timestamp is
+ * one more thing that can disagree with it.
+ *
+ * @param array $types Event types to look for.
+ * @return int Unix timestamp, or 0.
+ */
+function blueworx_support_last_event_time( $types ) {
+	$log  = get_option( 'blueworx_support_log', array() );
+	$best = 0;
+
+	foreach ( (array) $log as $entry ) {
+		if ( ! is_array( $entry ) || ! isset( $entry['type'], $entry['time'] ) ) {
+			continue;
+		}
+
+		if ( ! in_array( $entry['type'], (array) $types, true ) ) {
+			continue;
+		}
+
+		$best = max( $best, (int) $entry['time'] );
+	}
+
+	return $best;
+}
+
+/**
+ * The state of support access, as three plain answers.
+ *
+ * Key, window and last session — the three things somebody looking at this
+ * screen is actually trying to find out. The key itself is stored hashed and
+ * stays that way, so that row says one exists and when it was made, never what
+ * it is.
+ *
+ * @return array Values keyed by their label.
+ */
+function blueworx_support_state_rows() {
+	$rows      = array();
+	$has_key   = '' !== (string) get_option( 'blueworx_support_key_hash', '' );
+	$generated = blueworx_support_last_event_time( array( 'key_generated' ) );
+	$until     = (int) get_option( 'blueworx_support_access_until', 0 );
+	$last      = blueworx_support_last_event_time( array( 'login', 'rest_auth' ) );
+
+	if ( ! $has_key ) {
+		$rows[ __( 'Key', 'blueworx-labs-wordpress' ) ] = esc_html__( 'None. Generate one to open a window.', 'blueworx-labs-wordpress' );
+	} elseif ( $generated > 0 ) {
+		$rows[ __( 'Key', 'blueworx-labs-wordpress' ) ] = esc_html(
+			sprintf(
+				/* translators: %s: how long ago, e.g. "2 hours". */
+				__( 'One key exists, made %s ago', 'blueworx-labs-wordpress' ),
+				human_time_diff( $generated, time() )
+			)
+		);
+	} else {
+		$rows[ __( 'Key', 'blueworx-labs-wordpress' ) ] = esc_html__( 'One key exists', 'blueworx-labs-wordpress' );
+	}
+
+	if ( $until > time() ) {
+		$rows[ __( 'Window', 'blueworx-labs-wordpress' ) ] = esc_html(
+			sprintf(
+				/* translators: %s: how long is left, e.g. "18 hours". */
+				__( 'Open, %s left', 'blueworx-labs-wordpress' ),
+				human_time_diff( time(), $until )
+			)
+		);
+	} else {
+		$rows[ __( 'Window', 'blueworx-labs-wordpress' ) ] = esc_html__( 'Shut', 'blueworx-labs-wordpress' );
+	}
+
+	$rows[ __( 'Last session', 'blueworx-labs-wordpress' ) ] = $last > 0
+		? esc_html(
+			sprintf(
+				/* translators: %s: how long ago, e.g. "3 days". */
+				__( '%s ago', 'blueworx-labs-wordpress' ),
+				human_time_diff( $last, time() )
+			)
+		)
+		: esc_html__( 'Nobody has signed in with a key', 'blueworx-labs-wordpress' );
+
+	return $rows;
+}
+
+/**
  * Records an audit event, keeping the most recent 100.
  *
  * The log is what makes the access window verifiable rather than merely
@@ -1508,6 +1593,32 @@ function blueworx_support_render_panel() {
 				'attrs' => array( 'data-testid' => 'bw-support-key' ),
 			)
 		);
+
+		// The key really is shown once. Nothing here stops somebody navigating
+		// away, but it does stop them doing it without noticing, which is the
+		// failure this screen actually sees.
+		?>
+		<div class="bw-field" data-blueworx-key-confirm>
+			<label class="bw-check">
+				<input type="checkbox" data-blueworx-key-copied data-testid="bw-support-key-copied" />
+				<span class="bw-check__text"><?php esc_html_e( 'I have copied the key', 'blueworx-labs-wordpress' ); ?></span>
+			</label>
+			<?php
+			echo blueworx_ds_button(
+				array(
+					'label'    => __( 'Done', 'blueworx-labs-wordpress' ),
+					'variant'  => 'primary',
+					'size'     => 'sm',
+					'disabled' => true,
+					'attrs'    => array(
+						'data-blueworx-key-done' => 'true',
+						'data-testid'            => 'bw-support-key-done',
+					),
+				)
+			);
+			?>
+		</div>
+		<?php
 	}
 
 	if ( blueworx_support_is_throttled() ) {
@@ -1600,6 +1711,9 @@ function blueworx_support_render_panel() {
 
 	wp_nonce_field( 'blueworx_support_panel', 'blueworx_support_nonce' );
 
+	// What the state actually is, before the controls that change it.
+	echo wp_kses( blueworx_ds_description_list( blueworx_support_state_rows() ), blueworx_ds_allowed_html() );
+
 	echo '<div class="bw-toolbar bw-toolbar--card"><div class="bw-toolbar__group">';
 
 	if ( $has_key ) {
@@ -1628,7 +1742,7 @@ function blueworx_support_render_panel() {
 
 		echo blueworx_ds_button(
 			array(
-				'label'   => __( 'Revoke key', 'blueworx-labs-wordpress' ),
+				'label'   => __( 'Revoke access', 'blueworx-labs-wordpress' ),
 				'variant' => 'danger',
 				'type'    => 'submit',
 				'attrs'   => array_merge(

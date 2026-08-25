@@ -114,7 +114,7 @@ test.describe('Support access — key lifecycle', () => {
 
     // Restore: revoking must remove the account again.
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-    await page.getByRole('button', { name: 'Revoke key' }).click();
+    await page.getByRole('button', { name: 'Revoke access' }).click();
     await page.goto('/wp-admin/users.php');
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
   });
@@ -145,12 +145,12 @@ test.describe('Support access — key lifecycle', () => {
     // The buttons carry their own formaction. Without it they post to the
     // enhancements handler, which redirects — the page would still look fine
     // and the action would never run.
-    await expect(page.getByRole('button', { name: 'Revoke key' })).toHaveAttribute(
+    await expect(page.getByRole('button', { name: 'Revoke access' })).toHaveAttribute(
       'formaction',
       /page=blueworx-labs-wordpress/
     );
 
-    await page.getByRole('button', { name: 'Revoke key' }).click();
+    await page.getByRole('button', { name: 'Revoke access' }).click();
     await expect(page.getByRole('button', { name: 'Generate key' })).toBeVisible();
     await page.goto('/wp-admin/users.php');
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
@@ -185,7 +185,7 @@ test.describe('Support access — key lifecycle', () => {
     // processes the request. This is cleanup only, not an assertion, so skip
     // that wait and confirm the restored state on a fresh navigation instead.
     await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-    await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+    await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
     await page.waitForTimeout(1000);
     await page.goto('/wp-admin/users.php');
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
@@ -250,7 +250,7 @@ test.describe('Support access — key lifecycle', () => {
           async () => {
             await page.goto(SETTINGS_PATH);
             if (key) {
-              await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+              await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
               await page.waitForTimeout(1000);
             }
           },
@@ -329,7 +329,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -380,7 +380,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key and clear throttle',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click();
+            await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
@@ -417,7 +417,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click();
+            await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
@@ -448,7 +448,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click();
+            await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
@@ -483,7 +483,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click();
+            await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
@@ -538,7 +538,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -591,7 +591,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -634,7 +634,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key and clear throttle',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click();
+            await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
@@ -671,7 +671,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -715,7 +715,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -771,7 +771,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -818,7 +818,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -906,7 +906,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1009,7 +1009,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1075,7 +1075,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1156,7 +1156,7 @@ test.describe('Support access — key lifecycle', () => {
               await fresh.close();
             }
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1324,7 +1324,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key and close data access',
           async () => {
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1375,7 +1375,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1435,7 +1435,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1482,7 +1482,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],
@@ -1536,7 +1536,7 @@ test.describe('Support access — key lifecycle', () => {
           'revoke support key',
           async () => {
             await page.goto(CONSOLE_PATH);
-            await page.getByRole('button', { name: 'Revoke key' }).click({ noWaitAfter: true });
+            await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
         ],

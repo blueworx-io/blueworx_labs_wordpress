@@ -73,6 +73,39 @@ function blueworx_close_admin_page() {
 }
 
 /**
+ * Switches support access on or off from its own screen.
+ *
+ * Writes through blueworx_set_feature_enabled() rather than touching the option,
+ * so this and Enhancements cannot end up disagreeing.
+ *
+ * Switching it OFF shuts any open window with it. Leaving a window open on a
+ * function nobody can see is exactly the state this screen exists to prevent.
+ *
+ * @return void
+ */
+function blueworx_handle_support_feature_toggle() {
+	blueworx_require_post_request();
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
+	}
+
+	check_admin_referer( 'blueworx_toggle_support_feature' );
+
+	$on = ! empty( $_POST['blueworx_support_feature'] );
+
+	blueworx_set_feature_enabled( 'support_access', $on );
+
+	if ( ! $on && function_exists( 'blueworx_support_close_access' ) ) {
+		blueworx_support_close_access();
+	}
+
+	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-support' ) );
+	exit;
+}
+add_action( 'admin_post_blueworx_toggle_support_feature', 'blueworx_handle_support_feature_toggle' );
+
+/**
  * Renders the Support access screen.
  *
  * @return void
@@ -92,20 +125,39 @@ function blueworx_render_support_page() {
 		)
 	);
 
-	if ( ! blueworx_feature_enabled( 'support_access' ) ) {
+	$on = blueworx_feature_enabled( 'support_access' );
+
+	// The switch lives here as well as on Enhancements, so the screen can be
+	// switched on where you are standing. Both go through
+	// blueworx_set_feature_enabled(), so there is still only one writer.
+	printf(
+		'<form method="post" action="%1$s" class="bw-toolbar bw-toolbar--card"><div class="bw-toolbar__group">%2$s<input type="hidden" name="action" value="blueworx_toggle_support_feature" /><label class="bw-switch"><input type="checkbox" role="switch" name="blueworx_support_feature" value="1"%3$s data-testid="bw-support-feature" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span><span class="bw-switch__label">%4$s</span></label>%5$s</div></form>',
+		esc_url( admin_url( 'admin-post.php' ) ),
+		wp_nonce_field( 'blueworx_toggle_support_feature', '_wpnonce', true, false ),
+		checked( $on, true, false ),
+		esc_html__( 'Support access is available on this site', 'blueworx-labs-wordpress' ),
+		// A Save beside the switch rather than an onchange handler in the
+		// markup. Every other switch in this plugin waits for a save, and this
+		// file does not put event handlers in HTML.
+		wp_kses(
+			blueworx_ds_button(
+				array(
+					'label' => __( 'Save', 'blueworx-labs-wordpress' ),
+					'type'  => 'submit',
+					'size'  => 'sm',
+				)
+			),
+			blueworx_ds_allowed_html()
+		)
+	);
+
+	if ( ! $on ) {
 		echo wp_kses(
 			blueworx_ds_notice(
 				array(
-					'tone'    => 'info',
-					'title'   => __( 'Support access is switched off', 'blueworx-labs-wordpress' ),
-					'text'    => __( 'Nobody can open a session while it is off, and no key on this site will work. Switch it on under Enhancements to use this screen.', 'blueworx-labs-wordpress' ),
-					'actions' => blueworx_ds_button(
-						array(
-							'label' => __( 'Go to Enhancements', 'blueworx-labs-wordpress' ),
-							'icon'  => 'arrow-right',
-							'href'  => admin_url( 'admin.php?page=blueworx-labs-wordpress&section=security' ),
-						)
-					),
+					'tone'  => 'info',
+					'title' => __( 'Support access is switched off', 'blueworx-labs-wordpress' ),
+					'text'  => __( 'Nobody at BlueWorx can reach this site while it is off, and no key here will work. Switch it on above to generate a key and open a 24-hour read-only window.', 'blueworx-labs-wordpress' ),
 				)
 			),
 			blueworx_ds_allowed_html()
