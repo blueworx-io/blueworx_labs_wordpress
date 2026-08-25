@@ -4,6 +4,35 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.71.0] - 2026-08-25
+
+### Fixed
+- **The BlueWorx screens now fill the window.** They were sitting in a box with
+  a strip of grey around them, and several — Support access, Single sign-on,
+  Embedded controls, System additions and Cache — were squeezed into a narrow
+  column with the rest of the screen left empty. Enhancements stopped
+  two-thirds of the way across. All of them run the full width now.
+- **The Save bar sits on the bottom of the window** and spans it, instead of
+  floating short of the bottom with a gap underneath.
+- **Warnings from other plugins no longer split the page title in half.** They
+  appear under the heading, where they belong.
+- **Buttons at the top of a screen line up with its right edge**, on a row of
+  their own under the title, rather than stopping wherever the sentence above
+  them happened to end.
+- **"Page access:" and the roles beside it stay on one line.**
+- **Even spacing down the Enhancements list.** The section heading was pressed
+  up against the first card while everything below it was spaced.
+- **Edit Menu lays its groups out across the screen** rather than one per row,
+  and a long menu name no longer runs under the Locked badge next to it.
+- **Support access matches the rest.** Its on/off switch is in the card it
+  belongs to instead of a strip floating above it.
+
+### Changed
+- **Guide topics switch instantly.** Choosing a topic used to reload the whole
+  page. Each one is still its own address, so a link to a topic still works.
+- Section and topic on Guides now sit in a single band under the heading,
+  running the width of the screen.
+
 ## [1.70.0] - 2026-08-25
 
 ### Changed

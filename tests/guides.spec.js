@@ -101,8 +101,10 @@ test.describe('BlueWorx Guides page', () => {
     );
     // A feature guide from this section is present...
     await expect(page.locator('[data-blueworx-guide="feature-login"]')).toBeVisible();
-    // ...and one from another section is not rendered at all.
-    await expect(page.locator('[data-blueworx-guide="basics-pages-and-posts"]')).toHaveCount(0);
+    // ...and one from another section is not. Every topic is now rendered and
+    // all but the chosen one hidden, so switching topic is instant — so this
+    // asks whether the guide is on screen, not whether it is in the markup.
+    await expect(page.locator('[data-blueworx-guide="basics-pages-and-posts"]')).toBeHidden();
   });
 
   test('an unknown tab in the URL falls back to the first tab rather than an empty page', async ({

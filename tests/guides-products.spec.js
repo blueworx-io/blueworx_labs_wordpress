@@ -57,7 +57,7 @@ test.describe('Guides — products and topics', () => {
     expect(topicsAfter.join(' ').toLowerCase()).toContain('writing');
 
     // And the cards showing belong to that product.
-    await expect(page.locator('[data-blueworx-guide]').first()).toBeVisible();
+    await expect(page.locator('.bw-guidegrid:not([hidden]) [data-blueworx-guide]').first()).toBeVisible();
   });
 
   test('a topic link carries its product, so it resolves on its own', async ({ page }) => {
@@ -70,7 +70,7 @@ test.describe('Guides — products and topics', () => {
 
     await page.goto(href);
     await expect(page.locator('[data-blueworx-guide-product="wordpress"]')).toHaveClass(/is-active/);
-    await expect(page.locator('[data-blueworx-guide]').first()).toBeVisible();
+    await expect(page.locator('.bw-guidegrid:not([hidden]) [data-blueworx-guide]').first()).toBeVisible();
   });
 
   test('an unknown product falls back rather than emptying the screen', async ({ page }) => {
@@ -80,7 +80,7 @@ test.describe('Guides — products and topics', () => {
     await expect(page.locator('[data-blueworx-guide-products] .bw-prodtab.is-active')).toHaveText(
       /BlueWorx/
     );
-    await expect(page.locator('[data-blueworx-guide]').first()).toBeVisible();
+    await expect(page.locator('.bw-guidegrid:not([hidden]) [data-blueworx-guide]').first()).toBeVisible();
   });
 
   test('a plugin we do not have gets no section', async ({ page }) => {

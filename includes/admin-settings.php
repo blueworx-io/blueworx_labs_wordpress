@@ -1239,7 +1239,7 @@ function blueworx_render_cache_page() {
 	) . $form;
 
 	echo wp_kses(
-		'<div class="bw-page__body bw-page__body--single"><div class="bw-panels">'
+		'<div class="bw-page__body"><div class="bw-panels">'
 			. blueworx_ds_card(
 				array(
 					'title'  => __( 'Status', 'blueworx-labs-wordpress' ),

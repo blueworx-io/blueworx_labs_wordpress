@@ -1196,11 +1196,17 @@ function blueworx_ds_attrs( $attrs ) {
  * screens. `.wrap` stays so core keeps placing its own admin notices where
  * people expect them.
  *
+ * The `.wp-header-end` marker is what tells WordPress where those notices go.
+ * Without it core falls back to the first h1 it finds and inserts them there —
+ * which on these screens is inside the page header, between the title and the
+ * lede, splitting the header in half. With it they land under the header, where
+ * the design puts them.
+ *
  * @param string $header_html Page header HTML.
  * @return string HTML.
  */
 function blueworx_ds_screen_open( $header_html ) {
-	return '<div class="wrap bw-admin bw-page">' . $header_html;
+	return '<div class="wrap bw-admin bw-page">' . $header_html . '<hr class="wp-header-end" />';
 }
 
 /**

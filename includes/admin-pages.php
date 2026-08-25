@@ -59,7 +59,7 @@ function blueworx_open_admin_page( $args ) {
 		)
 	);
 
-	echo '<div class="bw-page__body bw-page__body--single"><div class="bw-panels">';
+	echo '<div class="bw-page__body"><div class="bw-panels">';
 }
 
 /**
@@ -127,11 +127,16 @@ function blueworx_render_support_page() {
 
 	$on = blueworx_feature_enabled( 'support_access' );
 
-	// The switch lives here as well as on Enhancements, so the screen can be
-	// switched on where you are standing. Both go through
-	// blueworx_set_feature_enabled(), so there is still only one writer.
-	printf(
-		'<form method="post" action="%1$s" class="bw-toolbar bw-toolbar--card"><div class="bw-toolbar__group">%2$s<input type="hidden" name="action" value="blueworx_toggle_support_feature" /><label class="bw-switch"><input type="checkbox" role="switch" name="blueworx_support_feature" value="1"%3$s data-testid="bw-support-feature" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span><span class="bw-switch__label">%4$s</span></label>%5$s</div></form>',
+	// The switch lives in the card's own head, which is where the design puts
+	// it: the thing it switches on is the card, and a strip of controls above
+	// the card read as a second, unrelated setting. It is still the same writer
+	// as Enhancements — both go through blueworx_set_feature_enabled().
+	//
+	// Its own form, a sibling of the panel's rather than a parent: a form inside
+	// a form is invalid and the browser drops the inner one, which would leave
+	// every button in the panel inert.
+	$switch = sprintf(
+		'<form method="post" action="%1$s">%2$s<input type="hidden" name="action" value="blueworx_toggle_support_feature" /><label class="bw-switch bw-switch--bare"><input type="checkbox" role="switch" name="blueworx_support_feature" value="1"%3$s data-testid="bw-support-feature" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span><span class="screen-reader-text">%4$s</span></label>%5$s</form>',
 		esc_url( admin_url( 'admin-post.php' ) ),
 		wp_nonce_field( 'blueworx_toggle_support_feature', '_wpnonce', true, false ),
 		checked( $on, true, false ),
@@ -139,17 +144,23 @@ function blueworx_render_support_page() {
 		// A Save beside the switch rather than an onchange handler in the
 		// markup. Every other switch in this plugin waits for a save, and this
 		// file does not put event handlers in HTML.
-		wp_kses(
-			blueworx_ds_button(
-				array(
-					'label' => __( 'Save', 'blueworx-labs-wordpress' ),
-					'type'  => 'submit',
-					'size'  => 'sm',
-				)
-			),
-			blueworx_ds_allowed_html()
+		blueworx_ds_button(
+			array(
+				'label' => __( 'Save', 'blueworx-labs-wordpress' ),
+				'type'  => 'submit',
+				'size'  => 'sm',
+			)
 		)
 	);
+
+	// Title first, caption under it — assets/css/admin-additions.css reverses
+	// the order the system's card head renders them in.
+	echo '<section class="bw-card bw-supportcard"><div class="bw-card__head"><div class="bw-card__titles">';
+	echo '<p class="bw-card__eyebrow">' . esc_html__( 'Read-only, and only while the window is open', 'blueworx-labs-wordpress' ) . '</p>';
+	echo '<h2 class="bw-card__title">' . esc_html__( 'BlueWorx support access', 'blueworx-labs-wordpress' ) . '</h2>';
+	echo '</div><div class="bw-card__actions">';
+	echo $switch; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built above from escaped parts.
+	echo '</div></div><div class="bw-card__body">';
 
 	if ( ! $on ) {
 		echo wp_kses(
@@ -163,6 +174,8 @@ function blueworx_render_support_page() {
 			blueworx_ds_allowed_html()
 		);
 
+		echo '</div></section>';
+
 		blueworx_close_admin_page();
 		return;
 	}
@@ -172,16 +185,11 @@ function blueworx_render_support_page() {
 	// On Enhancements it inherits the settings form; here it needs its own.
 	echo '<form method="post" action="' . esc_url( admin_url( 'admin.php?page=blueworx-support' ) ) . '">';
 
-	echo '<section class="bw-card"><div class="bw-card__head"><div class="bw-card__titles">';
-	echo '<p class="bw-card__eyebrow">' . esc_html__( 'Read-only, and only while the window is open', 'blueworx-labs-wordpress' ) . '</p>';
-	echo '<h2 class="bw-card__title">' . esc_html__( 'BlueWorx support access', 'blueworx-labs-wordpress' ) . '</h2>';
-	echo '</div></div><div class="bw-card__body">';
-
 	blueworx_support_render_panel();
 
-	echo '</div></section>';
-
 	echo '</form>';
+
+	echo '</div></section>';
 
 	blueworx_close_admin_page();
 }
@@ -431,6 +439,21 @@ function blueworx_render_additions_page() {
 			__( 'Guide grid', 'blueworx-labs-wordpress' ),
 			__( 'Two equal columns from 1000px, with card footers lining up.', 'blueworx-labs-wordpress' ),
 			__( 'One column, two columns', 'blueworx-labs-wordpress' ),
+		),
+		array(
+			__( 'Guides section band', 'blueworx-labs-wordpress' ),
+			__( 'Section and topic run the full width under the page header, as one white band with a hairline.', 'blueworx-labs-wordpress' ),
+			__( 'Resting only', 'blueworx-labs-wordpress' ),
+		),
+		array(
+			__( 'Full-bleed page shell', 'blueworx-labs-wordpress' ),
+			__( 'Our screens run flush to the sidebar and top bar, so the wrap margins WordPress adds are cancelled on them.', 'blueworx-labs-wordpress' ),
+			__( 'Header, body, sticky save bar', 'blueworx-labs-wordpress' ),
+		),
+		array(
+			__( 'Menu bucket grid', 'blueworx-labs-wordpress' ),
+			__( 'Edit Menu lays its buckets out across the width rather than one per row.', 'blueworx-labs-wordpress' ),
+			__( 'One to four columns', 'blueworx-labs-wordpress' ),
 		),
 
 		array(
