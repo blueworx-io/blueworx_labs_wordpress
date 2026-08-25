@@ -185,7 +185,8 @@ test.describe('ASE replacement modules', () => {
     await page.goto(SETTINGS_PATH);
 
     await expect(page.locator('input[name="blueworx_media_replace_enabled"]')).toHaveCount(1);
-    await expect(page.locator('#blueworx_media_max_width')).toHaveCount(1);
+    // One longest-edge slider now, not a separate width and height.
+    await expect(page.locator('#blueworx_media_longest_edge')).toHaveCount(1);
     await expect(
       page.locator('input[type="checkbox"][name="blueworx_media_svg_roles[]"]').first()
     ).toHaveCount(1);
