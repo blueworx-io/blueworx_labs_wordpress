@@ -191,15 +191,35 @@ function blueworx_ds_allowed_html() {
  * SVG on load. Deliberately empty until then: an icon that fails to draw should
  * leave a gap, never a stray glyph or a broken-image frame.
  *
- * @param string $name Lucide icon name, e.g. "circle-check".
- * @param int    $size Pixel size.
+ * The size comes from the system's own scale rather than an inline width and
+ * height. A size that is not on that scale falls back to the base 16px, which
+ * is the only honest answer: inventing a width here would put a value on the
+ * page that the design system does not have a token for.
+ *
+ * @param string $name  Lucide icon name, e.g. "circle-check".
+ * @param int    $size  Pixel size. One of 14, 16, 18, 20, 22, 28.
+ * @param string $class Extra class for a component that positions its own icon.
+ *                      Several in the stylesheet do — a select's chevron and an
+ *                      empty state's glyph are each styled by a class of their
+ *                      own, and without it they render unstyled while looking,
+ *                      in the markup, entirely correct.
  * @return string HTML.
  */
-function blueworx_ds_icon( $name, $size = 16 ) {
+function blueworx_ds_icon( $name, $size = 16, $class = '' ) {
+	$classes = 'bw-icon';
+
+	if ( in_array( (int) $size, array( 14, 18, 20, 22, 28 ), true ) ) {
+		$classes .= ' bw-icon--' . (int) $size;
+	}
+
+	if ( '' !== $class ) {
+		$classes .= ' ' . $class;
+	}
+
 	return sprintf(
-		'<span class="bw-icon" data-lucide="%1$s" aria-hidden="true" style="width:%2$dpx;height:%2$dpx"></span>',
-		esc_attr( $name ),
-		(int) $size
+		'<span class="%1$s" data-lucide="%2$s" aria-hidden="true"></span>',
+		esc_attr( $classes ),
+		esc_attr( $name )
 	);
 }
 
@@ -573,7 +593,7 @@ function blueworx_ds_empty_state( $args ) {
 		)
 	);
 
-	$html  = '<div class="bw-empty">' . blueworx_ds_icon( $args['icon'], 28 );
+	$html  = '<div class="bw-empty">' . blueworx_ds_icon( $args['icon'], 28, 'bw-empty__icon' );
 	$html .= '<h3 class="bw-empty__title">' . esc_html( $args['title'] ) . '</h3>';
 	$html .= '' !== $args['text'] ? '<p class="bw-empty__text">' . esc_html( $args['text'] ) . '</p>' : '';
 	$html .= '' !== $args['actions'] ? '<div class="bw-empty__actions">' . $args['actions'] . '</div>' : '';
@@ -822,7 +842,7 @@ function blueworx_ds_select( $args ) {
 		'' !== $args['id'] ? ' id="' . esc_attr( $args['id'] ) . '"' : '',
 		blueworx_ds_attrs( $args['attrs'] ),
 		$options,
-		blueworx_ds_icon( 'chevron-down', 14 )
+		blueworx_ds_icon( 'chevron-down', 14, 'bw-select__arrow' )
 	);
 }
 
