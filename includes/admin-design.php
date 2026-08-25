@@ -443,6 +443,35 @@ function blueworx_ds_notice( $args ) {
 }
 
 /**
+ * The row saying which roles can reach a screen.
+ *
+ * Worked out from the capability the screen is registered with rather than
+ * written down, so it stays true when a role's capabilities change and it works
+ * for a screen nobody here has seen.
+ *
+ * @param string $capability Capability the screen requires.
+ * @param string $scope      Unique key, so two rows on one page do not collide.
+ * @return string HTML, or an empty string when there is nothing to say.
+ */
+function blueworx_ds_page_access( $capability, $scope ) {
+	if ( '' === $capability || ! function_exists( 'blueworx_roles_with_capability' ) ) {
+		return '';
+	}
+
+	$roles = blueworx_roles_with_capability( $capability );
+
+	if ( empty( $roles ) ) {
+		return '';
+	}
+
+	return sprintf(
+		'<div class="bw-pageaccess"><span class="bw-pageaccess__label">%1$s</span>%2$s</div>',
+		esc_html__( 'Page access:', 'blueworx-labs-wordpress' ),
+		blueworx_ds_role_pills( $roles, $scope )
+	);
+}
+
+/**
  * Renders the page header every BlueWorx screen opens with.
  *
  * @param array $args {
@@ -481,19 +510,7 @@ function blueworx_ds_page_header( $args ) {
 	// with rather than written down. "Only administrators can see this" is a
 	// question people ask about every settings screen, and answering it in the
 	// header is cheaper than answering it in support.
-	$access = '';
-
-	if ( '' !== $args['capability'] && function_exists( 'blueworx_roles_with_capability' ) ) {
-		$roles = blueworx_roles_with_capability( $args['capability'] );
-
-		if ( ! empty( $roles ) ) {
-			$access = sprintf(
-				'<div class="bw-pageaccess"><span class="bw-pageaccess__label">%1$s</span>%2$s</div>',
-				esc_html__( 'Page access:', 'blueworx-labs-wordpress' ),
-				blueworx_ds_role_pills( $roles, 'page:' . sanitize_key( $args['title'] ) )
-			);
-		}
-	}
+	$access = blueworx_ds_page_access( $args['capability'], 'page:' . sanitize_key( $args['title'] ) );
 
 	$actions = '' !== $args['actions']
 		? '<div class="bw-pagehead__actions">' . $args['actions'] . '</div>'
