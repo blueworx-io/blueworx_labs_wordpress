@@ -315,6 +315,14 @@ function blueworx_save_login_session_settings() {
 	if ( isset( blueworx_login_session_choices()[ $choice ] ) ) {
 		update_option( 'blueworx_login_session', $choice );
 	}
+
+	$admin = isset( $_POST['blueworx_admin_session'] ) ? sanitize_key( wp_unslash( $_POST['blueworx_admin_session'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+	// An empty value is a real choice here — "same as everyone else" — so it is
+	// written rather than skipped, or the setting could never be undone.
+	if ( isset( blueworx_admin_session_choices()[ $admin ] ) ) {
+		update_option( 'blueworx_admin_session', $admin );
+	}
 }
 
 /**
@@ -379,8 +387,12 @@ function blueworx_save_media_tools_settings() {
 	update_option( 'blueworx_media_replace_enabled', isset( $_POST['blueworx_media_replace_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
 	update_option( 'blueworx_media_max_dimensions_enabled', isset( $_POST['blueworx_media_max_dimensions_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
 
-	$width  = isset( $_POST['blueworx_media_max_width'] ) ? absint( wp_unslash( $_POST['blueworx_media_max_width'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
-	$height = isset( $_POST['blueworx_media_max_height'] ) ? absint( wp_unslash( $_POST['blueworx_media_max_height'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	// One control now writes both. "Longest edge" is the bounding box the
+	// resizer already applies, so width and height were only ever different by
+	// accident. Both options are kept so nothing that reads them has to change.
+	$longest = isset( $_POST['blueworx_media_longest_edge'] ) ? absint( wp_unslash( $_POST['blueworx_media_longest_edge'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	$width   = $longest;
+	$height  = $longest;
 
 	update_option( 'blueworx_media_max_width', $width > 0 ? min( $width, 10000 ) : 1920 );
 	update_option( 'blueworx_media_max_height', $height > 0 ? min( $height, 10000 ) : 1920 );
@@ -429,7 +441,6 @@ function blueworx_render_enhancements_page() {
 	$sections  = blueworx_get_feature_sections();
 	$features  = blueworx_get_feature_definitions();
 	$notice    = get_transient( 'blueworx_labs_notice' );
-	$login_url = home_url( '/' . blueworx_login_slug() . '/' );
 
 	if ( $notice ) {
 		delete_transient( 'blueworx_labs_notice' );
@@ -467,9 +478,19 @@ function blueworx_render_enhancements_page() {
 		blueworx_ds_screen_open(
 			blueworx_ds_page_header(
 				array(
-					'title'   => __( 'Enhancements', 'blueworx-labs-wordpress' ),
-					'lede'    => __( 'Functions you can switch on one at a time. Nothing changes on the site until you save.', 'blueworx-labs-wordpress' ),
-					'actions' => $header_actions,
+					'title'      => __( 'Enhancements', 'blueworx-labs-wordpress' ),
+					'lede'       => sprintf(
+						/* translators: %d: how many functions this plugin offers. */
+						_n(
+							'%d function you can switch on one at a time. Nothing changes on the site until you save.',
+							'%d functions you can switch on one at a time. Nothing changes on the site until you save.',
+							count( $features ),
+							'blueworx-labs-wordpress'
+						),
+						count( $features )
+					),
+					'actions'    => $header_actions,
+					'capability' => 'manage_options',
 				)
 			)
 		),
@@ -482,23 +503,6 @@ function blueworx_render_enhancements_page() {
 				array(
 					'tone' => 'success',
 					'text' => $notice,
-				)
-			),
-			blueworx_ds_allowed_html()
-		);
-	}
-
-	if ( blueworx_feature_enabled( 'login' ) ) {
-		echo wp_kses(
-			blueworx_ds_notice(
-				array(
-					'tone'  => 'accent',
-					'title' => __( 'The way in to this site', 'blueworx-labs-wordpress' ),
-					'html'  => sprintf(
-						'<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
-						esc_url( $login_url ),
-						esc_html( $login_url )
-					),
 				)
 			),
 			blueworx_ds_allowed_html()
@@ -550,13 +554,13 @@ function blueworx_render_enhancements_page() {
 	);
 
 	printf(
-		'<div class="bw-page__body"><nav class="bw-secnav" aria-label="%1$s">%2$s</nav><div class="bw-panels">',
+		'<div class="bw-page__body"><div class="bw-panels-row"><nav class="bw-secnav" aria-label="%1$s">%2$s</nav><div class="bw-panels">',
 		esc_attr__( 'Sections', 'blueworx-labs-wordpress' ),
 		wp_kses( $nav, blueworx_ds_allowed_html() )
 	);
 
 	foreach ( $sections_with_features as $section_id => $section_label ) {
-		$rows = '';
+		$cards = '';
 
 		foreach ( $features as $key => $feature ) {
 			if ( $feature['section'] !== $section_id ) {
@@ -565,13 +569,23 @@ function blueworx_render_enhancements_page() {
 
 			$enabled = blueworx_feature_enabled( $key );
 
+			// The switch is bare and sits hard right of the function's name and
+			// description, rather than carrying them as its own label. At
+			// twenty-seven rows that is the difference between a list you can
+			// scan and a wall of sentences.
 			$switch = sprintf(
-				'<label class="bw-switch"><input type="checkbox" role="switch" name="%1$s" value="1"%2$s class="blueworx-feature-toggle" data-blueworx-feature="%3$s" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span><span class="bw-switch__label">%4$s<small>%5$s</small></span></label>',
+				'<label class="bw-switch bw-switch--bare"><input type="checkbox" role="switch" name="%1$s" value="1"%2$s class="blueworx-feature-toggle" data-blueworx-feature="%3$s" aria-label="%4$s" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span></label>',
 				esc_attr( 'blueworx_feature[' . $key . ']' ),
 				checked( $enabled, true, false ),
 				esc_attr( $key ),
+				esc_attr( $feature['label'] )
+			);
+
+			$row = sprintf(
+				'<div class="bw-fncard__row"><div><span class="bw-fncard__name">%1$s</span><p class="bw-fncard__desc">%2$s</p></div>%3$s</div>',
 				esc_html( $feature['label'] ),
-				esc_html( $feature['description'] )
+				esc_html( $feature['description'] ),
+				wp_kses( $switch, blueworx_ds_allowed_html() )
 			);
 
 			$detail = '';
@@ -589,22 +603,28 @@ function blueworx_render_enhancements_page() {
 				// support panel alone relies on formaction, formmethod and two
 				// data attributes — a stripped formaction posts the button to the
 				// wrong handler, and nothing about the page looks wrong.
+				//
+				// The panel stays in the DOM while the switch is off. An
+				// unchecked box and a missing box are the same thing on save, so
+				// rendering only the open ones would switch off every setting
+				// nobody happened to be looking at.
 				$detail = sprintf(
-					'<div class="blueworx-feature-detail bw-card bw-card--sunken" data-blueworx-detail="%1$s"%2$s><div class="bw-card__body">%3$s</div></div>',
+					'<div class="bw-fncard__panel blueworx-feature-detail" data-blueworx-detail="%1$s"%2$s><div class="bw-card bw-card--sunken"><div class="bw-card__body"><p class="bw-card__eyebrow">%3$s</p>%4$s</div></div></div>',
 					esc_attr( $key ),
 					$enabled ? '' : ' hidden',
+					esc_html__( 'Settings for this function', 'blueworx-labs-wordpress' ),
 					$detail_html
 				);
 			}
 
-			// One .bw-field per function: the switch on its own line with its
-			// settings beneath it, rather than a 200px label column that squeezes
-			// every function's name into four words a line.
-			$rows .= '<div class="bw-field">' . wp_kses( $switch, blueworx_ds_allowed_html() ) . $detail . '</div>';
+			$cards .= '<div class="bw-fncard">' . $row . $detail . '</div>';
 		}
 
+		// The section head is its own card above the stack, so the count and the
+		// switch-everything-off control belong to the section rather than to
+		// whichever function happens to be first.
 		printf(
-			'<section class="bw-card bw-settingscard" data-blueworx-panel="%1$s"%2$s><div class="bw-card__head"><div class="bw-card__titles"><p class="bw-card__eyebrow">%3$s</p><h2 class="bw-card__title">%4$s</h2></div><div class="bw-card__actions">%5$s</div></div><div class="bw-card__body bw-settingscard__body"><div class="bw-fields bw-fields--single">%6$s</div></div></section>',
+			'<div data-blueworx-panel="%1$s"%2$s><section class="bw-card bw-card--flush bw-sectionhead"><div class="bw-card__head"><div class="bw-card__titles"><p class="bw-card__eyebrow">%3$s</p><h2 class="bw-card__title">%4$s</h2></div><div class="bw-card__actions">%5$s%6$s</div></div></section><div class="bw-fnstack">%7$s</div></div>',
 			esc_attr( $section_id ),
 			$section_id === $first_section ? '' : ' hidden',
 			esc_html__( 'Section', 'blueworx-labs-wordpress' ),
@@ -616,18 +636,29 @@ function blueworx_render_enhancements_page() {
 						_n( '%d on', '%d on', $counts[ $section_id ]['on'], 'blueworx-labs-wordpress' ),
 						$counts[ $section_id ]['on']
 					),
-					$counts[ $section_id ]['on'] > 0 ? 'success' : 'neutral'
+					'neutral'
+				),
+				blueworx_ds_allowed_html()
+			),
+			wp_kses(
+				blueworx_ds_button(
+					array(
+						'label'   => __( 'Switch this section off', 'blueworx-labs-wordpress' ),
+						'variant' => 'ghost',
+						'size'    => 'sm',
+						'class'   => 'blueworx-section-off',
+					)
 				),
 				blueworx_ds_allowed_html()
 			),
 			// Already filtered piece by piece above: the parts this file composes
 			// go through wp_kses(), the detail panels render their own escaped
 			// markup. See the note on $detail.
-			$rows // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			$cards // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		);
 	}
 
-	echo '</div></div>';
+	echo '</div></div></div>';
 
 	// The save bar sticks to the bottom of the screen rather than sitting under
 	// whichever section happens to be open, so Save is in the same place however
@@ -712,10 +743,27 @@ function blueworx_render_feature_detail( $key ) {
  */
 function blueworx_get_feature_detail_html( $key ) {
 	if ( 'login' === $key ) {
+		// The whole address, copyable. A slug on its own is not the thing anybody
+		// needs to keep — the address is, and typing it out from a slug is where
+		// people get locked out.
 		return blueworx_detail_stack(
 			blueworx_ds_field(
 				array(
-					'label'   => __( 'Login slug', 'blueworx-labs-wordpress' ),
+					'label'   => __( 'Your login address', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_login_slug',
+					'control' => blueworx_ds_copy_field(
+						array(
+							'value' => home_url( '/' ) . blueworx_login_slug(),
+							'id'    => 'blueworx-login-address',
+							'label' => __( 'Copy', 'blueworx-labs-wordpress' ),
+						)
+					),
+					'help'    => __( 'Keep a copy somewhere outside the site. Once you save, the usual WordPress login stops working for everyone.', 'blueworx-labs-wordpress' ),
+				)
+			)
+			. blueworx_ds_field(
+				array(
+					'label'   => __( 'Address to use', 'blueworx-labs-wordpress' ),
 					'for'     => 'blueworx_login_slug',
 					'control' => blueworx_ds_input(
 						array(
@@ -725,11 +773,7 @@ function blueworx_get_feature_detail_html( $key ) {
 							'mono'  => true,
 						)
 					),
-					'help'    => sprintf(
-						/* translators: %s: the full sign-in address, e.g. https://example.com/my-login. */
-						__( 'Your sign-in page becomes %s. The default WordPress login stops working, so keep this somewhere safe.', 'blueworx-labs-wordpress' ),
-						home_url( '/' ) . blueworx_login_slug()
-					),
+					'help'    => __( 'The last part of the address above. Changing it changes where you sign in the moment you save.', 'blueworx-labs-wordpress' ),
 				)
 			)
 		);
@@ -829,6 +873,21 @@ function blueworx_get_feature_detail_html( $key ) {
 						)
 					),
 					'help'    => __( 'Applies from the next time somebody signs in. Anyone already signed in keeps their current session until it runs out.', 'blueworx-labs-wordpress' ),
+				)
+			)
+			. blueworx_ds_field(
+				array(
+					'label'   => __( 'Administrators', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_admin_session',
+					'control' => blueworx_ds_select(
+						array(
+							'name'     => 'blueworx_admin_session',
+							'id'       => 'blueworx_admin_session',
+							'options'  => blueworx_admin_session_choices(),
+							'selected' => blueworx_admin_session_choice(),
+						)
+					),
+					'help'    => __( 'Administrators can be signed out sooner than everyone else. Theirs is the account that can change the site.', 'blueworx-labs-wordpress' ),
 				)
 			)
 		);
@@ -990,45 +1049,33 @@ function blueworx_get_feature_detail_html( $key ) {
 			)
 		);
 
-		$fields .= blueworx_ds_field(
-			array(
-				'label'   => __( 'Largest width', 'blueworx-labs-wordpress' ),
-				'for'     => 'blueworx_media_max_width',
-				'control' => blueworx_ds_input(
-					array(
-						'type'  => 'number',
-						'name'  => 'blueworx_media_max_width',
-						'id'    => 'blueworx_media_max_width',
-						'value' => (string) $max_width,
-						'small' => true,
-						'attrs' => array(
-							'min' => '1',
-							'max' => '10000',
-						),
-					)
-				),
-				'help'    => __( 'In pixels.', 'blueworx-labs-wordpress' ),
-			)
-		);
+		// One control, not two. The design system's range field, and "longest
+		// edge" is what a bounding box actually means: WordPress fits an upload
+		// inside a square of this size, so a separate width and height only ever
+		// mattered when they differed, which is a setting nobody wanted.
+		//
+		// A site that had different values keeps the larger of the two until it
+		// next saves this panel.
+		$longest = max( (int) $max_width, (int) $max_height );
 
 		$fields .= blueworx_ds_field(
 			array(
-				'label'   => __( 'Largest height', 'blueworx-labs-wordpress' ),
-				'for'     => 'blueworx_media_max_height',
-				'control' => blueworx_ds_input(
-					array(
-						'type'  => 'number',
-						'name'  => 'blueworx_media_max_height',
-						'id'    => 'blueworx_media_max_height',
-						'value' => (string) $max_height,
-						'small' => true,
-						'attrs' => array(
-							'min' => '1',
-							'max' => '10000',
-						),
-					)
+				'label'   => __( 'Longest edge', 'blueworx-labs-wordpress' ),
+				'for'     => 'blueworx_media_longest_edge',
+				'control' => sprintf(
+					'<div class="bw-range"><input type="range" name="blueworx_media_longest_edge" id="blueworx_media_longest_edge" min="1200" max="4000" step="200" value="%1$s" /><span class="bw-range__value" data-blueworx-range-value="blueworx_media_longest_edge" data-blueworx-range-format="%3$s">%2$s</span></div>',
+					esc_attr( (string) $longest ),
+					esc_html(
+						sprintf(
+							/* translators: %s: a number of pixels. */
+							__( '%s px', 'blueworx-labs-wordpress' ),
+							number_format_i18n( $longest )
+						)
+					),
+					/* translators: %s: a number of pixels. */
+					esc_attr__( '%s px', 'blueworx-labs-wordpress' )
 				),
-				'help'    => __( 'In pixels.', 'blueworx-labs-wordpress' ),
+				'help'    => __( 'Anything larger is shrunk to fit inside a square this size. The original is not kept.', 'blueworx-labs-wordpress' ),
 			)
 		);
 

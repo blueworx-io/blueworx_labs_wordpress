@@ -44,6 +44,99 @@
 		}
 	}
 
+	/**
+	 * Switches off every function in one section.
+	 *
+	 * Client-side only. Nothing is written until Save, so this is undoable by
+	 * leaving the screen — which is why it needs no confirmation.
+	 *
+	 * @param {HTMLElement} button The section's button.
+	 */
+	function switchSectionOff( button ) {
+		var panel = button.closest( '[data-blueworx-panel]' );
+
+		if ( ! panel ) {
+			return;
+		}
+
+		var toggles = panel.querySelectorAll( '.blueworx-feature-toggle' );
+
+		Array.prototype.forEach.call( toggles, function ( toggle ) {
+			if ( ! toggle.checked ) {
+				return;
+			}
+
+			toggle.checked = false;
+			sync( toggle );
+			// Anything else listening for a change — a panel, a test — should
+			// see this the same way it sees a click.
+			toggle.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		} );
+	}
+
+	/**
+	 * Keeps a range field's readout in step with its slider.
+	 *
+	 * Without this the number beside the slider is whatever the page rendered
+	 * with, and dragging silently disagrees with it.
+	 */
+	function startRanges() {
+		var readouts = document.querySelectorAll( '[data-blueworx-range-value]' );
+
+		Array.prototype.forEach.call( readouts, function ( readout ) {
+			var input = document.getElementById( readout.getAttribute( 'data-blueworx-range-value' ) );
+
+			if ( ! input ) {
+				return;
+			}
+
+			// The format comes from PHP, where the translation lives. Guessing it
+			// back out of the rendered text breaks on any locale that puts the
+			// unit somewhere else.
+			var format = readout.getAttribute( 'data-blueworx-range-format' ) || '%s';
+
+			input.addEventListener( 'input', function () {
+				readout.textContent = format.replace( '%s', input.value );
+			} );
+		} );
+	}
+
+	/**
+	 * Lets a chip untick the box that put it there.
+	 *
+	 * The tick boxes are the setting; the chips are a view of it. Removing a
+	 * chip unticks its box and drops the chip, so the two never disagree.
+	 */
+	function startChips() {
+		var rows = document.querySelectorAll( '[data-blueworx-chips]' );
+
+		Array.prototype.forEach.call( rows, function ( row ) {
+			var group = row.getAttribute( 'data-blueworx-chips' );
+
+			row.addEventListener( 'click', function ( event ) {
+				var button = event.target.closest( '[data-blueworx-chip-for]' );
+
+				if ( ! button ) {
+					return;
+				}
+
+				event.preventDefault();
+
+				var value = button.getAttribute( 'data-blueworx-chip-for' );
+				var box = document.querySelector(
+					'input[name="' + group + '[]"][value="' + value + '"]'
+				);
+
+				if ( box ) {
+					box.checked = false;
+					box.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+				}
+
+				button.closest( '.bw-chip' ).remove();
+			} );
+		} );
+	}
+
 	function start() {
 		var toggles = document.querySelectorAll( '.blueworx-feature-toggle' );
 		Array.prototype.forEach.call( toggles, function ( toggle ) {
@@ -59,6 +152,17 @@
 				showSection( item.getAttribute( 'data-blueworx-section' ) );
 			} );
 		} );
+
+		var offButtons = document.querySelectorAll( '.blueworx-section-off' );
+		Array.prototype.forEach.call( offButtons, function ( button ) {
+			button.addEventListener( 'click', function ( event ) {
+				event.preventDefault();
+				switchSectionOff( button );
+			} );
+		} );
+
+		startRanges();
+		startChips();
 
 		// A section named in the URL wins, so a guide can link straight to the
 		// section it is about rather than to the top of the screen.

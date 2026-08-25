@@ -61,6 +61,10 @@ function blueworx_ds_allowed_html() {
 		'data-testid'                => true,
 		'data-blueworx-section'      => true,
 		'data-blueworx-panel'        => true,
+		'data-blueworx-range-value'  => true,
+		'data-blueworx-range-format' => true,
+		'data-blueworx-chips'        => true,
+		'data-blueworx-chip-for'     => true,
 
 		// Edit Menu rows. The reorder script reads both, and a row whose
 		// data-slug was dropped saves as though it were never in the list.

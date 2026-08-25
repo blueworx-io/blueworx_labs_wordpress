@@ -51,13 +51,13 @@ function blueworx_get_feature_sections() {
 function blueworx_get_feature_definitions() {
 	return array(
 		'login'                 => array(
-			'label'       => __( 'Custom login & protection', 'blueworx-labs-wordpress' ),
+			'label'       => __( 'Custom login and protection', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Moves login to a custom URL and blocks the default WordPress login and admin paths.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => 'login',
 		),
 		'site_protection'       => array(
-			'label'       => __( 'Site Protection', 'blueworx-labs-wordpress' ),
+			'label'       => __( 'Site protection', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Only lets logged-in users with selected roles view the frontend or backend.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => 'site_protection',
@@ -120,7 +120,7 @@ function blueworx_get_feature_definitions() {
 			'detail'      => null,
 		),
 		'application_passwords' => array(
-			'label'       => __( 'Application Passwords', 'blueworx-labs-wordpress' ),
+			'label'       => __( 'Application passwords', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => 'application_passwords',

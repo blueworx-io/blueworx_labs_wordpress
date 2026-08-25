@@ -67,6 +67,30 @@ function blueworx_login_session_choice() {
 }
 
 /**
+ * The lengths offered for administrators, plus "same as everyone else".
+ *
+ * An administrator's session is the one worth shortening: it is the account
+ * that can change the site, and it is the one most often left signed in on a
+ * shared or borrowed machine.
+ *
+ * @return array Labels keyed by option value.
+ */
+function blueworx_admin_session_choices() {
+	return array( '' => __( 'Same as everyone else', 'blueworx-labs-wordpress' ) ) + blueworx_login_session_choices();
+}
+
+/**
+ * Gets the chosen administrator session length.
+ *
+ * @return string Option value, or an empty string for "same as everyone else".
+ */
+function blueworx_admin_session_choice() {
+	$choice = (string) get_option( 'blueworx_admin_session', '' );
+
+	return isset( blueworx_admin_session_choices()[ $choice ] ) ? $choice : '';
+}
+
+/**
  * Sets how long an auth cookie lasts.
  *
  * Applied to both a normal sign-in and a "Remember me" one. Splitting them was
@@ -102,6 +126,19 @@ function blueworx_login_session_expiration( $expiration, $user_id, $remember ) {
 
 	$lengths = blueworx_login_session_lengths();
 	$choice  = blueworx_login_session_choice();
+
+	// An administrator may have a shorter window of their own. Checked against
+	// the named user for the same reason the support check above is: the person
+	// signing in is not yet the current user at this point.
+	$admin_choice = blueworx_admin_session_choice();
+
+	if ( '' !== $admin_choice ) {
+		$user = get_userdata( (int) $user_id );
+
+		if ( $user instanceof WP_User && in_array( 'administrator', (array) $user->roles, true ) ) {
+			$choice = $admin_choice;
+		}
+	}
 
 	return isset( $lengths[ $choice ] ) ? (int) $lengths[ $choice ] : $expiration;
 }
