@@ -104,6 +104,42 @@ test.describe('Single sign-on', () => {
     ]);
   });
 
+  test('the allowed domains and the sign-out switch survive a save', async ({ page }) => {
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await setFeature(page, 'sso', true);
+    await page.fill('#blueworx_sso_allowed_domains', 'example.com, example.co.uk');
+    await page.locator('details.blueworx-sso-advanced summary').click();
+    await page.locator('[data-testid="bw-sso-single-logout"]').check();
+    await page.fill('#blueworx_sso_redirect_after_logout', 'https://example.test/goodbye/');
+    await save(page);
+
+    await page.goto(SETTINGS_PATH);
+    await expect(page.locator('#blueworx_sso_allowed_domains')).toHaveValue(
+      'example.com, example.co.uk'
+    );
+    await page.locator('details.blueworx-sso-advanced summary').click();
+    await expect(page.locator('[data-testid="bw-sso-single-logout"]')).toBeChecked();
+    await expect(page.locator('#blueworx_sso_redirect_after_logout')).toHaveValue(
+      'https://example.test/goodbye/'
+    );
+
+    await restoreAll([
+      [
+        'domains and sign-out cleared',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await page.fill('#blueworx_sso_allowed_domains', '');
+          await page.locator('details.blueworx-sso-advanced summary').click();
+          await page.locator('[data-testid="bw-sso-single-logout"]').uncheck();
+          await page.fill('#blueworx_sso_redirect_after_logout', '');
+          await setFeature(page, 'sso', false);
+          await save(page);
+        },
+      ],
+    ]);
+  });
+
   test('the callback URL is shown for copying', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
@@ -240,6 +276,46 @@ test.describe('Single sign-on flow', () => {
   test('no icon font is loaded for it', async ({ page }) => {
     await page.goto(cacheBust('/admin_login'));
     await expect(page.locator('link[href*="font-awesome"]')).toHaveCount(0);
+  });
+
+  test('another integration coming back is left alone', async ({ page }) => {
+    // code and state belong to OAuth in general, not to this plugin. Treating
+    // every request carrying them as ours breaks whichever other integration on
+    // the site — payment, booking, another sign-in — returns the same way.
+    const response = await page.request.get('/?code=abc&state=not-one-of-ours', {
+      maxRedirects: 0,
+    });
+
+    expect(response.status()).toBe(200);
+  });
+
+  test('a sign-in ties itself to the browser that started it', async ({ page }) => {
+    const started = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+    const cookie = started.headers()['set-cookie'] || '';
+
+    expect(cookie).toContain('blueworx_sso_binder');
+    expect(cookie).toContain('HttpOnly');
+    // Strict would be dropped on the way back from the provider, which is a
+    // top-level navigation from another site.
+    expect(cookie).toContain('SameSite=Lax');
+  });
+
+  test('a callback in a different browser is refused', async ({ page, browser }) => {
+    const started = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
+    const state = new URL(started.headers().location).searchParams.get('state');
+
+    // Same state, no binding cookie: this is somebody being handed a return
+    // address for a sign-in they did not start, which would drop them inside
+    // whoever did start it.
+    const elsewhere = await browser.newContext();
+    const response = await elsewhere.request.get(
+      `/?blueworx_sso=callback&code=abc&state=${state}`,
+      { maxRedirects: 0 }
+    );
+    await elsewhere.close();
+
+    expect(response.status()).toBe(302);
+    expect(response.headers().location).toContain('blueworx_sso_error=1');
   });
 
   test('two attempts never reuse a state', async ({ page }) => {

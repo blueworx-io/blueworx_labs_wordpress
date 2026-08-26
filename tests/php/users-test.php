@@ -233,44 +233,123 @@ echo "\nSigning in never creates an account\n";
 // empty account looks exactly like their history has been lost, so the routes
 // are kept apart: only joining creates.
 $before = count( $GLOBALS['inserted'] );
-check( 'signing in with no account is refused even with joining switched on', resolve( claims( array( 'sub' => 'subject-visitor', 'email' => 'visitor@example.test' ) ), 'login' ), 'blueworx_sso_no_account' );
+check(
+	'signing in with no account is refused even with joining switched on',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-visitor',
+				'email' => 'visitor@example.test',
+			)
+		),
+		'login'
+	),
+	'blueworx_sso_no_account'
+);
 check( 'and created nobody', count( $GLOBALS['inserted'] ), $before );
 
 // Linking is not creating, though: an existing account with a matching verified
 // email is still adopted on the way in.
 $GLOBALS['users'][] = new WP_User( 7, 'already-here', 'already-here@example.test', array( 'author' ) );
-check( 'signing in still links an existing account', resolve( claims( array( 'sub' => 'subject-existing', 'email' => 'already-here@example.test' ) ), 'login' ), 'user:already-here' );
+check(
+	'signing in still links an existing account',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-existing',
+				'email' => 'already-here@example.test',
+			)
+		),
+		'login'
+	),
+	'user:already-here'
+);
 check( 'without creating anything', count( $GLOBALS['inserted'] ), $before );
 check( 'and without touching their role', $GLOBALS['users'][ count( $GLOBALS['users'] ) - 1 ]->roles, array( 'author' ) );
 
 echo "\nJoining creates\n";
 
-check( 'a new person gets an account', resolve( claims( array( 'sub' => 'subject-new', 'email' => 'newcomer@example.test' ) ) ), 'user:newcomer' );
+check(
+	'a new person gets an account',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-new',
+				'email' => 'newcomer@example.test',
+			)
+		)
+	),
+	'user:newcomer'
+);
 check( 'on the configured role', $GLOBALS['inserted'][0]['role'], 'subscriber' );
 check( 'with their name filled in', $GLOBALS['inserted'][0]['first_name'], 'Sam' );
 
 // A username collision must not fail, and must not overwrite anyone.
 $GLOBALS['users'][] = new WP_User( 5, 'taken', 'taken@elsewhere.test' );
-check( 'a clashing username is made unique', resolve( claims( array( 'sub' => 'subject-clash', 'email' => 'taken@example.test' ) ) ), 'user:taken-2' );
+check(
+	'a clashing username is made unique',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-clash',
+				'email' => 'taken@example.test',
+			)
+		)
+	),
+	'user:taken-2'
+);
 
 // The rule that matters most: no route through this file may produce an
 // administrator, whatever the settings say.
 $GLOBALS['options']['blueworx_sso_default_role'] = 'administrator';
-check( 'a configured administrator role is refused', resolve( claims( array( 'sub' => 'subject-admin', 'email' => 'admin-hopeful@example.test' ) ) ), 'user:admin-hopeful' );
+check(
+	'a configured administrator role is refused',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-admin',
+				'email' => 'admin-hopeful@example.test',
+			)
+		)
+	),
+	'user:admin-hopeful'
+);
 check( 'and lands on subscriber instead', $GLOBALS['inserted'][2]['role'], 'subscriber' );
 
 $GLOBALS['options']['blueworx_sso_default_role'] = 'nonexistent-role';
-check( 'an unknown role falls back to subscriber', resolve( claims( array( 'sub' => 'subject-unknown-role', 'email' => 'unknown-role@example.test' ) ) ), 'user:unknown-role' );
+check(
+	'an unknown role falls back to subscriber',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-unknown-role',
+				'email' => 'unknown-role@example.test',
+			)
+		)
+	),
+	'user:unknown-role'
+);
 check( 'on subscriber', $GLOBALS['inserted'][3]['role'], 'subscriber' );
 
 // And a site plugin filtering the new account cannot promote it either.
-$GLOBALS['options']['blueworx_sso_default_role'] = 'subscriber';
+$GLOBALS['options']['blueworx_sso_default_role']  = 'subscriber';
 $GLOBALS['filters']['blueworx_sso_new_user_data'] = function ( $userdata, $claim_set ) {
 	$userdata['role'] = 'administrator';
 	return $userdata;
 };
 
-check( 'a filter cannot promote to administrator', resolve( claims( array( 'sub' => 'subject-filtered', 'email' => 'filtered@example.test' ) ) ), 'user:filtered' );
+check(
+	'a filter cannot promote to administrator',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-filtered',
+				'email' => 'filtered@example.test',
+			)
+		)
+	),
+	'user:filtered'
+);
 check( 'the filtered role is reduced', $GLOBALS['inserted'][4]['role'], 'subscriber' );
 unset( $GLOBALS['filters']['blueworx_sso_new_user_data'] );
 
@@ -281,7 +360,103 @@ check( 'the authenticated hook fires for a returning person', $GLOBALS['actions'
 check( 'and says they are not new', $GLOBALS['actions'][0][3], false );
 
 $GLOBALS['actions'] = array();
-resolve( claims( array( 'sub' => 'subject-hook', 'email' => 'hook@example.test' ) ) );
+resolve(
+	claims(
+		array(
+			'sub'   => 'subject-hook',
+			'email' => 'hook@example.test',
+		)
+	)
+);
 check( 'and says a first-timer is new', $GLOBALS['actions'][0][3], true );
+
+echo '
+The email domains a site will accept
+';
+
+// The default: no list, so nothing changes for a site that never set one.
+check( 'an empty list accepts anybody the provider vouches for', blueworx_sso_email_domain_allowed( 'anyone@gmail.test' ), true );
+
+$GLOBALS['options']['blueworx_sso_allowed_domains'] = 'example.test, Second.Test';
+
+check( 'a listed domain is allowed', blueworx_sso_email_domain_allowed( 'person@example.test' ), true );
+check( 'the check ignores case on both sides', blueworx_sso_email_domain_allowed( 'PERSON@Example.Test' ), true );
+check( 'a second listed domain is allowed too', blueworx_sso_email_domain_allowed( 'person@second.test' ), true );
+check( 'anything else is refused', blueworx_sso_email_domain_allowed( 'person@gmail.test' ), false );
+
+// A lookalike that merely ends in a listed domain is a different domain, and
+// registering one is the cheapest way past a list like this.
+check( 'a lookalike domain is not a listed domain', blueworx_sso_email_domain_allowed( 'person@notexample.test' ), false );
+check( 'nor is a subdomain of one', blueworx_sso_email_domain_allowed( 'person@mail.example.test' ), false );
+check( 'somebody with no address at all is refused', blueworx_sso_email_domain_allowed( '' ), false );
+
+// People paste the address with the @ still on it.
+$GLOBALS['options']['blueworx_sso_allowed_domains'] = '@example.test';
+check( 'a pasted @domain means the same thing', blueworx_sso_email_domain_allowed( 'person@example.test' ), true );
+
+$GLOBALS['filters']['blueworx_sso_allowed_email_domains'] = function ( $domains ) {
+	return array( 'filtered.test' );
+};
+check( 'a site can supply the list from somewhere else', blueworx_sso_email_domain_allowed( 'person@filtered.test' ), true );
+check( 'and what the box says no longer counts', blueworx_sso_email_domain_allowed( 'person@example.test' ), false );
+unset( $GLOBALS['filters']['blueworx_sso_allowed_email_domains'] );
+
+// The rule has to bite on the sign-in itself, not just in the helper — and on
+// people who already have an account here, or it protects nobody who matters.
+$GLOBALS['options']['blueworx_sso_allowed_domains'] = 'allowed.test';
+$GLOBALS['options']['blueworx_sso_auto_register']   = '1';
+
+check(
+	'joining from an unlisted domain is refused',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'outsider',
+				'email' => 'outsider@gmail.test',
+			)
+		)
+	),
+	'blueworx_sso_domain_not_allowed'
+);
+
+$GLOBALS['users'][]                          = new WP_User( 90, 'insider', 'insider@allowed.test', array( 'editor' ) );
+$GLOBALS['meta'][90]['blueworx_sso_subject'] = 'subject-insider';
+$GLOBALS['meta'][90]['blueworx_sso_issuer']  = 'https://idp.test';
+
+check(
+	'somebody inside the list still signs in',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-insider',
+				'email' => 'insider@allowed.test',
+			)
+		),
+		'login'
+	),
+	'user:insider'
+);
+
+// Moved out of the company, account still here, identity still linked.
+$GLOBALS['users'][]                          = new WP_User( 91, 'leaver', 'leaver@gone.test', array( 'editor' ) );
+$GLOBALS['meta'][91]['blueworx_sso_subject'] = 'subject-leaver';
+$GLOBALS['meta'][91]['blueworx_sso_issuer']  = 'https://idp.test';
+
+check(
+	'an already-linked account outside the list is refused too',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-leaver',
+				'email' => 'leaver@gone.test',
+			)
+		),
+		'login'
+	),
+	'blueworx_sso_domain_not_allowed'
+);
+
+$GLOBALS['options']['blueworx_sso_allowed_domains'] = '';
+$GLOBALS['options']['blueworx_sso_auto_register']   = '0';
 
 finish();

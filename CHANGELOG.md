@@ -4,6 +4,32 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.73.0] - 2026-08-26
+
+### Fixed
+- **Single sign-on no longer grabs other integrations' return traffic.** Any
+  page visited with `code` and `state` in the address was treated as a sign-in
+  coming back, so a payment, booking or second sign-in integration on the same
+  site would be bounced to the login screen instead. Only a sign-in this site
+  actually started is claimed now.
+- **A sign-in link can no longer be handed to somebody else.** Someone could
+  start a sign-in as themselves and pass the return address to another person,
+  who would then be quietly signed in as them. A sign-in now only completes in
+  the browser that started it.
+- **Hiding the WordPress password form stops switching itself back off.** The
+  proof that sign-on works was only kept for the last twenty attempts, so on a
+  site with any failed sign-ins the setting quietly reverted within a day.
+
+### Added
+- **You can say which email domains are allowed to sign in.** Without it, a
+  provider like Google vouches for anyone in the world, and letting the joining
+  button create accounts opened the site to all of them. Leave it blank to
+  accept anyone, as before.
+- **Signing out can now sign people out of the provider too.** Until now,
+  logging out only ended the WordPress session — one click on the sign-in
+  button walked straight back in without anyone being asked for anything. Off
+  by default; there is a matching address to send people to afterwards.
+
 ## [1.72.0] - 2026-08-25
 
 ### Fixed

@@ -38,6 +38,86 @@ function blueworx_sso_attempt_key( $state ) {
 }
 
 /**
+ * The cookie tying a sign-in attempt to the browser that started it.
+ */
+const BLUEWORX_SSO_BINDER_COOKIE = 'blueworx_sso_binder';
+
+/**
+ * Remembers, in the browser, that this browser started a sign-in.
+ *
+ * The state alone proves that a sign-in was started, not that THIS person
+ * started it. Without something only the starting browser holds, somebody can
+ * begin a sign-in as themselves and hand the return address to someone else,
+ * who is then quietly signed in as them — and does whatever they came to do
+ * inside an account that is not theirs.
+ *
+ * Lax rather than Strict: the return leg is a top-level navigation from the
+ * provider, which Lax allows and Strict would drop.
+ *
+ * @param string $binder Random value; only its hash is stored server-side.
+ * @return void
+ */
+function blueworx_sso_set_binder_cookie( $binder ) {
+	if ( headers_sent() ) {
+		return;
+	}
+
+	setcookie(
+		BLUEWORX_SSO_BINDER_COOKIE,
+		$binder,
+		array(
+			'expires'  => time() + ( 10 * MINUTE_IN_SECONDS ),
+			'path'     => defined( 'COOKIEPATH' ) && COOKIEPATH ? COOKIEPATH : '/',
+			'domain'   => defined( 'COOKIE_DOMAIN' ) ? COOKIE_DOMAIN : '',
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		)
+	);
+}
+
+/**
+ * Drops the binding cookie, whichever way the sign-in ended.
+ *
+ * @return void
+ */
+function blueworx_sso_clear_binder_cookie() {
+	if ( headers_sent() ) {
+		return;
+	}
+
+	setcookie(
+		BLUEWORX_SSO_BINDER_COOKIE,
+		'',
+		array(
+			'expires'  => time() - DAY_IN_SECONDS,
+			'path'     => defined( 'COOKIEPATH' ) && COOKIEPATH ? COOKIEPATH : '/',
+			'domain'   => defined( 'COOKIE_DOMAIN' ) ? COOKIE_DOMAIN : '',
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		)
+	);
+}
+
+/**
+ * Whether the browser coming back is the one that left.
+ *
+ * @param array $attempt The stored attempt.
+ * @return bool True when the cookie matches the hash recorded at the start.
+ */
+function blueworx_sso_binder_matches( $attempt ) {
+	$expected = isset( $attempt['binder'] ) ? (string) $attempt['binder'] : '';
+	$given    = isset( $_COOKIE[ BLUEWORX_SSO_BINDER_COOKIE ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ BLUEWORX_SSO_BINDER_COOKIE ] ) ) : '';
+
+	if ( '' === $expected || '' === $given ) {
+		return false;
+	}
+
+	return hash_equals( $expected, hash( 'sha256', $given ) );
+}
+
+/**
  * Reduces anything claiming to be an intent to one of the two real ones.
  *
  * @param mixed $value Candidate intent.
@@ -166,23 +246,30 @@ function blueworx_sso_start( $intent = 'login' ) {
 	$state    = blueworx_sso_random_string();
 	$nonce    = blueworx_sso_random_string();
 	$verifier = blueworx_sso_random_string();
+	$binder   = blueworx_sso_random_string();
 
 	/*
 	 * This record IS the proof that a sign-in is in progress. Deleting it when
 	 * the provider comes back is what makes a replayed callback fail, and the
 	 * ten-minute life is what stops an abandoned attempt being usable later.
+	 *
+	 * Only the hash of the binder is kept, for the same reason only the hash of
+	 * the state is: a record that leaks must not hand anybody a working sign-in.
 	 */
 	set_transient(
 		blueworx_sso_attempt_key( $state ),
 		array(
 			'nonce'       => $nonce,
 			'verifier'    => $verifier,
+			'binder'      => hash( 'sha256', $binder ),
 			'intent'      => blueworx_sso_intent( $intent ),
 			'redirect_to' => blueworx_sso_requested_redirect(),
 			'created'     => time(),
 		),
 		10 * MINUTE_IN_SECONDS
 	);
+
+	blueworx_sso_set_binder_cookie( $binder );
 
 	$args = blueworx_sso_build_authorize_args( $intent, $state, $nonce, $verifier );
 
@@ -412,8 +499,17 @@ function blueworx_sso_handle_callback() {
 	// callback, so replaying the same URL finds nothing and fails.
 	delete_transient( $key );
 
+	blueworx_sso_clear_binder_cookie();
+
 	if ( ! is_array( $attempt ) ) {
 		blueworx_sso_fail( 'unknown_or_replayed_state' );
+	}
+
+	// The state says a sign-in was started. This says it was started HERE, in
+	// this browser — without it, somebody can start a sign-in as themselves and
+	// hand the return address to someone else, who lands inside their account.
+	if ( ! blueworx_sso_binder_matches( $attempt ) ) {
+		blueworx_sso_fail( 'state_not_bound_to_this_browser' );
 	}
 
 	// Whichever button was pressed on the way out, taken from this site's own
@@ -453,6 +549,13 @@ function blueworx_sso_handle_callback() {
 	blueworx_sso_log( 'success', $user->user_login );
 	update_option( 'blueworx_sso_last_success', time(), false );
 
+	// Kept only when the site actually signs people out at the provider, and
+	// only until it does: it is the one thing an end-session request needs, and
+	// there is no reason to hold it otherwise.
+	if ( blueworx_sso_single_logout_enabled() ) {
+		update_user_meta( $user->ID, 'blueworx_sso_id_token', $tokens['id_token'] );
+	}
+
 	wp_set_auth_cookie( $user->ID, false );
 	wp_set_current_user( $user->ID );
 	do_action( 'wp_login', $user->user_login, $user );
@@ -484,6 +587,30 @@ function blueworx_sso_handle_callback() {
 }
 
 /**
+ * Whether this request is a provider returning from a sign-in this site started.
+ *
+ * "code and state are in the address" is not enough on its own: those two names
+ * belong to OAuth in general, not to this plugin, and any other integration on
+ * the site — another sign-in, a payment, a booking system — comes back the same
+ * way. Claiming all of them breaks whichever one the site actually uses. The
+ * state has to be one this site minted and still has a record of.
+ *
+ * @return bool
+ */
+function blueworx_sso_is_own_callback() {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Routing only; the callback re-reads and verifies the state itself.
+	$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+
+	if ( '' === $state ) {
+		return false;
+	}
+
+	// Read, not consumed: the callback deletes the record itself, so a state
+	// checked here is still good for exactly one sign-in.
+	return is_array( get_transient( blueworx_sso_attempt_key( $state ) ) );
+}
+
+/**
  * Routes sign-in and callback requests.
  *
  * @return void
@@ -494,8 +621,8 @@ function blueworx_sso_dispatch() {
 	}
 
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Routing only; each branch does its own verification.
-	$action = isset( $_GET['blueworx_sso'] ) ? sanitize_key( wp_unslash( $_GET['blueworx_sso'] ) ) : '';
-	$is_callback = ( isset( $_GET['code'] ) && isset( $_GET['state'] ) ) || 'callback' === $action;
+	$action      = isset( $_GET['blueworx_sso'] ) ? sanitize_key( wp_unslash( $_GET['blueworx_sso'] ) ) : '';
+	$is_callback = 'callback' === $action || blueworx_sso_is_own_callback();
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 	/**
@@ -525,15 +652,90 @@ function blueworx_sso_dispatch() {
 	}
 
 	/*
-	 * A callback is recognised by its parameters rather than its path, so a
-	 * provider that already has the site root registered as the return address
-	 * keeps working without anyone having to re-register anything.
+	 * A callback is recognised either by its own action, or by a state this site
+	 * minted — so a provider that already has the site root registered as the
+	 * return address keeps working without anyone re-registering anything, and
+	 * another integration's return traffic is left alone.
 	 */
 	if ( $is_callback ) {
 		blueworx_sso_handle_callback();
 	}
 }
 add_action( 'init', 'blueworx_sso_dispatch', 1 );
+
+/**
+ * Whether signing out of WordPress should sign the person out of the provider.
+ *
+ * @return bool
+ */
+function blueworx_sso_single_logout_enabled() {
+	return '1' === blueworx_sso_option( 'single_logout', '0' );
+}
+
+/**
+ * Where the provider is asked to send someone after signing them out.
+ *
+ * @return string Absolute URL.
+ */
+function blueworx_sso_post_logout_redirect() {
+	$configured = trim( (string) blueworx_sso_option( 'redirect_after_logout' ) );
+
+	return '' !== $configured ? $configured : home_url( '/' );
+}
+
+/**
+ * Signs someone out of the identity provider as well as out of WordPress.
+ *
+ * Without this, signing out is only half a sign-out: the WordPress cookie goes,
+ * the provider's session does not, and the next click on the sign-in button
+ * walks straight back in without anyone being asked for anything. On a shared
+ * computer that is not a sign-out at all.
+ *
+ * Only people who arrived through the provider are sent there — a password
+ * sign-in has no token to hand over, so it logs out the way it always did.
+ *
+ * @param int $user_id The person signing out.
+ * @return void
+ */
+function blueworx_sso_logout( $user_id = 0 ) {
+	if ( ! $user_id || ! blueworx_sso_enabled() || ! blueworx_sso_single_logout_enabled() ) {
+		return;
+	}
+
+	$hint = (string) get_user_meta( $user_id, 'blueworx_sso_id_token', true );
+
+	if ( '' === $hint ) {
+		return;
+	}
+
+	delete_user_meta( $user_id, 'blueworx_sso_id_token' );
+
+	$endpoint = blueworx_sso_endpoint( 'end_session_endpoint' );
+
+	// A provider that publishes no end-session address cannot be signed out of.
+	// Nothing is broken by that, so the local sign-out simply finishes as usual.
+	if ( '' === $endpoint ) {
+		return;
+	}
+
+	$args = array(
+		'id_token_hint'            => $hint,
+		'client_id'                => (string) blueworx_sso_option( 'client_id' ),
+		'post_logout_redirect_uri' => blueworx_sso_post_logout_redirect(),
+	);
+
+	/**
+	 * Filters the arguments sent to the provider's end-session endpoint.
+	 *
+	 * @param array $args    Query arguments.
+	 * @param int   $user_id The person signing out.
+	 */
+	$args = apply_filters( 'blueworx_sso_end_session_args', $args, $user_id );
+
+	wp_redirect( add_query_arg( array_map( 'rawurlencode', $args ), $endpoint ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- The destination is the configured identity provider, which is by definition off-site.
+	exit;
+}
+add_action( 'wp_logout', 'blueworx_sso_logout' );
 
 /**
  * Shows one generic message when a sign-in failed.
