@@ -195,10 +195,13 @@ check( 'a subscriber, who edits nothing', blueworx_available_to( 'subscriber' ),
 
 echo "\nAnd is offered their own level downwards, never upwards\n";
 
+// Alphabetical by the name on screen, not by how much each role can do: the
+// menu is a list to read, and Editor sitting above Author says nothing to the
+// person reading it.
 check(
-	'an administrator sees every role below them',
+	'an administrator sees every role below them, in name order',
 	blueworx_offered_to( 'administrator' ),
-	array( 'editor', 'author', 'contributor', 'subscriber' )
+	array( 'author', 'contributor', 'editor', 'subscriber' )
 );
 
 check(

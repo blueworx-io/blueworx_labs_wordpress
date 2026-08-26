@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.2] - 2026-08-26
+
+### Changed
+- **The view-as menu lists roles alphabetically**, rather than by how much each
+  one can do. That order meant nothing to the person reading the list.
+
 ## [1.75.1] - 2026-08-26
 
 ### Changed

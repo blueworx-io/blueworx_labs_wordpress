@@ -119,6 +119,13 @@ test.describe('BlueWorx controls inside core screens', () => {
       await trigger.click();
       await expect(menu).toBeVisible();
 
+      // Alphabetical, so the list can be read down. "My own view" leads it
+      // whatever the roles are called — it is where you already are, not one of
+      // the places you can go.
+      const options = await menu.locator('.bw-viewas__option').allTextContents();
+      expect(options[0]).toBe('My own view');
+      expect(options.slice(1)).toEqual([...options.slice(1)].sort((a, b) => a.localeCompare(b)));
+
       await menu.locator('.bw-viewas__option[value="subscriber"]').click();
 
       // Where you are has to be readable from inside, or the feature is a trap —

@@ -71,7 +71,7 @@ function blueworx_view_as_available() {
 }
 
 /**
- * Gets the roles this user may view as, most capable first.
+ * Gets the roles this user may view as, in alphabetical order.
  *
  * Downwards only. A role is offered when the real user already holds every
  * capability that role grants, so an editor is offered author, contributor and
@@ -82,7 +82,7 @@ function blueworx_view_as_available() {
  * Administrator is excluded outright, and so is whatever the user already is:
  * their own level is not a preview, it is the "My own view" option.
  *
- * @return array Role labels keyed by slug, ordered by how much each one can do.
+ * @return array Role labels keyed by slug, ordered by name.
  */
 function blueworx_view_as_role_choices() {
 	$mine  = blueworx_view_as_real_caps();
@@ -90,7 +90,6 @@ function blueworx_view_as_role_choices() {
 	$owned = ( $user && $user->exists() ) ? (array) $user->roles : array();
 
 	$choices = array();
-	$weight  = array();
 
 	foreach ( wp_roles()->roles as $slug => $role ) {
 		if ( 'administrator' === $slug || in_array( $slug, $owned, true ) ) {
@@ -106,22 +105,13 @@ function blueworx_view_as_role_choices() {
 		}
 
 		$choices[ $slug ] = translate_user_role( $role['name'] );
-		$weight[ $slug ]  = count( $caps );
 	}
 
-	// Most capable first, so the menu reads from your own level downwards. Two
-	// roles that can do the same amount fall back to their names, or the order
-	// would depend on however the site happens to have registered them.
-	uksort(
-		$choices,
-		function ( $a, $b ) use ( $weight, $choices ) {
-			if ( $weight[ $a ] === $weight[ $b ] ) {
-				return strnatcasecmp( $choices[ $a ], $choices[ $b ] );
-			}
-
-			return $weight[ $b ] - $weight[ $a ];
-		}
-	);
+	// Alphabetical, by the name on screen rather than the slug behind it. A list
+	// you can run your eye down beats one ordered by how much each role can do:
+	// that order is invisible to the person reading it, and leaves the menu
+	// arranged differently on every site.
+	uasort( $choices, 'strnatcasecmp' );
 
 	return $choices;
 }
