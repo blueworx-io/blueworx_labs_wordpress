@@ -56,22 +56,27 @@ function blueworx_plugin_shown_as( $name ) {
 	return $plugins['acme/acme.php']['Name'];
 }
 
-echo "Roles read as the job they do\n";
+echo "Roles say where they belong, then what they do\n";
 
-check( 'Subscriber becomes Customer', blueworx_role_shown_as( 'Subscriber' ), 'Customer' );
-check( 'SureCart Shop Manager becomes Commerce Manager', blueworx_role_shown_as( 'SureCart Shop Manager' ), 'Commerce Manager' );
-check( 'LatePoint Agent becomes Booking Agent', blueworx_role_shown_as( 'LatePoint Agent' ), 'Booking Agent' );
+check( 'Editor becomes Site: Editor', blueworx_role_shown_as( 'Editor' ), 'Site: Editor' );
+check( 'Author becomes Site: Author', blueworx_role_shown_as( 'Author' ), 'Site: Author' );
+check( 'Contributor becomes Site: Contributor', blueworx_role_shown_as( 'Contributor' ), 'Site: Contributor' );
+check( 'Subscriber becomes Site: Basic User', blueworx_role_shown_as( 'Subscriber' ), 'Site: Basic User' );
+check( 'SureCart Shop Manager becomes Commerce: Manager', blueworx_role_shown_as( 'SureCart Shop Manager' ), 'Commerce: Manager' );
+check( 'LatePoint Agent becomes Bookings: Agent', blueworx_role_shown_as( 'LatePoint Agent' ), 'Bookings: Agent' );
+
+// The two editors are the whole reason the names carry where they belong, so
+// they must not come out the same.
+check( 'and the shop editor is not the site editor', blueworx_role_shown_as( 'SureCart Shop Worker' ), 'Commerce: Editor' );
 
 // The role map names this one outright and the plugin map would have made it
 // "Commerce Customer" as well, but by a different route. The exact name has to
 // win, or a role gets whatever the first prefix rule happens to say.
-check( 'SureCart Customer becomes Commerce Customer', blueworx_role_shown_as( 'SureCart Customer' ), 'Commerce Customer' );
+check( 'SureCart Customer becomes Commerce: Customer', blueworx_role_shown_as( 'SureCart Customer' ), 'Commerce: Customer' );
 
-echo "\nAnd the WordPress ones are left alone\n";
+echo "\nAnd the one that runs everything is left alone\n";
 
-foreach ( array( 'Administrator', 'Editor', 'Author', 'Contributor' ) as $wp_role ) {
-	check( $wp_role . ' is unchanged', blueworx_role_shown_as( $wp_role ), $wp_role );
-}
+check( 'Administrator is unchanged', blueworx_role_shown_as( 'Administrator' ), 'Administrator' );
 
 check( 'and so is text that only looks like a role', blueworx_rename_role_name( 'Subscriber', 'Subscriber', 'Post status' ), 'Subscriber' );
 

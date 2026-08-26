@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.1] - 2026-08-26
+
+### Changed
+- **Every role now says where it belongs before it says what it does** — Site:
+  Editor, Site: Author, Site: Contributor, Site: Basic User, Commerce: Manager,
+  Commerce: Customer, Bookings: Agent. A list of roles falls into groups, and
+  the editor of your site is never mistaken for the editor of your shop.
+  Administrator is left as it is.
+
 ## [1.75.0] - 2026-08-26
 
 ### Added

@@ -50,21 +50,25 @@ test.describe('Friendlier names', () => {
 
       // The dropdown every site owner uses to move somebody between roles. If
       // the new name is anywhere, it is here.
-      await expect(roleFilter.locator('option', { hasText: /^Customer$/ })).toHaveCount(1);
+      await expect(roleFilter.locator('option', { hasText: /^Site: Basic User$/ })).toHaveCount(1);
       await expect(roleFilter.locator('option', { hasText: /^Subscriber$/ })).toHaveCount(0);
 
-      // The four WordPress roles say what they are already, and are left alone.
-      for (const kept of ['Administrator', 'Editor', 'Author', 'Contributor']) {
+      // Every role says which part of the site it belongs to first, so the list
+      // groups itself and no two "Editor"s can be confused for each other.
+      for (const renamed of ['Site: Editor', 'Site: Author', 'Site: Contributor']) {
         await expect(
-          roleFilter.locator('option', { hasText: new RegExp(`^${kept}$`) }),
-          `${kept} must keep its own name`
+          roleFilter.locator('option', { hasText: new RegExp(`^${renamed}$`) }),
+          `${renamed} must be on offer`
         ).toHaveCount(1);
       }
+
+      // Administrator runs everything and is left as it is.
+      await expect(roleFilter.locator('option', { hasText: /^Administrator$/ })).toHaveCount(1);
 
       // Our own screens read the same name as core's, because both ask
       // WordPress rather than each keeping a list.
       await page.goto('/wp-admin/user-new.php');
-      await expect(page.locator('.blueworx-role-choices')).toContainText('Customer');
+      await expect(page.locator('.blueworx-role-choices')).toContainText('Site: Basic User');
       await expect(page.locator('.blueworx-role-choices')).not.toContainText('Subscriber');
 
       // Nothing was written anywhere: the slug behind the new name is still
@@ -77,7 +81,7 @@ test.describe('Friendlier names', () => {
 
       await page.goto('/wp-admin/users.php');
       await expect(roleFilter.locator('option', { hasText: /^Subscriber$/ })).toHaveCount(1);
-      await expect(roleFilter.locator('option', { hasText: /^Customer$/ })).toHaveCount(0);
+      await expect(roleFilter.locator('option', { hasText: /^Site: Basic User$/ })).toHaveCount(0);
     } finally {
       await restoreAll([
         [

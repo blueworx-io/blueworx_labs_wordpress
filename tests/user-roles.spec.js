@@ -130,7 +130,7 @@ test.describe('BlueWorx user roles — saving', () => {
 
       // Either name will do: this is about the roles the user ended up with,
       // and the site may be showing Subscriber under its friendlier name.
-      await expect(row).toContainText(/Subscriber|Customer/);
+      await expect(row).toContainText(/Subscriber|Basic User/);
 
       // ...and the edit screen ticks both of them back.
       // The username itself, not the "Edit" row action: row actions are only

@@ -25,19 +25,26 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Keyed by the role's registered English name rather than its slug, because
  * that is what WordPress hands the display filter and what a plugin's own
- * screens print. The four WordPress roles that already describe a job — editor,
- * author, contributor, administrator — are left alone.
+ * screens print.
+ *
+ * Every name says which part of the site it belongs to before it says what the
+ * person does, so a list of them groups itself and "Editor" is never ambiguous
+ * between the site and the shop. Administrator is the exception: there is only
+ * one of those and it runs the lot.
  *
  * @return array New names keyed by the name being replaced.
  */
 function blueworx_role_display_names() {
 	$names = array(
-		'LatePoint Agent'       => __( 'Booking Agent', 'blueworx-labs-wordpress' ),
-		'Subscriber'            => __( 'Customer', 'blueworx-labs-wordpress' ),
-		'SureCart Accountant'   => __( 'Commerce Accountant', 'blueworx-labs-wordpress' ),
-		'SureCart Customer'     => __( 'Commerce Customer', 'blueworx-labs-wordpress' ),
-		'SureCart Shop Manager' => __( 'Commerce Manager', 'blueworx-labs-wordpress' ),
-		'SureCart Shop Worker'  => __( 'Commerce Editor', 'blueworx-labs-wordpress' ),
+		'Author'                => __( 'Site: Author', 'blueworx-labs-wordpress' ),
+		'Contributor'           => __( 'Site: Contributor', 'blueworx-labs-wordpress' ),
+		'Editor'                => __( 'Site: Editor', 'blueworx-labs-wordpress' ),
+		'Subscriber'            => __( 'Site: Basic User', 'blueworx-labs-wordpress' ),
+		'LatePoint Agent'       => __( 'Bookings: Agent', 'blueworx-labs-wordpress' ),
+		'SureCart Accountant'   => __( 'Commerce: Accountant', 'blueworx-labs-wordpress' ),
+		'SureCart Customer'     => __( 'Commerce: Customer', 'blueworx-labs-wordpress' ),
+		'SureCart Shop Manager' => __( 'Commerce: Manager', 'blueworx-labs-wordpress' ),
+		'SureCart Shop Worker'  => __( 'Commerce: Editor', 'blueworx-labs-wordpress' ),
 	);
 
 	/**

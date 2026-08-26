@@ -212,7 +212,7 @@ function blueworx_get_feature_definitions() {
 		),
 		'display_names'         => array(
 			'label'       => __( 'Friendlier names', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Renames plugins and roles on the admin screens so they read as the job they do rather than the product they came from — SureCart becomes Commerce, LatePoint becomes Bookings, Subscriber becomes Customer. Display only: nobody\'s access changes and no plugin is altered.', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Renames plugins and roles on the admin screens so they read as the job they do rather than the product they came from — SureCart becomes Commerce, LatePoint becomes Bookings, and every role says where it belongs first: Site: Editor, Commerce: Manager, Bookings: Agent. Display only: nobody\'s access changes and no plugin is altered.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => 'display_names',
 		),
