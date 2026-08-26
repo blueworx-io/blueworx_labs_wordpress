@@ -21,6 +21,9 @@ const SCRIPTS = [
   'users-test.php',
   'sso-flow-test.php',
   'rest-users-test.php',
+  'guides-access-test.php',
+  'view-as-access-test.php',
+  'display-names-test.php',
 ];
 
 let phpAvailable = true;

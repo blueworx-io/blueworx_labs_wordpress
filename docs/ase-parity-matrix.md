@@ -27,7 +27,7 @@ Status column:
 | `enable_external_permalinks` | on | Built | `content_tools` | Default off. See decision 4. |
 | `enable_revisions_control` | max 20 | Built | `revisions` | `WP_POST_REVISIONS` in wp-config still wins. |
 | `multiple_user_roles` | on | Already covered | `user_roles` | Shipped before this milestone; verify at cutover, do not rebuild. |
-| `view_admin_as_role` | on | Built | `view_as_role` | Default off, administrators only, can only narrow. |
+| `view_admin_as_role` | on | Built | `view_as_role` | Default off, anyone who can edit, own level downwards, can only narrow. |
 | `disable_comments` | post, page, attachment, sfwd-essays | Already covered | `comments` | Labs applies to every post type, so it is a superset. Verify on staging. |
 | `admin_menu_width` | 180px | Already covered | `admin_theme` | The BlueWorx admin theme sets its own sidebar width. |
 

@@ -7,7 +7,10 @@
  * registry gets a guide slot, so a feature added there appears here without
  * anyone remembering to add it. A feature switched off in settings has its
  * guide hidden — a client should never be reading instructions for something
- * they cannot see.
+ * they cannot see. The same rule applies to roles: a guide only reaches
+ * somebody who could actually do the thing it describes, so the BlueWorx
+ * section is administrator-only and an editor never sees the topics about
+ * users, updates or settings.
  *
  * Other plugins extend both halves: `blueworx_guide_tabs` adds a tab,
  * `blueworx_guides` adds guides. Everything they supply is escaped on output.
@@ -376,9 +379,13 @@ function blueworx_get_guide_tab_products() {
 }
 
 /**
- * Gets every guide to display, in tab order.
+ * Gets the guides to display for whoever is reading, in tab order.
  *
- * @return array List of guides, each with id, title, tab, body and feature.
+ * Already narrowed to what this user may act on — see
+ * blueworx_filter_guides_by_capability().
+ *
+ * @return array List of guides, each with id, title, tab, product, body,
+ *               feature and capability.
  */
 function blueworx_get_guides() {
 	$guides = array_merge(
@@ -406,7 +413,86 @@ function blueworx_get_guides() {
 	 */
 	$guides = apply_filters( 'blueworx_guides', $guides );
 
-	return blueworx_normalize_guides( $guides );
+	return blueworx_filter_guides_by_capability( blueworx_normalize_guides( $guides ) );
+}
+
+/**
+ * Drops the guides the person reading cannot act on.
+ *
+ * Nobody should be reading instructions for a screen they cannot open. A guide
+ * is kept only when the reader holds both the capability its section requires
+ * and the capability the guide itself describes, so an editor sees the writing
+ * and media topics and never the ones about users, updates or this plugin.
+ *
+ * The tabs and the section row are built from whatever survives this, so an
+ * empty topic and an empty section disappear on their own rather than needing
+ * to be hidden separately.
+ *
+ * @param array $guides Normalized guides.
+ * @return array The guides this user may read.
+ */
+function blueworx_filter_guides_by_capability( $guides ) {
+	$allowed = array();
+
+	foreach ( $guides as $guide ) {
+		foreach ( blueworx_guide_capabilities( $guide ) as $capability ) {
+			if ( ! current_user_can( $capability ) ) {
+				continue 2;
+			}
+		}
+
+		$allowed[] = $guide;
+	}
+
+	return $allowed;
+}
+
+/**
+ * Everything somebody must be able to do before a guide is theirs to read.
+ *
+ * Both gates in one list: the section's, and the guide's own. Not the same
+ * question the role pills on the card answer — those say who can do the thing,
+ * which is worth knowing about a section only administrators are shown.
+ *
+ * @param array $guide One normalized guide.
+ * @return array Capability names, possibly empty.
+ */
+function blueworx_guide_capabilities( $guide ) {
+	$needed = array(
+		blueworx_guide_product_capability( isset( $guide['product'] ) ? $guide['product'] : '' ),
+		isset( $guide['capability'] ) ? (string) $guide['capability'] : '',
+	);
+
+	return array_values( array_unique( array_filter( $needed ) ) );
+}
+
+/**
+ * The capability a whole guide section requires.
+ *
+ * BlueWorx is administrator-only: every screen its guides describe sits behind
+ * manage_options, so there is nothing in that section an editor could act on.
+ * Every other section is open, and its topics are gated one at a time by what
+ * they actually describe — see blueworx_guide_tab_capability().
+ *
+ * @param string $product Product key.
+ * @return string Capability name, or an empty string for a section open to all.
+ */
+function blueworx_guide_product_capability( $product ) {
+	$map = array(
+		'blueworx' => 'manage_options',
+	);
+
+	/**
+	 * Filters the capability a guide section requires.
+	 *
+	 * @param string $capability Capability name, or '' for no section-level gate.
+	 * @param string $product    Product key.
+	 */
+	return (string) apply_filters(
+		'blueworx_guide_product_capability',
+		isset( $map[ $product ] ) ? $map[ $product ] : '',
+		$product
+	);
 }
 
 /**
@@ -456,13 +542,22 @@ function blueworx_normalize_guides( $guides ) {
 
 		$feature = isset( $guide['feature'] ) ? sanitize_key( $guide['feature'] ) : '';
 
+		// What somebody must be able to do before this guide is worth reading.
+		// Left unsaid it is the topic's own capability, which is what the role
+		// pills on the card already show — so a guide is hidden from exactly
+		// the people those pills say cannot do the thing.
+		$capability = isset( $guide['capability'] )
+			? sanitize_key( $guide['capability'] )
+			: blueworx_guide_tab_capability( $tab );
+
 		$clean[] = array(
-			'id'      => $id,
-			'title'   => $title,
-			'tab'     => $tab,
-			'product' => isset( $guide['product'] ) ? sanitize_key( $guide['product'] ) : blueworx_guide_product_for_tab( $tab ),
-			'body'    => $body,
-			'feature' => $feature,
+			'id'         => $id,
+			'title'      => $title,
+			'tab'        => $tab,
+			'product'    => isset( $guide['product'] ) ? sanitize_key( $guide['product'] ) : blueworx_guide_product_for_tab( $tab ),
+			'body'       => $body,
+			'feature'    => $feature,
+			'capability' => $capability,
 		);
 	}
 
@@ -573,7 +668,11 @@ function blueworx_get_feature_guide_bodies() {
 			. '<p>' . esc_html__( 'This puts anyone who works in the admin area on the dashboard instead. Customers are left where the shop or booking plugin wanted them, and a link that asked for a particular page still goes to that page.', 'blueworx-labs-wordpress' ) . '</p>',
 
 		'view_as_role'          => '<p>' . esc_html__( 'Lets you look at the admin area the way one of your other roles sees it, so you can check what an editor or a member can actually reach before you tell them.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'A bar along the bottom of the screen shows which role you are viewing as and puts you back with one click. It can only ever show you less than you normally see, never more, so it cannot be used to gain access to anything.', 'blueworx-labs-wordpress' ) . '</p>',
+			. '<p>' . esc_html__( 'The control sits at the foot of the sidebar, above Log Out. It says which view you are in and puts you back with one click. You are only offered the roles below your own, and it can only ever show you less than you normally see, never more, so it cannot be used to gain access to anything.', 'blueworx-labs-wordpress' ) . '</p>',
+
+		'display_names'         => '<p>' . esc_html__( 'Plugins and roles are named after the product they came from, not the job they do. Somebody looking for the shop finds "SureCart", and a customer account is called a "Subscriber", which means nothing to anyone who did not install it.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'This renames them on screen: SureCart reads as Commerce, LatePoint as Bookings, SureForms as Forms Builder, SureDash as Dashboards, and Subscriber as Customer. The four WordPress roles — Administrator, Editor, Author and Contributor — already say what they are and are left alone.', 'blueworx-labs-wordpress' ) . '</p>'
+			. '<p>' . esc_html__( 'It changes the words and nothing else. Nobody gains or loses access, no plugin behaves differently, and nothing is written into those plugins — switch it off and every original name is back on the next page. The one place a name can still show through is inside a plugin\'s own buttons and messages, which belong to that plugin.', 'blueworx-labs-wordpress' ) . '</p>',
 
 		'xmlrpc'                => '<p>' . esc_html__( 'XML-RPC is an old way of posting to WordPress from another program. Almost nobody uses it any more, but attackers do: it lets them try hundreds of passwords in a single request.', 'blueworx-labs-wordpress' ) . '</p>'
 			. '<p>' . esc_html__( 'Leave this on. Turn it off only if you publish from the WordPress mobile app or use Jetpack, both of which need it.', 'blueworx-labs-wordpress' ) . '</p>',
@@ -763,10 +862,11 @@ function blueworx_guide_read_time( $body ) {
 /**
  * Renders a capped list of role pills, the rest behind a "+N more" dropdown.
  *
- * Three pills, then a button that opens the remainder in a small panel under
- * itself. It used to unfold them into the row instead, which pushed a page
- * header's title sideways and wrapped a guide card's footer onto three lines
- * the moment anybody asked who else could do the thing.
+ * Two pills, then a button that opens the remainder in a small panel under
+ * itself — three things in the row at most, counting the button. It used to
+ * unfold them into the row instead, which pushed a page header's title sideways
+ * and wrapped a guide card's footer onto three lines the moment anybody asked
+ * who else could do the thing.
  *
  * The overflow roles are always in the markup, and the group still carries the
  * full list as its title, so with the script absent hovering it still answers
@@ -778,7 +878,7 @@ function blueworx_guide_read_time( $body ) {
  * @param int    $cap   How many to show before the dropdown.
  * @return string HTML.
  */
-function blueworx_ds_role_pills( $roles, $key, $cap = 3 ) {
+function blueworx_ds_role_pills( $roles, $key, $cap = 2 ) {
 	if ( empty( $roles ) ) {
 		return '';
 	}

@@ -4,6 +4,54 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.0] - 2026-08-26
+
+### Added
+- **Friendlier names for plugins and roles**, under Appearance on the
+  Enhancements page. SureCart reads as Commerce, LatePoint as Bookings,
+  SureForms as Forms Builder, SureDash as Dashboards, and a Subscriber is a
+  Customer. It changes the words on screen and nothing else — nobody's access
+  changes, no plugin is altered, and switching it off puts every original name
+  back. On by default.
+
+## [1.74.0] - 2026-08-26
+
+### Added
+- **"View as" moved into the sidebar**, above Log Out. One control that says
+  which view you are in and opens the list of roles you can look as — replacing
+  the bar across the bottom of every screen and the pill in the top bar that
+  only appeared once you were already inside a role.
+- **Anyone who edits the site can use it now**, not only administrators, and
+  only ever downwards: an editor can look as an author, contributor or
+  subscriber, never as an editor or an administrator.
+- **Guides are now open to everyone who works on the site**, and each person
+  only sees the guides for the parts they can actually reach. The BlueWorx
+  section is administrator-only; an editor gets writing and media and never the
+  topics about users, updates or settings. Subscribers and customers never see
+  Guides at all.
+
+### Changed
+- **Looking as another role now really hides that role's settings.** It used to
+  leave the settings screens open, because the way out of a preview lived on
+  one. The way out is the sidebar control now, so a preview shows exactly what
+  that person would see. Choosing a role also takes you to the dashboard, since
+  the screen you started on is often one they cannot open.
+- **Role lists show two names before the "+N more" button**, rather than three,
+  so a page heading and a guide card stay on one line.
+- **Enhancements only switches things on and off now.** Single sign-on and
+  support access were repeating their whole setup inside the list of switches
+  as well as on their own screens. The card there is now the switch and a link
+  through to the screen that owns the settings.
+
+### Fixed
+- **Saving the single sign-on screen no longer switches the plugin off.** It
+  posted to the Enhancements form, which reads a missing switch as an unticked
+  one — so every function on the site, sign-on included, was turned off.
+- **The save bar stays at the foot of the window on a short screen**, instead of
+  stopping wherever the settings stop.
+- **The save bar no longer sits flush against the last card** — it now has the
+  same gap above it as the content has below the page heading.
+
 ## [1.73.0] - 2026-08-26
 
 ### Fixed

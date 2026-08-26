@@ -26,12 +26,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 const BLUEWORX_VIEW_AS_META = '_blueworx_view_as_role';
 
 /**
+ * What the real person can do, before a preview narrows anything.
+ *
+ * Read off the user object rather than through current_user_can(), which is
+ * exactly what blueworx_view_as_filter_caps() is narrowing. Asking the filtered
+ * question would make the control vanish the moment somebody previewed a role
+ * that cannot do whatever the control is gated on — the trap that used to force
+ * this feature to be administrators-only.
+ *
+ * @return array Capabilities the real user holds, keyed by name.
+ */
+function blueworx_view_as_real_caps() {
+	$user = wp_get_current_user();
+
+	if ( ! $user || ! $user->exists() ) {
+		return array();
+	}
+
+	return (array) $user->allcaps;
+}
+
+/**
  * Whether this user may use the switch at all.
  *
- * Administrators only, and never a BlueWorx support agent. A support session is
- * read-only by virtue of a capability set this plugin controls; letting it
- * swap that set for another role's would replace the guarantee with a different
- * one nobody has reviewed.
+ * Anyone who edits the site, and never a BlueWorx support agent. A support
+ * session is read-only by virtue of a capability set this plugin controls;
+ * letting it swap that set for another role's would replace the guarantee with
+ * a different one nobody has reviewed.
  *
  * @return bool True when the switch is available.
  */
@@ -44,36 +65,63 @@ function blueworx_view_as_available() {
 		return false;
 	}
 
-	/*
-	 * manage_options alone, and nothing narrower. Whatever is tested here must be
-	 * a capability that SURVIVES the switch, or the bar carrying the way out would
-	 * disappear the moment somebody used it — and manage_options is exactly the
-	 * one blueworx_view_as_filter_caps() carries over for that reason.
-	 */
-	return current_user_can( 'manage_options' );
+	$caps = blueworx_view_as_real_caps();
+
+	return ! empty( $caps['edit_posts'] );
 }
 
 /**
- * Gets the roles that can be viewed as.
+ * Gets the roles this user may view as, most capable first.
  *
- * Administrator is excluded: it is what the person doing this already is, so
- * the option would do nothing, and offering it invites the reading that this is
- * a way to BECOME an administrator.
+ * Downwards only. A role is offered when the real user already holds every
+ * capability that role grants, so an editor is offered author, contributor and
+ * subscriber and never the other way about. That is the same rule the
+ * capability filter enforces — this just stops the menu offering something the
+ * filter would refuse to honour.
  *
- * @return array Role labels keyed by slug.
+ * Administrator is excluded outright, and so is whatever the user already is:
+ * their own level is not a preview, it is the "My own view" option.
+ *
+ * @return array Role labels keyed by slug, ordered by how much each one can do.
  */
 function blueworx_view_as_role_choices() {
+	$mine  = blueworx_view_as_real_caps();
+	$user  = wp_get_current_user();
+	$owned = ( $user && $user->exists() ) ? (array) $user->roles : array();
+
 	$choices = array();
+	$weight  = array();
 
 	foreach ( wp_roles()->roles as $slug => $role ) {
-		if ( 'administrator' === $slug ) {
+		if ( 'administrator' === $slug || in_array( $slug, $owned, true ) ) {
 			continue;
 		}
 
+		$caps = array_keys( array_filter( (array) $role['capabilities'] ) );
+
+		foreach ( $caps as $cap ) {
+			if ( empty( $mine[ $cap ] ) ) {
+				continue 2;
+			}
+		}
+
 		$choices[ $slug ] = translate_user_role( $role['name'] );
+		$weight[ $slug ]  = count( $caps );
 	}
 
-	natcasesort( $choices );
+	// Most capable first, so the menu reads from your own level downwards. Two
+	// roles that can do the same amount fall back to their names, or the order
+	// would depend on however the site happens to have registered them.
+	uksort(
+		$choices,
+		function ( $a, $b ) use ( $weight, $choices ) {
+			if ( $weight[ $a ] === $weight[ $b ] ) {
+				return strnatcasecmp( $choices[ $a ], $choices[ $b ] );
+			}
+
+			return $weight[ $b ] - $weight[ $a ];
+		}
+	);
 
 	return $choices;
 }
@@ -81,15 +129,23 @@ function blueworx_view_as_role_choices() {
 /**
  * Gets the role the current user is viewing as.
  *
- * Deliberately does NOT call blueworx_view_as_available(). That function asks
- * current_user_can(), current_user_can() fires `user_has_cap`, and this is what
- * the `user_has_cap` callback reads — the three would call each other until PHP
- * ran out of stack. It answers from stored state alone; nothing here needs a
- * permission check, because the capability filter can only ever narrow.
+ * Answers from stored state alone, and asks no permission question of its own.
+ * This is what the `user_has_cap` callback reads, so anything here that went
+ * back through current_user_can() would fire that filter again and the two
+ * would call each other until PHP ran out of stack. Nothing here needs the
+ * check anyway: the capability filter can only ever narrow.
  *
  * @return string Role slug, or an empty string.
  */
 function blueworx_view_as_current_role() {
+	// No control, no preview. The control lives in the re-skinned sidebar, so
+	// switching the admin theme off would otherwise leave somebody narrowed to a
+	// role with nothing on screen to undo it and — now that a preview really does
+	// take the settings screens away — no way back at all.
+	if ( ! function_exists( 'blueworx_admin_theme_enabled' ) || ! blueworx_admin_theme_enabled() ) {
+		return '';
+	}
+
 	$user_id = get_current_user_id();
 
 	if ( ! $user_id ) {
@@ -112,10 +168,16 @@ function blueworx_view_as_current_role() {
  * viewed role and the real user hold it. That is what makes this incapable of
  * escalating — the result is always a subset of what the user could already do.
  *
- * Two capabilities survive the narrowing — `read`, so wp-admin loads at all,
- * and `manage_options`, so the control that ends the session stays reachable.
- * Both are only ever CARRIED OVER, never added: if the real user did not hold
- * them, they are not granted here. A leftover meta value on a non-administrator
+ * One capability survives the narrowing: `read`, without which wp-admin will
+ * not load at all and the preview would be of the login screen. `manage_options`
+ * used to survive too, so that an administrator mid-preview could still reach
+ * the settings screen the way out lived on. The way out is now the sidebar
+ * control, which is present on every admin screen and gated on the real user's
+ * capabilities, so the exception has been dropped: previewing a role now hides
+ * the settings screens exactly as that role would find them hidden.
+ *
+ * `read` is only ever CARRIED OVER, never added: if the real user did not hold
+ * it, it is not granted here. A leftover meta value on a non-administrator
  * therefore narrows their access and cannot widen it.
  *
  * @param array $allcaps Capabilities the user holds.
@@ -140,9 +202,7 @@ function blueworx_view_as_filter_caps( $allcaps ) {
 		$filtered[ $cap ] = $granted && ! empty( $role->capabilities[ $cap ] );
 	}
 
-	foreach ( array( 'read', 'manage_options' ) as $keep ) {
-		$filtered[ $keep ] = ! empty( $allcaps[ $keep ] );
-	}
+	$filtered['read'] = ! empty( $allcaps['read'] );
 
 	return $filtered;
 }
@@ -165,146 +225,151 @@ function blueworx_view_as_handle() {
 
 	if ( '' === $role || ! isset( blueworx_view_as_role_choices()[ $role ] ) ) {
 		delete_user_meta( get_current_user_id(), BLUEWORX_VIEW_AS_META );
-	} else {
-		update_user_meta( get_current_user_id(), BLUEWORX_VIEW_AS_META, $role );
+
+		// Leaving a preview gives every capability back, so the screen they were
+		// on is theirs to return to.
+		$referer = wp_get_referer();
+
+		wp_safe_redirect( $referer ? $referer : admin_url() );
+		exit;
 	}
 
-	$referer = wp_get_referer();
+	update_user_meta( get_current_user_id(), BLUEWORX_VIEW_AS_META, $role );
 
-	wp_safe_redirect( $referer ? $referer : admin_url() );
+	// Entering one goes to the dashboard rather than back where they were. The
+	// screen they started from is very often one the previewed role cannot open,
+	// and WordPress answers that with a bare permissions notice — no sidebar, and
+	// so no way back out of the preview.
+	wp_safe_redirect( admin_url() );
 	exit;
 }
 
 /**
- * The "viewing as" pill for the admin top bar.
+ * The role switcher for the sidebar.
  *
- * Only ever rendered while a role is being viewed. The picker that gets you
- * INTO a role stays in the bar below — it is a form with a select in it, and a
- * top bar is not where a form belongs. What has to be visible the whole time is
- * that you are in a role and how to leave, and that is this.
+ * A single control that both says where you are and takes you somewhere else:
+ * a button reading "My own view" or "Viewing as <Role>", opening a list of the
+ * roles you may preview. It replaces two separate things — a pill in the top
+ * bar that only appeared once you were already inside a role, and a bar pinned
+ * across the bottom of the screen that was the only way in. One of them told
+ * you nothing until it was too late to matter, and the other covered the save
+ * bar of whatever screen it landed on.
  *
- * @return string HTML, or an empty string.
+ * Every option is a submit button carrying its own role, so choosing one posts
+ * without any script involved. The script only opens and closes the panel.
+ *
+ * @return string HTML, or an empty string when this user has no switch.
  */
-function blueworx_view_as_topbar_pill() {
-	if ( ! function_exists( 'blueworx_view_as_available' ) || ! blueworx_view_as_available() ) {
-		return '';
-	}
-
-	$current = blueworx_view_as_current_role();
-
-	if ( '' === $current ) {
+function blueworx_view_as_sidebar_control() {
+	if ( ! blueworx_view_as_available() ) {
 		return '';
 	}
 
 	$choices = blueworx_view_as_role_choices();
 
-	if ( ! isset( $choices[ $current ] ) ) {
+	if ( empty( $choices ) ) {
 		return '';
 	}
 
+	$current = blueworx_view_as_current_role();
+	$active  = isset( $choices[ $current ] );
+
+	$label = $active
+		? sprintf(
+			/* translators: %s: role name. */
+			__( 'Viewing as %s', 'blueworx-labs-wordpress' ),
+			$choices[ $current ]
+		)
+		: __( 'My own view', 'blueworx-labs-wordpress' );
+
+	// "My own view" first, then the roles this user may drop down to. Leaving a
+	// preview is choosing your own view again — there is no separate way out to
+	// go looking for.
+	$options = array( '' => __( 'My own view', 'blueworx-labs-wordpress' ) ) + $choices;
+	$items   = '';
+
+	foreach ( $options as $slug => $name ) {
+		$selected = ( '' === $slug ) ? ! $active : ( $active && $slug === $current );
+
+		$items .= sprintf(
+			'<button type="submit" class="bw-viewas__option%1$s" name="blueworx_view_as_role" value="%2$s" role="menuitemradio" aria-checked="%3$s">%4$s</button>',
+			$selected ? ' is-selected' : '',
+			esc_attr( $slug ),
+			$selected ? 'true' : 'false',
+			esc_html( $name )
+		);
+	}
+
+	// The panel sits after the button in the markup and above it on screen, so
+	// tabbing out of the button lands in the list rather than past it.
 	return sprintf(
-		'<form class="bw-topbar-viewas" method="post" action="%1$s">%2$s<input type="hidden" name="action" value="blueworx_view_as" /><input type="hidden" name="blueworx_view_as_role" value="" /><span class="bw-badge bw-badge--accent">%3$s%4$s</span><button type="submit" class="bw-btn bw-btn--link bw-btn--sm">%5$s</button></form>',
+		'<form class="bw-viewas" method="post" action="%1$s">%2$s'
+			. '<input type="hidden" name="action" value="blueworx_view_as" />'
+			. '<div class="bw-viewas__wrap">'
+			. '<button type="button" class="bw-viewas__trigger%3$s" aria-haspopup="menu" aria-expanded="false" aria-controls="bw-viewas-menu" data-blueworx-viewas-trigger>'
+			. '%4$s<span class="bw-viewas__label">%5$s</span>%6$s'
+			. '</button>'
+			. '<div class="bw-viewas__menu" id="bw-viewas-menu" role="menu" aria-label="%7$s" hidden>%8$s</div>'
+			. '</div></form>',
 		esc_url( admin_url( 'admin-post.php' ) ),
 		wp_nonce_field( 'blueworx_view_as', '_wpnonce', true, false ),
-		blueworx_ds_icon( 'eye', 14 ),
-		esc_html(
-			sprintf(
-				/* translators: %s: role name. */
-				__( 'Viewing as %s', 'blueworx-labs-wordpress' ),
-				$choices[ $current ]
-			)
-		),
-		esc_html__( 'Return to my own view', 'blueworx-labs-wordpress' )
+		$active ? ' is-active' : '',
+		blueworx_ds_icon( 'eye', 18 ),
+		esc_html( $label ),
+		blueworx_ds_icon( 'chevron-down', 14, 'bw-viewas__chev' ),
+		esc_attr__( 'View the admin as another role', 'blueworx-labs-wordpress' ),
+		$items
 	);
 }
 
 /**
- * Renders the switch, and the way out of it, in the admin footer.
+ * Puts the switcher in the sidebar, above the Log Out row.
  *
- * A bar rather than a toolbar node: the point of the feature is that you can
- * always tell you are in it and always get out in one click, and the toolbar is
- * one of the things a viewed role may not be able to see.
+ * Injected the same way that row is, and for the same reason: WordPress builds
+ * the menu itself and offers nowhere to append to it. Printed only with the
+ * admin theme on, because the block it belongs to — the dark column, the rule
+ * above Log Out — is the theme's.
  *
  * @return void
  */
-function blueworx_view_as_render_bar() {
-	if ( ! blueworx_view_as_available() ) {
+function blueworx_view_as_print_sidebar_control() {
+	$markup = blueworx_view_as_sidebar_control();
+
+	if ( '' === $markup ) {
 		return;
 	}
-
-	$current = blueworx_view_as_current_role();
-
-	// While a role IS being viewed, the top bar carries the pill and the way
-	// out. This bar is only the picker that gets you in, so it has nothing to
-	// say — and an empty bar pinned across the screen is worse than no bar.
-	if ( '' !== $current ) {
-		return;
-	}
-
-	$choices = blueworx_view_as_role_choices();
 	?>
-	<div class="blueworx-view-as">
-		<div class="bw-admin">
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="bw-savebar">
-				<input type="hidden" name="action" value="blueworx_view_as" />
-				<?php wp_nonce_field( 'blueworx_view_as' ); ?>
-					<p class="bw-savebar__hint">
-						<label for="blueworx_view_as_role"><?php esc_html_e( 'View the admin as:', 'blueworx-labs-wordpress' ); ?></label>
-					</p>
-					<span class="bw-select">
-						<select class="bw-select__el" id="blueworx_view_as_role" name="blueworx_view_as_role">
-							<option value=""><?php esc_html_e( 'Yourself', 'blueworx-labs-wordpress' ); ?></option>
-							<?php foreach ( $choices as $slug => $label ) : ?>
-								<option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
-							<?php endforeach; ?>
-						</select>
-						<?php
-						// The chevron is the component's, not decoration: the field
-						// is appearance:none, so without it the select has no arrow
-						// at all and does not read as a dropdown.
-						echo wp_kses( blueworx_ds_icon( 'chevron-down', 14, 'bw-select__arrow' ), blueworx_ds_allowed_html() );
-						?>
-					</span>
-					<?php
-					echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The helper escapes everything it emits.
-						array(
-							'label' => __( 'Switch', 'blueworx-labs-wordpress' ),
-							'type'  => 'submit',
-							'size'  => 'sm',
-						)
-					);
-					?>
-			</form>
-		</div>
-	</div>
-	<?php
-	// Placement only. Everything this bar looks like now comes from the design
-	// system; what the system cannot know is that this particular bar has to
-	// pin itself over the bottom of whatever screen it lands on.
-	//
-	// And because it is fixed, it takes no room in the flow. A BlueWorx screen
-	// runs to the bottom edge of the window and ends in a save bar of its own,
-	// so the two land on top of each other and the Save button stops being
-	// clickable. The reservation belongs here, with the bar that causes it: it
-	// is printed only when this bar is actually on screen.
-	//
-	// Two rules, because the page save bar is pinned two different ways. It
-	// sticks to the bottom of the window while there is more page below, so it
-	// needs an offset; and it comes to rest at the end of the screen once you
-	// reach the bottom, so the screen needs to end that much higher. Padding on
-	// the column does neither — the column is sized by a min-height, so padding
-	// just grows it downwards and nothing moves.
-	?>
-	<style>
-		.blueworx-view-as{position:fixed;left:0;right:0;bottom:0;z-index:99999;}
-		body.bw-fullbleed .wrap.bw-page{margin-bottom:var(--bwt-viewas-h,73px);}
-		body.bw-fullbleed .bw-page .bw-savebar{bottom:var(--bwt-viewas-h,73px);}
-	</style>
+	<script>
+		( function () {
+			var menu = document.getElementById( 'adminmenu' );
+
+			if ( ! menu || menu.querySelector( '.bw-viewas' ) ) {
+				return;
+			}
+
+			var item = document.createElement( 'li' );
+			item.className = 'bw-viewasrow';
+			item.innerHTML = <?php echo wp_json_encode( $markup ); ?>;
+
+			var logout = menu.querySelector( '.bw-logout' );
+
+			if ( logout ) {
+				menu.insertBefore( item, logout );
+			} else {
+				menu.appendChild( item );
+			}
+		}() );
+	</script>
 	<?php
 }
 
 if ( blueworx_feature_enabled( 'view_as_role' ) ) {
 	add_filter( 'user_has_cap', 'blueworx_view_as_filter_caps' );
 	add_action( 'admin_post_blueworx_view_as', 'blueworx_view_as_handle' );
-	add_action( 'admin_footer', 'blueworx_view_as_render_bar' );
+
+	if ( function_exists( 'blueworx_admin_theme_enabled' ) && blueworx_admin_theme_enabled() ) {
+		// After the Log Out row, which is appended at the default priority: this
+		// script looks that row up so it can insert itself above it.
+		add_action( 'admin_footer', 'blueworx_view_as_print_sidebar_control', 11 );
+	}
 }

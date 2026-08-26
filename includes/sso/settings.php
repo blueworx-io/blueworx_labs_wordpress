@@ -2,8 +2,9 @@
 /**
  * Single sign-on: the settings screen.
  *
- * Rendered inside the BlueWorx Labs settings page as the detail panel for the
- * `sso` feature, and saved by the same handler as every other feature.
+ * Rendered on the Single sign-on screen, which owns every setting here and
+ * saves them through a handler of its own. Enhancements keeps only the switch
+ * that turns the whole function on and off.
  *
  * @package BlueWorxLabs
  */
@@ -566,6 +567,34 @@ function blueworx_sso_render_log() {
 		blueworx_ds_allowed_html()
 	);
 }
+
+/**
+ * Saves the single sign-on screen.
+ *
+ * Its own handler rather than the Enhancements one. That form posts every
+ * feature switch on the site, and a missing checkbox is indistinguishable from
+ * an unticked one — so saving this screen through it switched off every
+ * function in the plugin, including this one.
+ *
+ * @return void
+ */
+function blueworx_sso_handle_settings_save() {
+	blueworx_require_post_request();
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
+	}
+
+	check_admin_referer( 'blueworx_save_sso_settings' );
+
+	blueworx_sso_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran above; the callee sanitizes every field.
+
+	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
+
+	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-sso' ) );
+	exit;
+}
+add_action( 'admin_post_blueworx_save_sso_settings', 'blueworx_sso_handle_settings_save' );
 
 /**
  * Saves the single sign-on settings.

@@ -19,16 +19,39 @@ import {
   login,
   restoreAll,
   cacheBust,
-  openSectionFor,
   setFeature,
 } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+const SSO_PATH = '/wp-admin/admin.php?page=blueworx-sso';
 
 const toggleFor = (key) => `input.blueworx-feature-toggle[data-blueworx-feature="${key}"]`;
 
+/**
+ * Switches the function on or off.
+ *
+ * Enhancements carries the switch and nothing else — every setting lives on the
+ * screen below, so the two steps cannot be done in one save any more.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {boolean} on Whether the function should end up on.
+ * @return {Promise<void>} Resolves once the save has landed.
+ */
+async function setSso(page, on) {
+  await page.goto(SETTINGS_PATH);
+  await setFeature(page, 'sso', on);
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+}
+
+/**
+ * Saves the Single sign-on screen.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @return {Promise<void>} Resolves once the save has landed.
+ */
 async function save(page) {
-  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
@@ -45,17 +68,86 @@ test.describe('Single sign-on', () => {
     await expect(page.locator(toggleFor('sso'))).not.toBeChecked();
   });
 
-  test('the settings survive a save and the secret is never rendered', async ({ page }) => {
+  test('the switch on Enhancements carries no settings with it', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await setFeature(page, 'sso', true);
+
+    // The card is the switch and a way through to the screen that owns the
+    // settings. A provider box here would be a second place to change one
+    // thing, and a second thing for a save to disagree with. Counted as nodes
+    // rather than through the accessibility tree, which skips the panel while
+    // the function is off.
+    const panel = page.locator('[data-blueworx-detail="sso"]');
+    await expect(panel.locator('input, select, textarea')).toHaveCount(0);
+    await expect(panel.locator('a[href*="page=blueworx-sso"]')).toHaveCount(1);
+  });
+
+  test('saving Enhancements leaves the settings alone', async ({ page }) => {
+    await login(page);
+    await setSso(page, true);
+
+    await page.goto(SSO_PATH);
+    await page.fill('#blueworx_sso_client_id', 'kept-through-a-save');
+    await save(page);
+
+    // Enhancements no longer posts these fields, and a save that wrote them
+    // from an empty POST would clear the connection without saying so.
+    await page.goto(SETTINGS_PATH);
+    await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
+
+    await page.goto(SSO_PATH);
+    await expect(page.locator('#blueworx_sso_client_id')).toHaveValue('kept-through-a-save');
+
+    await restoreAll([
+      [
+        'sso off',
+        async () => {
+          await page.goto(SSO_PATH);
+          await page.fill('#blueworx_sso_client_id', '');
+          await save(page);
+          await setSso(page, false);
+        },
+      ],
+    ]);
+  });
+
+  test('saving the screen does not switch anything else off', async ({ page }) => {
+    await login(page);
+    await setSso(page, true);
+
+    await page.goto(SETTINGS_PATH);
+    const before = await page
+      .locator('.blueworx-feature-toggle')
+      .evaluateAll((els) => els.filter((el) => el.checked).length);
+
+    await page.goto(SSO_PATH);
+    await save(page);
+
+    // This screen used to post the Enhancements handler, where a missing
+    // checkbox reads as an unticked one — so saving it switched off every
+    // function in the plugin, itself included.
+    await page.goto(SETTINGS_PATH);
+    expect(
+      await page.locator('.blueworx-feature-toggle').evaluateAll((els) =>
+        els.filter((el) => el.checked).length
+      )
+    ).toBe(before);
+
+    await restoreAll([['sso off', async () => setSso(page, false)]]);
+  });
+
+  test('the settings survive a save and the secret is never rendered', async ({ page }) => {
+    await login(page);
+    await setSso(page, true);
+
+    await page.goto(SSO_PATH);
     await page.fill('#blueworx_sso_issuer', 'https://idp.test');
     await page.fill('#blueworx_sso_client_id', 'test-client');
     await page.fill('#blueworx_sso_client_secret', 'super-secret-value');
     await page.fill('#blueworx_sso_button_label', 'Sign in with Test IdP');
     await save(page);
 
-    await page.goto(SETTINGS_PATH);
+    await page.goto(SSO_PATH);
     await expect(page.locator('#blueworx_sso_issuer')).toHaveValue('https://idp.test');
     await expect(page.locator('#blueworx_sso_client_id')).toHaveValue('test-client');
 
@@ -64,27 +156,19 @@ test.describe('Single sign-on', () => {
     await expect(page.locator('#blueworx_sso_client_secret')).toHaveValue('');
     expect(await page.content()).not.toContain('super-secret-value');
 
-    await restoreAll([
-      [
-        'sso off',
-        async () => {
-          await page.goto(SETTINGS_PATH);
-          await setFeature(page, 'sso', false);
-          await save(page);
-        },
-      ],
-    ]);
+    await restoreAll([['sso off', async () => setSso(page, false)]]);
   });
 
   test('the joining destinations survive a save', async ({ page }) => {
     await login(page);
-    await page.goto(SETTINGS_PATH);
-    await setFeature(page, 'sso', true);
+    await setSso(page, true);
+
+    await page.goto(SSO_PATH);
     await page.fill('#blueworx_sso_redirect_after_register', 'https://example.test/register-success/');
     await page.fill('#blueworx_sso_no_account_url', 'https://example.test/join/');
     await save(page);
 
-    await page.goto(SETTINGS_PATH);
+    await page.goto(SSO_PATH);
     await expect(page.locator('#blueworx_sso_redirect_after_register')).toHaveValue(
       'https://example.test/register-success/'
     );
@@ -94,11 +178,11 @@ test.describe('Single sign-on', () => {
       [
         'joining destinations cleared',
         async () => {
-          await page.goto(SETTINGS_PATH);
+          await page.goto(SSO_PATH);
           await page.fill('#blueworx_sso_redirect_after_register', '');
           await page.fill('#blueworx_sso_no_account_url', '');
-          await setFeature(page, 'sso', false);
           await save(page);
+          await setSso(page, false);
         },
       ],
     ]);
@@ -106,15 +190,16 @@ test.describe('Single sign-on', () => {
 
   test('the allowed domains and the sign-out switch survive a save', async ({ page }) => {
     await login(page);
-    await page.goto(SETTINGS_PATH);
-    await setFeature(page, 'sso', true);
+    await setSso(page, true);
+
+    await page.goto(SSO_PATH);
     await page.fill('#blueworx_sso_allowed_domains', 'example.com, example.co.uk');
     await page.locator('details.blueworx-sso-advanced summary').click();
     await page.locator('[data-testid="bw-sso-single-logout"]').check();
     await page.fill('#blueworx_sso_redirect_after_logout', 'https://example.test/goodbye/');
     await save(page);
 
-    await page.goto(SETTINGS_PATH);
+    await page.goto(SSO_PATH);
     await expect(page.locator('#blueworx_sso_allowed_domains')).toHaveValue(
       'example.com, example.co.uk'
     );
@@ -128,13 +213,13 @@ test.describe('Single sign-on', () => {
       [
         'domains and sign-out cleared',
         async () => {
-          await page.goto(SETTINGS_PATH);
+          await page.goto(SSO_PATH);
           await page.fill('#blueworx_sso_allowed_domains', '');
           await page.locator('details.blueworx-sso-advanced summary').click();
           await page.locator('[data-testid="bw-sso-single-logout"]').uncheck();
           await page.fill('#blueworx_sso_redirect_after_logout', '');
-          await setFeature(page, 'sso', false);
           await save(page);
+          await setSso(page, false);
         },
       ],
     ]);
@@ -142,12 +227,16 @@ test.describe('Single sign-on', () => {
 
   test('the callback URL is shown for copying', async ({ page }) => {
     await login(page);
-    await page.goto(SETTINGS_PATH);
+    await setSso(page, true);
+
+    await page.goto(SSO_PATH);
     // A read-only field with a copy button beside it now, not a <code> block:
     // the address exists to be pasted into somebody else's control panel.
     await expect(page.locator('[data-testid="blueworx-sso-callback-url"]')).toHaveValue(
       /blueworx_sso=callback/
     );
+
+    await restoreAll([['sso off', async () => setSso(page, false)]]);
   });
 });
 
@@ -162,9 +251,14 @@ test.describe('Single sign-on flow', () => {
   // what any provider without a published configuration will use.
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
+    // browser.newPage() bypasses the page fixture, and with it the reduced-motion
+    // opt-out that keeps headless Chromium painting after a form submit. Setting
+    // the function on is a submit, so without this every click after it hangs.
+    // See helpers.js.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await login(page);
-    await page.goto(SETTINGS_PATH);
-    await setFeature(page, 'sso', true);
+    await setSso(page, true);
+    await page.goto(SSO_PATH);
     await page.fill('#blueworx_sso_issuer', 'https://idp.test');
     await page.fill('#blueworx_sso_client_id', 'test-client');
     await page.fill('#blueworx_sso_client_secret', 'test-secret');
@@ -179,10 +273,9 @@ test.describe('Single sign-on flow', () => {
 
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await login(page);
-    await page.goto(SETTINGS_PATH);
-    await setFeature(page, 'sso', false);
-    await save(page);
+    await setSso(page, false);
     await page.close();
   });
 

@@ -143,8 +143,8 @@ function blueworx_enqueue_admin_design_style() {
 function blueworx_enqueue_admin_design_system( $hook_suffix ) {
 	$screens = array_merge( blueworx_admin_design_screens(), blueworx_admin_design_core_screens() );
 
-	// The view-as bar is hooked to admin_footer, so it can appear on any screen
-	// and there is no shorter list to name. The stylesheet is scoped to
+	// The view-as control goes into the sidebar, which is on every screen, and
+	// its icons come from the system's icon module. The stylesheet is scoped to
 	// .bw-admin either way, so what this widens is the download, not the reach.
 	if ( ! in_array( $hook_suffix, $screens, true ) && ! blueworx_feature_enabled( 'view_as_role' ) ) {
 		return;

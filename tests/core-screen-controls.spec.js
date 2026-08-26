@@ -104,29 +104,40 @@ test.describe('BlueWorx controls inside core screens', () => {
     try {
       await page.goto('/wp-admin/index.php');
 
-      const bar = page.locator('.blueworx-view-as');
-      await expect(bar).toBeVisible();
+      const trigger = page.locator('.bw-viewas__trigger');
+      const menu = page.locator('.bw-viewas__menu');
 
-      // Ours, and only ours: the wrapper is inside the bar, not around the page.
-      await expect(bar.locator('.bw-admin')).toHaveCount(1);
-      await expect(page.locator('body.bw-admin')).toHaveCount(0);
+      // One control, in the sidebar above Log Out. It used to be two — a picker
+      // in a bar across the bottom, and a pill in the top bar that only appeared
+      // once you were already inside a role.
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toContainText('My own view');
+      await expect(page.locator('.blueworx-view-as')).toHaveCount(0);
+      await expect(page.locator('.bw-topbar-viewas')).toHaveCount(0);
 
-      await bar.locator('select#blueworx_view_as_role').selectOption('subscriber');
-      await bar.getByRole('button', { name: 'Switch' }).click();
+      await expect(menu).toBeHidden();
+      await trigger.click();
+      await expect(menu).toBeVisible();
 
-      // The way out has to be visible from inside, or the feature is a trap.
-      // It lives in the top bar now, beside who you are, rather than in a bar
-      // along the bottom — which is where you look to find out who you are.
-      const pill = page.locator('.bw-topbar-viewas');
-      await expect(pill.locator('.bw-badge')).toContainText(/subscriber/i);
-      await expect(pill.getByRole('button', { name: 'Return to my own view' })).toBeVisible();
+      await menu.locator('.bw-viewas__option[value="subscriber"]').click();
 
-      // And the picker's bar is gone while you are in a role — an empty bar
-      // pinned across the screen would say nothing.
-      await expect(bar).toHaveCount(0);
+      // Where you are has to be readable from inside, or the feature is a trap —
+      // and so does the way out, which is choosing your own view again.
+      await expect(trigger).toContainText(/viewing as subscriber/i);
+      await expect(trigger).toHaveClass(/is-active/);
 
-      await pill.getByRole('button', { name: 'Return to my own view' }).click();
-      await expect(page.locator('.blueworx-view-as select#blueworx_view_as_role')).toBeVisible();
+      // And the preview is the real thing: a subscriber has no settings, so
+      // neither does anyone previewing one. The control itself is what stays
+      // reachable, which is what makes taking the rest away safe.
+      await expect(page.locator('#adminmenu a[href*="page=blueworx-labs-wordpress"]')).toHaveCount(0);
+
+      const settings = await page.request.get('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      expect(settings.status(), 'the settings screen must refuse a previewed subscriber').toBe(403);
+
+      await trigger.click();
+      await menu.locator('.bw-viewas__option[value=""]').click();
+      await expect(trigger).toContainText('My own view');
+      await expect(trigger).not.toHaveClass(/is-active/);
     } finally {
       if (!wasOn) {
         await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');

@@ -220,6 +220,7 @@ const FEATURE_SECTIONS = {
   menu_editor: 'admin_menu',
   admin_theme: 'appearance',
   admin_bar: 'appearance',
+  display_names: 'appearance',
   dashboard_widgets: 'appearance',
 };
 

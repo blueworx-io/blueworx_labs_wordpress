@@ -272,8 +272,9 @@ function blueworx_save_feature_settings() {
 	// Translation detail: languages, position, label and exclusions.
 	blueworx_translate_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler; the callee sanitizes every field.
 
-	// Single sign-on detail: provider, credentials and provisioning.
-	blueworx_sso_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran at the top of this handler; the callee sanitizes every field.
+	// Single sign-on is not saved here. Its settings live on its own screen and
+	// are not posted by this form — writing them from an empty POST would clear
+	// the provider, the client ID and every address on it.
 
 	blueworx_save_login_session_settings();
 	blueworx_save_admin_bar_settings();
@@ -704,17 +705,7 @@ function blueworx_detail_stack( $fields ) {
  * @return void
  */
 function blueworx_render_feature_detail( $key ) {
-	// Three panels own their whole surface and render themselves.
-	if ( 'sso' === $key ) {
-		blueworx_sso_render_detail();
-		return;
-	}
-
-	if ( 'support_access' === $key ) {
-		blueworx_support_render_panel();
-		return;
-	}
-
+	// One panel owns its whole surface and renders itself.
 	if ( 'translate' === $key ) {
 		blueworx_translate_render_detail();
 		return;
@@ -777,6 +768,35 @@ function blueworx_get_feature_detail_html( $key ) {
 				)
 			)
 		);
+	}
+
+	if ( 'display_names' === $key ) {
+		// The list is built in rather than editable, so the panel's job is to
+		// say plainly what the switch will do before it is thrown. Anything not
+		// named here keeps the name it already has.
+		$lists = array(
+			__( 'Plugins', 'blueworx-labs-wordpress' ) => blueworx_plugin_display_names(),
+			__( 'Roles', 'blueworx-labs-wordpress' )   => blueworx_role_display_names(),
+		);
+
+		$fields = '';
+
+		foreach ( $lists as $label => $map ) {
+			$rows = array();
+
+			foreach ( $map as $old => $new ) {
+				$rows[ $old ] = esc_html( $new );
+			}
+
+			$fields .= blueworx_ds_field(
+				array(
+					'label'   => $label,
+					'control' => blueworx_ds_description_list( $rows ),
+				)
+			);
+		}
+
+		return blueworx_detail_stack( $fields );
 	}
 
 	if ( 'site_protection' === $key ) {
@@ -844,6 +864,30 @@ function blueworx_get_feature_detail_html( $key ) {
 				'label' => __( 'Open Cache page', 'blueworx-labs-wordpress' ),
 				'icon'  => 'refresh-cw',
 				'href'  => admin_url( 'admin.php?page=blueworx-cache' ),
+			)
+		);
+	}
+
+	// Single sign-on and Support access have screens of their own, and every
+	// setting for them lives there. This switch turns the whole function on and
+	// off and nothing else — repeating the settings here would be two places to
+	// change one thing, and two ways for them to disagree.
+	if ( 'sso' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Single sign-on page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'lock',
+				'href'  => admin_url( 'admin.php?page=blueworx-sso' ),
+			)
+		);
+	}
+
+	if ( 'support_access' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Support access page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'key',
+				'href'  => admin_url( 'admin.php?page=blueworx-support' ),
 			)
 		);
 	}
