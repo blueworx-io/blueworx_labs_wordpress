@@ -282,11 +282,11 @@ function blueworx_sso_render_detail() {
 	$fields .= blueworx_sso_text_field(
 		array(
 			'key'         => 'allowed_domains',
-			'label'       => __( 'Only allow these email domains', 'blueworx-labs-wordpress' ),
+			'label'       => __( 'Only these email domains may get an account', 'blueworx-labs-wordpress' ),
 			'type'        => 'text',
 			'placeholder' => 'example.com, example.co.uk',
 			'mono'        => true,
-			'help'        => __( 'Separate them with commas. Leave blank to accept anyone your provider signs in — which, with a provider like Google, means anyone at all.', 'blueworx-labs-wordpress' ),
+			'help'        => __( 'Separate them with commas. Leave blank to let in anyone your provider signs in — which, with a provider like Google, means anyone at all. People who already have an account keep it; take their access away on the Users screen.', 'blueworx-labs-wordpress' ),
 		)
 	);
 

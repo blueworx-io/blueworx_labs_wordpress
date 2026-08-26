@@ -437,18 +437,39 @@ check(
 	'user:insider'
 );
 
-// Moved out of the company, account still here, identity still linked.
+// An account here already, on an address the list no longer covers. It keeps
+// working: whether somebody may still sign in is whether their account still
+// exists, which is a decision made on the Users screen where it can be seen —
+// not one made silently at the login box because a list changed months ago.
 $GLOBALS['users'][]                          = new WP_User( 91, 'leaver', 'leaver@gone.test', array( 'editor' ) );
 $GLOBALS['meta'][91]['blueworx_sso_subject'] = 'subject-leaver';
 $GLOBALS['meta'][91]['blueworx_sso_issuer']  = 'https://idp.test';
 
 check(
-	'an already-linked account outside the list is refused too',
+	'an account that already exists is not locked out by the list',
 	resolve(
 		claims(
 			array(
 				'sub'   => 'subject-leaver',
 				'email' => 'leaver@gone.test',
+			)
+		),
+		'login'
+	),
+	'user:leaver'
+);
+
+// The other way in to an account is being linked to one on a matching email.
+// That is still getting in, so the list has to cover it too.
+$GLOBALS['users'][] = new WP_User( 92, 'unlinked', 'unlinked@gone.test', array( 'editor' ) );
+
+check(
+	'an unlisted domain cannot be linked to an existing account either',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-unlinked',
+				'email' => 'unlinked@gone.test',
 			)
 		),
 		'login'

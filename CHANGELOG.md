@@ -21,10 +21,11 @@ versioning.
   site with any failed sign-ins the setting quietly reverted within a day.
 
 ### Added
-- **You can say which email domains are allowed to sign in.** Without it, a
-  provider like Google vouches for anyone in the world, and letting the joining
-  button create accounts opened the site to all of them. Leave it blank to
-  accept anyone, as before.
+- **You can say which email domains may get an account.** Without it, a provider
+  like Google vouches for anyone in the world, and letting the joining button
+  create accounts opened the site to all of them. It is checked on the way to an
+  account — people who already have one keep it, and you take their access away
+  on the Users screen. Leave it blank to accept anyone, as before.
 - **Signing out can now sign people out of the provider too.** Until now,
   logging out only ended the WordPress session — one click on the sign-in
   button walked straight back in without anyone being asked for anything. Off

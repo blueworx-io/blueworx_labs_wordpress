@@ -5,8 +5,8 @@
  * The risky part of any sign-in feature. Getting this wrong hands someone else's
  * account away, so the rules are deliberately strict:
  *
- *  - where the site names the email domains it accepts, nothing outside them
- *    gets in, whether it has an account here already or not;
+ *  - where the site names the email domains it accepts, nobody outside them can
+ *    get an account, by joining or by being linked to one;
  *  - the provider's own subject identifier is the real key, stored on first use;
  *  - an email may link an identity to an existing account exactly once, and only
  *    when the provider says that email is verified;
@@ -41,25 +41,29 @@ function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 		return new WP_Error( 'blueworx_sso_no_subject', __( 'The identity provider did not say who signed in.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$email = isset( $claims['email'] ) ? (string) $claims['email'] : '';
-
-	/*
-	 * Checked before anything else, and for everybody. A provider like Google
-	 * will happily vouch for any account in the world, so "our provider says
-	 * they are real" is not the same as "they belong here" — the site has to be
-	 * able to say which addresses do. Applied to existing accounts as well as
-	 * new ones, because a list of who may sign in is worth nothing if it only
-	 * covers the people who have not signed in yet.
-	 */
-	if ( ! blueworx_sso_email_domain_allowed( $email ) ) {
-		return new WP_Error( 'blueworx_sso_domain_not_allowed', __( 'That email address is not allowed to sign in here.', 'blueworx-labs-wordpress' ) );
-	}
-
+	$email  = isset( $claims['email'] ) ? (string) $claims['email'] : '';
 	$issuer = (string) blueworx_sso_option( 'issuer' );
 	$user   = blueworx_sso_find_by_subject( $subject, $issuer );
 	$is_new = false;
 
 	if ( ! $user ) {
+		/*
+		 * The gate on getting in at all — checked on the way to an account, and
+		 * only there. A provider like Google vouches for every account in the
+		 * world, so without this a site that lets people join is open to all of
+		 * them.
+		 *
+		 * Deliberately not re-checked for somebody already linked. Whether they
+		 * may still sign in is whether their account still exists: a leaver's
+		 * provider account is switched off at the provider, which stops them
+		 * long before this code runs, and anyone else is removed on the Users
+		 * screen where it can be seen. Re-checking here would instead lock
+		 * people out silently, at the login box, months after the list changed.
+		 */
+		if ( ! blueworx_sso_email_domain_allowed( $email ) ) {
+			return new WP_Error( 'blueworx_sso_domain_not_allowed', __( 'That email address cannot be given an account here.', 'blueworx-labs-wordpress' ) );
+		}
+
 		$verified = isset( $claims['email_verified'] ) && blueworx_sso_claim_is_true( $claims['email_verified'] );
 
 		if ( '' !== $email ) {
@@ -168,7 +172,7 @@ function blueworx_sso_allowed_domains() {
 }
 
 /**
- * Whether an email address is inside the domains this site accepts.
+ * Whether an email address may be given an account here.
  *
  * Exact domains only: a rule for example.com is not a rule for anything else
  * ending in example.com, and treating it as one is how a lookalike domain gets
