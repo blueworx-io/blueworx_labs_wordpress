@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.4] - 2026-08-28
+
+### Fixed
+- **The version in readme.txt now matches the plugin.** It had been left at
+  1.61.5 for fourteen releases. Nothing uses it until the plugin is served from
+  an update endpoint, at which point it is the only number deciding which
+  release a site is offered — so a site could have been told to stay on an old
+  version, or offered nothing at all. The version check now compares it too, so
+  it cannot fall behind again.
+
 ## [1.75.3] - 2026-08-28
 
 ### Fixed
