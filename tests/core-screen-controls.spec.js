@@ -34,6 +34,21 @@ function attachmentFixture(command, id) {
   return execFileSync('php', args, { encoding: 'utf8' }).trim();
 }
 
+/**
+ * Ends any role preview outright, via tests/fixtures/clear-view-as.php.
+ *
+ * The way out of a preview lives on the screen a preview takes away, so a test
+ * that fails mid-preview cannot click its way back — and leaves the account
+ * stranded in that role for every test after it. This goes at the meta directly
+ * and works whatever the browser is showing.
+ */
+function clearViewAs() {
+  const fixture = path.join(__dirname, 'fixtures', 'clear-view-as.php');
+  const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+
+  return execFileSync('php', [fixture, wpLoad], { encoding: 'utf8' }).trim();
+}
+
 /** A 1x1 PNG, and a 2x2 one, so a replace is visible in the file's size. */
 const ONE_PX = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -126,11 +141,20 @@ test.describe('BlueWorx controls inside core screens', () => {
       expect(options[0]).toBe('My own view');
       expect(options.slice(1)).toEqual([...options.slice(1)].sort((a, b) => a.localeCompare(b)));
 
-      await menu.locator('.bw-viewas__option[value="subscriber"]').click();
+      // Read the label off the option rather than hard-coding "Subscriber". The
+      // friendlier-names function renames every role — a Subscriber reads as
+      // "Site: Basic User" — and it is on by default, so a test that expects the
+      // raw name only passes on a site where that function has been switched
+      // off. What matters is that the trigger names the role the menu just
+      // offered, whatever that role is called.
+      const option = menu.locator('.bw-viewas__option[value="subscriber"]');
+      const label = (await option.textContent()).trim();
+
+      await option.click();
 
       // Where you are has to be readable from inside, or the feature is a trap —
       // and so does the way out, which is choosing your own view again.
-      await expect(trigger).toContainText(/viewing as subscriber/i);
+      await expect(trigger).toContainText(`Viewing as ${label}`);
       await expect(trigger).toHaveClass(/is-active/);
 
       // And the preview is the real thing: a subscriber has no settings, so
@@ -146,6 +170,13 @@ test.describe('BlueWorx controls inside core screens', () => {
       await expect(trigger).toContainText('My own view');
       await expect(trigger).not.toHaveClass(/is-active/);
     } finally {
+      // First, and whatever happened above. A preview hides the settings
+      // screens, so if the test failed while inside one, the restore below is
+      // reaching for a screen that will not load — it times out, replaces the
+      // real failure with its own, and leaves the account stranded in that role
+      // for every test that follows. That is how one broken assertion became 57.
+      clearViewAs();
+
       if (!wasOn) {
         await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
         await setFeature(page, 'view_as_role', false);
