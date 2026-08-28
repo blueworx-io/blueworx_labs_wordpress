@@ -4,6 +4,102 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.3] - 2026-08-28
+
+### Fixed
+- Carries the 1.72.1 fix below into this release: an admin page you once opened
+  while signed out no longer keeps sending you to the home page.
+
+## [1.75.2] - 2026-08-26
+
+### Changed
+- **The view-as menu lists roles alphabetically**, rather than by how much each
+  one can do. That order meant nothing to the person reading the list.
+
+## [1.75.1] - 2026-08-26
+
+### Changed
+- **Every role now says where it belongs before it says what it does** — Site:
+  Editor, Site: Author, Site: Contributor, Site: Basic User, Commerce: Manager,
+  Commerce: Customer, Bookings: Agent. A list of roles falls into groups, and
+  the editor of your site is never mistaken for the editor of your shop.
+  Administrator is left as it is.
+
+## [1.75.0] - 2026-08-26
+
+### Added
+- **Friendlier names for plugins and roles**, under Appearance on the
+  Enhancements page. SureCart reads as Commerce, LatePoint as Bookings,
+  SureForms as Forms Builder, SureDash as Dashboards, and a Subscriber is a
+  Customer. It changes the words on screen and nothing else — nobody's access
+  changes, no plugin is altered, and switching it off puts every original name
+  back. On by default.
+
+## [1.74.0] - 2026-08-26
+
+### Added
+- **"View as" moved into the sidebar**, above Log Out. One control that says
+  which view you are in and opens the list of roles you can look as — replacing
+  the bar across the bottom of every screen and the pill in the top bar that
+  only appeared once you were already inside a role.
+- **Anyone who edits the site can use it now**, not only administrators, and
+  only ever downwards: an editor can look as an author, contributor or
+  subscriber, never as an editor or an administrator.
+- **Guides are now open to everyone who works on the site**, and each person
+  only sees the guides for the parts they can actually reach. The BlueWorx
+  section is administrator-only; an editor gets writing and media and never the
+  topics about users, updates or settings. Subscribers and customers never see
+  Guides at all.
+
+### Changed
+- **Looking as another role now really hides that role's settings.** It used to
+  leave the settings screens open, because the way out of a preview lived on
+  one. The way out is the sidebar control now, so a preview shows exactly what
+  that person would see. Choosing a role also takes you to the dashboard, since
+  the screen you started on is often one they cannot open.
+- **Role lists show two names before the "+N more" button**, rather than three,
+  so a page heading and a guide card stay on one line.
+- **Enhancements only switches things on and off now.** Single sign-on and
+  support access were repeating their whole setup inside the list of switches
+  as well as on their own screens. The card there is now the switch and a link
+  through to the screen that owns the settings.
+
+### Fixed
+- **Saving the single sign-on screen no longer switches the plugin off.** It
+  posted to the Enhancements form, which reads a missing switch as an unticked
+  one — so every function on the site, sign-on included, was turned off.
+- **The save bar stays at the foot of the window on a short screen**, instead of
+  stopping wherever the settings stop.
+- **The save bar no longer sits flush against the last card** — it now has the
+  same gap above it as the content has below the page heading.
+
+## [1.73.0] - 2026-08-26
+
+### Fixed
+- **Single sign-on no longer grabs other integrations' return traffic.** Any
+  page visited with `code` and `state` in the address was treated as a sign-in
+  coming back, so a payment, booking or second sign-in integration on the same
+  site would be bounced to the login screen instead. Only a sign-in this site
+  actually started is claimed now.
+- **A sign-in link can no longer be handed to somebody else.** Someone could
+  start a sign-in as themselves and pass the return address to another person,
+  who would then be quietly signed in as them. A sign-in now only completes in
+  the browser that started it.
+- **Hiding the WordPress password form stops switching itself back off.** The
+  proof that sign-on works was only kept for the last twenty attempts, so on a
+  site with any failed sign-ins the setting quietly reverted within a day.
+
+### Added
+- **You can say which email domains may get an account.** Without it, a provider
+  like Google vouches for anyone in the world, and letting the joining button
+  create accounts opened the site to all of them. It is checked on the way to an
+  account — people who already have one keep it, and you take their access away
+  on the Users screen. Leave it blank to accept anyone, as before.
+- **Signing out can now sign people out of the provider too.** Until now,
+  logging out only ended the WordPress session — one click on the sign-in
+  button walked straight back in without anyone being asked for anything. Off
+  by default; there is a matching address to send people to afterwards.
+
 ## [1.72.1] - 2026-08-27
 
 ### Fixed

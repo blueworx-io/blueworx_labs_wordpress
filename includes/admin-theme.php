@@ -116,6 +116,19 @@ function blueworx_enqueue_admin_theme() {
 		blueworx_get_admin_asset_version( 'assets/js/admin-drawer.js' ),
 		true
 	);
+
+	// The sidebar's role switcher, on every admin screen for the same reason the
+	// sidebar is: the control has to be reachable from wherever a preview has
+	// taken you, not only from this plugin's own screens.
+	if ( function_exists( 'blueworx_view_as_available' ) && blueworx_view_as_available() ) {
+		wp_enqueue_script(
+			'blueworx-view-as',
+			BLUEWORX_LABS_URL . 'assets/js/view-as.js',
+			array(),
+			blueworx_get_admin_asset_version( 'assets/js/view-as.js' ),
+			true
+		);
+	}
 }
 add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_theme' );
 
@@ -644,9 +657,9 @@ function blueworx_render_admin_topbar() {
 		</div>
 		<div class="bw-topbar-actions">
 			<?php
-			// Viewing as another role belongs here, beside who you are, not in a
-			// bar pinned across the bottom of every screen.
-			echo wp_kses( blueworx_view_as_topbar_pill(), blueworx_ds_allowed_html() );
+			// Viewing as another role is a control in the sidebar now, not a
+			// pill here — see includes/view-as-role.php. What is left in this
+			// bar is View site and who you are.
 			?>
 			<a class="bw-topbar-site" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener noreferrer">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="15" height="15" aria-hidden="true" focusable="false">

@@ -23,11 +23,14 @@
 	   above it, our top bar has replaced it. */
 	--bwt-shell-top: 46px;
 
-	/* How much room the View as role bar takes across the bottom. It is fixed,
-	   so nothing gets out of its way on its own, and a full-bleed screen runs to
-	   the very bottom edge — without this reservation the bar lands on top of
-	   the page save bar and the Save button cannot be clicked. */
-	--bwt-viewas-h: 73px;
+	/* The panel the sidebar's role switcher opens. The system has no raised
+	   surface for a dark column — every surface token it carries is a light
+	   one — so this sits here with the rest of the chrome's own measurements. */
+	--bwt-sidenav-raised: #151834;
+
+	/* How tall the pinned Log Out row is. The role switcher pins itself
+	   directly above it, and the menu reserves room for both. */
+	--bwt-logout-h: 55px;
 }
 
 /* ─── Box model ───
@@ -181,21 +184,6 @@ body.wp-admin #wpwrap {
 
 @media only screen and (max-width: 960px) {
 	.bw-topbar-crumb {
-		display: none;
-	}
-}
-
-/* Viewing as another role. The whole point is that it is never out of sight,
-   so it sits with the avatar rather than in a bar along the bottom. */
-.bw-topbar-viewas {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--bw-space-4);
-	margin: 0;
-}
-
-@media only screen and (max-width: 782px) {
-	.bw-topbar-viewas .bw-btn--link {
 		display: none;
 	}
 }
@@ -1349,6 +1337,188 @@ body.latepoint-admin #wpcontent {
 	}
 }
 
+/* ─── Sidebar: view as role ───
+   Sits directly above the Log Out row and says which view you are in, opening
+   a list of the roles you may drop down to. It used to be two things — a pill
+   in the top bar that only appeared once you were already inside a role, and a
+   bar pinned across the bottom that was the only way in. The bar covered the
+   save bar of whatever screen it landed on, which is why the reservation those
+   two needed of each other is gone from this file.
+
+   The design asks for a 10px corner and 13.5px text. Both are half a step off
+   anything the system carries, and this control shares an edge with the Log Out
+   row directly below it — so it takes that row's radius and size instead. A
+   half-pixel nobody can see is worth less than two adjacent rows matching. */
+#adminmenu li.bw-viewasrow {
+	margin: var(--bw-space-7) var(--bw-space-4) 0;
+}
+
+.bw-viewas__wrap {
+	position: relative;
+}
+
+#adminmenu .bw-viewas__trigger {
+	align-items: center;
+	background: color-mix(in srgb, var(--bw-white) 7%, transparent);
+	border: 0;
+	border-radius: var(--bw-radius-md);
+	color: color-mix(in srgb, var(--bw-white) 72%, transparent);
+	cursor: pointer;
+	display: flex;
+	font-family: inherit;
+	font-size: var(--bw-size-lede);
+	gap: var(--bw-space-6);
+	padding: var(--bw-space-5) var(--bw-space-6);
+	transition: background 120ms ease;
+	width: 100%;
+}
+
+/* Indigo while a preview is running: at a glance, from anywhere in the admin,
+   this is the difference between what you can see and what your client can. */
+#adminmenu .bw-viewas__trigger.is-active {
+	background: var(--bw-brand);
+	color: var(--bw-white);
+}
+
+.bw-viewas__label {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.bw-viewas__chev {
+	flex: none;
+	transition: transform 200ms ease;
+}
+
+.bw-viewas__trigger[aria-expanded="true"] .bw-viewas__chev {
+	transform: rotate(180deg);
+}
+
+/* Opens upwards and over the nav items behind it. The sidebar scrolls, and a
+   panel that pushed the rows around would move the thing you were reaching
+   for as it appeared. */
+.bw-viewas__menu {
+	background: var(--bwt-sidenav-raised);
+	border: 1px solid color-mix(in srgb, var(--bw-white) 12%, transparent);
+	border-radius: var(--bw-radius-md);
+	bottom: calc(100% + var(--bw-space-3));
+	box-shadow: 0 14px 34px rgb(0 0 0 / 45%);
+	display: flex;
+	flex-direction: column;
+	gap: var(--bw-space-1);
+	left: 0;
+	padding: var(--bw-space-3);
+	position: absolute;
+	right: 0;
+	z-index: 20;
+}
+
+/* display:flex above beats the browser's own [hidden] rule, so the panel would
+   sit open on every page load with nothing to close it. */
+.bw-viewas__menu[hidden] {
+	display: none;
+}
+
+#adminmenu .bw-viewas__option {
+	background: none;
+	border: 0;
+	border-radius: var(--bw-radius-sm);
+	color: color-mix(in srgb, var(--bw-white) 60%, transparent);
+	cursor: pointer;
+	display: block;
+	font-family: inherit;
+	font-size: var(--bw-size-body);
+	padding: var(--bw-space-4) var(--bw-space-6);
+	text-align: left;
+	transition: background 120ms ease;
+	width: 100%;
+}
+
+#adminmenu .bw-viewas__option:hover,
+#adminmenu .bw-viewas__option:focus {
+	background: color-mix(in srgb, var(--bw-white) 8%, transparent);
+	color: var(--bw-white);
+}
+
+#adminmenu .bw-viewas__option.is-selected {
+	background: color-mix(in srgb, var(--bw-white) 12%, transparent);
+	color: var(--bw-white);
+	font-weight: 600;
+}
+
+/* Pinned above Log Out, which is itself pinned to the foot of the window. In
+   the flow it scrolled away with the menu items and ended up nowhere near the
+   row it is meant to sit above. Both rows come out of the flow, so the menu
+   reserves room for the pair — and only when this one is actually there, since
+   the feature can be switched off. */
+@media only screen and (min-width: 783px) {
+	#adminmenu li.bw-viewasrow {
+		background: var(--bw-ink);
+		bottom: var(--bwt-logout-h);
+		box-sizing: border-box;
+		left: 0;
+		margin: 0;
+		padding: 0 var(--bw-space-4) var(--bw-space-4);
+		position: fixed;
+		width: 36px;
+		z-index: 9990;
+	}
+
+	#adminmenu:has(li.bw-viewasrow) {
+		padding-bottom: calc(84px + var(--bwt-logout-h));
+	}
+}
+
+@media only screen and (min-width: 961px) {
+	body:not(.folded) #adminmenu li.bw-viewasrow {
+		width: var(--bwt-sidebar-w);
+	}
+}
+
+/* Folded: the label goes with every other label in the column and the icon
+   carries the control on its own. The panel keeps a width it can be read at.
+
+   Two rules rather than one, for the reason spelled out above the Log Out rule
+   further down: body.folded is the collapse BUTTON and can apply at any width,
+   while body.auto-fold sits on the body at every width and only MEANS folded
+   between 783px and 960px. Naming them together without that cap hides the
+   label on a full-width desktop sidebar. */
+@media only screen and (min-width: 783px) {
+	body.folded #adminmenu .bw-viewas__label,
+	body.folded #adminmenu .bw-viewas__chev {
+		display: none;
+	}
+
+	body.folded #adminmenu .bw-viewas__trigger {
+		justify-content: center;
+	}
+
+	body.folded .bw-viewas__menu {
+		right: auto;
+		width: 180px;
+	}
+}
+
+@media only screen and (min-width: 783px) and (max-width: 960px) {
+	body.auto-fold #adminmenu .bw-viewas__label,
+	body.auto-fold #adminmenu .bw-viewas__chev {
+		display: none;
+	}
+
+	body.auto-fold #adminmenu .bw-viewas__trigger {
+		justify-content: center;
+	}
+
+	body.auto-fold .bw-viewas__menu {
+		right: auto;
+		width: 180px;
+	}
+}
+
 /* ─── Sidebar: Log Out ─── */
 #adminmenu li.bw-logout {
 	border-top: 1px solid color-mix(in srgb, var(--bw-white) 8%, transparent);
@@ -1976,6 +2146,24 @@ body.bw-fullbleed .wrap.bw-page {
 	margin: 0;
 	min-height: 0;
 	flex: 1 1 auto;
+}
+
+/* Every screen that saves wraps its body and its save bar in one form, so the
+   form is the thing that has to reach the foot of the column. Left as a plain
+   block it is only as tall as its content, and the bar inside it stops wherever
+   the settings stop — which is what left it hanging mid-window on a screen too
+   short to scroll. */
+body.bw-fullbleed .bw-page > form {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+/* The save bar gets the same gutter above it that the content gets below the
+   page header, so it does not sit flush against the last card. */
+body.bw-fullbleed .bw-page__body {
+	padding-bottom: var(--bw-space-9);
 }
 
 /* Notices are moved here by WordPress, to just after the .wp-header-end marker

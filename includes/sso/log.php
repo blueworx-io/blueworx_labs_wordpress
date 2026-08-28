@@ -55,3 +55,34 @@ function blueworx_sso_get_log() {
 
 	return is_array( $entries ) ? $entries : array();
 }
+
+/**
+ * Whether an administrator has actually signed in through the provider.
+ *
+ * The gate on hiding the WordPress password form. Without it, that switch is a
+ * one-click way to lock everybody out of a site whose connection has never been
+ * proven to work — which is exactly the case where somebody is most likely to
+ * reach for it.
+ *
+ * @return bool True when a successful sign-in is on record.
+ */
+function blueworx_sso_provider_proven() {
+	/*
+	 * The permanent mark, written the moment a sign-in succeeds. The recent
+	 * attempts below only hold the last twenty, so on a site with any failing
+	 * traffic at all the proof scrolls off within a day — and this setting then
+	 * quietly turns itself off, long after whoever chose it stopped watching.
+	 */
+	if ( (int) get_option( 'blueworx_sso_last_success', 0 ) > 0 ) {
+		return true;
+	}
+
+	// Still worth reading for a site that succeeded before the mark existed.
+	foreach ( blueworx_sso_get_log() as $entry ) {
+		if ( isset( $entry['outcome'] ) && 'success' === $entry['outcome'] ) {
+			return true;
+		}
+	}
+
+	return false;
+}

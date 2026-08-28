@@ -65,29 +65,38 @@ function supportAccessProbe(command) {
   return execFileSync('php', [fixture, wpLoad, command], { encoding: 'utf8' }).trim();
 }
 
-const CONSOLE_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+const ENHANCEMENTS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+const SUPPORT_PATH = '/wp-admin/admin.php?page=blueworx-support';
 
 /**
- * The support access panel, as opposed to any other panel on the same screen.
+ * The support access card, as opposed to anything else on the screen.
  *
- * Every feature's detail panel draws from the same design system now, so a bare
- * `.bw-notice--info` matches whichever panels happen to be showing a note today
- * — and the second one to appear turns a passing assertion into a strict mode
- * violation halfway through this test, which leaves a live key behind and takes
- * the rest of the file down with it.
+ * Every card draws from the same design system, so a bare `.bw-notice--info`
+ * matches whichever ones happen to be showing a note today — and the second one
+ * to appear turns a passing assertion into a strict mode violation halfway
+ * through this test, which leaves a live key behind and takes the rest of the
+ * file down with it.
  *
  * @param {import('@playwright/test').Page} page Playwright page.
  * @return {import('@playwright/test').Locator} The panel.
  */
-const supportPanel = (page) => page.locator('[data-blueworx-detail="support_access"]');
+const supportPanel = (page) => page.locator('.bw-supportcard');
 
 test.describe('Support access — key lifecycle', () => {
   test.skip(isPlaceholder, 'No real site configured');
 
-  test('feature is registered on the console', async ({ page }) => {
+  test('Enhancements offers the switch and sends you here for the rest', async ({ page }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
-    await expect(page.getByText('BlueWorx support access')).toBeVisible();
+    await page.goto(ENHANCEMENTS_PATH);
+
+    const card = page.locator('.bw-fncard:has([data-blueworx-feature="support_access"])');
+    await expect(card).toContainText('BlueWorx support access');
+
+    // No key, no window, no buttons — this screen switches the function on and
+    // off and nothing else. Counted as nodes rather than through the
+    // accessibility tree, which skips the panel while the function is off.
+    await expect(card.locator('button')).toHaveCount(0);
+    await expect(card.locator('a[href*="page=blueworx-support"]')).toHaveCount(1);
   });
 
   test('no support account exists before a key is generated', async ({ page }) => {
@@ -98,7 +107,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('generating a key shows it once and creates the account', async ({ page }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
 
     await page.getByRole('button', { name: 'Generate key' }).click();
 
@@ -113,7 +122,7 @@ test.describe('Support access — key lifecycle', () => {
     await expect(page.locator('#the-list')).toContainText('blueworx_support');
 
     // Restore: revoking must remove the account again.
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Revoke access' }).click();
     await page.goto('/wp-admin/users.php');
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
@@ -121,7 +130,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('the panel says which state it is in, and posts to its own handler', async ({ page }) => {
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
 
     // Before a key: one action, and nothing claiming a state it is not in.
     await expect(page.getByRole('button', { name: 'Generate key' })).toBeVisible();
@@ -142,12 +151,12 @@ test.describe('Support access — key lifecycle', () => {
     await expect(page.locator('[data-testid="bw-support-expiry"]')).toContainText('open until');
     await expect(supportPanel(page).locator('.bw-notice--success .bw-badge')).toContainText('Open');
 
-    // The buttons carry their own formaction. Without it they post to the
-    // enhancements handler, which redirects — the page would still look fine
-    // and the action would never run.
+    // The buttons carry their own formaction. Without it they post to whatever
+    // form encloses them, which redirects — the page would still look fine and
+    // the action would never run.
     await expect(page.getByRole('button', { name: 'Revoke access' })).toHaveAttribute(
       'formaction',
-      /page=blueworx-labs-wordpress/
+      /page=blueworx-support/
     );
 
     await page.getByRole('button', { name: 'Revoke access' }).click();
@@ -158,7 +167,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('browser key login is refused while the window is shut', async ({ page, context }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
 
@@ -170,7 +179,7 @@ test.describe('Support access — key lifecycle', () => {
     expect(closed.status()).toBe(403);
 
     // Open the window, then the same key works.
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
@@ -184,7 +193,7 @@ test.describe('Support access — key lifecycle', () => {
     // post-click "wait for navigation" never resolves even though the server
     // processes the request. This is cleanup only, not an assertion, so skip
     // that wait and confirm the restored state on a fresh navigation instead.
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
     await page.waitForTimeout(1000);
     await page.goto('/wp-admin/users.php');
@@ -192,10 +201,9 @@ test.describe('Support access — key lifecycle', () => {
   });
 
   test('browser key login still works when Site Protection is on', async ({ page, context }) => {
-    const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
     await login(page);
-    await page.goto(SETTINGS_PATH);
+    await page.goto(ENHANCEMENTS_PATH);
 
     const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
     const backendToggle = page.locator('input[name="blueworx_backend_protection_enabled"]');
@@ -223,7 +231,7 @@ test.describe('Support access — key lifecycle', () => {
       await page.getByRole('button', { name: 'Save Changes' }).click();
       await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 
-      await page.goto(SETTINGS_PATH);
+      await page.goto(SUPPORT_PATH);
       await page.getByRole('button', { name: 'Generate key' }).click();
       key = await readSupportKey(page);
 
@@ -231,7 +239,7 @@ test.describe('Support access — key lifecycle', () => {
       // without an intervening goto is the headless-Chromium view-transition
       // freeze documented in helpers.js (login()) — the click "succeeds" from
       // Playwright's view but the server-side action never lands.
-      await page.goto(SETTINGS_PATH);
+      await page.goto(SUPPORT_PATH);
       await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
       // A fresh, logged-out context: Site Protection must still refuse an
@@ -248,7 +256,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto(SETTINGS_PATH);
+            await page.goto(SUPPORT_PATH);
             if (key) {
               await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
               await page.waitForTimeout(1000);
@@ -258,7 +266,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'restore frontend protection',
           async () => {
-            await page.goto(SETTINGS_PATH);
+            await page.goto(ENHANCEMENTS_PATH);
             await page
               .locator('input[name="blueworx_frontend_protection_enabled"]')
               .setChecked(original.frontendEnabled);
@@ -266,7 +274,7 @@ test.describe('Support access — key lifecycle', () => {
             await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
 
-            await page.goto(SETTINGS_PATH);
+            await page.goto(ENHANCEMENTS_PATH);
             await expect(
               page.locator('input[name="blueworx_frontend_protection_enabled"]')
             ).toBeChecked({ checked: original.frontendEnabled });
@@ -275,7 +283,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'restore backend protection',
           async () => {
-            await page.goto(SETTINGS_PATH);
+            await page.goto(ENHANCEMENTS_PATH);
             await page
               .locator('input[name="blueworx_backend_protection_enabled"]')
               .setChecked(original.backendEnabled);
@@ -283,7 +291,7 @@ test.describe('Support access — key lifecycle', () => {
             await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
 
-            await page.goto(SETTINGS_PATH);
+            await page.goto(ENHANCEMENTS_PATH);
             await expect(
               page.locator('input[name="blueworx_backend_protection_enabled"]')
             ).toBeChecked({ checked: original.backendEnabled });
@@ -298,7 +306,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('the support account cannot write', async ({ page, context }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -328,7 +336,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -351,7 +359,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('repeated bad keys are locked out', async ({ page, request }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -368,7 +376,7 @@ test.describe('Support access — key lifecycle', () => {
       expect(locked.status()).toBe(429);
 
       // The console still shows the lockout is in effect.
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await expect(page.getByText(/temporarily blocked/i)).toBeVisible();
     } finally {
       // Revoking clears the throttle for this address (see
@@ -379,20 +387,20 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key and clear throttle',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
 
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await expect(page.getByText(/temporarily blocked/i)).toHaveCount(0);
     }
   });
 
   test('REST key header reads while open, is ignored while shut', async ({ page, request }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
 
@@ -416,7 +424,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
@@ -429,7 +437,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('REST key auth does not bypass the write block', async ({ page, request }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -447,7 +455,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
@@ -460,7 +468,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('anonymous REST requests without a key never count toward the lockout', async ({ page, request }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -482,7 +490,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
@@ -495,7 +503,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('personal-data screens are denied unless data access is opened', async ({ page, context }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -518,7 +526,7 @@ test.describe('Support access — key lifecycle', () => {
       await expect(page.locator('body.wp-admin')).toHaveCount(1);
 
       // Re-open with data access ticked.
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await page.getByRole('button', { name: 'Close support access' }).click();
       await page.getByLabel('Also allow access to personal data for this session').check();
       await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -537,7 +545,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -551,7 +559,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test("the support account's own profile stays reachable with data access shut", async ({ page, context }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -590,7 +598,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -604,7 +612,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('repeated bad REST key headers are locked out too', async ({ page, request }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -626,27 +634,27 @@ test.describe('Support access — key lifecycle', () => {
       });
       expect(locked.status()).toBe(401);
 
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await expect(page.getByText(/temporarily blocked/i)).toBeVisible();
     } finally {
       await restoreAll([
         [
           'revoke support key and clear throttle',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click();
           },
         ],
       ]);
 
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await expect(page.getByText(/temporarily blocked/i)).toHaveCount(0);
     }
   });
 
   test('the audit log records opening, login and a blocked write', async ({ page, context }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -660,7 +668,7 @@ test.describe('Support access — key lifecycle', () => {
 
       // The log persists across earlier tests, so this only asserts these
       // events are present, not that the log started empty.
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       const log = page.locator('[data-testid="bw-support-log"]');
       await expect(log).toContainText('access_opened');
       await expect(log).toContainText('login');
@@ -670,7 +678,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -684,7 +692,7 @@ test.describe('Support access — key lifecycle', () => {
 
   test('closing the window logs out a live support session', async ({ page, context }) => {
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -697,7 +705,7 @@ test.describe('Support access — key lifecycle', () => {
       await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
       await expect(anon.locator('body.wp-admin')).toHaveCount(1);
 
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await page.getByRole('button', { name: 'Close support access' }).click();
 
       // The live session is over, not merely barred from new logins.
@@ -714,7 +722,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -735,7 +743,7 @@ test.describe('Support access — key lifecycle', () => {
     // database, which is the only way to simulate the window lapsing on its
     // own without waiting 24 real hours.
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -770,7 +778,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -786,7 +794,7 @@ test.describe('Support access — key lifecycle', () => {
     // The enforcement must be scoped to the support account only — an
     // administrator's own session must survive a window close untouched.
     await login(page);
-    await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -799,7 +807,7 @@ test.describe('Support access — key lifecycle', () => {
       await anon.goto(`${baseURL}/?blueworx_support_login=${key}`);
       await expect(anon.locator('body.wp-admin')).toHaveCount(1);
 
-      await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      await page.goto(SUPPORT_PATH);
       await page.getByRole('button', { name: 'Close support access' }).click();
 
       // The window closing must not log the operator's own admin session out.
@@ -817,7 +825,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -839,7 +847,7 @@ test.describe('Support access — key lifecycle', () => {
     // the read-only write block (non-GET methods only) never saw. The account
     // can scrape its own valid nonce off the page it is allowed to read.
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -905,7 +913,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -930,7 +938,7 @@ test.describe('Support access — key lifecycle', () => {
     const ids = JSON.parse(supportAccessProbe('ids'));
 
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -1008,7 +1016,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1029,7 +1037,7 @@ test.describe('Support access — key lifecycle', () => {
     supportAccessProbe('deny-pages');
 
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
 
@@ -1074,7 +1082,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1092,7 +1100,7 @@ test.describe('Support access — key lifecycle', () => {
     // $_POST read empty, writing '0' over every feature option and both
     // site-protection options.
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(ENHANCEMENTS_PATH);
 
     const featureBoxes = page.locator('input.blueworx-feature-toggle');
     const featureCount = await featureBoxes.count();
@@ -1106,6 +1114,7 @@ test.describe('Support access — key lifecycle', () => {
     const slugBefore = await page.locator('#blueworx_login_slug').inputValue();
     expect(slugBefore.length).toBeGreaterThan(0);
 
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -1120,7 +1129,7 @@ test.describe('Support access — key lifecycle', () => {
 
       // The support account holds manage_options and is not blocked from the
       // console, so it can read the nonce straight off the page.
-      const consoleRead = await anon.goto(`${baseURL}${CONSOLE_PATH}`);
+      const consoleRead = await anon.goto(`${baseURL}${ENHANCEMENTS_PATH}`);
       expect(consoleRead.status()).toBe(200);
 
       const nonce = await anon
@@ -1139,7 +1148,7 @@ test.describe('Support access — key lifecycle', () => {
 
       // And nothing was written: every feature toggle and the login slug are
       // exactly as they were.
-      await page.goto(CONSOLE_PATH);
+      await page.goto(ENHANCEMENTS_PATH);
       for (const [feature, wasChecked] of Object.entries(before)) {
         await expect(
           page.locator(`input.blueworx-feature-toggle[data-blueworx-feature="${feature}"]`),
@@ -1155,7 +1164,7 @@ test.describe('Support access — key lifecycle', () => {
             if (fresh) {
               await fresh.close();
             }
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1178,7 +1187,7 @@ test.describe('Support access — key lifecycle', () => {
     await page.goto('/wp-admin/users.php');
     await expect(page.locator('#the-list')).not.toContainText('blueworx_support');
 
-    await page.goto(CONSOLE_PATH);
+    await page.goto(ENHANCEMENTS_PATH);
     const frontendToggle = page.locator('input[name="blueworx_frontend_protection_enabled"]');
     const backendToggle = page.locator('input[name="blueworx_backend_protection_enabled"]');
 
@@ -1255,7 +1264,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'restore site protection',
           async () => {
-            await page.goto(CONSOLE_PATH);
+            await page.goto(ENHANCEMENTS_PATH);
             await page
               .locator('input[name="blueworx_frontend_protection_enabled"]')
               .setChecked(original.frontendEnabled);
@@ -1267,7 +1276,7 @@ test.describe('Support access — key lifecycle', () => {
             await page.getByRole('button', { name: 'Save Changes' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
 
-            await page.goto(CONSOLE_PATH);
+            await page.goto(ENHANCEMENTS_PATH);
             await expect(
               page.locator('input[name="blueworx_frontend_protection_enabled"]')
             ).toBeChecked({ checked: original.frontendEnabled });
@@ -1290,10 +1299,10 @@ test.describe('Support access — key lifecycle', () => {
     // The screen-level gate has had a test since task 7; the REST route gate
     // (blueworx_support_gate_data_routes) never did.
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     const headers = { 'X-BlueWorx-Support-Key': key };
@@ -1311,7 +1320,7 @@ test.describe('Support access — key lifecycle', () => {
       expect(allowed.status()).toBe(200);
 
       // Re-open with the personal-data opt-in ticked.
-      await page.goto(CONSOLE_PATH);
+      await page.goto(SUPPORT_PATH);
       await page.getByRole('button', { name: 'Close support access' }).click();
       await page.getByLabel('Also allow access to personal data for this session').check();
       await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
@@ -1323,7 +1332,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key and close data access',
           async () => {
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1343,10 +1352,10 @@ test.describe('Support access — key lifecycle', () => {
     // data, and wp-admin fetches it on every page load. Denying it by prefix
     // protects nobody and 403s the whole admin.
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     const headers = { 'X-BlueWorx-Support-Key': key };
@@ -1374,7 +1383,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1394,17 +1403,17 @@ test.describe('Support access — key lifecycle', () => {
     // write. Logged one-per-refusal it evicts the whole 100-entry log —
     // including the events the log exists to prove — in under two hours.
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     const headers = { 'X-BlueWorx-Support-Key': key };
     const log = page.locator('[data-testid="bw-support-log"] li');
 
     try {
-      await page.goto(CONSOLE_PATH);
+      await page.goto(SUPPORT_PATH);
       const before = await log.count();
 
       for (let i = 0; i < 8; i += 1) {
@@ -1416,7 +1425,7 @@ test.describe('Support access — key lifecycle', () => {
         expect(beat.status()).toBe(403);
       }
 
-      await page.goto(CONSOLE_PATH);
+      await page.goto(SUPPORT_PATH);
       const after = await log.count();
 
       // Eight refusals must not cost eight entries.
@@ -1425,7 +1434,7 @@ test.describe('Support access — key lifecycle', () => {
 
       // A real blocked write is still recorded — this must not silence the log.
       await request.post(`${baseURL}/wp-admin/admin-post.php`, { headers, form: { probe: '1' } });
-      await page.goto(CONSOLE_PATH);
+      await page.goto(SUPPORT_PATH);
       await expect(page.locator('[data-testid="bw-support-log"] li').first()).toContainText(
         'blocked_write'
       );
@@ -1434,7 +1443,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1450,16 +1459,16 @@ test.describe('Support access — key lifecycle', () => {
     // The general defence behind the Heartbeat fix: any chatty caller, known or
     // not, costs one row rather than one row per request.
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Generate key' }).click();
     const key = await readSupportKey(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
     await page.getByRole('button', { name: 'Allow support access for 24 hours' }).click();
 
     const headers = { 'X-BlueWorx-Support-Key': key };
 
     try {
-      await page.goto(CONSOLE_PATH);
+      await page.goto(SUPPORT_PATH);
       // The log persists across earlier tests, so this measures growth rather
       // than assuming it started empty.
       const before = await page.locator('[data-testid="bw-support-log"] li').count();
@@ -1471,7 +1480,7 @@ test.describe('Support access — key lifecycle', () => {
         expect(res.status()).toBe(200);
       }
 
-      await page.goto(CONSOLE_PATH);
+      await page.goto(SUPPORT_PATH);
       const rows = page.locator('[data-testid="bw-support-log"] li');
       expect((await rows.count()) - before).toBeLessThanOrEqual(1);
       await expect(rows.first()).toContainText('rest_auth');
@@ -1481,7 +1490,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },
@@ -1497,7 +1506,7 @@ test.describe('Support access — key lifecycle', () => {
     page,
   }) => {
     await login(page);
-    await page.goto(CONSOLE_PATH);
+    await page.goto(SUPPORT_PATH);
 
     // No key, nothing to connect with: the button must not be offered at all.
     await expect(page.locator('[data-testid="bw-support-copy-prompt"]')).toHaveCount(0);
@@ -1521,8 +1530,8 @@ test.describe('Support access — key lifecycle', () => {
       await button.click();
       await expect(button).toHaveText('Copied');
 
-      // Copying must not submit the enhancements form it sits inside.
-      await expect(page).toHaveURL(new RegExp('page=blueworx-labs-wordpress'));
+      // Copying must not submit the form it sits inside.
+      await expect(page).toHaveURL(new RegExp('page=blueworx-support'));
 
       // The key is shown once. Every later render still offers the prompt, but
       // with the key left as a placeholder rather than a wrong or stale value.
@@ -1535,7 +1544,7 @@ test.describe('Support access — key lifecycle', () => {
         [
           'revoke support key',
           async () => {
-            await page.goto(CONSOLE_PATH);
+            await page.goto(SUPPORT_PATH);
             await page.getByRole('button', { name: 'Revoke access' }).click({ noWaitAfter: true });
             await page.waitForTimeout(1000);
           },

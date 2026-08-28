@@ -97,7 +97,14 @@ $token_claims = array(
 	'email' => 'from-token@example.test',
 );
 
-$merged = blueworx_sso_merge_claims( $token_claims, array( 'sub' => 'subject-1', 'email_verified' => true, 'given_name' => 'Sam' ) );
+$merged = blueworx_sso_merge_claims(
+	$token_claims,
+	array(
+		'sub'            => 'subject-1',
+		'email_verified' => true,
+		'given_name'     => 'Sam',
+	)
+);
 
 check( 'the profile fills in what the token did not carry', $merged['given_name'], 'Sam' );
 check( 'and the verified flag comes through', $merged['email_verified'], true );
@@ -105,12 +112,24 @@ check( 'and the verified flag comes through', $merged['email_verified'], true );
 // The token is the only thing this site has verified, so where the two disagree
 // the token has to win — otherwise the profile response could quietly change who
 // is being signed in.
-$merged = blueworx_sso_merge_claims( $token_claims, array( 'sub' => 'subject-1', 'email' => 'from-profile@example.test' ) );
+$merged = blueworx_sso_merge_claims(
+	$token_claims,
+	array(
+		'sub'   => 'subject-1',
+		'email' => 'from-profile@example.test',
+	)
+);
 check( 'the verified token wins a collision', $merged['email'], 'from-token@example.test' );
 
 // A profile describing somebody else is not a profile for this sign-in. Taking
 // its email would hand this person whichever account that address belongs to.
-$mismatch = blueworx_sso_merge_claims( $token_claims, array( 'sub' => 'somebody-else', 'email_verified' => true ) );
+$mismatch = blueworx_sso_merge_claims(
+	$token_claims,
+	array(
+		'sub'            => 'somebody-else',
+		'email_verified' => true,
+	)
+);
 check( 'a profile for a different person is refused', is_wp_error( $mismatch ) ? $mismatch->get_error_code() : 'accepted', 'blueworx_sso_subject_mismatch' );
 
 check( 'a profile that names nobody is still usable', blueworx_sso_merge_claims( $token_claims, array( 'email_verified' => true ) )['email_verified'], true );
@@ -136,5 +155,112 @@ echo "\nThe two entry points\n";
 check( 'the sign-in link', blueworx_sso_login_url(), 'https://example.test/?blueworx_sso=login' );
 check( 'the join link', blueworx_sso_login_url( '', 'register' ), 'https://example.test/?blueworx_sso=register' );
 check( 'anything else is treated as a sign-in', blueworx_sso_login_url( '', 'nonsense' ), 'https://example.test/?blueworx_sso=login' );
+
+echo '
+Whose callback this is
+';
+
+// "code and state are in the address" belongs to OAuth in general, not to this
+// plugin. Claiming every request that carries them breaks whichever other
+// integration on the site — payment, booking, another sign-in — uses the same
+// two names on its own return leg.
+$_GET = array(
+	'code'  => 'someone-elses',
+	'state' => 'someone-elses-state',
+);
+check( 'another integration coming back is left alone', blueworx_sso_is_own_callback(), false );
+
+$GLOBALS['transients'][ blueworx_sso_attempt_key( 'our-state' ) ] = array(
+	'nonce'       => 'n',
+	'verifier'    => 'v',
+	'binder'      => hash( 'sha256', 'binder-secret' ),
+	'intent'      => 'login',
+	'redirect_to' => '',
+);
+
+$_GET = array(
+	'code'  => 'ours',
+	'state' => 'our-state',
+);
+check( 'a state this site minted is recognised', blueworx_sso_is_own_callback(), true );
+
+// Checking must not consume the record, or the callback that follows would find
+// nothing and refuse the sign-in it just accepted.
+check( 'and checking does not use the state up', blueworx_sso_is_own_callback(), true );
+
+// A provider reporting a refusal comes back with no code at all.
+$_GET = array(
+	'state' => 'our-state',
+	'error' => 'access_denied',
+);
+check( 'a refusal from the provider is still ours to handle', blueworx_sso_is_own_callback(), true );
+
+$_GET = array();
+check( 'and a plain page view is not a callback', blueworx_sso_is_own_callback(), false );
+
+echo '
+Which browser is coming back
+';
+
+$attempt = $GLOBALS['transients'][ blueworx_sso_attempt_key( 'our-state' ) ];
+
+// The state says a sign-in was started. Only this says it was started here —
+// without it, somebody can start a sign-in as themselves and hand the return
+// address to someone else, who then lands inside their account.
+$_COOKIE = array( 'blueworx_sso_binder' => 'binder-secret' );
+check( 'the browser that left is let back in', blueworx_sso_binder_matches( $attempt ), true );
+
+$_COOKIE = array( 'blueworx_sso_binder' => 'some-other-browser' );
+check( 'a different browser is refused', blueworx_sso_binder_matches( $attempt ), false );
+
+$_COOKIE = array();
+check( 'and so is one carrying nothing', blueworx_sso_binder_matches( $attempt ), false );
+
+$_COOKIE = array( 'blueworx_sso_binder' => 'binder-secret' );
+check( 'an attempt recorded without a binding is refused', blueworx_sso_binder_matches( array( 'nonce' => 'n' ) ), false );
+$_COOKIE = array();
+
+echo '
+Signing out
+';
+
+check( 'the provider is left signed in unless the site asks', blueworx_sso_single_logout_enabled(), false );
+
+$GLOBALS['options']['blueworx_sso_single_logout'] = '1';
+check( 'and signed out when it does', blueworx_sso_single_logout_enabled(), true );
+
+check( 'sign-out lands on the home page by default', blueworx_sso_post_logout_redirect(), 'https://example.test/' );
+
+$GLOBALS['options']['blueworx_sso_redirect_after_logout'] = 'https://example.test/goodbye/';
+check( 'or wherever the site says', blueworx_sso_post_logout_redirect(), 'https://example.test/goodbye/' );
+
+echo '
+Whether the connection has ever worked
+';
+
+$GLOBALS['options']['blueworx_sso_log'] = array();
+check( 'a connection that has never worked is not proven', blueworx_sso_provider_proven(), false );
+
+// The recent-attempts list holds twenty, so on any site with failing traffic the
+// only record of a success used to scroll off within a day — quietly switching
+// the password form back on behind whoever had chosen to hide it.
+$GLOBALS['options']['blueworx_sso_log'] = array(
+	array(
+		'outcome' => 'success',
+		'detail'  => 'someone',
+	),
+);
+check( 'a success in the recent attempts proves it', blueworx_sso_provider_proven(), true );
+
+$GLOBALS['options']['blueworx_sso_log']          = array_fill(
+	0,
+	20,
+	array(
+		'outcome' => 'failure',
+		'detail'  => 'nope',
+	)
+);
+$GLOBALS['options']['blueworx_sso_last_success'] = 1756200000;
+check( 'and twenty later failures do not un-prove it', blueworx_sso_provider_proven(), true );
 
 finish();

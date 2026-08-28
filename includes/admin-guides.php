@@ -37,7 +37,12 @@ function blueworx_register_guides_page() {
 	add_menu_page(
 		esc_html__( 'Guides', 'blueworx-labs-wordpress' ),
 		esc_html__( 'Guides', 'blueworx-labs-wordpress' ),
-		'manage_options',
+		// Anyone who works on the site, not only administrators: the screen
+		// exists to explain WordPress to the people using it. What each of them
+		// actually sees is decided guide by guide — see
+		// blueworx_filter_guides_by_capability(). Below edit_posts there is
+		// nothing left to show, so subscribers and customers never get the row.
+		'edit_posts',
 		'blueworx-guides',
 		'blueworx_render_guides_page',
 		'none',
@@ -156,6 +161,10 @@ function blueworx_current_guide_tab( $tabs ) {
  * @return void
  */
 function blueworx_render_guides_page() {
+	if ( ! current_user_can( 'edit_posts' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
+	}
+
 	$guides   = blueworx_get_guides();
 	$products = blueworx_get_populated_guide_products( $guides );
 	$product  = blueworx_current_guide_product( $products );
@@ -165,31 +174,40 @@ function blueworx_render_guides_page() {
 	$header = blueworx_ds_page_header(
 		array(
 			'title'      => __( 'Guides', 'blueworx-labs-wordpress' ),
-			'lede'       => __( 'Pick a section along the top, then a topic below it. BlueWorx topics follow what you have switched on — switch a function off and its guides go with it.', 'blueworx-labs-wordpress' ),
-			'capability' => 'read',
+			'lede'       => __( 'Pick a section along the top, then a topic below it. You only see topics for the parts of the site your role can reach, and BlueWorx topics follow what you have switched on.', 'blueworx-labs-wordpress' ),
+			'capability' => 'edit_posts',
 		)
 	);
 
 	echo wp_kses( blueworx_ds_screen_open( $header ), blueworx_ds_allowed_html() );
 
 	if ( empty( $tabs ) ) {
-		echo wp_kses(
-			'<div class="bw-page__body">'
-				. blueworx_ds_empty_state(
+		// Two different empty screens, because there are two different reasons
+		// to land on one. An administrator has switched everything off and can
+		// go and switch something back on; anybody else is simply not meant to
+		// see what is left, and sending them to a screen they cannot open would
+		// be a dead end.
+		$empty = current_user_can( 'manage_options' )
+			? array(
+				'icon'    => 'lightbulb',
+				'title'   => __( 'Nothing is switched on yet', 'blueworx-labs-wordpress' ),
+				'text'    => __( 'Guides appear here for whatever you have switched on. Turn something on and its guide comes with it.', 'blueworx-labs-wordpress' ),
+				'actions' => blueworx_ds_button(
 					array(
-						'icon'    => 'lightbulb',
-						'title'   => __( 'Nothing is switched on yet', 'blueworx-labs-wordpress' ),
-						'text'    => __( 'Guides appear here for whatever you have switched on. Turn something on and its guide comes with it.', 'blueworx-labs-wordpress' ),
-						'actions' => blueworx_ds_button(
-							array(
-								'label'   => __( 'Go to Enhancements', 'blueworx-labs-wordpress' ),
-								'variant' => 'primary',
-								'href'    => admin_url( 'admin.php?page=blueworx-labs-wordpress' ),
-							)
-						),
+						'label'   => __( 'Go to Enhancements', 'blueworx-labs-wordpress' ),
+						'variant' => 'primary',
+						'href'    => admin_url( 'admin.php?page=blueworx-labs-wordpress' ),
 					)
-				)
-				. '</div>',
+				),
+			)
+			: array(
+				'icon'  => 'lightbulb',
+				'title' => __( 'No guides for your role yet', 'blueworx-labs-wordpress' ),
+				'text'  => __( 'Guides only appear for the parts of the site you can work on. Ask whoever looks after this site if you think something is missing.', 'blueworx-labs-wordpress' ),
+			);
+
+		echo wp_kses(
+			'<div class="bw-page__body">' . blueworx_ds_empty_state( $empty ) . '</div>',
 			blueworx_ds_allowed_html()
 		);
 
@@ -322,8 +340,14 @@ function blueworx_render_guides_page() {
 
 			// Who can actually do the thing the guide describes, worked out from
 			// this site's own roles rather than a list written down here.
+			//
+			// The guide's own capability, not the section's. An administrator
+			// reading the Content guides needs to know their editors can use the
+			// duplicate link, even though only administrators can open the
+			// settings screen the section sits behind — so these answer "who can
+			// do this?", not "who was shown this card?".
 			$pills = blueworx_ds_role_pills(
-				blueworx_roles_with_capability( blueworx_guide_tab_capability( $guide['tab'] ) ),
+				blueworx_roles_with_capability( $guide['capability'] ),
 				'guide:' . $guide['id']
 			);
 

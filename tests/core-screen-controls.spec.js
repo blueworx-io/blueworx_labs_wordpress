@@ -34,6 +34,21 @@ function attachmentFixture(command, id) {
   return execFileSync('php', args, { encoding: 'utf8' }).trim();
 }
 
+/**
+ * Ends any role preview outright, via tests/fixtures/clear-view-as.php.
+ *
+ * The way out of a preview lives on the screen a preview takes away, so a test
+ * that fails mid-preview cannot click its way back — and leaves the account
+ * stranded in that role for every test after it. This goes at the meta directly
+ * and works whatever the browser is showing.
+ */
+function clearViewAs() {
+  const fixture = path.join(__dirname, 'fixtures', 'clear-view-as.php');
+  const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+
+  return execFileSync('php', [fixture, wpLoad], { encoding: 'utf8' }).trim();
+}
+
 /** A 1x1 PNG, and a 2x2 one, so a replace is visible in the file's size. */
 const ONE_PX = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -104,30 +119,64 @@ test.describe('BlueWorx controls inside core screens', () => {
     try {
       await page.goto('/wp-admin/index.php');
 
-      const bar = page.locator('.blueworx-view-as');
-      await expect(bar).toBeVisible();
+      const trigger = page.locator('.bw-viewas__trigger');
+      const menu = page.locator('.bw-viewas__menu');
 
-      // Ours, and only ours: the wrapper is inside the bar, not around the page.
-      await expect(bar.locator('.bw-admin')).toHaveCount(1);
-      await expect(page.locator('body.bw-admin')).toHaveCount(0);
+      // One control, in the sidebar above Log Out. It used to be two — a picker
+      // in a bar across the bottom, and a pill in the top bar that only appeared
+      // once you were already inside a role.
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toContainText('My own view');
+      await expect(page.locator('.blueworx-view-as')).toHaveCount(0);
+      await expect(page.locator('.bw-topbar-viewas')).toHaveCount(0);
 
-      await bar.locator('select#blueworx_view_as_role').selectOption('subscriber');
-      await bar.getByRole('button', { name: 'Switch' }).click();
+      await expect(menu).toBeHidden();
+      await trigger.click();
+      await expect(menu).toBeVisible();
 
-      // The way out has to be visible from inside, or the feature is a trap.
-      // It lives in the top bar now, beside who you are, rather than in a bar
-      // along the bottom — which is where you look to find out who you are.
-      const pill = page.locator('.bw-topbar-viewas');
-      await expect(pill.locator('.bw-badge')).toContainText(/subscriber/i);
-      await expect(pill.getByRole('button', { name: 'Return to my own view' })).toBeVisible();
+      // Alphabetical, so the list can be read down. "My own view" leads it
+      // whatever the roles are called — it is where you already are, not one of
+      // the places you can go.
+      const options = await menu.locator('.bw-viewas__option').allTextContents();
+      expect(options[0]).toBe('My own view');
+      expect(options.slice(1)).toEqual([...options.slice(1)].sort((a, b) => a.localeCompare(b)));
 
-      // And the picker's bar is gone while you are in a role — an empty bar
-      // pinned across the screen would say nothing.
-      await expect(bar).toHaveCount(0);
+      // Read the label off the option rather than hard-coding "Subscriber". The
+      // friendlier-names function renames every role — a Subscriber reads as
+      // "Site: Basic User" — and it is on by default, so a test that expects the
+      // raw name only passes on a site where that function has been switched
+      // off. What matters is that the trigger names the role the menu just
+      // offered, whatever that role is called.
+      const option = menu.locator('.bw-viewas__option[value="subscriber"]');
+      const label = (await option.textContent()).trim();
 
-      await pill.getByRole('button', { name: 'Return to my own view' }).click();
-      await expect(page.locator('.blueworx-view-as select#blueworx_view_as_role')).toBeVisible();
+      await option.click();
+
+      // Where you are has to be readable from inside, or the feature is a trap —
+      // and so does the way out, which is choosing your own view again.
+      await expect(trigger).toContainText(`Viewing as ${label}`);
+      await expect(trigger).toHaveClass(/is-active/);
+
+      // And the preview is the real thing: a subscriber has no settings, so
+      // neither does anyone previewing one. The control itself is what stays
+      // reachable, which is what makes taking the rest away safe.
+      await expect(page.locator('#adminmenu a[href*="page=blueworx-labs-wordpress"]')).toHaveCount(0);
+
+      const settings = await page.request.get('/wp-admin/admin.php?page=blueworx-labs-wordpress');
+      expect(settings.status(), 'the settings screen must refuse a previewed subscriber').toBe(403);
+
+      await trigger.click();
+      await menu.locator('.bw-viewas__option[value=""]').click();
+      await expect(trigger).toContainText('My own view');
+      await expect(trigger).not.toHaveClass(/is-active/);
     } finally {
+      // First, and whatever happened above. A preview hides the settings
+      // screens, so if the test failed while inside one, the restore below is
+      // reaching for a screen that will not load — it times out, replaces the
+      // real failure with its own, and leaves the account stranded in that role
+      // for every test that follows. That is how one broken assertion became 57.
+      clearViewAs();
+
       if (!wasOn) {
         await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress');
         await setFeature(page, 'view_as_role', false);

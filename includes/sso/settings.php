@@ -2,8 +2,9 @@
 /**
  * Single sign-on: the settings screen.
  *
- * Rendered inside the BlueWorx Labs settings page as the detail panel for the
- * `sso` feature, and saved by the same handler as every other feature.
+ * Rendered on the Single sign-on screen, which owns every setting here and
+ * saves them through a handler of its own. Enhancements keeps only the switch
+ * that turns the whole function on and off.
  *
  * @package BlueWorxLabs
  */
@@ -24,6 +25,7 @@ function blueworx_sso_endpoint_override_fields() {
 		'token_endpoint'         => __( 'Token endpoint', 'blueworx-labs-wordpress' ),
 		'userinfo_endpoint'      => __( 'User info endpoint', 'blueworx-labs-wordpress' ),
 		'jwks_uri'               => __( 'Signing keys (JWKS) URL', 'blueworx-labs-wordpress' ),
+		'end_session_endpoint'   => __( 'Sign-out endpoint', 'blueworx-labs-wordpress' ),
 	);
 }
 
@@ -275,6 +277,20 @@ function blueworx_sso_render_detail() {
 		)
 	);
 
+	// Directly above the joining switch, because it is the sentence that makes
+	// that switch safe to turn on: a provider like Google vouches for the whole
+	// world, and "anyone with an account there" is rarely who the site means.
+	$fields .= blueworx_sso_text_field(
+		array(
+			'key'         => 'allowed_domains',
+			'label'       => __( 'Only these email domains may get an account', 'blueworx-labs-wordpress' ),
+			'type'        => 'text',
+			'placeholder' => 'example.com, example.co.uk',
+			'mono'        => true,
+			'help'        => __( 'Separate them with commas. Leave blank to let in anyone your provider signs in — which, with a provider like Google, means anyone at all. People who already have an account keep it; take their access away on the Users screen.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
 	$fields .= blueworx_ds_field(
 		array(
 			'control' => blueworx_ds_checkbox(
@@ -436,6 +452,28 @@ function blueworx_sso_render_detail() {
 
 	$advanced .= '<p class="bw-field__help">' . esc_html__( 'Leave the addresses blank unless your provider does not publish its own configuration.', 'blueworx-labs-wordpress' ) . '</p>';
 
+	$advanced .= blueworx_ds_field(
+		array(
+			'control' => blueworx_ds_checkbox(
+				array(
+					'name'    => 'blueworx_sso_single_logout',
+					'label'   => __( 'Sign people out of the provider too', 'blueworx-labs-wordpress' ),
+					'checked' => blueworx_sso_single_logout_enabled(),
+					'help'    => __( 'Otherwise logging out only ends the WordPress session, and the next click on the sign-in button walks straight back in without anyone being asked for anything. Only affects people who signed in through the provider.', 'blueworx-labs-wordpress' ),
+					'attrs'   => array( 'data-testid' => 'bw-sso-single-logout' ),
+				)
+			),
+		)
+	);
+
+	$advanced .= blueworx_sso_text_field(
+		array(
+			'key'   => 'redirect_after_logout',
+			'label' => __( 'Send people here after signing out', 'blueworx-labs-wordpress' ),
+			'help'  => __( 'Leave blank for the home page. Some providers need this address registered with them first.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
 	// Offered only once somebody has actually signed in through the provider.
 	// Before that it is a one-click way to lock everybody out of a connection
 	// that has never worked, which is exactly when it is most tempting.
@@ -531,6 +569,34 @@ function blueworx_sso_render_log() {
 }
 
 /**
+ * Saves the single sign-on screen.
+ *
+ * Its own handler rather than the Enhancements one. That form posts every
+ * feature switch on the site, and a missing checkbox is indistinguishable from
+ * an unticked one — so saving this screen through it switched off every
+ * function in the plugin, including this one.
+ *
+ * @return void
+ */
+function blueworx_sso_handle_settings_save() {
+	blueworx_require_post_request();
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
+	}
+
+	check_admin_referer( 'blueworx_save_sso_settings' );
+
+	blueworx_sso_save_settings( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer() ran above; the callee sanitizes every field.
+
+	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
+
+	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-sso' ) );
+	exit;
+}
+add_action( 'admin_post_blueworx_save_sso_settings', 'blueworx_sso_handle_settings_save' );
+
+/**
  * Saves the single sign-on settings.
  *
  * The caller has already verified the nonce and the capability.
@@ -539,14 +605,14 @@ function blueworx_sso_render_log() {
  * @return void
  */
 function blueworx_sso_save_settings( $posted ) {
-	$text_fields = array( 'client_id', 'button_label', 'register_button_label', 'scope', 'signup_prompt' );
+	$text_fields = array( 'client_id', 'button_label', 'register_button_label', 'scope', 'signup_prompt', 'allowed_domains' );
 
 	foreach ( $text_fields as $field ) {
 		$value = isset( $posted[ 'blueworx_sso_' . $field ] ) ? sanitize_text_field( wp_unslash( $posted[ 'blueworx_sso_' . $field ] ) ) : '';
 		update_option( 'blueworx_sso_' . $field, $value, false );
 	}
 
-	$url_fields = array( 'issuer', 'redirect_uri', 'redirect_after_login', 'redirect_after_register', 'no_account_url' );
+	$url_fields = array( 'issuer', 'redirect_uri', 'redirect_after_login', 'redirect_after_register', 'redirect_after_logout', 'no_account_url' );
 
 	foreach ( blueworx_sso_endpoint_override_fields() as $key => $unused_label ) {
 		$url_fields[] = $key . '_override';
@@ -577,6 +643,7 @@ function blueworx_sso_save_settings( $posted ) {
 	}
 
 	update_option( 'blueworx_sso_auto_register', isset( $posted['blueworx_sso_auto_register'] ) ? '1' : '0', false );
+	update_option( 'blueworx_sso_single_logout', isset( $posted['blueworx_sso_single_logout'] ) ? '1' : '0', false );
 
 	$role    = isset( $posted['blueworx_sso_default_role'] ) ? sanitize_key( wp_unslash( $posted['blueworx_sso_default_role'] ) ) : 'subscriber';
 	$choices = blueworx_sso_role_choices();
@@ -615,26 +682,6 @@ function blueworx_sso_save_settings( $posted ) {
 		( ! empty( $posted['blueworx_sso_hide_password_form'] ) && blueworx_sso_provider_proven() ) ? '1' : '0',
 		false
 	);
-}
-
-/**
- * Whether an administrator has actually signed in through the provider.
- *
- * The gate on hiding the WordPress password form. Without it, that switch is a
- * one-click way to lock everybody out of a site whose connection has never been
- * proven to work — which is exactly the case where somebody is most likely to
- * reach for it.
- *
- * @return bool True when a successful sign-in is on record.
- */
-function blueworx_sso_provider_proven() {
-	foreach ( blueworx_sso_get_log() as $entry ) {
-		if ( isset( $entry['outcome'] ) && 'success' === $entry['outcome'] ) {
-			return true;
-		}
-	}
-
-	return false;
 }
 
 /**

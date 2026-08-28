@@ -21,10 +21,11 @@ add_filter( 'blueworx_guides', function ( $guides ) {
 
 | Key     | Required | Notes |
 | ------- | -------- | ----- |
-| `id`    | yes      | Unique, `sanitize_key`-safe. Used as the DOM hook, so keep it stable. |
-| `title` | yes      | Plain text. Escaped on output. |
-| `tab`   | no       | Tab id. Unknown or omitted lands the guide under **Other**. |
-| `body`  | yes      | HTML, filtered through `wp_kses_post` on output. |
+| `id`         | yes | Unique, `sanitize_key`-safe. Used as the DOM hook, so keep it stable. |
+| `title`      | yes | Plain text. Escaped on output. |
+| `tab`        | no  | Tab id. Unknown or omitted lands the guide under **Other**. |
+| `body`       | yes | HTML, filtered through `wp_kses_post` on output. |
+| `capability` | no  | Who this guide is for. Defaults to the tab's own capability. |
 
 ## Add a tab
 
@@ -54,12 +55,29 @@ you cannot create an empty tab.
   exists is ignored, so a third party cannot displace a built-in guide.
 - **Order within a tab is registration order.** Built-in guides come first.
 
+## Who sees what
+
+The page needs `edit_posts`, so subscribers and shop customers never get the
+row. Above that, a guide is shown only to somebody who could act on it:
+
+- **Your guide's `capability`** decides who sees the card. Left unset it is the
+  capability its tab describes, which is also what the role pills on the card
+  say — so the pills and the gate cannot drift apart.
+- **A section can be gated as a whole** through `blueworx_guide_product_capability`.
+  BlueWorx's own section is `manage_options`, because every screen it describes
+  is. A guide behind a gated section needs both capabilities.
+- **A tab with nothing left in it disappears**, and so does a section — you do
+  not have to hide them yourself.
+
+A guide with no `capability` and no recognised tab lands under **Other**, which
+is treated as ours and therefore `manage_options`. Set `capability` explicitly
+if your guide is meant for anyone else.
+
 ## What it does not do
 
-There is no capability argument. The page itself requires `manage_options`, and
-this plugin's own guides are additionally hidden when their feature is switched
-off. If your guide should only appear in some circumstances, decide that inside
-your filter — return early, or omit the guide:
+This plugin's own guides are additionally hidden when their feature is switched
+off. If your guide should only appear in some other circumstance, decide that
+inside your filter — return early, or omit the guide:
 
 ```php
 add_filter( 'blueworx_guides', function ( $guides ) {

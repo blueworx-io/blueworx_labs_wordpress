@@ -5,6 +5,8 @@
  * The risky part of any sign-in feature. Getting this wrong hands someone else's
  * account away, so the rules are deliberately strict:
  *
+ *  - where the site names the email domains it accepts, nobody outside them can
+ *    get an account, by joining or by being linked to one;
  *  - the provider's own subject identifier is the real key, stored on first use;
  *  - an email may link an identity to an existing account exactly once, and only
  *    when the provider says that email is verified;
@@ -39,12 +41,29 @@ function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 		return new WP_Error( 'blueworx_sso_no_subject', __( 'The identity provider did not say who signed in.', 'blueworx-labs-wordpress' ) );
 	}
 
+	$email  = isset( $claims['email'] ) ? (string) $claims['email'] : '';
 	$issuer = (string) blueworx_sso_option( 'issuer' );
 	$user   = blueworx_sso_find_by_subject( $subject, $issuer );
 	$is_new = false;
 
 	if ( ! $user ) {
-		$email    = isset( $claims['email'] ) ? (string) $claims['email'] : '';
+		/*
+		 * The gate on getting in at all — checked on the way to an account, and
+		 * only there. A provider like Google vouches for every account in the
+		 * world, so without this a site that lets people join is open to all of
+		 * them.
+		 *
+		 * Deliberately not re-checked for somebody already linked. Whether they
+		 * may still sign in is whether their account still exists: a leaver's
+		 * provider account is switched off at the provider, which stops them
+		 * long before this code runs, and anyone else is removed on the Users
+		 * screen where it can be seen. Re-checking here would instead lock
+		 * people out silently, at the login box, months after the list changed.
+		 */
+		if ( ! blueworx_sso_email_domain_allowed( $email ) ) {
+			return new WP_Error( 'blueworx_sso_domain_not_allowed', __( 'That email address cannot be given an account here.', 'blueworx-labs-wordpress' ) );
+		}
+
 		$verified = isset( $claims['email_verified'] ) && blueworx_sso_claim_is_true( $claims['email_verified'] );
 
 		if ( '' !== $email ) {
@@ -115,6 +134,69 @@ function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 	do_action( 'blueworx_sso_user_authenticated', $user->ID, $claims, $is_new, $intent );
 
 	return $user;
+}
+
+/**
+ * The email domains this site accepts, if it names any.
+ *
+ * Written as a plain list — "example.com, example.co.uk" — because that is how
+ * whoever fills it in thinks about it. An empty list means the site has not
+ * restricted anything, which is the setting every existing site already has.
+ *
+ * @return array Lower-case domains, possibly empty.
+ */
+function blueworx_sso_allowed_domains() {
+	$raw     = strtolower( (string) blueworx_sso_option( 'allowed_domains', '' ) );
+	$domains = array();
+
+	foreach ( (array) preg_split( '/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY ) as $candidate ) {
+		// "@example.com" is what people paste, and it means the same thing.
+		$candidate = trim( ltrim( trim( $candidate ), '@' ), '.' );
+
+		if ( '' !== $candidate ) {
+			$domains[] = $candidate;
+		}
+	}
+
+	/**
+	 * Filters the email domains allowed to sign in.
+	 *
+	 * For a site whose rule is not a fixed list — a domain per environment, or
+	 * one held somewhere else.
+	 *
+	 * @param array $domains Lower-case domains. Empty means no restriction.
+	 */
+	$domains = apply_filters( 'blueworx_sso_allowed_email_domains', $domains );
+
+	return array_values( array_unique( array_filter( array_map( 'strval', (array) $domains ) ) ) );
+}
+
+/**
+ * Whether an email address may be given an account here.
+ *
+ * Exact domains only: a rule for example.com is not a rule for anything else
+ * ending in example.com, and treating it as one is how a lookalike domain gets
+ * quietly let in.
+ *
+ * @param string $email Email address from the verified claims.
+ * @return bool True when the site names no domains, or this one is among them.
+ */
+function blueworx_sso_email_domain_allowed( $email ) {
+	$domains = blueworx_sso_allowed_domains();
+
+	if ( empty( $domains ) ) {
+		return true;
+	}
+
+	$at = strrpos( (string) $email, '@' );
+
+	// A site that names its domains cannot accept somebody with no address at
+	// all: there is nothing to check them against.
+	if ( false === $at ) {
+		return false;
+	}
+
+	return in_array( strtolower( substr( (string) $email, $at + 1 ) ), $domains, true );
 }
 
 /**

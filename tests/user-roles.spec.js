@@ -127,7 +127,10 @@ test.describe('BlueWorx user roles — saving', () => {
       await page.goto(`/wp-admin/users.php?s=${encodeURIComponent(USER_LOGIN)}`);
       const row = page.locator('tr', { hasText: USER_LOGIN }).first();
       await expect(row).toContainText('Contributor');
-      await expect(row).toContainText('Subscriber');
+
+      // Either name will do: this is about the roles the user ended up with,
+      // and the site may be showing Subscriber under its friendlier name.
+      await expect(row).toContainText(/Subscriber|Basic User/);
 
       // ...and the edit screen ticks both of them back.
       // The username itself, not the "Edit" row action: row actions are only

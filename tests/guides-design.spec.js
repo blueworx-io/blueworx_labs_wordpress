@@ -57,7 +57,7 @@ test.describe('the Guides screen as designed', () => {
     expect(overflow, 'Guides scrolls sideways on a phone').toBeLessThanOrEqual(1);
   });
 
-  test('a guide says who can do the thing, three at a time', async ({ page }) => {
+  test('a guide says who can do the thing, two at a time', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await login(page);
     await page.goto(`${GUIDES}&tab=getting-started`);
@@ -65,20 +65,20 @@ test.describe('the Guides screen as designed', () => {
     const card = page.locator('.bw-guidegrid:not([hidden]) > .bw-card').first();
     const more = card.locator('[data-blueworx-roles-more]');
 
-    await expect(more, 'nothing to open — this tab should overflow three roles').toHaveCount(1);
+    await expect(more, 'nothing to open — this tab should overflow two roles').toHaveCount(1);
 
-    // Three roles plus the button, which is itself a pill.
-    await expect(card.locator('.bw-rolepill:visible')).toHaveCount(4);
+    // Two roles plus the button, which is itself a pill.
+    await expect(card.locator('.bw-rolepill:visible')).toHaveCount(3);
 
     const drop = card.locator('.bw-roledrop');
     await expect(drop).toBeHidden();
 
     // The rest open under the button rather than unfolding into the row, so the
-    // row is still three pills wide with the panel showing.
+    // row is still two roles wide with the panel showing.
     await more.click();
     await expect(drop).toBeVisible();
     await expect(more).toHaveAttribute('aria-expanded', 'true');
-    await expect(card.locator('.bw-rolepills > .bw-rolepill:visible')).toHaveCount(3);
+    await expect(card.locator('.bw-rolepills > .bw-rolepill:visible')).toHaveCount(2);
 
     // Everything the row left out is in the panel, and nothing is repeated.
     const shown = await card.locator('.bw-rolepills > .bw-rolepill').allInnerTexts();

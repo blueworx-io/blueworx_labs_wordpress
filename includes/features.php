@@ -83,7 +83,7 @@ function blueworx_get_feature_definitions() {
 		),
 		'view_as_role'          => array(
 			'label'       => __( 'View the admin as another role', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Lets an administrator see the admin area the way one of your other roles sees it, to check what that role can and cannot reach. It only ever narrows what you can see, never widens it, and one click puts you back.', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Puts a control in the sidebar that shows the admin area the way one of your other roles sees it, to check what that role can and cannot reach. Anyone who edits the site can use it, and only ever downwards — an editor can look as an author, never the other way about. One click puts you back.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => null,
 			'default'     => '0',
@@ -209,6 +209,12 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Takes the WordPress logo, Customize, update counter and Help drawer out of the black toolbar, and can hide the toolbar entirely on the front of the site.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => 'admin_bar',
+		),
+		'display_names'         => array(
+			'label'       => __( 'Friendlier names', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Renames plugins and roles on the admin screens so they read as the job they do rather than the product they came from — SureCart becomes Commerce, LatePoint becomes Bookings, and every role says where it belongs first: Site: Editor, Commerce: Manager, Bookings: Agent. Display only: nobody\'s access changes and no plugin is altered.', 'blueworx-labs-wordpress' ),
+			'section'     => 'appearance',
+			'detail'      => 'display_names',
 		),
 		'dashboard_widgets'     => array(
 			'label'       => __( 'Dashboard tidy-up', 'blueworx-labs-wordpress' ),

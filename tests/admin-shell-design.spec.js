@@ -129,10 +129,9 @@ test.describe('the admin shell as designed', () => {
       const a = found.getBoundingClientRect();
       const b = page_.getBoundingClientRect();
 
-      // The View as role bar is fixed across the bottom on every admin screen
-      // when that feature is on, so the floor is its top edge, not the window's.
-      const roleBar = document.querySelector('.blueworx-view-as');
-      const floor = roleBar ? roleBar.getBoundingClientRect().top : window.innerHeight;
+      // Nothing of ours is pinned across the bottom any more, so the floor is
+      // simply the foot of the window.
+      const floor = window.innerHeight;
 
       return {
         left: a.left - b.left,
@@ -147,25 +146,78 @@ test.describe('the admin shell as designed', () => {
     expect(bar.fromFloor, 'the save bar floats short of the bottom').toBeLessThanOrEqual(2);
   });
 
-  // The screen now runs to the bottom edge of the window, and the View as role
-  // bar is fixed there and painted above everything. Left to itself it covers
-  // the save bar completely and Save cannot be clicked at all.
-  test('the role bar does not cover the save button', async ({ page }) => {
+  test('the save bar sits on the bottom on a screen too short to scroll', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await login(page);
+
+    // Admin Menu is one function, so this screen does not fill the window. The
+    // bar is sticky, and sticky cannot move an element that has nowhere to
+    // scroll — it used to stop wherever the settings stopped, hanging mid-page.
+    await page.goto(`${ENHANCEMENTS}&section=admin_menu`);
+
+    const measured = await page.evaluate(() => {
+      const bar = document.querySelector('.bw-page .bw-savebar');
+
+      if (!bar) {
+        return null;
+      }
+
+      const floor = window.innerHeight;
+
+      return {
+        scrollable: document.documentElement.scrollHeight - window.innerHeight,
+        fromFloor: floor - bar.getBoundingClientRect().bottom,
+      };
+    });
+
+    expect(measured, 'no save bar on Enhancements').not.toBeNull();
+    expect(measured.scrollable, 'this section is long enough to scroll').toBeLessThanOrEqual(2);
+    expect(measured.fromFloor, 'the save bar floats short of the bottom').toBeLessThanOrEqual(2);
+  });
+
+  test('the content clears the save bar by the same gap it has at the top', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await login(page);
     await page.goto(ENHANCEMENTS);
 
-    const roleBar = page.locator('.blueworx-view-as');
-    test.skip((await roleBar.count()) === 0, 'View as role is switched off on this site.');
+    const gutters = await page.evaluate(() => {
+      const style = getComputedStyle(document.querySelector('.bw-page__body'));
+
+      return {
+        top: parseFloat(style.paddingTop),
+        bottom: parseFloat(style.paddingBottom),
+      };
+    });
+
+    expect(gutters.top).toBeGreaterThan(0);
+    expect(gutters.bottom, 'the save bar sits flush against the last card').toBe(gutters.top);
+  });
+
+  // View as role used to be a bar fixed across the bottom of every screen, and
+  // it landed on top of the save bar — Save could not be clicked at all. It is
+  // a control in the sidebar now, so nothing of ours is over the page.
+  test('nothing is pinned over the save button', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await login(page);
+    await page.goto(ENHANCEMENTS);
 
     const save = page.locator('.bw-page .bw-savebar').getByRole('button', { name: 'Save Changes' });
-    const a = await save.boundingBox();
-    const b = await roleBar.boundingBox();
+    const box = await save.boundingBox();
 
-    expect(a, 'no Save Changes button on Enhancements').not.toBeNull();
-    expect(a.y + a.height, 'the role bar overlaps the save button').toBeLessThanOrEqual(b.y + 1);
+    expect(box, 'no Save Changes button on Enhancements').not.toBeNull();
 
-    // And the button really is reachable, which is what the overlap cost.
+    // What the browser would actually hand the click to at the button's centre.
+    const onTop = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+
+        return el ? !!el.closest('.bw-savebar') : false;
+      },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    );
+
+    expect(onTop, 'something is painted over the save button').toBe(true);
+
     await expect(save).toBeVisible();
     await save.click({ trial: true, timeout: 5000 });
   });

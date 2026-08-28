@@ -27,6 +27,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  *     @type string $title   Screen title.
  *     @type string $lede    One-line explanation.
  *     @type string $actions Header action HTML.
+ *     @type string $form    Opening <form> tag and its hidden fields, for a
+ *                           screen that ends in a save bar. It opens outside
+ *                           the page body so the bar is a sibling of the
+ *                           content rather than the last thing inside it —
+ *                           which is what lets the bar sit at the foot of the
+ *                           window on a screen too short to scroll. Close it in
+ *                           the footer passed to blueworx_close_admin_page().
  * }
  * @return void
  */
@@ -42,6 +49,7 @@ function blueworx_open_admin_page( $args ) {
 			'title'   => '',
 			'lede'    => '',
 			'actions' => '',
+			'form'    => '',
 		)
 	);
 
@@ -59,16 +67,33 @@ function blueworx_open_admin_page( $args ) {
 		)
 	);
 
+	if ( '' !== $args['form'] ) {
+		// Not wp_kses(): this is the caller's own <form> tag and nonce field,
+		// and the allow-list has no opinion on form attributes.
+		echo $args['form']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
 	echo '<div class="bw-page__body"><div class="bw-panels">';
 }
 
 /**
  * Closes a BlueWorx screen opened by blueworx_open_admin_page().
  *
+ * @param string $footer Optional HTML printed after the page body and before
+ *                       the screen closes — a save bar, and the closing
+ *                       </form> when the screen opened one.
  * @return void
  */
-function blueworx_close_admin_page() {
+function blueworx_close_admin_page( $footer = '' ) {
 	echo '</div></div>';
+
+	if ( '' !== $footer ) {
+		// Not wp_kses(): the save bar is built from design system helpers, which
+		// escape everything they emit, and the allow-list drops the button
+		// attributes it does not know about.
+		echo $footer; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
 	echo wp_kses( blueworx_ds_screen_close(), blueworx_ds_allowed_html() );
 }
 
@@ -201,6 +226,17 @@ function blueworx_render_support_page() {
  */
 function blueworx_render_sso_page() {
 	$connected = '' !== trim( (string) blueworx_sso_option( 'client_secret' ) );
+	$enabled   = blueworx_feature_enabled( 'sso' );
+
+	// Its own action, not the Enhancements one: that form posts every feature
+	// switch on the site, and a missing checkbox reads as an unticked one.
+	$form = $enabled
+		? sprintf(
+			'<form method="post" action="%1$s"><input type="hidden" name="action" value="blueworx_save_sso_settings" />%2$s',
+			esc_url( admin_url( 'admin-post.php' ) ),
+			wp_nonce_field( 'blueworx_save_sso_settings', '_wpnonce', true, false )
+		)
+		: '';
 
 	blueworx_open_admin_page(
 		array(
@@ -211,10 +247,11 @@ function blueworx_render_sso_page() {
 				$connected ? 'success' : 'neutral',
 				true
 			),
+			'form'    => $form,
 		)
 	);
 
-	if ( ! blueworx_feature_enabled( 'sso' ) ) {
+	if ( ! $enabled ) {
 		echo wp_kses(
 			blueworx_ds_notice(
 				array(
@@ -236,10 +273,22 @@ function blueworx_render_sso_page() {
 		blueworx_close_admin_page();
 		return;
 	}
-	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-	wp_nonce_field( 'blueworx_save_feature_settings' );
-	echo '<input type="hidden" name="action" value="blueworx_save_feature_settings" />';
-	echo '<input type="hidden" name="blueworx_section" value="security" />';
+
+	$saved = get_transient( 'blueworx_labs_notice' );
+
+	if ( $saved ) {
+		delete_transient( 'blueworx_labs_notice' );
+
+		echo wp_kses(
+			blueworx_ds_notice(
+				array(
+					'tone' => 'success',
+					'text' => $saved,
+				)
+			),
+			blueworx_ds_allowed_html()
+		);
+	}
 
 	echo '<section class="bw-card"><div class="bw-card__head"><div class="bw-card__titles">';
 	echo '<h2 class="bw-card__title">' . esc_html__( 'Provider', 'blueworx-labs-wordpress' ) . '</h2>';
@@ -249,22 +298,19 @@ function blueworx_render_sso_page() {
 
 	echo '</div></section>';
 
-	echo '<div class="bw-savebar"><span class="bw-savebar__hint">'
+	$savebar = '<div class="bw-savebar"><span class="bw-savebar__hint">'
 		. esc_html__( 'Nothing changes until you save.', 'blueworx-labs-wordpress' )
-		. '</span>';
-	echo wp_kses(
-		blueworx_ds_button(
+		. '</span>'
+		. blueworx_ds_button(
 			array(
 				'label'   => __( 'Save changes', 'blueworx-labs-wordpress' ),
 				'variant' => 'primary',
 				'type'    => 'submit',
 			)
-		),
-		blueworx_ds_allowed_html()
-	);
-	echo '</div></form>';
+		)
+		. '</div></form>';
 
-	blueworx_close_admin_page();
+	blueworx_close_admin_page( $savebar );
 }
 
 /**
@@ -322,8 +368,8 @@ function blueworx_embedded_control_map() {
 		),
 		array(
 			'feature' => 'view_as_role',
-			'where'   => __( 'Every admin screen', 'blueworx-labs-wordpress' ),
-			'what'    => __( 'A bar along the bottom while you are viewing the admin area as another role.', 'blueworx-labs-wordpress' ),
+			'where'   => __( 'The sidebar, above Log Out', 'blueworx-labs-wordpress' ),
+			'what'    => __( 'A control saying which view you are in, and the roles below yours you can look as.', 'blueworx-labs-wordpress' ),
 			'link'    => '',
 		),
 		array(
