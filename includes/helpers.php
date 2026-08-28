@@ -13,10 +13,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Redirects the visitor to the site homepage and halts execution.
  *
+ * Temporary, never permanent. Where this sends someone depends on whether they
+ * are signed in, so the same URL answers differently a moment later. A 301 told
+ * the browser otherwise: one logged-out hit on a wp-admin screen was cached
+ * against that exact URL, and every later visit followed the cached redirect to
+ * the home page without ever asking the site again. Signing back in did not
+ * help, because the request never left the browser.
+ *
+ * The no-cache headers go with it. This runs on `init` at priority 1, before
+ * WordPress sends its own admin no-cache headers, so nothing else is going to
+ * send them for us.
+ *
  * @return void
  */
 function blueworx_redirect_home() {
-	wp_safe_redirect( home_url( '/' ), 301 );
+	nocache_headers();
+	wp_safe_redirect( home_url( '/' ), 302 );
 	exit;
 }
 

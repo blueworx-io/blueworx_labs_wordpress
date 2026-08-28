@@ -122,14 +122,13 @@ export function cacheBust(path) {
  * condition was simply false, so the helper silently did nothing and every test
  * ran logged out, failing later on unrelated assertions.
  *
- * NEVER probe wp-admin before logging in. blueworx_redirect_home()
- * (includes/helpers.php) sends a 301 — permanent, and therefore cached by the
- * browser. One logged-out hit on /wp-admin poisons that URL in the context for
- * the rest of its life: every later visit follows the cached redirect to the
- * front page WITHOUT asking the server, so the session looks logged out even
- * though the auth cookie is set. Verified: identical flows differ only by a
- * pre-login wp-admin visit, and only the one that skips it reaches the
- * dashboard. Go straight to the login form.
+ * Still: go straight to the login form rather than probing wp-admin first.
+ * blueworx_redirect_home() (includes/helpers.php) used to send a 301, which the
+ * browser cached against that URL — one logged-out hit on /wp-admin poisoned it
+ * for the life of the context, so the session looked logged out even with the
+ * auth cookie set. It is a no-cache 302 now, and
+ * tests/admin-redirect-cache.spec.js keeps it that way, but there is nothing to
+ * gain from asking an admin URL a question it cannot answer yet.
  *
  * @param {import('@playwright/test').Page} page Playwright page.
  */
@@ -220,6 +219,7 @@ const FEATURE_SECTIONS = {
   menu_editor: 'admin_menu',
   admin_theme: 'appearance',
   admin_bar: 'appearance',
+  display_names: 'appearance',
   dashboard_widgets: 'appearance',
 };
 
