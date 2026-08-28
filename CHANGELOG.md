@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.3] - 2026-08-28
+
+### Fixed
+- Carries the 1.72.1 fix below into this release: an admin page you once opened
+  while signed out no longer keeps sending you to the home page.
+
 ## [1.75.2] - 2026-08-26
 
 ### Changed
@@ -93,6 +99,16 @@ versioning.
   logging out only ended the WordPress session — one click on the sign-in
   button walked straight back in without anyone being asked for anything. Off
   by default; there is a matching address to send people to afterwards.
+
+## [1.72.1] - 2026-08-27
+
+### Fixed
+- **An admin page you once opened while signed out no longer keeps sending you
+  to the home page.** Being sent away while signed out was meant to be
+  temporary, but the browser was told it was permanent, so it remembered that
+  one address for good — signing back in made no difference, because the request
+  never reached the site. On a site that already has this, the person needs one
+  hard reload (Ctrl+Shift+R) to forget it.
 
 ## [1.72.0] - 2026-08-25
 
