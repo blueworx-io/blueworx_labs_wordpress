@@ -1,5 +1,8 @@
 node_modules/
 vendor/
+# ...except the update checker's own, which is part of the vendored library and
+# has to ship: without it the plugin fatals on any site it updates.
+!plugin-update-checker/vendor/
 dist/
 *.log
 .DS_Store
