@@ -25,6 +25,13 @@ if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
 	define( 'BLUEWORX_LABS_VERSION', '1.75.5' );
 }
 
+// The main plugin file's own path. Two things need it by name rather than by
+// guessing at it: the update checker, which identifies the plugin to WordPress
+// by this file, and the filter that turns this plugin's own auto-update on.
+if ( ! defined( 'BLUEWORX_LABS_PLUGIN_FILE' ) ) {
+	define( 'BLUEWORX_LABS_PLUGIN_FILE', __FILE__ );
+}
+
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
 	define( 'BLUEWORX_LABS_PATH', plugin_dir_path( __FILE__ ) );
 }
@@ -68,6 +75,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/translate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
+require_once BLUEWORX_LABS_PATH . 'includes/auto-updates.php';
 
 require_once BLUEWORX_LABS_PATH . 'includes/admin-bar.php';
 require_once BLUEWORX_LABS_PATH . 'includes/dashboard-widgets.php';
