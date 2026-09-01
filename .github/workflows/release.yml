@@ -1,0 +1,31 @@
+# Publishes a release when a version tag is pushed.
+#
+# The build itself is the foundation's, so the zip this plugin ships is put
+# together exactly like every other BlueWorx plugin's — see
+# docs/wordpress-auto-updates.md in bluegroup_core_foundation for what it does
+# and how to cut a release. Sites install the result on their own; nobody
+# uploads a zip.
+#
+# plugin_slug is deliberately not passed: the workflow derives it from the main
+# plugin file, which is one fewer copy of "blueworx-labs-wordpress" to keep in
+# step with the folder name on every site.
+#
+# foundation_ref is pinned to a release rather than the moving v1 tag, which has
+# gone stale under us before.
+#
+# permissions: contents: write has to be here, in the caller. A reusable
+# workflow cannot widen the permissions it is given, and publishing 403s without
+# it.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/release-wordpress.yml@v1.9.0
+    with:
+      foundation_ref: v1.9.0
+    permissions:
+      contents: write
