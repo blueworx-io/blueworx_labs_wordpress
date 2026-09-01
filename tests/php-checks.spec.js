@@ -24,6 +24,7 @@ const SCRIPTS = [
   'guides-access-test.php',
   'view-as-access-test.php',
   'display-names-test.php',
+  'auto-updates-test.php',
 ];
 
 let phpAvailable = true;
