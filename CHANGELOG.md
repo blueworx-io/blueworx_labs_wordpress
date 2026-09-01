@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.76.0] - 2026-09-01
+
+### Added
+- **The plugin updates itself.** New versions are published on GitHub and every
+  site installs them on its own, usually within half a day — no zip to upload, no
+  site to remember. Each site needs this version put on it by hand once, and that
+  is the last upload. A release that would install a version the plugin does not
+  claim to be is refused before it is published.
+
 ## [1.75.5] - 2026-09-01
 
 ### Fixed

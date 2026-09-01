@@ -48,6 +48,7 @@ Do this proactively at the end of any session with deployable changes — never 
 
 - Standalone: `npm install`, `npm run build`, then remove `node_modules` to leave the folder clean for manual zipping
 - WordPress plugin: bump the plugin version, then zip the plugin folder and place the zip at `<plugin-parent-dir>/<plugin-slug>.zip` — remove any older versioned zips in that same directory before creating the new one. The zip is the deployment artifact, never copy individual files
+- This plugin also updates itself: merge, then push a `v<version>` tag, and the release workflow publishes the zip that every site installs on its own. The standard lives in the foundation's `docs/wordpress-auto-updates.md` — the hand-built zip above is only for a site that has never had it
 - Headless: nothing manual — CI and Netlify handle install, build, and deploy once merged
 
 ## Approved Tools & Styles
