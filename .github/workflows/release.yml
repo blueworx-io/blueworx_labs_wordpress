@@ -27,5 +27,15 @@ jobs:
     uses: blueworx-io/bluegroup_core_foundation/.github/workflows/release-wordpress.yml@v1.9.0
     with:
       foundation_ref: v1.9.0
+      # Identical to the CI workflow's list, deliberately: the check that runs on
+      # a pull request and the build that runs on a tag must agree on what ships.
+      exclude_paths: |
+        /scripts
+        # The vendored update checker is shipped whole, exactly as upstream
+        # publishes it, so it can be swapped for a newer version by replacing the
+        # folder. Its composer.json is the one file in it the zip check refuses —
+        # Composer never runs on a site, so it is left out of the zip rather than
+        # deleted out of the library.
+        /plugin-update-checker/composer.json
     permissions:
       contents: write

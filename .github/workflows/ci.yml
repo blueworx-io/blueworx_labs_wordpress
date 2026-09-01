@@ -49,4 +49,10 @@ jobs:
       # future *.test.mjs next to a build script from failing the zip check.
       exclude_paths: |
         /scripts
+        # The vendored update checker is shipped whole, exactly as upstream
+        # publishes it, so it can be swapped for a newer version by replacing the
+        # folder. Its composer.json is the one file in it the zip check refuses —
+        # Composer never runs on a site, so it is left out of the zip rather than
+        # deleted out of the library.
+        /plugin-update-checker/composer.json
     secrets: inherit
