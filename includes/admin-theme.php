@@ -109,6 +109,18 @@ function blueworx_enqueue_admin_theme() {
 		true
 	);
 
+	// Third-party admin screens that pin their own header to the height of the
+	// WordPress admin bar, which our top bar has replaced. On every screen for
+	// the same reason the bar is: any plugin's screen can carry one, including
+	// the ones we have never seen. It does nothing where there is nothing to fix.
+	wp_enqueue_script(
+		'blueworx-admin-sticky-offset',
+		BLUEWORX_LABS_URL . 'assets/js/admin-sticky-offset.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/admin-sticky-offset.js' ),
+		true
+	);
+
 	wp_enqueue_script(
 		'blueworx-admin-drawer',
 		BLUEWORX_LABS_URL . 'assets/js/admin-drawer.js',

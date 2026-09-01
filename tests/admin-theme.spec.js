@@ -977,6 +977,89 @@ test.describe('BlueWorx admin theme', () => {
     await expect(page.locator('.bw-topbar')).toBeHidden();
   });
 
+  test("a plugin's sticky header sits below the top bar, not behind it", async ({ page }) => {
+    // SureCart pins its own header with `position: sticky; top: 32px` — the
+    // height of the WordPress admin bar, hard-coded (surecart 4.7.0, the header
+    // in dist/admin/dashboard.js and #sc-settings-header) — at z-index 9989,
+    // one step below our bar. From 783px up we hide the admin bar and put our
+    // own 64px bar in that band, so the header pinned 32px too high and our bar
+    // painted over its top half. Measured on the live site: 32px of the header
+    // covered on both Commerce > Dashboard and Commerce > Settings.
+    //
+    // SureCart is not installed on this harness, so the test recreates the rule
+    // rather than the plugin. Any plugin that offsets by the admin bar's height
+    // has the same bug, which is why the fix keys on that value rather than on
+    // SureCart's own selectors — and why recreating the rule tests the fix
+    // honestly.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // Injected after load, exactly as SureCart's app renders its own: this is
+    // also what proves the fix notices a header that arrives late.
+    await page.evaluate(() => {
+      const content = document.getElementById('wpbody-content');
+
+      const header = document.createElement('div');
+      header.id = 'bw-plugin-header';
+      header.style.cssText =
+        'position:sticky;top:32px;z-index:9989;height:60px;background:#fff';
+      content.prepend(header);
+
+      // Enough page to scroll with: a header only slides under the bar once it
+      // is pinned, and the dashboard can be shorter than the window.
+      const filler = document.createElement('div');
+      filler.style.height = '2400px';
+      content.append(filler);
+    });
+
+    await page.evaluate(() => window.scrollTo(0, 1200));
+
+    const clearance = () =>
+      page.evaluate(() => {
+        const bar = document.querySelector('.bw-topbar').getBoundingClientRect();
+        const header = document.getElementById('bw-plugin-header').getBoundingClientRect();
+        return Math.round(header.top - bar.bottom);
+      });
+
+    await expect.poll(clearance).toBeGreaterThanOrEqual(0);
+  });
+
+  test("a plugin's own scrolling panel is left alone", async ({ page }) => {
+    // The other half of the fix. A header pinned inside a panel that scrolls by
+    // itself — SureCart's Products list, and every WordPress DataViews table —
+    // sticks to that panel, not to the window, so nothing covers it and moving
+    // it down by the height of our bar would be the bug rather than the fix.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    await page.evaluate(() => {
+      const panel = document.createElement('div');
+      panel.style.cssText = 'overflow-y:auto;height:300px';
+
+      const header = document.createElement('div');
+      header.id = 'bw-panel-header';
+      header.style.cssText =
+        'position:sticky;top:32px;z-index:9989;height:60px;background:#fff';
+
+      const filler = document.createElement('div');
+      filler.style.height = '1200px';
+
+      panel.append(header, filler);
+      document.getElementById('wpbody-content').prepend(panel);
+    });
+
+    // Long enough for the fix to have run and moved it, had it been going to.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => getComputedStyle(document.getElementById('bw-panel-header')).top
+        )
+      )
+      .toBe('32px');
+  });
+
   test('the site editor is always fullscreen, so our chrome stays hidden rather than offset', async ({ page }) => {
     // WordPress forces site-editor.php permanently into fullscreen — there is
     // no non-fullscreen state to test here. Our fullscreen rule is what

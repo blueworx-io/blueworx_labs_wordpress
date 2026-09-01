@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.75.5] - 2026-09-01
+
+### Fixed
+- **The SureCart header no longer disappears behind the BlueWorx bar.** On
+  Commerce > Dashboard and Commerce > Settings, SureCart's own header pinned
+  itself to the height of the WordPress admin bar — which the BlueWorx bar has
+  replaced — so scrolling slid the top third of it, buttons included, under our
+  bar. Any plugin screen that makes the same assumption is corrected the same
+  way, and a header that scrolls inside its own panel is left where it is.
+
 ## [1.75.4] - 2026-08-28
 
 ### Fixed
