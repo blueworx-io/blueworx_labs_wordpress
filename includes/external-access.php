@@ -262,13 +262,26 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 	// write nobody asked for. The role only has to exist where it is assigned
 	// and where capabilities are resolved, and admin_init covers both.
 	add_action( 'admin_init', 'blueworx_external_register_role', 1 );
-	add_filter( 'authenticate', 'blueworx_external_block_expired_login', 30, 3 );
-	// Priority 2, matching blueworx_support_enforce_window(): after the write
-	// block at priority 0, so a session found stale here is destroyed before
-	// anything else inspects it.
-	add_action( 'init', 'blueworx_external_enforce_expiry', 2 );
-	add_action( 'wp_login', 'blueworx_external_record_sign_in', 10, 2 );
 }
+
+// Registered unconditionally, unlike the role above — mirrors
+// blueworx_support_enforce_window(), which also registers regardless of the
+// feature switch. Switching the feature off is not the same as deactivating
+// the plugin: invited accounts still exist, and blueworx_external_is_expired()
+// reads a disabled feature as access having ended, so these two keep refusing
+// them at the door and closing anything already open rather than going quiet
+// the moment the switch is off.
+add_filter( 'authenticate', 'blueworx_external_block_expired_login', 30, 3 );
+// Priority 2, matching blueworx_support_enforce_window(): after the write
+// block at priority 0, so a session found stale here is destroyed before
+// anything else inspects it.
+add_action( 'init', 'blueworx_external_enforce_expiry', 2 );
+// Kept alongside the two enforcement hooks above rather than behind the
+// feature gate: while the feature is off nothing can actually reach this
+// (the authenticate filter above already refuses the login), so leaving it
+// registered is free, and it means a re-enabled feature does not need this
+// file reloaded for sign-ins to start being recorded again.
+add_action( 'wp_login', 'blueworx_external_record_sign_in', 10, 2 );
 
 /**
  * Makes a username nobody already holds.
@@ -463,10 +476,21 @@ function blueworx_external_send_invite( $user_id ) {
  * invitation writes a date; an account without one has been tampered with or
  * half-created, and the safe reading of a missing date is "no".
  *
+ * A switched-off feature also reads as expired, the same way
+ * blueworx_support_access_open() reads a switched-off support feature as a
+ * shut window. Turning the feature off is not the same as deactivating the
+ * plugin — the invited accounts are still there — so this is the single place
+ * that closes them off, and both blueworx_external_block_expired_login() and
+ * blueworx_external_enforce_expiry() inherit it by calling this.
+ *
  * @param int $user_id Invited account.
  * @return bool True when access has ended.
  */
 function blueworx_external_is_expired( $user_id ) {
+	if ( ! blueworx_feature_enabled( 'external_access' ) ) {
+		return true;
+	}
+
 	$expires = blueworx_external_expires_at( $user_id );
 
 	return $expires <= 0 || $expires <= time();
@@ -479,11 +503,22 @@ function blueworx_external_is_expired( $user_id ) {
  * that lapsed last month gives the full period rather than a date still in the
  * past.
  *
+ * Refuses to run for any account outside the external role, the same guard
+ * blueworx_external_revoke() has: a caller that trusted its $user_id argument
+ * would write external expiry meta onto whichever account it was pointed at —
+ * an administrator included.
+ *
  * @param int $user_id Invited account.
  * @param int $days    Whole days.
  * @return bool True when written.
  */
 function blueworx_external_extend( $user_id, $days ) {
+	$user = get_userdata( (int) $user_id );
+
+	if ( ! $user instanceof WP_User || ! blueworx_external_is_external_user( $user ) ) {
+		return false;
+	}
+
 	$days = blueworx_external_sanitize_duration( $days );
 
 	return (bool) update_user_meta(

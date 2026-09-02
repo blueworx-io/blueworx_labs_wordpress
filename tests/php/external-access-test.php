@@ -394,6 +394,19 @@ check(
 );
 check( 'and it is live again', blueworx_external_is_expired( $live ), false );
 
+echo "\nExtending is refused for an account outside the external role\n";
+
+// Same guard blueworx_external_revoke() already has: a table row's own ID
+// should never be trusted to belong to an external account.
+$admin_expiry_before = blueworx_external_expires_at( 1 );
+
+check( 'extending an administrator is refused', blueworx_external_extend( 1, 30 ), false );
+check(
+	'and no expiry meta was written onto them',
+	blueworx_external_expires_at( 1 ),
+	$admin_expiry_before
+);
+
 echo "\nAn expired account cannot sign back in\n";
 
 update_user_meta( $live, BLUEWORX_EXTERNAL_META_EXPIRES_AT, 1000000 - 1 );
@@ -407,6 +420,22 @@ blueworx_external_extend( $live, 30 );
 $allowed = blueworx_external_block_expired_login( get_userdata( $live ), 'live', 'whatever' );
 
 check( 'and a live one is not', is_wp_error( $allowed ), false );
+
+echo "\nSwitching the feature off ends access the same as a lapsed date\n";
+
+// $live is a genuinely live account at this point (extended above), so this
+// isolates the feature switch as the reason access ends rather than the date.
+$GLOBALS['feature_off'] = true;
+
+check( 'a live account reads as expired while the feature is off', blueworx_external_is_expired( $live ), true );
+
+$refused_by_switch = blueworx_external_block_expired_login( get_userdata( $live ), 'live', 'whatever' );
+
+check( 'and sign-in is refused while it is off', is_wp_error( $refused_by_switch ), true );
+
+unset( $GLOBALS['feature_off'] );
+
+check( 'and normal again once the feature is back on', blueworx_external_is_expired( $live ), false );
 
 echo "\nAn account that is not external is never touched by any of this\n";
 
