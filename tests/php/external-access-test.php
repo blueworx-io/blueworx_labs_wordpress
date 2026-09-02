@@ -21,6 +21,9 @@ require __DIR__ . '/stubs.php';
 class WP_User {
 	public $ID = 0;
 	public $roles = array();
+	public $user_login = '';
+	public $user_email = '';
+	public $display_name = '';
 
 	public function __construct( $id = 0, $roles = array() ) {
 		$this->ID    = $id;
@@ -52,6 +55,137 @@ function blueworx_readonly_user_has_role( $user, $slug ) {
 // The guard registers its hooks at file scope; only their existence matters
 // here, not what they do, since nothing in this script fires a hook.
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
+
+// Task 3: invitations create real accounts, so the store lives here rather
+// than in stubs.php, which stays generic across every test file that requires it.
+$GLOBALS['users']      = array();
+$GLOBALS['next_id']    = 100;
+$GLOBALS['mail_sent']  = array();
+$GLOBALS['mail_fails'] = false;
+
+function username_exists( $name ) {
+	foreach ( $GLOBALS['users'] as $user ) {
+		if ( $user['login'] === $name ) {
+			return $user['id'];
+		}
+	}
+
+	return false;
+}
+
+function email_exists( $email ) {
+	foreach ( $GLOBALS['users'] as $user ) {
+		if ( $user['email'] === $email ) {
+			return $user['id'];
+		}
+	}
+
+	return false;
+}
+
+function wp_insert_user( $data ) {
+	$id = $GLOBALS['next_id']++;
+
+	$GLOBALS['users'][ $id ] = array(
+		'id'    => $id,
+		'login' => $data['user_login'],
+		'email' => $data['user_email'],
+		'name'  => $data['display_name'],
+		'role'  => $data['role'],
+		'meta'  => array(),
+	);
+
+	return $id;
+}
+
+function update_user_meta( $id, $key, $value ) {
+	$GLOBALS['users'][ $id ]['meta'][ $key ] = $value;
+
+	return true;
+}
+
+function get_user_meta( $id, $key, $single = false ) {
+	return isset( $GLOBALS['users'][ $id ]['meta'][ $key ] )
+		? $GLOBALS['users'][ $id ]['meta'][ $key ]
+		: '';
+}
+
+function wp_mail( $to, $subject, $message ) {
+	if ( $GLOBALS['mail_fails'] ) {
+		return false;
+	}
+
+	$GLOBALS['mail_sent'][] = array(
+		'to'      => $to,
+		'subject' => $subject,
+		'message' => $message,
+	);
+
+	return true;
+}
+
+function sanitize_email( $email ) {
+	return trim( (string) $email );
+}
+
+function wp_strip_all_tags( $text ) {
+	return strip_tags( (string) $text );
+}
+
+function get_bloginfo( $what ) {
+	return 'Demo Site';
+}
+
+function home_url( $path = '/' ) {
+	return 'https://demo.example.com' . $path;
+}
+
+function network_site_url( $path = '', $scheme = null ) {
+	// The plugin's custom-login filter rewrites this in a live site; the point
+	// checked here is that whatever it returns is what the email carries.
+	return 'https://demo.example.com/' . ltrim( (string) $path, '/' );
+}
+
+function get_password_reset_key( $user ) {
+	return 'RESETKEY123';
+}
+
+function get_userdata( $id ) {
+	if ( ! isset( $GLOBALS['users'][ $id ] ) ) {
+		return false;
+	}
+
+	$row                 = $GLOBALS['users'][ $id ];
+	$user                = new WP_User( $row['id'], array( $row['role'] ) );
+	$user->user_login    = $row['login'];
+	$user->user_email    = $row['email'];
+	$user->display_name  = $row['name'];
+
+	return $user;
+}
+
+function wp_get_current_user() {
+	$user               = new WP_User( 1, array( 'administrator' ) );
+	$user->display_name = 'Luke';
+
+	return $user;
+}
+
+function get_current_user_id() {
+	return 1;
+}
+
+function current_time( $type = 'timestamp' ) {
+	return 1000000;
+}
+
+function wp_specialchars_decode( $t, $q = 0 ) {
+	return $t;
+}
+
+function date_i18n( $f, $t ) {
+	return gmdate( 'j F Y', (int) $t );
+}
 
 // --- end local stubs ---
 
@@ -101,5 +235,76 @@ echo "\nA username is derived from the email address\n";
 check( 'the local part is used', blueworx_external_username_from_email( 'jane.doe@example.com' ), 'jane.doe' );
 check( 'punctuation nobody can type is dropped', blueworx_external_username_from_email( 'a+tag@example.com' ), 'atag' );
 check( 'and an unusable address still yields something', blueworx_external_username_from_email( '@@@' ), 'external' );
+
+echo "\nAn invitation creates one account, with an expiry on it\n";
+
+$id = blueworx_external_invite(
+	array(
+		'name'  => 'Jane Doe',
+		'email' => 'jane@example.com',
+		'note'  => 'Prospect, seen the pitch',
+		'days'  => 30,
+	)
+);
+
+check( 'the account was created', is_int( $id ) && $id > 0, true );
+check( 'in the external role', $GLOBALS['users'][ $id ]['role'], 'blueworx_external' );
+check( 'with a username off the address', $GLOBALS['users'][ $id ]['login'], 'jane' );
+check(
+	'and an expiry thirty days out',
+	blueworx_external_expires_at( $id ),
+	blueworx_external_expiry_from( 1000000, 30 )
+);
+check(
+	'the note is kept',
+	get_user_meta( $id, BLUEWORX_EXTERNAL_META_NOTE, true ),
+	'Prospect, seen the pitch'
+);
+check(
+	'and so is who invited them',
+	(int) get_user_meta( $id, BLUEWORX_EXTERNAL_META_INVITED_BY, true ),
+	1
+);
+
+echo "\nThe same address is not invited twice\n";
+
+$again = blueworx_external_invite(
+	array(
+		'name'  => 'Jane Doe',
+		'email' => 'jane@example.com',
+		'days'  => 30,
+	)
+);
+
+check( 'a duplicate is refused', is_wp_error( $again ), true );
+
+echo "\nAnd an address that is not one is refused before an account exists\n";
+
+$bad = blueworx_external_invite( array( 'name' => 'Nobody', 'email' => 'not-an-address', 'days' => 30 ) );
+
+check( 'junk is refused', is_wp_error( $bad ), true );
+
+echo "\nThe email carries a link to set a password, and no password\n";
+
+$mail = end( $GLOBALS['mail_sent'] );
+
+check( 'one was sent', is_array( $mail ), true );
+check( 'to the person invited', $mail['to'], 'jane@example.com' );
+check( 'carrying a reset link', false !== strpos( $mail['message'], 'action=rp' ), true );
+check( 'and the key', false !== strpos( $mail['message'], 'RESETKEY123' ), true );
+check( 'saying the access is view-only', false !== stripos( $mail['message'], 'view-only' ), true );
+
+echo "\nA send that fails is reported rather than swallowed\n";
+
+$GLOBALS['mail_fails'] = true;
+
+$failed = blueworx_external_invite(
+	array( 'name' => 'Sam', 'email' => 'sam@example.com', 'days' => 7 )
+);
+
+check( 'the account is still created', is_int( $failed ) && $failed > 0, true );
+check( 'and the failure is visible to the caller', blueworx_external_send_invite( $failed ), false );
+
+$GLOBALS['mail_fails'] = false;
 
 finish();

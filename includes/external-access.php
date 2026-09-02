@@ -263,3 +263,183 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 	// and where capabilities are resolved, and admin_init covers both.
 	add_action( 'admin_init', 'blueworx_external_register_role', 1 );
 }
+
+/**
+ * Makes a username nobody already holds.
+ *
+ * @param string $stem Username stem.
+ * @return string Free username.
+ */
+function blueworx_external_unique_username( $stem ) {
+	$stem = '' === (string) $stem ? 'external' : (string) $stem;
+	$name = $stem;
+	$n    = 2;
+
+	while ( username_exists( $name ) ) {
+		$name = $stem . $n;
+		++$n;
+	}
+
+	return $name;
+}
+
+/**
+ * Gets when an invitation ends.
+ *
+ * @param int $user_id Invited account.
+ * @return int Timestamp, or 0 when none is recorded.
+ */
+function blueworx_external_expires_at( $user_id ) {
+	return (int) get_user_meta( (int) $user_id, BLUEWORX_EXTERNAL_META_EXPIRES_AT, true );
+}
+
+/**
+ * Invites somebody.
+ *
+ * The password set here is random and never communicated. The invitation email
+ * carries a password-reset link instead, so the person chooses their own and no
+ * credential ever sits in an inbox. That is also why the account is usable
+ * immediately: a reset link is not a pending state, it is the way in.
+ *
+ * @param array $args name, email, note, days.
+ * @return int|WP_Error New user ID, or the reason it was refused.
+ */
+function blueworx_external_invite( $args ) {
+	$name  = sanitize_text_field( isset( $args['name'] ) ? $args['name'] : '' );
+	$email = sanitize_email( isset( $args['email'] ) ? $args['email'] : '' );
+	$note  = sanitize_text_field( isset( $args['note'] ) ? $args['note'] : '' );
+	$days  = blueworx_external_sanitize_duration( isset( $args['days'] ) ? $args['days'] : 0 );
+
+	if ( '' === $email || ! is_email( $email ) ) {
+		return new WP_Error(
+			'blueworx_external_bad_email',
+			__( 'That is not an email address anything could be sent to.', 'blueworx-labs-wordpress' )
+		);
+	}
+
+	if ( email_exists( $email ) ) {
+		// Named rather than silent: an administrator who cannot see why nothing
+		// happened will invite the same person again, and again.
+		return new WP_Error(
+			'blueworx_external_email_taken',
+			__( 'Somebody with that email address already has an account on this site.', 'blueworx-labs-wordpress' )
+		);
+	}
+
+	if ( '' === $name ) {
+		$name = $email;
+	}
+
+	$user_id = wp_insert_user(
+		array(
+			'user_login'   => blueworx_external_unique_username( blueworx_external_username_from_email( $email ) ),
+			'user_email'   => $email,
+			'user_pass'    => wp_generate_password( 64, true, true ),
+			'display_name' => $name,
+			'role'         => blueworx_external_role_slug(),
+		)
+	);
+
+	if ( is_wp_error( $user_id ) ) {
+		return $user_id;
+	}
+
+	$user_id = (int) $user_id;
+	$now     = (int) current_time( 'timestamp' );
+
+	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_INVITED_BY, get_current_user_id() );
+	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_INVITED_AT, $now );
+	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_EXPIRES_AT, blueworx_external_expiry_from( $now, $days ) );
+	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_NOTE, $note );
+
+	blueworx_external_send_invite( $user_id );
+
+	return $user_id;
+}
+
+/**
+ * Builds the link that lets an invited person set their own password.
+ *
+ * Nothing here handles the plugin's custom login URL, and nothing needs to:
+ * blueworx_replace_generated_login_url() in includes/login-security.php filters
+ * network_site_url(), keeps the query string and swaps the path for the custom
+ * slug. Building the address any other way would step around that filter and
+ * send people to a URL this plugin blocks.
+ *
+ * @param WP_User $user Invited account.
+ * @return string Reset URL.
+ */
+function blueworx_external_reset_url( $user ) {
+	$key = get_password_reset_key( $user );
+
+	if ( is_wp_error( $key ) ) {
+		return '';
+	}
+
+	return network_site_url(
+		'wp-login.php?action=rp&key=' . rawurlencode( $key ) . '&login=' . rawurlencode( $user->user_login ),
+		'login'
+	);
+}
+
+/**
+ * Sends, or re-sends, the invitation email.
+ *
+ * Plain text. It says who invited them, that the access is view-only, when it
+ * ends, and gives one link. It contains no password, because there is no
+ * password to contain.
+ *
+ * @param int $user_id Invited account.
+ * @return bool True when the mail was handed off successfully.
+ */
+function blueworx_external_send_invite( $user_id ) {
+	$user = get_userdata( (int) $user_id );
+
+	if ( ! $user instanceof WP_User ) {
+		return false;
+	}
+
+	$link = blueworx_external_reset_url( $user );
+
+	if ( '' === $link ) {
+		return false;
+	}
+
+	$site    = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+	$host    = wp_get_current_user();
+	$expires = blueworx_external_expires_at( $user_id );
+
+	$subject = sprintf(
+		/* translators: %s: site name. */
+		__( 'You have been given a look round %s', 'blueworx-labs-wordpress' ),
+		$site
+	);
+
+	$lines = array(
+		sprintf(
+			/* translators: 1: inviter's name, 2: site name. */
+			__( '%1$s has given you view-only access to the back end of %2$s.', 'blueworx-labs-wordpress' ),
+			$host instanceof WP_User && '' !== $host->display_name ? $host->display_name : $site,
+			$site
+		),
+		'',
+		__( 'You can look at everything an administrator sees. You cannot change anything, and nothing you click will alter the site.', 'blueworx-labs-wordpress' ),
+		'',
+		__( 'Choose a password to get started:', 'blueworx-labs-wordpress' ),
+		$link,
+		'',
+		sprintf(
+			/* translators: %s: date. */
+			__( 'Your access ends on %s.', 'blueworx-labs-wordpress' ),
+			date_i18n( get_option( 'date_format' ), $expires )
+		),
+		'',
+		sprintf(
+			/* translators: %s: username. */
+			__( 'Your username is %s.', 'blueworx-labs-wordpress' ),
+			$user->user_login
+		),
+	);
+
+	return (bool) wp_mail( $user->user_email, $subject, implode( "\n", $lines ) );
+}
