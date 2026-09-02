@@ -1,8 +1,20 @@
 // `test` comes from helpers.js (see feature-toggles.spec.js for why): it carries
 // the fixture that opts out of core's wp-admin view transitions.
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
+import {
+  test,
+  expect,
+  isPlaceholder,
+  ADMIN_USER,
+  ADMIN_PASS,
+  login,
+  openSectionFor,
+  readCheckedGroup,
+  setCheckedGroup,
+  saveEnhancements,
+} from './helpers.js';
 
 const PAGE = '/wp-admin/admin.php?page=blueworx-external';
+const ENHANCEMENTS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 const INVITEE = `bw-plan-test-${Date.now()}@example.invalid`;
 
 async function openConsole(page) {
@@ -31,11 +43,59 @@ async function ensureFeatureOn(page) {
   await setExternalFeature(page, true);
 }
 
+// Captured in beforeAll, restored in afterAll. Turning the feature on for real
+// (rather than through the fixture, which restores its own changes itself)
+// calls blueworx_external_allow_in_site_protection(), which can add the role
+// to Site Protection's allow-lists — and switching the feature back off
+// afterwards does not undo that (see blueworx_handle_external_feature_toggle()
+// in includes/admin-pages.php: the removal only ever happens on switch-ON).
+// Left alone, that dirties the site for everything else that runs after this
+// spec, even though it does not break a re-run of these two files.
+let originalFeatureOn = false;
+let originalFrontendRoles = [];
+let originalBackendRoles = [];
+
 test.describe('External access console', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    // browser.newPage() bypasses the `test` fixture above, so the
+    // reduced-motion emulation it applies has to be repeated here — see
+    // helpers.js for why headless Chromium needs it before any click.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await login(page);
+
+    await page.goto(PAGE);
+    originalFeatureOn = await page.locator('[data-testid="bw-external-feature"]').isChecked();
+
+    await page.goto(ENHANCEMENTS_PATH);
+    await openSectionFor(page, 'site_protection');
+    originalFrontendRoles = await readCheckedGroup(page, 'blueworx_frontend_protection_roles');
+    originalBackendRoles = await readCheckedGroup(page, 'blueworx_backend_protection_roles');
+
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await login(page);
+
+    await page.goto(PAGE);
+    await setExternalFeature(page, originalFeatureOn);
+
+    await page.goto(ENHANCEMENTS_PATH);
+    await openSectionFor(page, 'site_protection');
+    await setCheckedGroup(page, 'blueworx_frontend_protection_roles', originalFrontendRoles);
+    await setCheckedGroup(page, 'blueworx_backend_protection_roles', originalBackendRoles);
+    await saveEnhancements(page);
+
+    await page.close();
+  });
 
   test('the screen explains itself while the feature is off', async ({ page }) => {
     await openConsole(page);
