@@ -262,6 +262,12 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 	// write nobody asked for. The role only has to exist where it is assigned
 	// and where capabilities are resolved, and admin_init covers both.
 	add_action( 'admin_init', 'blueworx_external_register_role', 1 );
+	add_filter( 'authenticate', 'blueworx_external_block_expired_login', 30, 3 );
+	// Priority 2, matching blueworx_support_enforce_window(): after the write
+	// block at priority 0, so a session found stale here is destroyed before
+	// anything else inspects it.
+	add_action( 'init', 'blueworx_external_enforce_expiry', 2 );
+	add_action( 'wp_login', 'blueworx_external_record_sign_in', 10, 2 );
 }
 
 /**
@@ -447,4 +453,134 @@ function blueworx_external_send_invite( $user_id ) {
 	);
 
 	return (bool) wp_mail( $user->user_email, $subject, implode( "\n", $lines ) );
+}
+
+/**
+ * Whether an invitation has run out.
+ *
+ * An account with no expiry recorded is treated as expired rather than as
+ * permanent. The only way to hold this role is to have been invited, and every
+ * invitation writes a date; an account without one has been tampered with or
+ * half-created, and the safe reading of a missing date is "no".
+ *
+ * @param int $user_id Invited account.
+ * @return bool True when access has ended.
+ */
+function blueworx_external_is_expired( $user_id ) {
+	$expires = blueworx_external_expires_at( $user_id );
+
+	return $expires <= 0 || $expires <= time();
+}
+
+/**
+ * Puts the end date forward.
+ *
+ * Counted from now rather than from the existing date, so extending something
+ * that lapsed last month gives the full period rather than a date still in the
+ * past.
+ *
+ * @param int $user_id Invited account.
+ * @param int $days    Whole days.
+ * @return bool True when written.
+ */
+function blueworx_external_extend( $user_id, $days ) {
+	$days = blueworx_external_sanitize_duration( $days );
+
+	return (bool) update_user_meta(
+		(int) $user_id,
+		BLUEWORX_EXTERNAL_META_EXPIRES_AT,
+		blueworx_external_expiry_from( time(), $days )
+	);
+}
+
+/**
+ * Withdraws an invitation by deleting the account.
+ *
+ * Nothing is reassigned, because there is nothing to reassign: an external
+ * account cannot write, so it cannot have authored anything.
+ *
+ * @param int $user_id Invited account.
+ * @return bool True when the account was removed.
+ */
+function blueworx_external_revoke( $user_id ) {
+	$user = get_userdata( (int) $user_id );
+
+	if ( ! $user instanceof WP_User || ! blueworx_external_is_external_user( $user ) ) {
+		return false;
+	}
+
+	if ( ! function_exists( 'wp_delete_user' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+	}
+
+	return (bool) wp_delete_user( (int) $user_id );
+}
+
+/**
+ * Refuses an expired account at the door.
+ *
+ * @param mixed  $user     User or error so far.
+ * @param string $username Submitted username.
+ * @param string $password Submitted password.
+ * @return mixed The user, or a WP_Error.
+ */
+function blueworx_external_block_expired_login( $user, $username = '', $password = '' ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Both are required by the "authenticate" filter signature; the decision is made from the resolved user alone.
+	if ( ! $user instanceof WP_User || ! blueworx_external_is_external_user( $user ) ) {
+		return $user;
+	}
+
+	if ( ! blueworx_external_is_expired( $user->ID ) ) {
+		return $user;
+	}
+
+	return new WP_Error(
+		'blueworx_external_expired',
+		__( 'This access has ended. Ask whoever invited you to extend it.', 'blueworx-labs-wordpress' )
+	);
+}
+
+/**
+ * Ends a session that is already open when the invitation runs out.
+ *
+ * Refusing the login alone is not enough: somebody signed in on the last day of
+ * their access would otherwise keep that session for as long as the cookie
+ * lasted. Mirrors blueworx_support_enforce_window() and runs at the same point
+ * for the same reasons.
+ *
+ * @return void
+ */
+function blueworx_external_enforce_expiry() {
+	$user = wp_get_current_user();
+
+	if ( ! blueworx_external_is_external_user( $user ) || ! blueworx_external_is_expired( $user->ID ) ) {
+		return;
+	}
+
+	wp_destroy_current_session();
+	wp_clear_auth_cookie();
+	wp_set_current_user( 0 );
+
+	wp_die(
+		esc_html__( 'This access has ended. Ask whoever invited you to extend it.', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Access ended', 'blueworx-labs-wordpress' ),
+		array( 'response' => 403 )
+	);
+}
+
+/**
+ * Notes when an invited person actually used their access.
+ *
+ * The console shows it so an administrator can tell a live demo from an
+ * invitation nobody ever opened.
+ *
+ * @param string $login Username.
+ * @param mixed  $user  Signed-in user.
+ * @return void
+ */
+function blueworx_external_record_sign_in( $login, $user = null ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $login is required by the "wp_login" action signature; the user object is what this needs.
+	if ( ! blueworx_external_is_external_user( $user ) ) {
+		return;
+	}
+
+	update_user_meta( $user->ID, BLUEWORX_EXTERNAL_META_LAST_SEEN, time() );
 }

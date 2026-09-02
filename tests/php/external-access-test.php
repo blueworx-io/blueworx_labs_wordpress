@@ -55,6 +55,7 @@ function blueworx_readonly_user_has_role( $user, $slug ) {
 // The guard registers its hooks at file scope; only their existence matters
 // here, not what they do, since nothing in this script fires a hook.
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
+function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
 
 // Task 3: invitations create real accounts, so the store lives here rather
 // than in stubs.php, which stays generic across every test file that requires it.
@@ -177,6 +178,16 @@ function get_userdata( $id ) {
 	$user->display_name  = $row['name'];
 
 	return $user;
+}
+
+function wp_delete_user( $id ) {
+	if ( ! isset( $GLOBALS['users'][ $id ] ) ) {
+		return false;
+	}
+
+	unset( $GLOBALS['users'][ $id ] );
+
+	return true;
 }
 
 function wp_get_current_user() {
@@ -350,5 +361,72 @@ $keys_before = $GLOBALS['reset_keys_issued'];
 
 check( 'an administrator is refused', blueworx_external_send_invite( 1 ), false );
 check( 'and no reset key was generated for them', $GLOBALS['reset_keys_issued'], $keys_before );
+
+echo "\nAccess stops when it runs out\n";
+
+$live = blueworx_external_invite(
+	array( 'name' => 'Live', 'email' => 'live@example.com', 'days' => 30 )
+);
+
+check( 'a fresh invitation is not expired', blueworx_external_is_expired( $live ), false );
+
+// Pushed into the past the way the console's own Extend does it, in reverse.
+update_user_meta( $live, BLUEWORX_EXTERNAL_META_EXPIRES_AT, 1000000 - 1 );
+
+check( 'one whose date has passed is', blueworx_external_is_expired( $live ), true );
+
+echo "\nExtending it puts the clock forward from now\n";
+
+// blueworx_external_extend() stamps time() rather than a mockable clock (the
+// same reason the invite test above brackets it), so this brackets a real
+// wall-clock call rather than asserting an exact value.
+$before = time();
+
+blueworx_external_extend( $live, 7 );
+
+$after = time();
+
+check(
+	'seven days from now, not from when it lapsed',
+	blueworx_external_expires_at( $live ) >= blueworx_external_expiry_from( $before, 7 )
+		&& blueworx_external_expires_at( $live ) <= blueworx_external_expiry_from( $after, 7 ),
+	true
+);
+check( 'and it is live again', blueworx_external_is_expired( $live ), false );
+
+echo "\nAn expired account cannot sign back in\n";
+
+update_user_meta( $live, BLUEWORX_EXTERNAL_META_EXPIRES_AT, 1000000 - 1 );
+
+$refused = blueworx_external_block_expired_login( get_userdata( $live ), 'live', 'whatever' );
+
+check( 'authentication is refused', is_wp_error( $refused ), true );
+
+blueworx_external_extend( $live, 30 );
+
+$allowed = blueworx_external_block_expired_login( get_userdata( $live ), 'live', 'whatever' );
+
+check( 'and a live one is not', is_wp_error( $allowed ), false );
+
+echo "\nAn account that is not external is never touched by any of this\n";
+
+$admin = new WP_User( 1, array( 'administrator' ) );
+
+check(
+	'an administrator authenticates normally',
+	is_wp_error( blueworx_external_block_expired_login( $admin, 'luke', 'whatever' ) ),
+	false
+);
+
+echo "\nRevoking removes the account entirely\n";
+
+$revoked = blueworx_external_invite(
+	array( 'name' => 'Revoke Me', 'email' => 'revoke@example.com', 'days' => 30 )
+);
+
+check( 'revoking an external account succeeds', blueworx_external_revoke( $revoked ), true );
+check( 'and the account is gone', get_userdata( $revoked ), false );
+check( 'revoking an administrator is refused', blueworx_external_revoke( 1 ), false );
+check( 'and the administrator account still exists', get_userdata( 1 ) instanceof WP_User, true );
 
 finish();
