@@ -318,12 +318,34 @@ function blueworx_external_expires_at( $user_id ) {
 }
 
 /**
+ * Whether the invitation email blueworx_external_invite() sent actually went
+ * out.
+ *
+ * The invite function sends the invitation itself as its last step. A
+ * caller that needs to know whether that send succeeded — to choose between a
+ * "sent" and a "created, but the email failed" notice — reads this
+ * immediately afterwards rather than calling blueworx_external_send_invite()
+ * a second time: that function calls get_password_reset_key(), which
+ * overwrites the reset key on the account, so a second call invalidates the
+ * link the first email already carries. Mirrors
+ * $GLOBALS['blueworx_support_new_key'] in support-access.php: a value a
+ * function produces as a side effect, alongside its real return value.
+ *
+ * @var bool
+ */
+$GLOBALS['blueworx_external_last_invite_mailed'] = false;
+
+/**
  * Invites somebody.
  *
  * The password set here is random and never communicated. The invitation email
  * carries a password-reset link instead, so the person chooses their own and no
  * credential ever sits in an inbox. That is also why the account is usable
  * immediately: a reset link is not a pending state, it is the way in.
+ *
+ * Sends the invitation itself and records whether that succeeded in
+ * $GLOBALS['blueworx_external_last_invite_mailed'] — see that global's own
+ * docblock for why a caller reads it there rather than sending again.
  *
  * @param array $args name, email, note, days.
  * @return int|WP_Error New user ID, or the reason it was refused.
@@ -376,7 +398,7 @@ function blueworx_external_invite( $args ) {
 	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_EXPIRES_AT, blueworx_external_expiry_from( $now, $days ) );
 	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_NOTE, $note );
 
-	blueworx_external_send_invite( $user_id );
+	$GLOBALS['blueworx_external_last_invite_mailed'] = blueworx_external_send_invite( $user_id );
 
 	return $user_id;
 }
@@ -709,7 +731,13 @@ function blueworx_external_handle_actions() {
 				__( 'Nobody was invited.', 'blueworx-labs-wordpress' ),
 				$result->get_error_message()
 			);
-		} elseif ( ! blueworx_external_send_invite( $result ) ) {
+		} elseif ( ! $GLOBALS['blueworx_external_last_invite_mailed'] ) {
+			// blueworx_external_invite() already sent the one invitation email as
+			// its last step; reading whether that succeeded here rather than
+			// calling blueworx_external_send_invite() again avoids overwriting the
+			// reset key it already emailed, which would invalidate that link and
+			// send a second, contradictory email besides.
+			//
 			// The account is real and usable; only the email failed. Saying so
 			// is the point — a demo site with broken mail must not look like it
 			// worked.
@@ -777,7 +805,7 @@ function blueworx_external_handle_actions() {
  */
 function blueworx_external_state_badge( $user_id ) {
 	$expires = blueworx_external_expires_at( $user_id );
-	$now     = (int) current_time( 'timestamp' );
+	$now     = time();
 
 	if ( blueworx_external_is_expired( $user_id ) ) {
 		return blueworx_ds_badge( __( 'Ended', 'blueworx-labs-wordpress' ), 'neutral', true );

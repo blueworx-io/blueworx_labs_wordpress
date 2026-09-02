@@ -70,11 +70,19 @@ function blueworx_register_settings_page() {
 	// parent while it is off — the same treatment single sign-on gets, and for
 	// the same reason: the address keeps working so the screen can explain
 	// itself, without listing a settings page for something that is not running.
+	//
+	// Gated on create_users rather than promote_users: the handler behind this
+	// screen requires both (inviting somebody creates an account), and a
+	// multisite site administrator commonly holds promote_users without
+	// create_users. Registering on promote_users alone would let that person
+	// open the screen and submit the invite form only to have the handler
+	// silently refuse it — this refuses them the screen instead, which is the
+	// honest failure.
 	add_submenu_page(
 		blueworx_feature_enabled( 'external_access' ) ? 'blueworx-labs-wordpress' : null,
 		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
 		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
-		'promote_users',
+		'create_users',
 		'blueworx-external',
 		'blueworx_render_external_page'
 	);

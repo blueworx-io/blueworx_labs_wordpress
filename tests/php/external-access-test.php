@@ -296,6 +296,17 @@ check(
 	(int) get_user_meta( $id, BLUEWORX_EXTERNAL_META_INVITED_BY, true ),
 	1
 );
+// blueworx_external_invite() sends the invitation itself; a caller must never
+// also call blueworx_external_send_invite() on the result, because a second
+// call regenerates the reset key and invalidates the link the first email
+// already carries — two emails, the first one dead on arrival. This count
+// proves invite() itself queued exactly one.
+check( 'and exactly one email was queued', count( $GLOBALS['mail_sent'] ), 1 );
+check(
+	'and blueworx_external_invite() reports the send succeeded, for a caller that does not want to send again',
+	$GLOBALS['blueworx_external_last_invite_mailed'],
+	true
+);
 
 echo "\nThe same address is not invited twice\n";
 
@@ -338,6 +349,11 @@ $failed = blueworx_external_invite(
 );
 
 check( 'the account is still created', is_int( $failed ) && $failed > 0, true );
+check(
+	'and blueworx_external_invite() itself reports the send failed',
+	$GLOBALS['blueworx_external_last_invite_mailed'],
+	false
+);
 check( 'and the failure is visible to the caller', blueworx_external_send_invite( $failed ), false );
 
 $GLOBALS['mail_fails'] = false;
