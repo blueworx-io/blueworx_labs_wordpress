@@ -1025,6 +1025,105 @@ test.describe('BlueWorx admin theme', () => {
     await expect.poll(clearance).toBeGreaterThanOrEqual(0);
   });
 
+  test('a plugin app screen gets the top of the window to itself', async ({ page }) => {
+    // SureCart's Commerce screens draw their own header, breadcrumb and controls.
+    // Ours above theirs was two headers saying the same thing, so these screens
+    // lose the BlueWorx bar entirely and the app's own header becomes the top of
+    // the page. SureCart is not installed here, so the test sets the body class
+    // its screens carry — see includes/admin-app-screens.php, which is what puts
+    // that class there on a real one.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    // The bar is there on an ordinary WordPress screen.
+    await expect(page.locator('.bw-topbar')).toBeVisible();
+
+    await page.evaluate(() => {
+      document.body.classList.add('bw-app-screen');
+
+      const header = document.createElement('div');
+      header.id = 'bw-app-header';
+      header.style.cssText =
+        'position:sticky;top:32px;z-index:9989;height:60px;background:#fff';
+      document.getElementById('wpbody-content').prepend(header);
+
+      const filler = document.createElement('div');
+      filler.style.height = '2400px';
+      document.getElementById('wpbody-content').append(filler);
+    });
+
+    await expect(page.locator('.bw-topbar')).toBeHidden();
+
+    // No room held open for a bar that is not drawn.
+    await expect
+      .poll(() => page.evaluate(() => getComputedStyle(document.getElementById('wpcontent')).paddingTop))
+      .toBe('0px');
+
+    // And the app's own header pins flush to the top of the window rather than
+    // 32px below it, where it would leave a band of the page scrolling past
+    // above it.
+    await page.evaluate(() => window.scrollTo(0, 1200));
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Math.round(document.getElementById('bw-app-header').getBoundingClientRect().top)
+        )
+      )
+      .toBe(0);
+
+    // The sidebar stays: unlike a plugin that hides the WordPress menu and
+    // carries its own, this one has no navigation of its own to fall back on.
+    await expect(page.locator('#adminmenuwrap')).toBeVisible();
+    await expect(page.locator('.bw-brand')).toBeVisible();
+  });
+
+  test("a plugin's header is caught even when its stylesheet lands late", async ({ page }) => {
+    // How the SureCart bug survived the first fix. Its app inserts the header
+    // first and injects the rule that makes it sticky a moment later, so at the
+    // instant the element arrives it is still position: static and reads as
+    // nothing to correct. Nothing re-checked it, so the header stayed pinned 32px
+    // too high until a resize happened to trigger another pass — which is why
+    // zooming the window "fixed" it.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await login(page);
+    await page.goto(DASH_PATH);
+
+    await page.evaluate(() => {
+      const content = document.getElementById('wpbody-content');
+
+      const header = document.createElement('div');
+      header.id = 'bw-late-header';
+      header.className = 'plugin-header-late';
+      header.style.cssText = 'height:60px;background:#fff';
+      content.prepend(header);
+
+      const filler = document.createElement('div');
+      filler.style.height = '2400px';
+      content.append(filler);
+
+      // The rule arrives after the element, exactly as an emotion/CSS-in-JS
+      // runtime writes it.
+      setTimeout(() => {
+        const style = document.createElement('style');
+        style.textContent =
+          '.plugin-header-late { position: sticky; top: 32px; z-index: 9989; }';
+        document.head.append(style);
+      }, 300);
+    });
+
+    await page.evaluate(() => window.scrollTo(0, 1200));
+
+    const clearance = () =>
+      page.evaluate(() => {
+        const bar = document.querySelector('.bw-topbar').getBoundingClientRect();
+        const header = document.getElementById('bw-late-header').getBoundingClientRect();
+        return Math.round(header.top - bar.bottom);
+      });
+
+    await expect.poll(clearance, { timeout: 15000 }).toBeGreaterThanOrEqual(0);
+  });
+
   test("a plugin's own scrolling panel is left alone", async ({ page }) => {
     // The other half of the fix. A header pinned inside a panel that scrolls by
     // itself — SureCart's Products list, and every WordPress DataViews table —

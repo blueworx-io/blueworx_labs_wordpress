@@ -1144,6 +1144,38 @@ div.error {
 	}
 }
 
+/* ─── Plugin app screens ───
+   A plugin whose admin screens are a whole application of their own — SureCart's
+   Commerce screens are the case this was written for — draws its own header, with
+   its own breadcrumb and its own controls. Our top bar above that gave those
+   screens two headers saying the same thing, and theirs slid underneath ours as
+   the page scrolled. So the app gets the top of the window and we take our bar
+   off it. includes/admin-app-screens.php decides which screens qualify.
+
+   The sidebar and the brand block above it both stay. This is where these screens
+   differ from LatePoint's below, which hides the WordPress menu and carries its
+   own: SureCart has no navigation of its own, so removing ours would strand you
+   on the screen you were on.
+
+   Bounded to 901px and up, which is where the desktop bar is the one on screen.
+   Below that the bar is the drawer's, and it carries the only control that opens
+   the menu — taking it away would leave a phone with no navigation at all.
+
+   Placed after the width queries above so equal-specificity selectors resolve on
+   source order at every breakpoint. */
+@media only screen and (min-width: 901px) {
+	body.bw-app-screen .bw-topbar {
+		display: none;
+	}
+
+	/* The bar is no longer drawn, so the room reserved for it would be an empty
+	   strip above the app. The two belong together: hiding one without zeroing
+	   the other is what leaves a gap. */
+	body.bw-app-screen #wpcontent {
+		padding-top: 0;
+	}
+}
+
 /* ─── LatePoint ───
    LatePoint's admin screens take the whole window over: on body.latepoint-admin
    it hides #adminmenumain outright and resets #wpcontent to margin-left:0 so its

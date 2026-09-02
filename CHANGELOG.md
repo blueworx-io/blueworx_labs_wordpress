@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.76.2] - 2026-09-02
+
+### Changed
+- **The Commerce screens get the window to themselves.** SureCart draws its own
+  header, so the BlueWorx bar above it was two headers saying the same thing —
+  and the lower one slid out of sight as you scrolled. The BlueWorx bar now comes
+  off those screens entirely and SureCart's own sits at the top of the page. The
+  sidebar stays, so you can still get anywhere from there.
+
+### Fixed
+- A plugin's header could stay in the wrong place until the window was resized,
+  because it was measured a moment before the plugin had finished styling it.
+  It is now looked at again once the screen settles.
+
 ## [1.76.1] - 2026-09-02
 
 ### Changed
