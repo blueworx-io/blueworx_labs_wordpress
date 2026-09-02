@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.76.1] - 2026-09-02
+
+### Changed
+- **Nothing, on purpose.** The first release published after sites were switched
+  to updating themselves, so that the next version arriving on its own is what
+  proves the mechanism works. If a site is on this version and nobody put it
+  there, the job is done.
+
 ## [1.76.0] - 2026-09-01
 
 ### Added
