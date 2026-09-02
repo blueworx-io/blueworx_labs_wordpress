@@ -115,6 +115,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
 require_once BLUEWORX_LABS_PATH . 'includes/translate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
+require_once BLUEWORX_LABS_PATH . 'includes/readonly-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/auto-updates.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-app-screens.php';

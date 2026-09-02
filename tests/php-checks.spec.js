@@ -26,6 +26,7 @@ const SCRIPTS = [
   'display-names-test.php',
   'auto-updates-test.php',
   'app-screens-test.php',
+  'readonly-access-test.php',
 ];
 
 let phpAvailable = true;

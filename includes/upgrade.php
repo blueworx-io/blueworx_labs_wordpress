@@ -476,7 +476,7 @@ function blueworx_migrate_relabel_support_role() {
 	add_role(
 		$slug,
 		__( 'BlueWorx - Support Agent (Read-Only)', 'blueworx-labs-wordpress' ),
-		blueworx_support_build_caps()
+		blueworx_readonly_build_caps()
 	);
 }
 
