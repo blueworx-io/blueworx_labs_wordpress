@@ -67,6 +67,19 @@ function blueworx_register_settings_page() {
 	);
 
 	// Registered under the BlueWorx menu while the function is on, and under no
+	// parent while it is off — the same treatment single sign-on gets, and for
+	// the same reason: the address keeps working so the screen can explain
+	// itself, without listing a settings page for something that is not running.
+	add_submenu_page(
+		blueworx_feature_enabled( 'external_access' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
+		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
+		'promote_users',
+		'blueworx-external',
+		'blueworx_render_external_page'
+	);
+
+	// Registered under the BlueWorx menu while the function is on, and under no
 	// parent while it is off — which keeps the address working so the screen can
 	// explain itself, without listing a settings page for something that is not
 	// running. remove_submenu_page() is not the same thing: it takes the page out

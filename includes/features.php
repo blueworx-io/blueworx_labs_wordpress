@@ -79,7 +79,9 @@ function blueworx_get_feature_definitions() {
 			'label'       => __( 'External viewer access', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Lets you invite somebody to look round the backend without being able to change anything. Each person gets their own sign-in, which they set themselves, and their access ends on a date you choose.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
-			'detail'      => 'external_access',
+			// No detail panel: the dedicated External access screen owns the
+			// invite form, so this row stays a plain switch.
+			'detail'      => null,
 			'default'     => '0',
 		),
 		'user_roles'            => array(

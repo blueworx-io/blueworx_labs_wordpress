@@ -220,6 +220,106 @@ function blueworx_render_support_page() {
 }
 
 /**
+ * Saves the External access on/off switch.
+ *
+ * @return void
+ */
+function blueworx_handle_external_feature_toggle() {
+	blueworx_require_post_request();
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'blueworx-labs-wordpress' ) );
+	}
+
+	check_admin_referer( 'blueworx_toggle_external_feature' );
+
+	$on = ! empty( $_POST['blueworx_external_feature'] );
+
+	blueworx_set_feature_enabled( 'external_access', $on );
+
+	if ( $on && function_exists( 'blueworx_external_register_role' ) ) {
+		// Registered here as well as on admin_init so the role exists for the
+		// very first invitation, which can be made before the next page load.
+		blueworx_external_register_role();
+	}
+
+	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-external' ) );
+	exit;
+}
+add_action( 'admin_post_blueworx_toggle_external_feature', 'blueworx_handle_external_feature_toggle' );
+
+/**
+ * Renders the External access screen.
+ *
+ * @return void
+ */
+function blueworx_render_external_page() {
+	$on    = blueworx_feature_enabled( 'external_access' );
+	$count = $on ? count( blueworx_external_invitations() ) : 0;
+
+	blueworx_open_admin_page(
+		array(
+			'title'   => __( 'External access', 'blueworx-labs-wordpress' ),
+			'lede'    => __( 'Invite somebody to look round the back end of this site without being able to change anything.', 'blueworx-labs-wordpress' ),
+			'actions' => blueworx_ds_badge(
+				$count > 0
+					/* translators: %d: number of people invited. */
+					? sprintf( _n( '%d person invited', '%d people invited', $count, 'blueworx-labs-wordpress' ), $count )
+					: __( 'Nobody invited', 'blueworx-labs-wordpress' ),
+				$count > 0 ? 'success' : 'neutral',
+				true
+			),
+		)
+	);
+
+	$switch = sprintf(
+		'<form method="post" action="%1$s">%2$s<input type="hidden" name="action" value="blueworx_toggle_external_feature" /><label class="bw-switch bw-switch--bare"><input type="checkbox" role="switch" name="blueworx_external_feature" value="1"%3$s data-testid="bw-external-feature" /><span class="bw-switch__track"><span class="bw-switch__thumb"></span></span><span class="screen-reader-text">%4$s</span></label>%5$s</form>',
+		esc_url( admin_url( 'admin-post.php' ) ),
+		wp_nonce_field( 'blueworx_toggle_external_feature', '_wpnonce', true, false ),
+		checked( $on, true, false ),
+		esc_html__( 'External access is available on this site', 'blueworx-labs-wordpress' ),
+		blueworx_ds_button(
+			array(
+				'label' => __( 'Save', 'blueworx-labs-wordpress' ),
+				'type'  => 'submit',
+				'size'  => 'sm',
+			)
+		)
+	);
+
+	echo '<section class="bw-card"><div class="bw-card__head"><div class="bw-card__titles">';
+	echo '<p class="bw-card__eyebrow">' . esc_html__( 'They can look at everything and change nothing', 'blueworx-labs-wordpress' ) . '</p>';
+	echo '<h2 class="bw-card__title">' . esc_html__( 'External viewer access', 'blueworx-labs-wordpress' ) . '</h2>';
+	echo '</div><div class="bw-card__actions">';
+	echo $switch; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built above from escaped parts.
+	echo '</div></div><div class="bw-card__body">';
+
+	if ( ! $on ) {
+		echo wp_kses(
+			blueworx_ds_notice(
+				array(
+					'tone'  => 'info',
+					'title' => __( 'External access is switched off', 'blueworx-labs-wordpress' ),
+					'text'  => __( 'Nobody can be invited while it is off, and anybody already invited cannot sign in. Switch it on above to invite somebody.', 'blueworx-labs-wordpress' ),
+				)
+			),
+			blueworx_ds_allowed_html()
+		);
+
+		echo '</div></section>';
+
+		blueworx_close_admin_page();
+		return;
+	}
+
+	blueworx_external_render_panel();
+
+	echo '</div></section>';
+
+	blueworx_close_admin_page();
+}
+
+/**
  * Renders the Single sign-on screen.
  *
  * @return void

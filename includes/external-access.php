@@ -262,6 +262,11 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 	// write nobody asked for. The role only has to exist where it is assigned
 	// and where capabilities are resolved, and admin_init covers both.
 	add_action( 'admin_init', 'blueworx_external_register_role', 1 );
+	// Gated behind the same feature check as the role above: while the feature
+	// is off the console cannot render (blueworx_render_external_page() returns
+	// before the form does), so this closes the one path — a forged POST to any
+	// admin page — that could otherwise still reach the handler.
+	add_action( 'admin_init', 'blueworx_external_handle_actions' );
 }
 
 // Registered unconditionally, unlike the role above — mirrors
@@ -618,4 +623,388 @@ function blueworx_external_record_sign_in( $login, $user = null ) { // phpcs:ign
 	}
 
 	update_user_meta( $user->ID, BLUEWORX_EXTERNAL_META_LAST_SEEN, time() );
+}
+
+/**
+ * Records what to tell the administrator after a redirect.
+ *
+ * A transient rather than a query argument: the message can name an email
+ * address, and addresses do not belong in a URL that ends up in a browser
+ * history or a server log.
+ *
+ * @param string $tone  Notice tone.
+ * @param string $title Notice title.
+ * @param string $text  Notice body.
+ * @return void
+ */
+function blueworx_external_set_notice( $tone, $title, $text = '' ) {
+	set_transient(
+		'blueworx_external_notice_' . get_current_user_id(),
+		array(
+			'tone'  => $tone,
+			'title' => $title,
+			'text'  => $text,
+		),
+		60
+	);
+}
+
+/**
+ * Reads and clears the pending message.
+ *
+ * @return array Notice arguments, or an empty array.
+ */
+function blueworx_external_take_notice() {
+	$key    = 'blueworx_external_notice_' . get_current_user_id();
+	$notice = get_transient( $key );
+
+	delete_transient( $key );
+
+	return is_array( $notice ) ? $notice : array();
+}
+
+/**
+ * Handles the panel's form submissions.
+ *
+ * Every branch requires its own nonce, tied to its own action and (where one
+ * is targeted) the one account it names, so a nonce lifted from the page
+ * cannot be replayed against a different person or a different action.
+ *
+ * Gated on BOTH create_users and promote_users, not promote_users alone:
+ * inviting somebody creates an administrator-shaped account, and create_users
+ * is the capability WordPress already gates account creation on. promote_users
+ * covers assigning the role. A caller missing either capability should not be
+ * able to do what this function does.
+ *
+ * @return void
+ */
+function blueworx_external_handle_actions() {
+	if ( ! isset( $_POST['blueworx_external_action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Each branch below verifies its own nonce before acting.
+		return;
+	}
+
+	if ( ! current_user_can( 'create_users' ) || ! current_user_can( 'promote_users' ) ) {
+		return;
+	}
+
+	$action  = sanitize_key( wp_unslash( $_POST['blueworx_external_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified immediately below, per branch.
+	$self    = admin_url( 'admin.php?page=blueworx-external' );
+	$user_id = isset( $_POST['blueworx_external_user'] ) ? absint( $_POST['blueworx_external_user'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Same.
+
+	if ( 'invite' === $action ) {
+		check_admin_referer( 'blueworx_external_invite' );
+
+		$result = blueworx_external_invite(
+			array(
+				'name'  => isset( $_POST['blueworx_external_name'] ) ? wp_unslash( $_POST['blueworx_external_name'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized inside blueworx_external_invite().
+				'email' => isset( $_POST['blueworx_external_email'] ) ? wp_unslash( $_POST['blueworx_external_email'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Same.
+				'note'  => isset( $_POST['blueworx_external_note'] ) ? wp_unslash( $_POST['blueworx_external_note'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Same.
+				'days'  => isset( $_POST['blueworx_external_days'] ) ? wp_unslash( $_POST['blueworx_external_days'] ) : 0, // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Reduced to an offered value by blueworx_external_sanitize_duration().
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			blueworx_external_set_notice(
+				'error',
+				__( 'Nobody was invited.', 'blueworx-labs-wordpress' ),
+				$result->get_error_message()
+			);
+		} elseif ( ! blueworx_external_send_invite( $result ) ) {
+			// The account is real and usable; only the email failed. Saying so
+			// is the point — a demo site with broken mail must not look like it
+			// worked.
+			blueworx_external_set_notice(
+				'warning',
+				__( 'The account was created, but the email did not send.', 'blueworx-labs-wordpress' ),
+				__( 'Check that this site can send email, then use Resend on their row.', 'blueworx-labs-wordpress' )
+			);
+		} else {
+			blueworx_external_set_notice(
+				'success',
+				__( 'Invitation sent.', 'blueworx-labs-wordpress' ),
+				__( 'They will get an email with a link to choose a password.', 'blueworx-labs-wordpress' )
+			);
+		}
+	}
+
+	if ( 'revoke' === $action && $user_id ) {
+		check_admin_referer( 'blueworx_external_revoke_' . $user_id );
+
+		blueworx_external_revoke( $user_id );
+		blueworx_external_set_notice( 'success', __( 'Access withdrawn.', 'blueworx-labs-wordpress' ) );
+	}
+
+	if ( 'extend' === $action && $user_id ) {
+		check_admin_referer( 'blueworx_external_extend_' . $user_id );
+
+		// blueworx_external_extend() reports failure when the new expiry equals
+		// the one already stored — update_user_meta() reads "no change" the same
+		// way it reads "could not write". Extending twice by the same duration
+		// inside one second is the only way that happens, and it is not a
+		// failure worth explaining to whoever clicked Extend, so its return
+		// value is not surfaced here: this action always reports success.
+		blueworx_external_extend( $user_id, isset( $_POST['blueworx_external_days'] ) ? wp_unslash( $_POST['blueworx_external_days'] ) : 0 ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Reduced to an offered value by blueworx_external_sanitize_duration().
+		blueworx_external_set_notice( 'success', __( 'Access extended.', 'blueworx-labs-wordpress' ) );
+	}
+
+	if ( 'resend' === $action && $user_id ) {
+		check_admin_referer( 'blueworx_external_resend_' . $user_id );
+
+		if ( blueworx_external_send_invite( $user_id ) ) {
+			blueworx_external_set_notice( 'success', __( 'Invitation sent again.', 'blueworx-labs-wordpress' ) );
+		} else {
+			blueworx_external_set_notice(
+				'error',
+				__( 'That email did not send.', 'blueworx-labs-wordpress' ),
+				__( 'This site could not hand the message to a mail server.', 'blueworx-labs-wordpress' )
+			);
+		}
+	}
+
+	wp_safe_redirect( $self );
+	exit;
+}
+
+/**
+ * The state badge for one invitation.
+ *
+ * Three states rather than two: "ends soon" is the one an administrator needs
+ * to see before it matters, and a list that only distinguishes live from dead
+ * never shows it.
+ *
+ * @param int $user_id Invited account.
+ * @return string Badge markup.
+ */
+function blueworx_external_state_badge( $user_id ) {
+	$expires = blueworx_external_expires_at( $user_id );
+	$now     = (int) current_time( 'timestamp' );
+
+	if ( blueworx_external_is_expired( $user_id ) ) {
+		return blueworx_ds_badge( __( 'Ended', 'blueworx-labs-wordpress' ), 'neutral', true );
+	}
+
+	if ( ( $expires - $now ) <= ( 3 * DAY_IN_SECONDS ) ) {
+		return blueworx_ds_badge( __( 'Ends soon', 'blueworx-labs-wordpress' ), 'warning', true );
+	}
+
+	return blueworx_ds_badge( __( 'Active', 'blueworx-labs-wordpress' ), 'success', true );
+}
+
+/**
+ * Renders the invite form and the list of people invited.
+ *
+ * @return void
+ */
+function blueworx_external_render_panel() {
+	$notice = blueworx_external_take_notice();
+	$self   = admin_url( 'admin.php?page=blueworx-external' );
+
+	if ( ! empty( $notice ) ) {
+		echo wp_kses( blueworx_ds_notice( $notice ), blueworx_ds_allowed_html() );
+	}
+
+	echo wp_kses(
+		blueworx_ds_notice(
+			array(
+				'tone'  => 'info',
+				'title' => __( 'What an external viewer can do', 'blueworx-labs-wordpress' ),
+				'text'  => __( 'They see the back end the way an administrator does, and can change nothing: every save, delete and setting is refused. Customer and order screens stay hidden from them. One thing this cannot catch is a plugin that changes something in response to an ordinary page view rather than a save — rare, but worth knowing before you invite somebody into a live site.', 'blueworx-labs-wordpress' ),
+			)
+		),
+		blueworx_ds_allowed_html()
+	);
+
+	$days = array();
+
+	foreach ( blueworx_external_durations() as $option ) {
+		$days[ (string) $option ] = sprintf(
+			/* translators: %d: number of days. */
+			_n( '%d day', '%d days', $option, 'blueworx-labs-wordpress' ),
+			$option
+		);
+	}
+
+	echo '<form method="post" action="' . esc_url( $self ) . '" class="bw-fields bw-fields--single">';
+	wp_nonce_field( 'blueworx_external_invite' );
+	echo '<input type="hidden" name="blueworx_external_action" value="invite" />';
+
+	echo blueworx_ds_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
+		array(
+			'label'   => __( 'Their name', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_external_name',
+			'control' => blueworx_ds_input(
+				array(
+					'name'  => 'blueworx_external_name',
+					'id'    => 'blueworx_external_name',
+					'attrs' => array( 'data-testid' => 'bw-external-name' ),
+				)
+			),
+		)
+	);
+
+	echo blueworx_ds_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
+		array(
+			'label'   => __( 'Their email address', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_external_email',
+			'control' => blueworx_ds_input(
+				array(
+					'name'  => 'blueworx_external_email',
+					'id'    => 'blueworx_external_email',
+					'type'  => 'email',
+					'attrs' => array(
+						'required'    => 'required',
+						'data-testid' => 'bw-external-email',
+					),
+				)
+			),
+			'help'    => __( 'This is where the invitation goes, and it is how they sign in.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
+	echo blueworx_ds_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
+		array(
+			'label'   => __( 'A note for you', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_external_note',
+			'control' => blueworx_ds_input(
+				array(
+					'name'  => 'blueworx_external_note',
+					'id'    => 'blueworx_external_note',
+					'attrs' => array( 'data-testid' => 'bw-external-note' ),
+				)
+			),
+			'help'    => __( 'Only you see this. Handy for remembering which conversation somebody came from.', 'blueworx-labs-wordpress' ),
+		)
+	);
+
+	echo blueworx_ds_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
+		array(
+			'label'   => __( 'How long they get', 'blueworx-labs-wordpress' ),
+			'for'     => 'blueworx_external_days',
+			'control' => blueworx_ds_select(
+				array(
+					'name'     => 'blueworx_external_days',
+					'id'       => 'blueworx_external_days',
+					'options'  => $days,
+					'selected' => (string) blueworx_external_default_duration(),
+					'attrs'    => array( 'data-testid' => 'bw-external-days' ),
+				)
+			),
+		)
+	);
+
+	echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
+		array(
+			'label'   => __( 'Send invitation', 'blueworx-labs-wordpress' ),
+			'variant' => 'primary',
+			'type'    => 'submit',
+			'attrs'   => array( 'data-testid' => 'bw-external-invite' ),
+		)
+	);
+
+	echo '</form>';
+
+	$invitations = blueworx_external_invitations();
+
+	if ( empty( $invitations ) ) {
+		echo wp_kses(
+			blueworx_ds_empty_state(
+				array(
+					'title' => __( 'Nobody has been invited yet', 'blueworx-labs-wordpress' ),
+					'text'  => __( 'Whoever you invite appears here, with when their access ends.', 'blueworx-labs-wordpress' ),
+				)
+			),
+			blueworx_ds_allowed_html()
+		);
+
+		return;
+	}
+
+	echo '<table class="bw-table"><thead><tr>';
+	echo '<th scope="col">' . esc_html__( 'Who', 'blueworx-labs-wordpress' ) . '</th>';
+	echo '<th scope="col">' . esc_html__( 'Last seen', 'blueworx-labs-wordpress' ) . '</th>';
+	echo '<th scope="col">' . esc_html__( 'Access ends', 'blueworx-labs-wordpress' ) . '</th>';
+	echo '<th scope="col">' . esc_html__( 'Actions', 'blueworx-labs-wordpress' ) . '</th>';
+	echo '</tr></thead><tbody>';
+
+	$format = get_option( 'date_format' );
+
+	foreach ( $invitations as $user ) {
+		$note      = (string) get_user_meta( $user->ID, BLUEWORX_EXTERNAL_META_NOTE, true );
+		$last_seen = (int) get_user_meta( $user->ID, BLUEWORX_EXTERNAL_META_LAST_SEEN, true );
+
+		echo '<tr data-testid="bw-external-row" data-external-user="' . esc_attr( $user->ID ) . '">';
+
+		echo '<td class="bw-table__primary">' . esc_html( $user->display_name );
+		echo '<span class="bw-table__sub">' . esc_html( $user->user_email ) . '</span>';
+
+		if ( '' !== $note ) {
+			echo '<span class="bw-table__sub">' . esc_html( $note ) . '</span>';
+		}
+
+		echo '</td>';
+
+		echo '<td>' . esc_html(
+			$last_seen > 0
+				? date_i18n( $format, $last_seen )
+				: __( 'Never', 'blueworx-labs-wordpress' )
+		) . '</td>';
+
+		echo '<td>' . esc_html( date_i18n( $format, blueworx_external_expires_at( $user->ID ) ) ) . ' ';
+		echo wp_kses( blueworx_external_state_badge( $user->ID ), blueworx_ds_allowed_html() );
+		echo '</td>';
+
+		echo '<td><span class="bw-rowactions">';
+
+		// Three separate forms rather than one with several submits: each
+		// carries its own nonce, tied to its own action and this one account, so
+		// a nonce lifted from the page cannot be replayed against a different
+		// person or a different action.
+		echo '<form method="post" action="' . esc_url( $self ) . '">';
+		wp_nonce_field( 'blueworx_external_extend_' . $user->ID );
+		echo '<input type="hidden" name="blueworx_external_action" value="extend" />';
+		echo '<input type="hidden" name="blueworx_external_user" value="' . esc_attr( $user->ID ) . '" />';
+		echo '<input type="hidden" name="blueworx_external_days" value="' . esc_attr( blueworx_external_default_duration() ) . '" />';
+		echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
+			array(
+				'label' => __( 'Extend', 'blueworx-labs-wordpress' ),
+				'type'  => 'submit',
+				'size'  => 'sm',
+				'attrs' => array( 'data-testid' => 'bw-external-extend' ),
+			)
+		);
+		echo '</form>';
+
+		echo '<form method="post" action="' . esc_url( $self ) . '">';
+		wp_nonce_field( 'blueworx_external_resend_' . $user->ID );
+		echo '<input type="hidden" name="blueworx_external_action" value="resend" />';
+		echo '<input type="hidden" name="blueworx_external_user" value="' . esc_attr( $user->ID ) . '" />';
+		echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
+			array(
+				'label' => __( 'Resend', 'blueworx-labs-wordpress' ),
+				'type'  => 'submit',
+				'size'  => 'sm',
+				'attrs' => array( 'data-testid' => 'bw-external-resend' ),
+			)
+		);
+		echo '</form>';
+
+		echo '<form method="post" action="' . esc_url( $self ) . '">';
+		wp_nonce_field( 'blueworx_external_revoke_' . $user->ID );
+		echo '<input type="hidden" name="blueworx_external_action" value="revoke" />';
+		echo '<input type="hidden" name="blueworx_external_user" value="' . esc_attr( $user->ID ) . '" />';
+		echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
+			array(
+				'label'   => __( 'Withdraw', 'blueworx-labs-wordpress' ),
+				'variant' => 'danger',
+				'type'    => 'submit',
+				'size'    => 'sm',
+				'attrs'   => array( 'data-testid' => 'bw-external-revoke' ),
+			)
+		);
+		echo '</form>';
+
+		echo '</span></td></tr>';
+	}
+
+	echo '</tbody></table>';
 }
