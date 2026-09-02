@@ -345,7 +345,7 @@ function blueworx_external_invite( $args ) {
 	}
 
 	$user_id = (int) $user_id;
-	$now     = (int) current_time( 'timestamp' );
+	$now     = time();
 
 	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_INVITED_BY, get_current_user_id() );
 	update_user_meta( $user_id, BLUEWORX_EXTERNAL_META_INVITED_AT, $now );
@@ -389,13 +389,18 @@ function blueworx_external_reset_url( $user ) {
  * ends, and gives one link. It contains no password, because there is no
  * password to contain.
  *
+ * Refuses to run for any account outside the external role. Nothing calls
+ * this from a request today, but a resend button will, and a resend button
+ * that trusted its $user_id argument would mail a password-reset link for
+ * whichever account it was pointed at — an administrator included.
+ *
  * @param int $user_id Invited account.
  * @return bool True when the mail was handed off successfully.
  */
 function blueworx_external_send_invite( $user_id ) {
 	$user = get_userdata( (int) $user_id );
 
-	if ( ! $user instanceof WP_User ) {
+	if ( ! $user instanceof WP_User || ! blueworx_external_is_external_user( $user ) ) {
 		return false;
 	}
 

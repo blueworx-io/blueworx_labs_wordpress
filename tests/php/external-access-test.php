@@ -58,7 +58,18 @@ function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
 
 // Task 3: invitations create real accounts, so the store lives here rather
 // than in stubs.php, which stays generic across every test file that requires it.
-$GLOBALS['users']      = array();
+$GLOBALS['users']      = array(
+	// A pre-existing administrator, id 1, so blueworx_external_send_invite()'s
+	// role guard has a real non-external account to be tested against.
+	1 => array(
+		'id'    => 1,
+		'login' => 'admin',
+		'email' => 'admin@example.com',
+		'name'  => 'Luke',
+		'role'  => 'administrator',
+		'meta'  => array(),
+	),
+);
 $GLOBALS['next_id']    = 100;
 $GLOBALS['mail_sent']  = array();
 $GLOBALS['mail_fails'] = false;
@@ -146,7 +157,11 @@ function network_site_url( $path = '', $scheme = null ) {
 	return 'https://demo.example.com/' . ltrim( (string) $path, '/' );
 }
 
+$GLOBALS['reset_keys_issued'] = 0;
+
 function get_password_reset_key( $user ) {
+	++$GLOBALS['reset_keys_issued'];
+
 	return 'RESETKEY123';
 }
 
@@ -173,10 +188,6 @@ function wp_get_current_user() {
 
 function get_current_user_id() {
 	return 1;
-}
-
-function current_time( $type = 'timestamp' ) {
-	return 1000000;
 }
 
 function wp_specialchars_decode( $t, $q = 0 ) {
@@ -238,6 +249,12 @@ check( 'and an unusable address still yields something', blueworx_external_usern
 
 echo "\nAn invitation creates one account, with an expiry on it\n";
 
+// The invite path stamps its own timestamp with time() rather than a mockable
+// clock (support-access.php does the same for its own window, and Task 4's
+// expiry fixture writes time() - 60 directly) so the check below brackets a
+// real wall-clock call rather than asserting an exact value.
+$before = time();
+
 $id = blueworx_external_invite(
 	array(
 		'name'  => 'Jane Doe',
@@ -247,13 +264,16 @@ $id = blueworx_external_invite(
 	)
 );
 
+$after = time();
+
 check( 'the account was created', is_int( $id ) && $id > 0, true );
 check( 'in the external role', $GLOBALS['users'][ $id ]['role'], 'blueworx_external' );
 check( 'with a username off the address', $GLOBALS['users'][ $id ]['login'], 'jane' );
 check(
 	'and an expiry thirty days out',
-	blueworx_external_expires_at( $id ),
-	blueworx_external_expiry_from( 1000000, 30 )
+	blueworx_external_expires_at( $id ) >= blueworx_external_expiry_from( $before, 30 )
+		&& blueworx_external_expires_at( $id ) <= blueworx_external_expiry_from( $after, 30 ),
+	true
 );
 check(
 	'the note is kept',
@@ -293,6 +313,10 @@ check( 'to the person invited', $mail['to'], 'jane@example.com' );
 check( 'carrying a reset link', false !== strpos( $mail['message'], 'action=rp' ), true );
 check( 'and the key', false !== strpos( $mail['message'], 'RESETKEY123' ), true );
 check( 'saying the access is view-only', false !== stripos( $mail['message'], 'view-only' ), true );
+// wp_generate_password( 64, ... ) in this stub always returns 'aA1!' repeated
+// to length, so its absence proves the account's actual password never made
+// it into the message rather than merely not being asserted on.
+check( 'and no password', false === strpos( $mail['message'], 'aA1!' ), true );
 
 echo "\nA send that fails is reported rather than swallowed\n";
 
@@ -306,5 +330,25 @@ check( 'the account is still created', is_int( $failed ) && $failed > 0, true );
 check( 'and the failure is visible to the caller', blueworx_external_send_invite( $failed ), false );
 
 $GLOBALS['mail_fails'] = false;
+
+echo "\nA username collision is resolved by numbering, not by failing\n";
+
+$second = blueworx_external_invite(
+	array(
+		'name'  => 'Jane Other',
+		'email' => 'jane@other.example',
+		'days'  => 30,
+	)
+);
+
+check( 'a second account is created', is_int( $second ) && $second > 0, true );
+check( 'with the collision resolved by numbering', $GLOBALS['users'][ $second ]['login'], 'jane2' );
+
+echo "\nThe reset email is never sent to an account outside the external role\n";
+
+$keys_before = $GLOBALS['reset_keys_issued'];
+
+check( 'an administrator is refused', blueworx_external_send_invite( 1 ), false );
+check( 'and no reset key was generated for them', $GLOBALS['reset_keys_issued'], $keys_before );
 
 finish();

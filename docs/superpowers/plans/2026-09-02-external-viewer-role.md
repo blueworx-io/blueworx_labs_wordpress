@@ -961,7 +961,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
   - `blueworx_external_invite( array $args ) : int|WP_Error`
   - `blueworx_external_unique_username( $stem ) : string`
   - `blueworx_external_reset_url( WP_User $user ) : string`
-  - `blueworx_external_send_invite( $user_id ) : bool|WP_Error`
+  - `blueworx_external_send_invite( $user_id ) : bool`
   - `blueworx_external_expires_at( $user_id ) : int`
 
 - [ ] **Step 1: Write the failing test**
