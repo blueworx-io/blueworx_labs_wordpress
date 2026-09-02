@@ -117,6 +117,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/readonly-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
+require_once BLUEWORX_LABS_PATH . 'includes/external-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/auto-updates.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-app-screens.php';
 
@@ -132,8 +133,17 @@ require_once BLUEWORX_LABS_PATH . 'includes/login-redirect.php';
 require_once BLUEWORX_LABS_PATH . 'includes/view-as-role.php';
 require_once BLUEWORX_LABS_PATH . 'includes/display-names.php';
 
-// Deactivation, not just uninstall: the support account is a near-administrator
-// whose read-only guarantee comes entirely from this plugin's request-layer
-// block. With the plugin switched off that block is gone but the account would
-// remain, so it is removed the moment the plugin is deactivated.
-register_deactivation_hook( __FILE__, 'blueworx_support_on_deactivate' );
+/**
+ * Tears down everything that must not outlive the plugin being switched off.
+ *
+ * Both read-only roles are near-administrator accounts whose safety comes from
+ * the request-layer block in includes/readonly-access.php. With the plugin off
+ * that block does not run, so the accounts must not be left standing.
+ *
+ * @return void
+ */
+function blueworx_labs_on_deactivate() {
+	blueworx_support_on_deactivate();
+	blueworx_external_on_deactivate();
+}
+register_deactivation_hook( __FILE__, 'blueworx_labs_on_deactivate' );

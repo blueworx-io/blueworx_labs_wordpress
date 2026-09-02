@@ -27,6 +27,7 @@ const SCRIPTS = [
   'auto-updates-test.php',
   'app-screens-test.php',
   'readonly-access-test.php',
+  'external-access-test.php',
 ];
 
 let phpAvailable = true;
