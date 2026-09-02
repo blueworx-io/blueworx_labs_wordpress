@@ -241,6 +241,11 @@ function blueworx_handle_external_feature_toggle() {
 		// Registered here as well as on admin_init so the role exists for the
 		// very first invitation, which can be made before the next page load.
 		blueworx_external_register_role();
+		// Only when switching on: a viewer invited into a protected site must not
+		// be locked out by an allow-list that predates the invitation. Switching
+		// the feature off leaves Site Protection's lists exactly as an admin set
+		// them.
+		blueworx_external_allow_in_site_protection();
 	}
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-external' ) );

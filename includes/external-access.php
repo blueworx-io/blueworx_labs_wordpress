@@ -1036,3 +1036,42 @@ function blueworx_external_render_panel() {
 
 	echo '</tbody></table>';
 }
+
+/**
+ * Adds the external role to any Site Protection allow-list already in force.
+ *
+ * Site Protection only lets named roles view the site at all, so an invited
+ * viewer on a protected site would meet a 403 before ever seeing the back end —
+ * and nothing on screen would explain why. Adding the role when the feature is
+ * switched on makes the invitation work.
+ *
+ * A default, not an override: the role is listed in the Site Protection pickers
+ * like any other and can be taken out again. Nothing is done to a list that is
+ * empty, because an empty list means that area is not restricted by role.
+ *
+ * External accounts deliberately get no blanket exemption of the kind the
+ * BlueWorx support account holds. That exemption exists because a support
+ * session is authenticated by a key outside the site's own roles; an external
+ * viewer is an ordinary account and Site Protection should be able to exclude
+ * it.
+ *
+ * @return void
+ */
+function blueworx_external_allow_in_site_protection() {
+	foreach ( array( 'frontend', 'backend' ) as $area ) {
+		$key   = 'blueworx_' . $area . '_protection_roles';
+		$roles = get_option( $key, array() );
+
+		if ( ! is_array( $roles ) || array() === $roles ) {
+			continue;
+		}
+
+		if ( in_array( blueworx_external_role_slug(), $roles, true ) ) {
+			continue;
+		}
+
+		$roles[] = blueworx_external_role_slug();
+
+		update_option( $key, array_values( $roles ) );
+	}
+}

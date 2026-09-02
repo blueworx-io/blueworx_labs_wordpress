@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 10;
+	return 11;
 }
 
 /**
@@ -76,6 +76,34 @@ function blueworx_migrate_rest_users_default() {
 	}
 
 	update_option( 'blueworx_feature_rest_users', '0' );
+}
+
+/**
+ * Keeps External access switched off on a site that already runs this plugin.
+ *
+ * The feature is registered default-off today, so this is belt and braces
+ * rather than a correction: it writes the option explicitly for sites already
+ * running, using the same fresh-install-vs-upgrade test as
+ * blueworx_migrate_rest_users_default(), so that no later change to the
+ * registry's default can switch on a feature that creates near-administrator
+ * accounts underneath somebody who never asked for it. A fresh install is left
+ * to fall through to the registered default, exactly as every other feature
+ * does.
+ *
+ * @return void
+ */
+function blueworx_migrate_external_access_default() {
+	if ( ! blueworx_should_opt_out_of_new_default( null !== get_option( 'blueworx_labs_db_version', null ) ) ) {
+		return;
+	}
+
+	// Only when the site has not already expressed a preference, which it cannot
+	// have here — but this migration must stay safe if it is ever re-run.
+	if ( null !== get_option( 'blueworx_feature_external_access', null ) ) {
+		return;
+	}
+
+	update_option( 'blueworx_feature_external_access', '0' );
 }
 
 /**
@@ -623,6 +651,11 @@ function blueworx_run_pending_labs_migrations() {
 	// upgrade from a fresh install by whether that row exists at all.
 	if ( $stored_version < 10 ) {
 		blueworx_migrate_rest_users_default();
+	}
+
+	// Same reasoning, and must run before the same version row write.
+	if ( $stored_version < 11 ) {
+		blueworx_migrate_external_access_default();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );
