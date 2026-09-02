@@ -4,6 +4,28 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.77.0] - 2026-09-03
+
+### Added
+- **Invite somebody to look round the back end without letting them change
+  anything.** A new External access screen under BlueWorx is off until you turn
+  it on. Enter a name and email and choose how long they get in — 7, 30 or 90
+  days — and they receive one email with a link to choose their own password;
+  no password is ever sent. Once in, they see the back end the way an
+  administrator does, but nothing they click changes anything, and customer and
+  order screens stay hidden from them.
+- **The screen lists everyone you've invited** — when they last signed in and
+  when their access ends — with Extend, Resend and Withdraw on each row. Once
+  access runs out they can't sign back in, and any session they still had open
+  is ended there and then. Turning the feature off ends everyone's access at
+  once.
+
+### Changed
+- **Support access and external access now share one read-only guarantee.**
+  The rule that refuses every change was written for BlueWorx support access;
+  both now use the same one, so anything tightened for one is tightened for
+  both. Support access itself behaves exactly as before.
+
 ## [1.76.2] - 2026-09-02
 
 ### Changed
