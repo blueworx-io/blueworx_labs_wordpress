@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.75.5
+ * Version:           1.76.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -21,8 +21,56 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/*
+ * Updates. The plugin watches this repo's GitHub releases and installs new
+ * versions itself, so nobody uploads a zip. The house standard this follows is
+ * documented in the foundation's docs/wordpress-auto-updates.md; the decision
+ * to install rather than merely offer lives in includes/auto-updates.php.
+ *
+ * At file scope, and not inside a function, conditional or hook: the library's
+ * "use" import below cannot be wrapped without a parse error.
+ */
+require_once plugin_dir_path( __FILE__ ) . 'plugin-update-checker/plugin-update-checker.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$blueworx_update_checker = PucFactory::buildUpdateChecker(
+	'https://github.com/blueworx-io/blueworx_labs_wordpress/',
+	__FILE__,
+	'blueworx-labs-wordpress' // Must equal the plugin's folder name on the site,
+	                          // and the folder name inside the release zip. If
+	                          // they disagree, an update installs alongside the
+	                          // original as a second copy and deactivates it.
+);
+
+/*
+ * This repo is public, so releases are readable without credentials and no site
+ * needs a token. The guard is kept so that making the repo private later is a
+ * line in each site's wp-config.php and no change here:
+ *
+ *     define( 'BLUEWORX_PLUGIN_UPDATE_TOKEN', 'github_pat_...' );
+ */
+if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN ) {
+	$blueworx_update_checker->setAuthentication( BLUEWORX_PLUGIN_UPDATE_TOKEN );
+}
+
+/*
+ * Install the zip attached to the release, not GitHub's own source tarball.
+ * That tarball unpacks to a folder named <repo>-<version>, which WordPress
+ * would treat as a different plugin — and it carries every development file in
+ * the repo besides.
+ */
+$blueworx_update_checker->getVcsApi()->enableReleaseAssets();
+
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.75.5' );
+	define( 'BLUEWORX_LABS_VERSION', '1.76.0' );
+}
+
+// The main plugin file's own path. Two things need it by name rather than by
+// guessing at it: the update checker, which identifies the plugin to WordPress
+// by this file, and the filter that turns this plugin's own auto-update on.
+if ( ! defined( 'BLUEWORX_LABS_PLUGIN_FILE' ) ) {
+	define( 'BLUEWORX_LABS_PLUGIN_FILE', __FILE__ );
 }
 
 if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
@@ -68,6 +116,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/translate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
+require_once BLUEWORX_LABS_PATH . 'includes/auto-updates.php';
 
 require_once BLUEWORX_LABS_PATH . 'includes/admin-bar.php';
 require_once BLUEWORX_LABS_PATH . 'includes/dashboard-widgets.php';

@@ -9,7 +9,10 @@ const SLUG = 'blueworx-labs-wordpress';
 const DIST = 'dist';
 
 // Runtime files/dirs that ship inside the plugin folder.
-const REQUIRED = ['blueworx-labs-wordpress.php', 'uninstall.php', 'readme.txt', 'includes', 'assets'];
+// plugin-update-checker is required, not optional: a copy of the plugin without
+// it can never be told about another release, so a zip missing it is a dead end
+// on whatever site installs it.
+const REQUIRED = ['blueworx-labs-wordpress.php', 'uninstall.php', 'readme.txt', 'includes', 'assets', 'plugin-update-checker'];
 const OPTIONAL = ['languages'];
 const INCLUDE = [...REQUIRED, ...OPTIONAL];
 
