@@ -241,7 +241,35 @@ function date_i18n( $f, $t ) {
 
 require __DIR__ . '/../../includes/external-access.php';
 
-echo "The role is named the way every other role in this plugin is\n";
+echo "What an external viewer is not given\n";
+
+// The shared read-only clone is stubbed above with manage_options in it, so
+// these prove the external role takes it away rather than never having had it.
+$external_caps = blueworx_external_build_caps();
+
+check( 'the settings screens are closed', isset( $external_caps['manage_options'] ), false );
+check( 'and reading is still open', ! empty( $external_caps['read'] ), true );
+
+// The removals belong to this role alone. Support access reads exactly these
+// screens while diagnosing a site, so taking them from the shared set would
+// break the feature this one was built on top of.
+$shared_caps = blueworx_readonly_build_caps();
+
+check( 'support access keeps the settings screens', ! empty( $shared_caps['manage_options'] ), true );
+
+foreach ( array( 'activate_plugins', 'switch_themes', 'edit_theme_options', 'customize' ) as $cap ) {
+	check( $cap . ' is removed', in_array( $cap, blueworx_external_removed_caps(), true ), true );
+}
+
+// Guides hangs off edit_posts, so losing that would close it — which is the one
+// BlueWorx screen an external viewer is meant to keep.
+check(
+	'edit_posts is NOT removed, which is what keeps Guides open',
+	in_array( 'edit_posts', blueworx_external_removed_caps(), true ),
+	false
+);
+
+echo "\nThe role is named the way every other role in this plugin is\n";
 
 check( 'the slug', blueworx_external_role_slug(), 'blueworx_external' );
 check( 'the name', blueworx_external_role_name(), 'BlueWorx: External' );

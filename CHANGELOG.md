@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.78.0] - 2026-09-03
+
+### Changed
+- **External viewers now see a much smaller site.** BlueWorx, Settings, Tools,
+  Plugins and Appearance are gone from their sidebar and closed to them if they
+  type the address. Guides is the exception — that stays, because it is there to
+  explain the site to the people using it. They still see the dashboard, posts,
+  pages, media and comments, and still cannot change any of it.
+- **Invitations now run 3, 7 or 14 days**, rather than 7, 30 or 90, with 7 the
+  default. The amber "ends soon" mark appears with a day left instead of three,
+  so a three-day invitation is not flagged the moment you send it.
+
+### Fixed
+- **The External access screen sat inset with a gap above it**, unlike every
+  other BlueWorx screen. It now runs full width and flush, as it should have.
+- **Send invitation stretched the whole width of the card** and read as a page-wide
+  bar. It is a normal button now, and the people you have invited have moved into
+  a card of their own instead of being butted against it.
+- **Body text stopped short of the space it had.** Help text, notices, page
+  introductions and card descriptions across every BlueWorx screen wrapped at a
+  fixed measure; they now use the width available and wrap only when the screen
+  makes them.
+- **Dropdowns showed two arrows.** WordPress draws its own on top of ours. This
+  had already been fixed in the shared design system — this plugin was simply
+  running an old copy of it.
+- **A switch and its Save button** in a card heading were spaced by whatever the
+  markup happened to carry rather than by a set value.
+
 ## [1.77.1] - 2026-09-03
 
 ### Fixed

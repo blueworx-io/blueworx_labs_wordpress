@@ -49,6 +49,7 @@ function blueworx_admin_design_screens() {
 		'blueworx_page_blueworx-cache',
 		'blueworx_page_blueworx-support',
 		'blueworx_page_blueworx-sso',
+		'blueworx_page_blueworx-external',
 		'blueworx_page_blueworx-embedded',
 		'blueworx_page_blueworx-additions',
 	);

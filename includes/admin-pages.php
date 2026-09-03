@@ -315,6 +315,11 @@ function blueworx_render_external_page() {
 
 	echo '</div></section>';
 
+	// A card of its own, a sibling of the one above rather than more of it. It
+	// is rendered here, after that card closes, because the invite form and the
+	// list of people already invited are two separate things on the screen.
+	blueworx_external_render_invitations();
+
 	blueworx_close_admin_page();
 }
 

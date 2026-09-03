@@ -62,17 +62,21 @@ test.describe('An external viewer changes nothing', () => {
   });
 
   test('the viewer can open a screen an ordinary subscriber could not', async ({ page }) => {
-    // "Can look at everything an administrator sees" is the other half of the
-    // promise this role makes, and nothing else here tests it. activate_plugins
-    // is not one of the capabilities blueworx_readonly_removed_caps() strips, so
-    // this account — unlike a subscriber, who is refused this screen outright —
-    // can read it, with real content rather than an empty shell.
+    // "Can look round the back end" is the other half of the promise this role
+    // makes, and without a test for it every assertion here could be satisfied
+    // by an account that simply sees nothing.
+    //
+    // The posts list is the right screen to prove it on. A subscriber is refused
+    // it outright, and it shows everybody's posts rather than only your own — so
+    // a 200 with real rows says the viewer really is seeing the site's content.
+    // It used to be the plugins list, until that was deliberately closed to this
+    // role along with Settings, Tools and Appearance.
     await signInAsViewer(page);
 
-    const response = await page.goto('/wp-admin/plugins.php');
+    const response = await page.goto('/wp-admin/edit.php');
 
     expect(response.status()).toBe(200);
-    await expect(page.locator('h1')).toContainText('Plugins');
+    await expect(page.locator('h1')).toContainText('Posts');
 
     const rows = page.locator('#the-list tr');
     expect(await rows.count()).toBeGreaterThan(0);
@@ -295,6 +299,74 @@ test.describe('An external viewer changes nothing', () => {
       // is testing.
       fixture('xmlrpc-endpoint.php', 'restore');
     }
+  });
+
+  // The screens a client must not be shown. Settings, Plugins and Appearance are
+  // closed by taking the capabilities away, so WordPress refuses them itself;
+  // Tools has to be named, because the capability that reveals it is the same one
+  // that lets a viewer see the Posts list. Both routes are asserted the same way,
+  // because what matters is the answer, not which mechanism produced it.
+  const CLOSED = [
+    '/wp-admin/options-general.php',
+    '/wp-admin/options.php',
+    '/wp-admin/tools.php',
+    '/wp-admin/import.php',
+    '/wp-admin/export.php',
+    '/wp-admin/site-health.php',
+    '/wp-admin/plugins.php',
+    '/wp-admin/plugin-install.php',
+    '/wp-admin/themes.php',
+    '/wp-admin/customize.php',
+    '/wp-admin/nav-menus.php',
+    '/wp-admin/widgets.php',
+    '/wp-admin/admin.php?page=blueworx-labs-wordpress',
+    '/wp-admin/admin.php?page=blueworx-external',
+    '/wp-admin/admin.php?page=blueworx-support',
+    '/wp-admin/admin.php?page=blueworx-additions',
+  ];
+
+  for (const path of CLOSED) {
+    test(`a viewer cannot open ${path.replace('/wp-admin/', '')}`, async ({ page }) => {
+      await signInAsViewer(page);
+
+      const status = await page.evaluate(async (p) => {
+        const res = await fetch(p, { credentials: 'include', redirect: 'manual' });
+        return res.status;
+      }, path);
+
+      expect(status).toBe(403);
+    });
+  }
+
+  test('but Guides is still theirs to read', async ({ page }) => {
+    await signInAsViewer(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-guides');
+
+    // Guides is registered against edit_posts, which this role keeps, so it
+    // survives the BlueWorx menu being closed without being special-cased.
+    await expect(page.locator('#adminmenu')).toContainText('Guides');
+    await expect(page.getByText('not available to external viewers')).toHaveCount(0);
+  });
+
+  test('the sidebar offers nothing they cannot open', async ({ page }) => {
+    await signInAsViewer(page);
+
+    const menu = await page.evaluate(() =>
+      [...document.querySelectorAll('#adminmenu > li > a')].map((a) => a.textContent.trim())
+    );
+    const joined = menu.join(' | ');
+
+    // A menu entry that 403s is worse than no entry: it reads as the site being
+    // broken rather than as the door being shut.
+    expect(joined).not.toContain('Settings');
+    expect(joined).not.toContain('Tools');
+    expect(joined).not.toContain('Plugins');
+    expect(joined).not.toContain('Appearance');
+    expect(joined).not.toContain('BlueWorx');
+
+    // And the things they are meant to have are still there.
+    expect(joined).toContain('Guides');
+    expect(joined).toContain('Posts');
   });
 
   test('an expired viewer cannot sign in', async ({ page }) => {

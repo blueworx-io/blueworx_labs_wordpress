@@ -101,8 +101,61 @@ function blueworx_external_register_role() {
 	add_role(
 		blueworx_external_role_slug(),
 		blueworx_external_role_name(),
-		blueworx_readonly_build_caps()
+		blueworx_external_build_caps()
 	);
+}
+
+/**
+ * Capabilities an external viewer loses on top of the shared read-only set.
+ *
+ * The shared set makes an account harmless. This one makes it uninteresting:
+ * a client looking round a demo has no business in the site's configuration,
+ * its plugin list or its theme, and showing them those screens invites
+ * questions the demo is not there to answer.
+ *
+ * These are NOT in blueworx_readonly_removed_caps(), and must not be. That set
+ * is shared with BlueWorx support access, whose entire purpose is to read the
+ * settings, plugins and theme screens while diagnosing a site. Taking these
+ * away there would break the feature it was written for.
+ *
+ * Removing manage_options is what closes the BlueWorx screens too — every one
+ * of them is registered against it. Guides is the deliberate exception: it is
+ * registered against edit_posts, which an external viewer keeps, so it stays
+ * reachable without anything here having to special-case it.
+ *
+ * @return array Capability names.
+ */
+function blueworx_external_removed_caps() {
+	return array(
+		// Settings, and with it every BlueWorx screen except Guides.
+		'manage_options',
+
+		// Plugins.
+		'activate_plugins',
+
+		// Appearance: the menu itself, the customiser, menus and widgets.
+		'switch_themes',
+		'edit_theme_options',
+		'customize',
+	);
+}
+
+/**
+ * Builds the external role's capability map.
+ *
+ * The shared read-only clone, minus the screens an outside viewer should not be
+ * looking at.
+ *
+ * @return array Capability map (cap => true).
+ */
+function blueworx_external_build_caps() {
+	$caps = blueworx_readonly_build_caps();
+
+	foreach ( blueworx_external_removed_caps() as $cap ) {
+		unset( $caps[ $cap ] );
+	}
+
+	return $caps;
 }
 
 /**
@@ -183,6 +236,144 @@ function blueworx_external_remove_role() {
  */
 function blueworx_external_is_external_user( $user ) {
 	return blueworx_readonly_user_has_role( $user, blueworx_external_role_slug() );
+}
+
+/**
+ * Screens closed to an external viewer that capabilities alone do not close.
+ *
+ * Most of what this role must not see is shut by blueworx_external_removed_caps():
+ * WordPress hides the menu and refuses the address on its own, which is always
+ * the better mechanism because nothing has to remember to list a screen.
+ *
+ * Tools is the exception. Its top-level page is gated on edit_posts, which an
+ * external viewer keeps because it is also what lets them see the Posts list —
+ * so the only way to close Tools is to name it. The rest are listed as a second
+ * layer behind the capability removal, not instead of it: a plugin that adds a
+ * settings page under a capability we did not take away would otherwise open a
+ * door nobody meant to leave open.
+ *
+ * @return array $pagenow values.
+ */
+function blueworx_external_denied_screens() {
+	/**
+	 * Filters the screens closed to an external viewer.
+	 *
+	 * @param array $screens $pagenow values.
+	 */
+	return (array) apply_filters(
+		'blueworx_external_denied_screens',
+		array(
+			// Tools, and everything filed under it.
+			'tools.php',
+			'import.php',
+			'export.php',
+			'site-health.php',
+			'export-personal-data.php',
+			'erase-personal-data.php',
+
+			// Settings.
+			'options.php',
+			'options-general.php',
+			'options-writing.php',
+			'options-reading.php',
+			'options-discussion.php',
+			'options-media.php',
+			'options-permalink.php',
+			'options-privacy.php',
+			'privacy.php',
+
+			// Plugins.
+			'plugins.php',
+			'plugin-install.php',
+			'plugin-editor.php',
+
+			// Appearance.
+			'themes.php',
+			'theme-install.php',
+			'theme-editor.php',
+			'customize.php',
+			'nav-menus.php',
+			'widgets.php',
+			'site-editor.php',
+		)
+	);
+}
+
+/**
+ * Whether the screen being requested is closed to an external viewer.
+ *
+ * Two shapes are matched. Plain $pagenow values cover core's own screens. The
+ * BlueWorx screens hang off admin.php?page= instead, and are refused as a group
+ * with one exception: Guides, which this role is meant to read.
+ *
+ * @return bool True when the screen must be refused.
+ */
+function blueworx_external_screen_is_denied() {
+	global $pagenow;
+
+	$screen = (string) $pagenow;
+
+	if ( in_array( $screen, blueworx_external_denied_screens(), true ) ) {
+		return true;
+	}
+
+	if ( 'admin.php' === $screen ) {
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen routing; nothing is authorised on the strength of this value.
+
+		if ( 0 !== strpos( $page, 'blueworx-' ) ) {
+			return false;
+		}
+
+		return 'blueworx-guides' !== $page;
+	}
+
+	return false;
+}
+
+/**
+ * Refuses the screens an external viewer may not open.
+ *
+ * A 403 rather than a redirect, so the refusal is unambiguous — and at priority
+ * 0 for the same reason the read-only guard's own gates run there: another
+ * feature's admin_init handler must not get the chance to turn this into a
+ * redirect that answers 200.
+ *
+ * @return void
+ */
+function blueworx_external_gate_screens() {
+	if ( ! blueworx_external_is_external_user( wp_get_current_user() ) ) {
+		return;
+	}
+
+	if ( ! blueworx_external_screen_is_denied() ) {
+		return;
+	}
+
+	wp_die(
+		esc_html__( 'This part of the site is not available to external viewers.', 'blueworx-labs-wordpress' ),
+		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
+		array( 'response' => 403 )
+	);
+}
+
+/**
+ * Takes the closed screens out of the sidebar.
+ *
+ * Cosmetic, and deliberately separate from the gate above: capabilities already
+ * hide Settings, Plugins and Appearance, and the gate already refuses every
+ * address. This only stops Tools advertising itself, since the capability that
+ * shows it is one this role has to keep.
+ *
+ * Priority 999 so it runs after every plugin has registered its own menus.
+ *
+ * @return void
+ */
+function blueworx_external_hide_menus() {
+	if ( ! blueworx_external_is_external_user( wp_get_current_user() ) ) {
+		return;
+	}
+
+	remove_menu_page( 'tools.php' );
 }
 
 /**
@@ -320,6 +511,14 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 	// admin page — that could otherwise still reach the handler.
 	add_action( 'admin_init', 'blueworx_external_handle_actions' );
 }
+
+// Registered whatever the feature's state, like the expiry enforcement above and
+// for the same reason: switching the function off does not delete the accounts,
+// and a viewer still holding a session must not find Settings and Plugins opening
+// for them because a toggle moved. Both callbacks return immediately for anyone
+// who is not an external viewer.
+add_action( 'admin_init', 'blueworx_external_gate_screens', 0 );
+add_action( 'admin_menu', 'blueworx_external_hide_menus', 999 );
 
 // Registered unconditionally, unlike the role above — mirrors
 // blueworx_support_enforce_window(), which also registers regardless of the
@@ -1024,6 +1223,11 @@ function blueworx_external_render_panel() {
 		)
 	);
 
+	// Wrapped in a plain div, which the field grid stretches instead of the
+	// button. A grid item defaults to justify-self:stretch, so the button —
+	// inline-flex though it is — was being pulled the full width of the card and
+	// reading as a page-wide bar rather than as the action on this form.
+	echo '<div>';
 	echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
 		array(
 			'label'   => __( 'Send invitation', 'blueworx-labs-wordpress' ),
@@ -1032,10 +1236,29 @@ function blueworx_external_render_panel() {
 			'attrs'   => array( 'data-testid' => 'bw-external-invite' ),
 		)
 	);
+	echo '</div>';
 
 	echo '</form>';
+}
 
+/**
+ * Renders the people already invited, as a card of their own.
+ *
+ * A second card rather than more of the first: inviting somebody and reviewing
+ * who is already in are two different jobs, and running them together left the
+ * table butted straight up against the form's submit button with nothing
+ * between them. The panels container spaces the two cards for us.
+ *
+ * @return void
+ */
+function blueworx_external_render_invitations() {
+	$self        = admin_url( 'admin.php?page=blueworx-external' );
 	$invitations = blueworx_external_invitations();
+
+	echo '<section class="bw-card"><div class="bw-card__head"><div class="bw-card__titles">';
+	echo '<p class="bw-card__eyebrow">' . esc_html__( 'Everyone you have let in', 'blueworx-labs-wordpress' ) . '</p>';
+	echo '<h2 class="bw-card__title">' . esc_html__( 'Who has access', 'blueworx-labs-wordpress' ) . '</h2>';
+	echo '</div></div><div class="bw-card__body">';
 
 	if ( empty( $invitations ) ) {
 		echo wp_kses(
@@ -1047,6 +1270,8 @@ function blueworx_external_render_panel() {
 			),
 			blueworx_ds_allowed_html()
 		);
+
+		echo '</div></section>';
 
 		return;
 	}
@@ -1150,6 +1375,8 @@ function blueworx_external_render_panel() {
 	}
 
 	echo '</tbody></table>';
+
+	echo '</div></section>';
 }
 
 /**
