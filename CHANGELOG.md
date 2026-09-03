@@ -31,7 +31,7 @@ versioning.
 ### Added
 - **Invite somebody to look round the back end without letting them change
   anything.** A new External access screen under BlueWorx is off until you turn
-  it on. Enter a name and email and choose how long they get in — 7, 30 or 90
+  it on. Enter a name and email and choose how long they get in — 3, 7 or 14
   days — and they receive one email with a link to choose their own password;
   no password is ever sent. Once in, they see the back end the way an
   administrator does, but nothing they click changes anything, and customer and

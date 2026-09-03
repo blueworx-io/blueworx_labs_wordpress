@@ -24,7 +24,7 @@ the site owner. It is not something you invite a named person into.
    individually.
 3. An invitation that sends the person an email with a link to set their own
    password — no credential ever sits in an inbox in plain text.
-4. Access that expires on its own, 30 days by default.
+4. Access that expires on its own, 7 days by default.
 5. One read-only implementation shared with support access, not a second copy.
 
 ## Non-goals
@@ -171,7 +171,7 @@ invitation, and nothing can be left orphaned in a table the Users screen does
 not know about.
 
 **Creating an invitation.** From the External panel: name, email address,
-optional note, and duration (7 / 30 / 90 days, default 30). On submit:
+optional note, and duration (3 / 7 / 14 days, default 7). On submit:
 
 1. Reject unless `current_user_can( 'promote_users' )` and the nonce verifies.
 2. Reject an email address that already belongs to a user, with a message

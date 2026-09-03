@@ -262,23 +262,30 @@ check( 'and nor does nobody at all', blueworx_external_is_external_user( null ),
 
 echo "\nHow long an invitation lasts\n";
 
-check( 'the default is thirty days', blueworx_external_default_duration(), 30 );
-check( 'seven is offered', in_array( 7, blueworx_external_durations(), true ), true );
-check( 'ninety is offered', in_array( 90, blueworx_external_durations(), true ), true );
+check( 'the default is seven days', blueworx_external_default_duration(), 7 );
+check( 'three is offered', in_array( 3, blueworx_external_durations(), true ), true );
+check( 'fourteen is offered', in_array( 14, blueworx_external_durations(), true ), true );
+
+// The lengths that used to be on offer must NOT be honoured any more. A stale
+// form left open in a tab, or a bookmarked POST, would otherwise still buy
+// ninety days from a screen that now offers at most fourteen.
+check( 'thirty is no longer offered', in_array( 30, blueworx_external_durations(), true ), false );
+check( 'nor is ninety', in_array( 90, blueworx_external_durations(), true ), false );
 
 echo "\nA duration nobody offered falls back rather than being honoured\n";
 
-check( 'a value off the list', blueworx_external_sanitize_duration( 3650 ), 30 );
-check( 'a negative value', blueworx_external_sanitize_duration( -1 ), 30 );
-check( 'junk', blueworx_external_sanitize_duration( 'forever' ), 30 );
-check( 'and a value on the list is kept', blueworx_external_sanitize_duration( '7' ), 7 );
+check( 'a value off the list', blueworx_external_sanitize_duration( 3650 ), 7 );
+check( 'a negative value', blueworx_external_sanitize_duration( -1 ), 7 );
+check( 'junk', blueworx_external_sanitize_duration( 'forever' ), 7 );
+check( 'a length we used to offer', blueworx_external_sanitize_duration( 90 ), 7 );
+check( 'and a value on the list is kept', blueworx_external_sanitize_duration( '14' ), 14 );
 
 echo "\nExpiry is counted from now, not from midnight\n";
 
 $now = 1000000;
 
-check( 'thirty days on', blueworx_external_expiry_from( $now, 30 ), $now + ( 30 * DAY_IN_SECONDS ) );
-check( 'seven days on', blueworx_external_expiry_from( $now, 7 ), $now + ( 7 * DAY_IN_SECONDS ) );
+check( 'fourteen days on', blueworx_external_expiry_from( $now, 14 ), $now + ( 14 * DAY_IN_SECONDS ) );
+check( 'three days on', blueworx_external_expiry_from( $now, 3 ), $now + ( 3 * DAY_IN_SECONDS ) );
 
 echo "\nA username is derived from the email address\n";
 
@@ -299,7 +306,7 @@ $id = blueworx_external_invite(
 		'name'  => 'Jane Doe',
 		'email' => 'jane@example.com',
 		'note'  => 'Prospect, seen the pitch',
-		'days'  => 30,
+		'days'  => 14,
 	)
 );
 
@@ -310,8 +317,8 @@ check( 'in the external role', $GLOBALS['users'][ $id ]['role'], 'blueworx_exter
 check( 'with a username off the address', $GLOBALS['users'][ $id ]['login'], 'jane' );
 check(
 	'and an expiry thirty days out',
-	blueworx_external_expires_at( $id ) >= blueworx_external_expiry_from( $before, 30 )
-		&& blueworx_external_expires_at( $id ) <= blueworx_external_expiry_from( $after, 30 ),
+	blueworx_external_expires_at( $id ) >= blueworx_external_expiry_from( $before, 14 )
+		&& blueworx_external_expires_at( $id ) <= blueworx_external_expiry_from( $after, 14 ),
 	true
 );
 check(
@@ -342,7 +349,7 @@ $again = blueworx_external_invite(
 	array(
 		'name'  => 'Jane Doe',
 		'email' => 'jane@example.com',
-		'days'  => 30,
+		'days'  => 14,
 	)
 );
 
@@ -350,7 +357,7 @@ check( 'a duplicate is refused', is_wp_error( $again ), true );
 
 echo "\nAnd an address that is not one is refused before an account exists\n";
 
-$bad = blueworx_external_invite( array( 'name' => 'Nobody', 'email' => 'not-an-address', 'days' => 30 ) );
+$bad = blueworx_external_invite( array( 'name' => 'Nobody', 'email' => 'not-an-address', 'days' => 14 ) );
 
 check( 'junk is refused', is_wp_error( $bad ), true );
 
@@ -390,7 +397,7 @@ echo "\nA resend that fails leaves the link the person already has alone\n";
 $GLOBALS['mail_fails'] = false;
 
 $holder = blueworx_external_invite(
-	array( 'name' => 'Ada', 'email' => 'ada@example.com', 'days' => 30 )
+	array( 'name' => 'Ada', 'email' => 'ada@example.com', 'days' => 14 )
 );
 
 $GLOBALS['users'][ $holder ]['activation_key'] = 'THEIR-WORKING-KEY';
@@ -416,7 +423,7 @@ $second = blueworx_external_invite(
 	array(
 		'name'  => 'Jane Other',
 		'email' => 'jane@other.example',
-		'days'  => 30,
+		'days'  => 14,
 	)
 );
 
@@ -433,7 +440,7 @@ check( 'and no reset key was generated for them', $GLOBALS['reset_keys_issued'],
 echo "\nAccess stops when it runs out\n";
 
 $live = blueworx_external_invite(
-	array( 'name' => 'Live', 'email' => 'live@example.com', 'days' => 30 )
+	array( 'name' => 'Live', 'email' => 'live@example.com', 'days' => 14 )
 );
 
 check( 'a fresh invitation is not expired', blueworx_external_is_expired( $live ), false );
@@ -468,7 +475,7 @@ echo "\nExtending is refused for an account outside the external role\n";
 // should never be trusted to belong to an external account.
 $admin_expiry_before = blueworx_external_expires_at( 1 );
 
-check( 'extending an administrator is refused', blueworx_external_extend( 1, 30 ), false );
+check( 'extending an administrator is refused', blueworx_external_extend( 1, 14 ), false );
 check(
 	'and no expiry meta was written onto them',
 	blueworx_external_expires_at( 1 ),
@@ -483,7 +490,7 @@ $refused = blueworx_external_block_expired_login( get_userdata( $live ), 'live',
 
 check( 'authentication is refused', is_wp_error( $refused ), true );
 
-blueworx_external_extend( $live, 30 );
+blueworx_external_extend( $live, 14 );
 
 $allowed = blueworx_external_block_expired_login( get_userdata( $live ), 'live', 'whatever' );
 
@@ -518,7 +525,7 @@ check(
 echo "\nRevoking removes the account entirely\n";
 
 $revoked = blueworx_external_invite(
-	array( 'name' => 'Revoke Me', 'email' => 'revoke@example.com', 'days' => 30 )
+	array( 'name' => 'Revoke Me', 'email' => 'revoke@example.com', 'days' => 14 )
 );
 
 check( 'revoking an external account succeeds', blueworx_external_revoke( $revoked ), true );

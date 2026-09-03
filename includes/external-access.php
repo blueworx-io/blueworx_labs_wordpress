@@ -191,7 +191,7 @@ function blueworx_external_is_external_user( $user ) {
  * @return array Whole days.
  */
 function blueworx_external_durations() {
-	return array( 7, 30, 90 );
+	return array( 3, 7, 14 );
 }
 
 /**
@@ -200,7 +200,7 @@ function blueworx_external_durations() {
  * @return int Whole days.
  */
 function blueworx_external_default_duration() {
-	return 30;
+	return 7;
 }
 
 /**
@@ -912,7 +912,10 @@ function blueworx_external_state_badge( $user_id ) {
 		return blueworx_ds_badge( __( 'Ended', 'blueworx-labs-wordpress' ), 'neutral', true );
 	}
 
-	if ( ( $expires - $now ) <= ( 3 * DAY_IN_SECONDS ) ) {
+	// One day, not three. The shortest invitation on offer is three days, so a
+	// three-day threshold would badge every new invitation "Ends soon" the moment
+	// it was sent — a warning that fires on arrival tells nobody anything.
+	if ( ( $expires - $now ) <= DAY_IN_SECONDS ) {
 		return blueworx_ds_badge( __( 'Ends soon', 'blueworx-labs-wordpress' ), 'warning', true );
 	}
 
