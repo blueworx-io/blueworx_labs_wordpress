@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 11;
+	return 12;
 }
 
 /**
@@ -104,6 +104,29 @@ function blueworx_migrate_external_access_default() {
 	}
 
 	update_option( 'blueworx_feature_external_access', '0' );
+}
+
+/**
+ * Puts the external role in place on a site that already has the function on.
+ *
+ * Until now the role was rebuilt on every admin request, which meant it existed
+ * by accident of the last page load rather than because anything had written
+ * it. That rebuild is gone — it was two database writes per admin page view,
+ * and it left a window in which the role did not exist at all — so a site
+ * upgrading with External access already switched on needs the role written
+ * once, here.
+ *
+ * Nothing happens on a site with the function off, or where the role is already
+ * there: this only fills the gap the removed hook used to paper over.
+ *
+ * @return void
+ */
+function blueworx_migrate_register_external_role() {
+	if ( ! blueworx_feature_enabled( 'external_access' ) ) {
+		return;
+	}
+
+	blueworx_external_ensure_role();
 }
 
 /**
@@ -656,6 +679,12 @@ function blueworx_run_pending_labs_migrations() {
 	// Same reasoning, and must run before the same version row write.
 	if ( $stored_version < 11 ) {
 		blueworx_migrate_external_access_default();
+	}
+
+	// After the migration above, so a site being opted out of the function does
+	// not get a role written for it a moment later.
+	if ( $stored_version < 12 ) {
+		blueworx_migrate_register_external_role();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );

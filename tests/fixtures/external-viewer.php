@@ -15,7 +15,9 @@
  *  - Switches the external_access feature on. blueworx_external_is_expired()
  *    reads a switched-off feature as access having ended, regardless of the
  *    account's own recorded expiry.
- *  - Registers the role, which normally only happens on admin_init.
+ *  - Registers the role, which the plugin itself only writes when the function
+ *    is switched on, when the plugin is activated, or on the upgrade migration
+ *    — none of which this fixture goes through.
  *  - Calls blueworx_external_allow_in_site_protection(), the same call
  *    blueworx_handle_external_feature_toggle() makes when an operator switches
  *    the feature on. Without it, a site with Site Protection's backend
@@ -96,8 +98,9 @@ update_option(
 // account as expired regardless of its recorded expiry date.
 update_option( 'blueworx_feature_external_access', '1' );
 
-// The role has to exist before anybody can be put in it, and it is registered on
-// admin_init — which this process never reaches.
+// The role has to exist before anybody can be put in it, and the plugin only
+// writes it when the function is switched on, on activation, or on the upgrade
+// migration — none of which this process goes through.
 if ( function_exists( 'blueworx_external_register_role' ) ) {
 	blueworx_external_register_role();
 }

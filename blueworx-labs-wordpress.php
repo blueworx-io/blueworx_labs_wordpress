@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.77.0
+ * Version:           1.77.1
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -63,7 +63,7 @@ if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN )
 $blueworx_update_checker->getVcsApi()->enableReleaseAssets();
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.77.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.77.1' );
 }
 
 // The main plugin file's own path. Two things need it by name rather than by
@@ -132,6 +132,21 @@ require_once BLUEWORX_LABS_PATH . 'includes/login-session.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-redirect.php';
 require_once BLUEWORX_LABS_PATH . 'includes/view-as-role.php';
 require_once BLUEWORX_LABS_PATH . 'includes/display-names.php';
+
+/**
+ * Puts back what deactivation took away.
+ *
+ * Only the external role, and only when the function is already on — which
+ * means this is a reactivation, and deactivation removed the role on the way
+ * out. A fresh install has the function off and registers the role when
+ * somebody switches it on.
+ *
+ * @return void
+ */
+function blueworx_labs_on_activate() {
+	blueworx_external_on_activate();
+}
+register_activation_hook( __FILE__, 'blueworx_labs_on_activate' );
 
 /**
  * Tears down everything that must not outlive the plugin being switched off.

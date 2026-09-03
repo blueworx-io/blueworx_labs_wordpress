@@ -284,5 +284,41 @@ function blueworx_set_feature_enabled( $key, $on ) {
 		return;
 	}
 
+	$was_on = blueworx_feature_enabled( $key );
+
 	update_option( 'blueworx_feature_' . $key, $on ? '1' : '0' );
+
+	if ( $on && ! $was_on ) {
+		blueworx_on_feature_switched_on( $key );
+	}
+}
+
+/**
+ * Does the setting-up a function needs the first time it is switched on.
+ *
+ * Here rather than in the screen that owns the switch, because there is more
+ * than one screen: Enhancements posts the whole registry, and the External
+ * access screen posts one key. Hanging this off the screen meant a site owner
+ * who used Enhancements got the function without its setting-up, and nothing
+ * on screen explained the failure that followed.
+ *
+ * @param string $key Feature key that has just gone from off to on.
+ * @return void
+ */
+function blueworx_on_feature_switched_on( $key ) {
+	if ( 'external_access' !== $key ) {
+		return;
+	}
+
+	// Order matters: the role has to exist before it can be named in a
+	// protection list, or the list would carry a slug nothing answers to.
+	if ( function_exists( 'blueworx_external_register_role' ) ) {
+		blueworx_external_register_role();
+	}
+
+	// An invited viewer on a site with a Site Protection allow-list would
+	// otherwise meet a 403 at the door with nothing explaining why.
+	if ( function_exists( 'blueworx_external_allow_in_site_protection' ) ) {
+		blueworx_external_allow_in_site_protection();
+	}
 }

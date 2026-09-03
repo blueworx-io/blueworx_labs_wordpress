@@ -80,6 +80,20 @@ function blueworx_external_role_name() {
  * administrator, and a role frozen at first registration would quietly stop
  * showing the screens this feature exists to show.
  *
+ * Called only at the moments the role can actually need writing — the plugin
+ * activating, the function being switched on, and a site upgrading into a
+ * version that has it on already. It is NOT called on admin_init, the way an
+ * earlier version did: remove_role() and add_role() are two writes to the
+ * autoloaded wp_user_roles option, so that put two database writes on every
+ * wp-admin page load of every user — including the read-only viewers, who
+ * would have been writing to the database on a GET. Worse, between the two
+ * calls the role does not exist at all, so a request arriving in that window
+ * resolved an external user with no capabilities and no role for the read-only
+ * guard to recognise.
+ *
+ * includes/support-access.php sets the precedent: it writes its role only when
+ * a key is generated.
+ *
  * @return void
  */
 function blueworx_external_register_role() {
@@ -89,6 +103,43 @@ function blueworx_external_register_role() {
 		blueworx_external_role_name(),
 		blueworx_readonly_build_caps()
 	);
+}
+
+/**
+ * Makes sure the role exists, without rewriting one that already does.
+ *
+ * The cheap call for anywhere that only needs the role to be there — plugin
+ * activation, an upgrade — as against blueworx_external_register_role(), which
+ * deliberately rebuilds the capability map and is reserved for the moments
+ * somebody actually switched the function on.
+ *
+ * @return void
+ */
+function blueworx_external_ensure_role() {
+	if ( get_role( blueworx_external_role_slug() ) ) {
+		return;
+	}
+
+	blueworx_external_register_role();
+}
+
+/**
+ * Puts the role in place when the plugin is activated.
+ *
+ * Only for a site that already has the function switched on, which means a
+ * reactivation: a fresh install has it off, and switching it on registers the
+ * role at that point.
+ *
+ * Registered on register_activation_hook in blueworx-labs-wordpress.php.
+ *
+ * @return void
+ */
+function blueworx_external_on_activate() {
+	if ( ! blueworx_feature_enabled( 'external_access' ) ) {
+		return;
+	}
+
+	blueworx_external_ensure_role();
 }
 
 /**
@@ -257,13 +308,14 @@ function blueworx_external_on_deactivate() {
 }
 
 if ( blueworx_feature_enabled( 'external_access' ) ) {
-	// Registered on admin_init rather than at load: add_role() writes an option,
-	// and doing that on every front-end request of every site is a database
-	// write nobody asked for. The role only has to exist where it is assigned
-	// and where capabilities are resolved, and admin_init covers both.
-	add_action( 'admin_init', 'blueworx_external_register_role', 1 );
-	// Gated behind the same feature check as the role above: while the feature
-	// is off the console cannot render (blueworx_render_external_page() returns
+	// The role is NOT registered from a hook here. See
+	// blueworx_external_register_role() for why an admin_init rebuild was a
+	// database write on every page load and a window in which the role did not
+	// exist; the three places it is written now are plugin activation, the
+	// function being switched on, and the upgrade migration.
+	//
+	// The handler is gated behind the feature check above: while the feature is
+	// off the console cannot render (blueworx_render_external_page() returns
 	// before the form does), so this closes the one path — a forged POST to any
 	// admin page — that could otherwise still reach the handler.
 	add_action( 'admin_init', 'blueworx_external_handle_actions' );
@@ -429,16 +481,45 @@ function blueworx_external_reset_url( $user ) {
 }
 
 /**
+ * Puts a password-reset key back the way it was.
+ *
+ * Written straight to the users table because there is no API for it:
+ * get_password_reset_key() only ever mints a new one. The stored value carries
+ * its own timestamp, so restoring it restores the original expiry too — this
+ * puts the account back exactly where it was, it does not extend anything.
+ *
+ * @param int    $user_id Account to restore.
+ * @param string $key     The value that was there before.
+ * @return void
+ */
+function blueworx_external_restore_reset_key( $user_id, $key ) {
+	global $wpdb;
+
+	$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->users,
+		array( 'user_activation_key' => (string) $key ),
+		array( 'ID' => (int) $user_id )
+	);
+
+	clean_user_cache( (int) $user_id );
+}
+
+/**
  * Sends, or re-sends, the invitation email.
  *
  * Plain text. It says who invited them, that the access is view-only, when it
  * ends, and gives one link. It contains no password, because there is no
  * password to contain.
  *
- * Refuses to run for any account outside the external role. Nothing calls
- * this from a request today, but a resend button will, and a resend button
+ * Refuses to run for any account outside the external role. A resend button
  * that trusted its $user_id argument would mail a password-reset link for
  * whichever account it was pointed at — an administrator included.
+ *
+ * Minting the new link rotates the key, which kills the link in any email the
+ * person already has. That is correct when the new message goes out, and wrong
+ * when it does not: a resend that fails would otherwise leave somebody with two
+ * dead links and no way back. So the previous key is kept and put back if the
+ * send fails, and the account is left exactly as it was found.
  *
  * @param int $user_id Invited account.
  * @return bool True when the mail was handed off successfully.
@@ -449,6 +530,8 @@ function blueworx_external_send_invite( $user_id ) {
 	if ( ! $user instanceof WP_User || ! blueworx_external_is_external_user( $user ) ) {
 		return false;
 	}
+
+	$previous_key = isset( $user->user_activation_key ) ? (string) $user->user_activation_key : '';
 
 	$link = blueworx_external_reset_url( $user );
 
@@ -492,7 +575,15 @@ function blueworx_external_send_invite( $user_id ) {
 		),
 	);
 
-	return (bool) wp_mail( $user->user_email, $subject, implode( "\n", $lines ) );
+	$sent = (bool) wp_mail( $user->user_email, $subject, implode( "\n", $lines ) );
+
+	if ( ! $sent ) {
+		// Nothing went out, so nothing should have changed. Whatever link the
+		// person is already holding keeps working.
+		blueworx_external_restore_reset_key( $user->ID, $previous_key );
+	}
+
+	return $sent;
 }
 
 /**
@@ -706,6 +797,16 @@ function blueworx_external_handle_actions() {
 	}
 
 	if ( ! current_user_can( 'create_users' ) || ! current_user_can( 'promote_users' ) ) {
+		// Said rather than silent. The screen registers on create_users alone, so
+		// somebody holding that and not promote_users — a common shape on
+		// multisite — can open it, fill the form in and get nothing back at all.
+		// A form that does nothing and says nothing reads as a broken site.
+		blueworx_external_set_notice(
+			'error',
+			__( 'Nothing was done.', 'blueworx-labs-wordpress' ),
+			__( 'Inviting somebody both creates an account and gives it a role, and this account cannot do both. Ask an administrator to do it.', 'blueworx-labs-wordpress' )
+		);
+
 		return;
 	}
 
@@ -784,7 +885,7 @@ function blueworx_external_handle_actions() {
 			blueworx_external_set_notice(
 				'error',
 				__( 'That email did not send.', 'blueworx-labs-wordpress' ),
-				__( 'This site could not hand the message to a mail server.', 'blueworx-labs-wordpress' )
+				__( 'This site could not hand the message to a mail server. Any link they already have still works.', 'blueworx-labs-wordpress' )
 			);
 		}
 	}
@@ -1016,7 +1117,18 @@ function blueworx_external_render_panel() {
 		);
 		echo '</form>';
 
-		echo '<form method="post" action="' . esc_url( $self ) . '">';
+		// Asks before it deletes. Withdrawing removes the account outright and
+		// there is no undo, and the button sits a few pixels from Resend. The
+		// question is carried on the form as an attribute and asked by
+		// assets/js/external-access.js — never an inline handler, which this
+		// codebase does not allow.
+		echo '<form method="post" action="' . esc_url( $self ) . '" data-blueworx-confirm="' . esc_attr(
+			sprintf(
+				/* translators: %s: the invited person's name. */
+				__( 'Withdraw access for %s? Their account is deleted and this cannot be undone.', 'blueworx-labs-wordpress' ),
+				$user->display_name
+			)
+		) . '">';
 		wp_nonce_field( 'blueworx_external_revoke_' . $user->ID );
 		echo '<input type="hidden" name="blueworx_external_action" value="revoke" />';
 		echo '<input type="hidden" name="blueworx_external_user" value="' . esc_attr( $user->ID ) . '" />';

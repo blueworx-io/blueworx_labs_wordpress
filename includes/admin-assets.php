@@ -225,6 +225,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		'toplevel_page_blueworx-guides',
 		'blueworx_page_blueworx-support',
 		'blueworx_page_blueworx-sso',
+		'blueworx_page_blueworx-external',
 		'profile.php',
 		'user-edit.php',
 	);
@@ -410,6 +411,20 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 
 		return;
 	}
+	// The External access screen asks before it withdraws somebody's access,
+	// which deletes their account.
+	if ( 'blueworx_page_blueworx-external' === $hook_suffix ) {
+		wp_enqueue_script(
+			'blueworx-labs-wordpress-external-access',
+			BLUEWORX_LABS_URL . 'assets/js/external-access.js',
+			array(),
+			blueworx_get_admin_asset_version( 'assets/js/external-access.js' ),
+			true
+		);
+
+		return;
+	}
+
 	if ( 'blueworx_page_blueworx-edit-menu' === $hook_suffix ) {
 		// No stylesheet of its own any more: the screen is built from the design
 		// system, which blueworx_enqueue_admin_design_system() loads here whether

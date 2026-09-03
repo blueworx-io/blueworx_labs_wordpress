@@ -4,6 +4,28 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.77.1] - 2026-09-03
+
+### Fixed
+- **An external viewer could copy a page with one click.** The Duplicate link
+  on every page and post row was a plain link, and the rule that refuses
+  changes only looked at forms being submitted, so a viewer could use it. It is
+  refused now, for support access too.
+- **An external viewer could publish through the old remote-publishing
+  endpoint.** XML-RPC checks its password separately, after the read-only rule
+  has already had its say, so it never saw them. It does now — whether or not
+  that endpoint is switched on.
+- **The External viewer role was being rewritten on every admin page load**,
+  which is two database writes per page for everybody, and left a split second
+  where the role did not exist at all.
+- **Turning External access on from the Enhancements screen** now lets invited
+  people past Site Protection, the same way turning it on from its own screen
+  already did. Before, invitations sent that way met a "not allowed" page with
+  nothing explaining why.
+- **Withdrawing somebody's access now asks first.** It deletes their account and
+  there is no undo, and the button sits next to Resend.
+- **A resend that fails no longer kills the link the person already has.**
+
 ## [1.77.0] - 2026-09-03
 
 ### Added

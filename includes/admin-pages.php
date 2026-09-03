@@ -235,18 +235,12 @@ function blueworx_handle_external_feature_toggle() {
 
 	$on = ! empty( $_POST['blueworx_external_feature'] );
 
+	// Registering the role and adding it to any Site Protection allow-list used
+	// to happen here. It does not any more: blueworx_set_feature_enabled() does
+	// it on the off-to-on transition itself, so the Enhancements screen — which
+	// writes the same switch — gets it too. See
+	// blueworx_on_feature_switched_on() in includes/features.php.
 	blueworx_set_feature_enabled( 'external_access', $on );
-
-	if ( $on && function_exists( 'blueworx_external_register_role' ) ) {
-		// Registered here as well as on admin_init so the role exists for the
-		// very first invitation, which can be made before the next page load.
-		blueworx_external_register_role();
-		// Only when switching on: a viewer invited into a protected site must not
-		// be locked out by an allow-list that predates the invitation. Switching
-		// the feature off leaves Site Protection's lists exactly as an admin set
-		// them.
-		blueworx_external_allow_in_site_protection();
-	}
 
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-external' ) );
 	exit;

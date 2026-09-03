@@ -268,10 +268,6 @@ function blueworx_save_feature_settings() {
 
 	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
-		blueworx_set_feature_enabled( $key, isset( $posted[ $key ] ) );
-	}
-
 	// Login detail: editable slug.
 	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
 	update_option( 'blueworx_login_slug', blueworx_sanitize_login_slug( $raw_slug ) );
@@ -285,6 +281,15 @@ function blueworx_save_feature_settings() {
 
 		update_option( 'blueworx_' . $area . '_protection_enabled', $enabled );
 		update_option( 'blueworx_' . $area . '_protection_roles', $roles, false );
+	}
+
+	// The switches are written AFTER the Site Protection lists above, not before
+	// them. Switching a function on can add a role to those lists —
+	// blueworx_on_feature_switched_on() does exactly that for External access —
+	// and this form posts the lists wholesale, so writing the switches first
+	// would have this very request overwrite what the switch had just added.
+	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
+		blueworx_set_feature_enabled( $key, isset( $posted[ $key ] ) );
 	}
 
 	// Application Passwords detail.

@@ -132,13 +132,28 @@ test.describe('External access console', () => {
     await expect(page.getByText('Nobody was invited.')).toBeVisible();
   });
 
-  test('withdrawing access removes the row', async ({ page }) => {
+  test('withdrawing access asks first, and then removes the row', async ({ page }) => {
     await openConsole(page);
     await ensureFeatureOn(page);
 
     const row = page.locator('[data-testid="bw-external-row"]', { hasText: INVITEE });
 
+    // Withdrawing deletes the account and there is no undo, so the form asks
+    // before it submits (assets/js/external-access.js). Playwright dismisses
+    // dialogs unless something handles them — which is also the proof the
+    // question is really being asked: without this handler the click would be
+    // cancelled and the row would still be there.
+    let asked = '';
+    page.on('dialog', (dialog) => {
+      asked = dialog.message();
+      dialog.accept();
+    });
+
     await row.locator('[data-testid="bw-external-revoke"]').click();
+
+    await expect
+      .poll(() => asked, { message: 'Withdraw must ask before it deletes' })
+      .toContain('cannot be undone');
 
     await expect(
       page.locator('[data-testid="bw-external-row"]', { hasText: INVITEE })

@@ -56,11 +56,14 @@ delete_option( 'blueworx_support_log' );
 // (the same reason blueworx_support_remove_account() above is required in
 // explicitly rather than referenced by name alone).
 //
-// The invited accounts themselves are not removed. Deleting somebody's user
-// account is not a decision an uninstall should take on its owner's behalf,
-// unlike the managed support account above, which exists solely as a vessel
-// for this plugin's own feature. An account left without this role simply has
-// no capabilities until an administrator gives it some or removes it.
+// The invited accounts are already gone by the time this runs, and that is
+// deliberate. WordPress always deactivates a plugin before it uninstalls it,
+// and blueworx_external_on_deactivate() deletes every invited account on the
+// way out: an external account is administrator-shaped, and the only thing
+// making it read-only is this plugin's own request-layer block. Left standing
+// with the plugin off, it would be a working administrator login. So the
+// accounts go with the code that narrows them, and what is left to clear here
+// is the role definition, the switch and the meta.
 delete_option( 'blueworx_feature_external_access' );
 
 remove_role( 'blueworx_external' );

@@ -24,6 +24,7 @@ class WP_User {
 	public $user_login = '';
 	public $user_email = '';
 	public $display_name = '';
+	public $user_activation_key = '';
 
 	public function __construct( $id = 0, $roles = array() ) {
 		$this->ID    = $id;
@@ -163,19 +164,46 @@ $GLOBALS['reset_keys_issued'] = 0;
 function get_password_reset_key( $user ) {
 	++$GLOBALS['reset_keys_issued'];
 
+	// Mirrors core: minting a key WRITES it to the account, killing whatever
+	// link was there before. That side effect is the whole reason
+	// blueworx_external_send_invite() keeps the previous value.
+	$GLOBALS['users'][ $user->ID ]['activation_key'] = 'RESETKEY123';
+
 	return 'RESETKEY123';
 }
+
+/**
+ * The one wpdb call this file's code under test makes: putting a reset key back.
+ *
+ * Narrow on purpose. It answers to the single update() shape
+ * blueworx_external_restore_reset_key() uses and would fail loudly on any other,
+ * rather than quietly accepting writes nothing has checked.
+ */
+class Blueworx_Test_Wpdb {
+	public $users = 'wp_users';
+
+	public function update( $table, $data, $where ) {
+		$GLOBALS['users'][ $where['ID'] ]['activation_key'] = $data['user_activation_key'];
+
+		return 1;
+	}
+}
+
+$GLOBALS['wpdb'] = new Blueworx_Test_Wpdb();
+
+function clean_user_cache( $id ) {}
 
 function get_userdata( $id ) {
 	if ( ! isset( $GLOBALS['users'][ $id ] ) ) {
 		return false;
 	}
 
-	$row                 = $GLOBALS['users'][ $id ];
-	$user                = new WP_User( $row['id'], array( $row['role'] ) );
-	$user->user_login    = $row['login'];
-	$user->user_email    = $row['email'];
-	$user->display_name  = $row['name'];
+	$row                       = $GLOBALS['users'][ $id ];
+	$user                      = new WP_User( $row['id'], array( $row['role'] ) );
+	$user->user_login          = $row['login'];
+	$user->user_email          = $row['email'];
+	$user->display_name        = $row['name'];
+	$user->user_activation_key = isset( $row['activation_key'] ) ? $row['activation_key'] : '';
 
 	return $user;
 }
@@ -356,7 +384,31 @@ check(
 );
 check( 'and the failure is visible to the caller', blueworx_external_send_invite( $failed ), false );
 
+echo "\nA resend that fails leaves the link the person already has alone\n";
+
+// A working invitation: the key on the account is the one their email carries.
 $GLOBALS['mail_fails'] = false;
+
+$holder = blueworx_external_invite(
+	array( 'name' => 'Ada', 'email' => 'ada@example.com', 'days' => 30 )
+);
+
+$GLOBALS['users'][ $holder ]['activation_key'] = 'THEIR-WORKING-KEY';
+
+// Now mail breaks and they ask for it again.
+$GLOBALS['mail_fails'] = true;
+
+check( 'the resend reports failure', blueworx_external_send_invite( $holder ), false );
+check(
+	'and their existing link still works',
+	$GLOBALS['users'][ $holder ]['activation_key'],
+	'THEIR-WORKING-KEY'
+);
+
+$GLOBALS['mail_fails'] = false;
+
+check( 'while a resend that succeeds does rotate it', blueworx_external_send_invite( $holder ), true );
+check( 'to the newly minted key', $GLOBALS['users'][ $holder ]['activation_key'], 'RESETKEY123' );
 
 echo "\nA username collision is resolved by numbering, not by failing\n";
 
