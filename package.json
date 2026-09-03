@@ -1,6 +1,6 @@
 {
   "name": "blueworx-labs-wordpress",
-  "version": "1.76.2",
+  "version": "1.78.2",
   "private": true,
   "description": "BlueWorx Labs | WordPress Enhancements — site hardening, admin and media tools, and profile enhancements.",
   "license": "GPL-2.0-or-later",
@@ -8,7 +8,7 @@
   "scripts": {
     "build": "node scripts/build-zip.mjs",
     "lint": "eslint assets/js",
-    "test:php": "php tests/php/discovery-test.php && php tests/php/jwt-test.php && php tests/php/login-redirect-test.php && php tests/php/users-test.php && php tests/php/sso-flow-test.php && php tests/php/rest-users-test.php && php tests/php/guides-access-test.php && php tests/php/view-as-access-test.php && php tests/php/display-names-test.php && php tests/php/auto-updates-test.php && php tests/php/app-screens-test.php",
+    "test:php": "php tests/php/discovery-test.php && php tests/php/jwt-test.php && php tests/php/login-redirect-test.php && php tests/php/users-test.php && php tests/php/sso-flow-test.php && php tests/php/rest-users-test.php && php tests/php/guides-access-test.php && php tests/php/view-as-access-test.php && php tests/php/display-names-test.php && php tests/php/auto-updates-test.php && php tests/php/app-screens-test.php && php tests/php/readonly-access-test.php && php tests/php/external-access-test.php",
     "version:check": "node scripts/version-check.mjs",
     "check:merge": "node scripts/check-merge-sanity.mjs"
   },

@@ -82,11 +82,13 @@
 
   --bw-size-h1:28px;
   --bw-size-h2:20px;
-  --bw-size-h3:16px;
+  --bw-size-title:24px;
+  --bw-size-h3:18px;
   --bw-size-lede:14px;
   --bw-size-body:13px;
   --bw-size-input:14px;
   --bw-size-sm:12px;
+  --bw-size-2xs:10px;
   --bw-size-xs:11px;
   --bw-size-code:13px;
 
@@ -102,6 +104,8 @@
   /* Eyebrows, field labels and table headers: 11px uppercase, wide tracking. */
   --bw-track-label:.08em;
   --bw-track-eyebrow:.14em;
+  --bw-track-panel:.11em;
+  --bw-track-tight:-.01em;
 }
 
 /* --- Tokens — spacing scale -------------------------------------------------- */
@@ -128,6 +132,10 @@
 
   --bw-control-h:34px;
   --bw-control-h-sm:28px;
+  /* A comfortable reading measure. No component applies it any more: body and
+     help text now run the width of whatever holds them and wrap only when the
+     screen makes them, which is what these admin screens are asked for. Kept as
+     a token so a screen with genuinely long prose can still opt into it. */
   --bw-content-max:60ch;
 }
 
@@ -209,6 +217,20 @@
   --bw-focus-width:2px;
   --bw-focus-offset:1px;
   --bw-disabled-opacity:.5; /* @kind other */
+  /* Width below which a summary cell's label, figure and footnote stop reading
+     as one column and the strip wraps. A threshold, not a design value. */
+  --bw-summary-min:168px;
+  /* Timeline. The launch marker is the same ink as --bw-text-heading, declared
+     separately because here it is carrying a bar's meaning rather than text
+     colour, and the two must stay free to diverge. --bw-timeline-post is a
+     lighter indigo: the same family as the brand, read as later in time. */
+  --bw-timeline-launch:#0A0C29;
+  --bw-timeline-post:#8B84EA;
+  --bw-gantt-label-w:236px;
+  --bw-gantt-track-h:30px;
+  --bw-gantt-bar-inset:3px;
+  --bw-gantt-key-size:10px;
+  --bw-gantt-hidden-opacity:.45; /* @kind other */
 }
 
 /* --- Components — core (button, badge, chip, icon, avatar, tooltip) ---------- */
@@ -312,7 +334,7 @@
 .bw-field{display:flex;flex-direction:column;gap:var(--bw-space-3)}
 .bw-field__label{font-size:var(--bw-size-xs);letter-spacing:var(--bw-track-label);text-transform:uppercase;color:var(--bw-text-muted);font-weight:var(--bw-weight-semibold)}
 .bw-field__req{color:var(--bw-text-danger);margin-left:2px}
-.bw-field__help{font-size:var(--bw-size-sm);color:var(--bw-text-muted);margin:0;max-width:var(--bw-content-max)}
+.bw-field__help{font-size:var(--bw-size-sm);color:var(--bw-text-muted);margin:0}
 .bw-field__error{font-size:var(--bw-size-sm);color:var(--bw-text-danger);margin:0}
 .bw-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--bw-field-gap)}
 .bw-fields--single{grid-template-columns:1fr}
@@ -331,13 +353,22 @@
 .bw-input--sm{height:var(--bw-control-h-sm);font-size:var(--bw-size-body);padding:0 10px}
 
 .bw-inputwrap{position:relative;display:flex;align-items:center}
-.bw-inputwrap .bw-input{padding-left:34px}
 .bw-inputwrap__icon{position:absolute;left:10px;color:var(--bw-text-faint);pointer-events:none}
 .bw-inputwrap__affix{position:absolute;right:12px;font-size:var(--bw-size-sm);color:var(--bw-text-faint)}
 
 .bw-select{position:relative;display:block}
 .bw-select__el{appearance:none;padding-right:32px;cursor:pointer}
 .bw-select__arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--bw-text-muted);pointer-events:none}
+/* WordPress styles every select inside .wp-core-ui itself: its own chevron as
+   a background image, a 25rem cap, a 40px min-height, a 2px radius and its own
+   border. A .wp-core-ui select rule outweighs the single class above, so
+   the control ends up wearing WordPress's arrow beside this one, and
+   WordPress's shape instead of this one. Same specificity, later in the
+   cascade — appearance:none cannot remove a background image. */
+.bw-select .bw-select__el{max-width:none;min-height:0;height:var(--bw-control-h);padding:0 32px 0 12px;line-height:normal;background-image:none;background-color:var(--bw-control-bg);color:var(--bw-control-text);border-color:var(--bw-border-field);border-radius:var(--bw-control-radius)}
+.bw-select .bw-select__el:hover{border-color:var(--bw-border-strong)}
+.bw-select .bw-select__el:focus{border-color:var(--bw-focus-color);box-shadow:none;outline:var(--bw-focus-width) solid var(--bw-focus-color);outline-offset:var(--bw-focus-offset)}
+.bw-select .bw-select__el[disabled]{background-color:var(--bw-surface-sunken);color:var(--bw-text-faint)}
 
 .bw-check{display:inline-flex;align-items:flex-start;gap:var(--bw-space-4);cursor:pointer;font-size:var(--bw-size-body);color:var(--bw-text-body);line-height:1.4}
 .bw-check input{width:16px;height:16px;margin:0;flex:none;accent-color:var(--bw-brand);cursor:pointer}
@@ -347,10 +378,10 @@
 .bw-radiogroup{display:flex;flex-direction:column;gap:var(--bw-space-5)}
 .bw-radiogroup--row{flex-direction:row;gap:var(--bw-space-8);flex-wrap:wrap}
 
-.bw-switch{display:inline-flex;align-items:center;gap:var(--bw-space-5);cursor:pointer;padding:6px 10px;border:1px solid var(--bw-border);border-radius:var(--bw-control-radius);background:var(--bw-control-bg);transition:var(--bw-transition-control)}
+.bw-switch{position:relative;display:inline-flex;align-items:center;gap:var(--bw-space-5);cursor:pointer;padding:6px 10px;border:1px solid var(--bw-border);border-radius:var(--bw-control-radius);background:var(--bw-control-bg);transition:var(--bw-transition-control)}
 .bw-switch:hover{border-color:var(--bw-border-strong)}
 .bw-switch--bare{padding:0;border:0;background:none}
-.bw-switch input{position:absolute;opacity:0;width:0;height:0}
+.bw-switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
 .bw-switch__track{position:relative;width:40px;height:22px;border-radius:var(--bw-radius-pill);background:var(--bw-line-strong);flex:none;transition:background var(--bw-dur) var(--bw-ease)}
 .bw-switch__thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:var(--bw-shadow-card);transition:transform var(--bw-dur) var(--bw-ease)}
 .bw-switch input:checked+.bw-switch__track{background:var(--bw-brand)}
@@ -367,6 +398,15 @@
 .bw-media__hint{font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
 .bw-media__actions{display:flex;gap:var(--bw-space-5);align-items:center}
 
+.bw-input[type="number"]::-webkit-inner-spin-button,.bw-input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.bw-input[type="number"]{appearance:textfield}
+.bw-inputwrap:has(.bw-inputwrap__affix) .bw-input{padding-right:76px}
+/* Room for the leading icon, and only when there is one: the icon's own left
+   offset, its width, then a gap before the text. An input with no icon keeps
+   the standard control padding rather than being indented twice — once here
+   and once by a raw override further down, which is what this replaced. */
+.bw-inputwrap .bw-inputwrap__icon ~ .bw-input{padding-left:calc(var(--bw-space-5) + var(--bw-space-7) + var(--bw-space-4))}
+
 /* --- Components — forms, extended controls ----------------------------------- */
 /* WP-style form rows, colour, copy, range, upload and repeaters */
 .bw-formrow{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--bw-space-7);padding:var(--bw-space-7) 0;border-bottom:1px solid var(--bw-border);align-items:start}
@@ -375,7 +415,7 @@
 .bw-formrow__label{font-size:var(--bw-size-body);font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading);padding-top:8px;display:flex;align-items:center;gap:var(--bw-space-3)}
 .bw-formrow__req{color:var(--bw-text-danger)}
 .bw-formrow__control{display:flex;flex-direction:column;gap:var(--bw-space-4);min-width:0}
-.bw-formrow__help{font-size:var(--bw-size-sm);color:var(--bw-text-muted);margin:0;max-width:var(--bw-content-max)}
+.bw-formrow__help{font-size:var(--bw-size-sm);color:var(--bw-text-muted);margin:0}
 @media (max-width:782px){.bw-formrow{grid-template-columns:1fr;gap:var(--bw-space-4)}.bw-formrow__label{padding-top:0}}
 
 .bw-colorfield{display:flex;align-items:center;gap:var(--bw-space-5)}
@@ -414,11 +454,54 @@
 .bw-repeater__foot{display:flex;justify-content:space-between;align-items:center;gap:var(--bw-space-6)}
 .bw-repeater__empty{padding:var(--bw-space-7);border:1px dashed var(--bw-border-strong);border-radius:var(--bw-radius-md);background:var(--bw-surface-sunken);font-size:var(--bw-size-body);color:var(--bw-text-muted);text-align:center}
 
+/* --- Components — editor controls -------------------------------------------- */
+/* Rich text, tokens, capped lists, dependent fields, record title and slug */
+
+.bw-richtext{border:1px solid var(--bw-border-field);border-radius:var(--bw-radius-md);overflow:hidden;background:var(--bw-surface-card)}
+.bw-richtext__bar{display:flex;align-items:center;gap:var(--bw-space-1);padding:var(--bw-space-3);background:var(--bw-surface-sunken);border-bottom:1px solid var(--bw-border)}
+.bw-richtext__btn{display:inline-flex;align-items:center;justify-content:center;width:var(--bw-control-h-sm);height:var(--bw-control-h-sm);border:0;border-radius:var(--bw-radius-sm);background:none;color:var(--bw-text-muted);cursor:pointer;font-family:var(--bw-font-body);font-size:var(--bw-size-body);font-weight:var(--bw-weight-semibold)}
+.bw-richtext__btn:hover{background:var(--bw-surface-card);color:var(--bw-text-body)}
+.bw-richtext__btn.is-active{background:var(--bw-surface-accent);color:var(--bw-text-accent)}
+.bw-richtext__sep{width:1px;height:18px;background:var(--bw-border);margin:0 var(--bw-space-2)}
+.bw-richtext .bw-textarea{border:0;border-radius:0;min-height:120px}
+.bw-richtext .bw-textarea:focus{outline:0}
+
+.bw-tokens{display:flex;flex-wrap:wrap;gap:var(--bw-space-3);align-items:center;padding:var(--bw-space-3);border:1px solid var(--bw-border-field);border-radius:var(--bw-radius-md);background:var(--bw-surface-card)}
+.bw-tokens__input{flex:1 1 90px;min-width:90px;border:0;outline:0;padding:var(--bw-space-2) var(--bw-space-3);font-family:var(--bw-font-body);font-size:var(--bw-size-body);color:var(--bw-text-body);background:none}
+
+.bw-scrolllist{max-height:168px;overflow-y:auto;display:flex;flex-direction:column;gap:var(--bw-space-5);padding:var(--bw-space-5) var(--bw-space-6);border:1px solid var(--bw-border-field);border-radius:var(--bw-radius-md);background:var(--bw-surface-card)}
+
+.bw-conditional{border-left:2px solid var(--bw-border-accent);background:var(--bw-surface-sunken);border-radius:0 var(--bw-radius-md) var(--bw-radius-md) 0;padding:var(--bw-space-7) var(--bw-space-8)}
+
+.bw-titleinput{width:100%;font-family:var(--bw-font-display);font-weight:var(--bw-weight-semibold);font-size:var(--bw-size-title);line-height:var(--bw-lh-heading);color:var(--bw-text-heading);background:var(--bw-surface-card);border:1px solid var(--bw-border);border-radius:var(--bw-radius-lg);padding:var(--bw-space-7) var(--bw-space-8)}
+.bw-titleinput::placeholder{color:var(--bw-text-faint)}
+.bw-titleinput:focus{outline:2px solid var(--bw-brand);outline-offset:1px;border-color:var(--bw-brand)}
+
+.bw-permalink{display:flex;align-items:center;flex-wrap:wrap;gap:var(--bw-space-3);margin-top:var(--bw-space-5);font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
+.bw-permalink code{font-family:var(--bw-font-mono);font-size:var(--bw-size-sm);color:var(--bw-text-body)}
+
+.bw-fieldnote{display:flex;align-items:flex-start;gap:var(--bw-space-4);font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
+
 /* --- Components — layout ----------------------------------------------------- */
 /* Page-level furniture */
+
+/* The hook a full-bleed admin screen attaches to WordPress's own .wrap
+   container, so the screen starts hard against wp-admin's chrome and supplies
+   its own gutter from there. Declared here, not only named in the readme's
+   copy-paste markup, so a plugin carrying styles.css alone still has it. */
+.bw-wrap{margin:0}
+
 .bw-page{display:flex;flex-direction:column;min-height:100vh;background:var(--bw-surface-page);color:var(--bw-text-body);font-family:var(--bw-font-body)}
-.bw-page__body{display:flex;align-items:flex-start;gap:var(--bw-space-9);padding:var(--bw-space-9) var(--bw-pad) 0;flex:1 1 auto}
+.bw-page__body{display:flex;align-items:flex-start;gap:var(--bw-space-9);padding:var(--bw-space-9) var(--bw-pad);flex:1 1 auto}
 .bw-panels{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:var(--bw-stack-gap)}
+
+/* A panel column sitting straight on the page, with no .bw-page__body around
+   it to indent it — the shape the page editor renders. The header, tabs and
+   save bar above and below it all pad by --bw-pad, so without this the panels
+   alone would sit flush against the window. Scoped to a direct child so a
+   .bw-panels inside .bw-page__body, .bw-screen or .bw-panels-row still takes
+   its gutter from the container around it rather than doubling up. */
+.bw-page>.bw-panels{padding:var(--bw-space-9) var(--bw-pad)}
 
 /* One column, and narrow. A screen holding a single card is unreadable stretched
    across a wide monitor — the card's own content stops long before its right
@@ -426,22 +509,28 @@
    and the responsive behaviour stay the page body's. */
 .bw-page__body--single{max-width:calc(760px + (var(--bw-pad) * 2))}
 
-.bw-pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--bw-space-9);padding:var(--bw-space-10) var(--bw-pad) var(--bw-space-8);border-bottom:1px solid var(--bw-border);background:var(--bw-surface-card)}
-.bw-pagehead__titles{display:flex;flex-direction:column;min-width:0}
+.bw-pagehead{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;row-gap:var(--bw-space-7);gap:var(--bw-space-9);padding:var(--bw-space-10) var(--bw-pad) var(--bw-space-8);border-bottom:1px solid var(--bw-border);background:var(--bw-surface-card)}
+.bw-pagehead__titles{display:flex;flex-direction:column;min-width:0;flex:1 1 420px}
 .bw-pagehead__eyebrow{font-size:var(--bw-size-xs);letter-spacing:var(--bw-track-eyebrow);text-transform:uppercase;color:var(--bw-text-accent);margin:0 0 var(--bw-space-3);font-weight:var(--bw-weight-semibold)}
 .bw-pagehead__h1{font-family:var(--bw-font-display);font-size:var(--bw-size-h1);font-weight:var(--bw-weight-semibold);line-height:var(--bw-lh-tight);margin:0;color:var(--bw-text-heading)}
-.bw-pagehead__lede{font-size:var(--bw-size-lede);color:var(--bw-text-muted);margin:var(--bw-space-4) 0 0;max-width:var(--bw-content-max)}
-.bw-pagehead__actions{display:flex;align-items:center;gap:var(--bw-space-5);flex:none}
+.bw-pagehead__lede{font-size:var(--bw-size-lede);color:var(--bw-text-muted);margin:var(--bw-space-4) 0 0}
+.bw-pagehead__actions{display:flex;align-items:center;gap:var(--bw-space-5);flex:0 1 auto;flex-wrap:wrap;row-gap:var(--bw-space-5);justify-content:flex-end;margin-left:auto}
 @media (max-width:782px){.bw-pagehead{flex-direction:column;align-items:flex-start}}
 
 .bw-card{background:var(--bw-surface-card);border:1px solid var(--bw-border);border-radius:var(--bw-radius-lg);box-shadow:var(--bw-shadow-card)}
 .bw-card__head{display:flex;justify-content:space-between;align-items:center;gap:var(--bw-space-7);padding:var(--bw-space-8) var(--bw-panel-pad);border-bottom:1px solid var(--bw-border)}
-.bw-card__titles{display:flex;flex-direction:column;gap:2px;min-width:0}
-.bw-card__eyebrow{font-size:var(--bw-size-xs);letter-spacing:var(--bw-track-label);text-transform:uppercase;color:var(--bw-text-accent);margin:0;font-weight:var(--bw-weight-semibold)}
-.bw-card__title{font-family:var(--bw-font-display);font-size:var(--bw-size-h3);font-weight:var(--bw-weight-semibold);margin:0;color:var(--bw-text-heading)}
+.bw-card__titles{display:flex;flex-direction:column;gap:var(--bw-space-1);min-width:0}
+.bw-card__eyebrow{font-size:var(--bw-size-2xs);letter-spacing:var(--bw-track-panel);text-transform:uppercase;color:var(--bw-text-muted);margin:0;font-weight:var(--bw-weight-semibold)}
+.bw-card__title{font-family:var(--bw-font-display);font-size:var(--bw-size-h3);font-weight:var(--bw-weight-semibold);letter-spacing:var(--bw-track-tight);margin:0;color:var(--bw-text-heading)}
 .bw-card__actions{display:flex;align-items:center;gap:var(--bw-space-4);flex:none}
+/* A card head's actions are often a switch and its Save, wrapped in a form so
+   they post together. A form is a block box, so its children fall back to inline
+   layout and the gap between them becomes whatever whitespace the markup happens
+   to carry — visibly uneven beside the flex gap outside it. Laying the form out
+   the same way its container is laid out makes the spacing one value again. */
+.bw-card__actions form{display:flex;align-items:center;gap:var(--bw-space-4)}
 .bw-card__body{padding:var(--bw-panel-pad)}
-.bw-card__note{font-size:var(--bw-size-body);color:var(--bw-text-muted);margin:0 0 var(--bw-space-7);max-width:var(--bw-content-max)}
+.bw-card__note{font-size:var(--bw-size-body);color:var(--bw-text-muted);margin:0 0 var(--bw-space-7)}
 .bw-card__foot{display:flex;justify-content:flex-end;align-items:center;gap:var(--bw-space-5);padding:var(--bw-space-7) var(--bw-panel-pad);border-top:1px solid var(--bw-border);background:var(--bw-surface-sunken);border-radius:0 0 var(--bw-radius-lg) var(--bw-radius-lg)}
 .bw-card--flush .bw-card__body{padding:0}
 .bw-card--sunken{background:var(--bw-surface-sunken);box-shadow:none}
@@ -498,7 +587,7 @@
 @media (max-width:1100px){.bw-screen{grid-template-columns:1fr}.bw-screen__side{position:static}}
 
 .bw-settingscard .bw-card__head{align-items:flex-start}
-.bw-settingscard__desc{font-size:var(--bw-size-body);color:var(--bw-text-muted);margin:var(--bw-space-3) 0 0;max-width:var(--bw-content-max)}
+.bw-settingscard__desc{font-size:var(--bw-size-body);color:var(--bw-text-muted);margin:var(--bw-space-3) 0 0}
 .bw-settingscard__body>.bw-formrow:first-child{padding-top:0}
 .bw-settingscard__body>.bw-formrow:last-child{padding-bottom:0}
 .bw-settingscard .bw-card__foot{gap:var(--bw-space-6)}
@@ -523,12 +612,21 @@
 /* Function card — one switch, its name and description, and a settings panel
    underneath that is only shown while the switch is on. The panel is sunken and
    carries the brand rail, which is what ties it to the switch above it when
-   twenty-seven of these are stacked. */
-.bw-fnstack{display:flex;flex-direction:column;gap:var(--bw-space-6)}
-.bw-fncard{background:var(--bw-surface-card);border:1px solid var(--bw-border);border-radius:var(--bw-radius-lg);box-shadow:var(--bw-shadow-card)}
-.bw-fncard__row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--bw-space-9);align-items:start;padding:var(--bw-space-7) var(--bw-panel-pad)}
+   twenty-seven of these are stacked.
+
+   Three of its measurements are the card's own rather than the scale's: a 14px
+   gap, a 10px corner and 18px of row padding. That is how the design was drawn,
+   and the nearest tokens (space-6, radius-lg, space-7) land at 12, 12 and 16 —
+   close enough to read as a mistake in a stack of twenty-seven, far enough to
+   be one. Moving the tokens would move every component in every project to suit
+   one card, so the card carries the numbers instead. The clip goes with the
+   corner: without it the sunken panel's square corners sit outside the card's
+   rounder ones. */
+.bw-fnstack{display:flex;flex-direction:column;gap:14px}
+.bw-fncard{background:var(--bw-surface-card);border:1px solid var(--bw-border);border-radius:10px;overflow:hidden;box-shadow:var(--bw-shadow-card)}
+.bw-fncard__row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--bw-space-9);align-items:start;padding:18px var(--bw-panel-pad)}
 .bw-fncard__name{display:block;font-size:var(--bw-size-body);font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading)}
-.bw-fncard__desc{margin:var(--bw-space-2) 0 0;font-size:var(--bw-size-sm);color:var(--bw-text-muted);max-width:var(--bw-content-max)}
+.bw-fncard__desc{margin:var(--bw-space-2) 0 0;font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
 .bw-fncard__panel{padding:0 var(--bw-panel-pad) var(--bw-space-8)}
 .bw-fncard__panel>.bw-card--sunken{border-left:2px solid var(--bw-brand)}
 .bw-fncard__panel .bw-card__eyebrow{margin-bottom:var(--bw-space-7)}
@@ -551,7 +649,7 @@
 .bw-notice__icon{flex:none;margin-top:1px}
 .bw-notice__body{flex:1 1 auto;min-width:0}
 .bw-notice__title{font-weight:var(--bw-weight-semibold);font-size:var(--bw-size-body);margin:0 0 2px;color:var(--bw-text-heading)}
-.bw-notice__text{margin:0;font-size:var(--bw-size-body);color:var(--bw-text-muted);max-width:var(--bw-content-max)}
+.bw-notice__text{margin:0;font-size:var(--bw-size-body);color:var(--bw-text-muted)}
 .bw-notice__actions{display:flex;gap:var(--bw-space-5);align-items:center;margin-top:var(--bw-space-5)}
 .bw-notice--info{background:var(--bw-info-wash);border-color:#CBDFF0}
 .bw-notice--success{background:var(--bw-success-wash);border-color:#C6E9CE}
@@ -622,8 +720,32 @@
 .bw-table__num{text-align:right;font-variant-numeric:tabular-nums}
 .bw-table__actions{text-align:right;white-space:nowrap;opacity:0;transition:opacity var(--bw-dur) var(--bw-ease)}
 .bw-table tbody tr:hover .bw-table__actions,.bw-table tbody tr:focus-within .bw-table__actions{opacity:1}
+/* Row actions fade in on hover; the column heading is not a row action. Left
+   sharing the class, the header the column needs to be readable is invisible. */
+.bw-table thead th.bw-table__actions{opacity:1}
+/* A table narrower than its content scrolls inside its own card rather than
+   pushing its last column out past the edge of the page. */
+.bw-tablescroll{overflow-x:auto}
 .bw-table__check{width:36px;padding-right:0}
 .bw-table__check input{accent-color:var(--bw-brand);width:16px;height:16px;margin:0}
+/* Rows that fall into named groups — an estimate's phases, say. The group
+   header is a full-width row on the sunken surface carrying the group name and
+   its subtotal; the total row closes the table off. Both are ordinary rows, not
+   headers, so a screen reader reads them in document order with the rows they
+   belong to. A group's subtotal and the table's total are figures the caller
+   works out: the table never sums anything itself. */
+.bw-table__group>td{background:var(--bw-surface-sunken);padding:var(--bw-space-4) var(--bw-space-7)}
+.bw-table__group-title{font-size:var(--bw-size-xs);letter-spacing:var(--bw-track-label);text-transform:uppercase;font-weight:var(--bw-weight-semibold);color:var(--bw-brand)}
+.bw-table__group-total{float:right;font-variant-numeric:tabular-nums;color:var(--bw-text-muted);font-weight:var(--bw-weight-regular);text-transform:none;letter-spacing:normal}
+.bw-table__total>td{border-top:1px solid var(--bw-border);padding:var(--bw-space-7)}
+.bw-table__total-label{font-family:var(--bw-font-display);font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading)}
+/* Neither a group header nor a total row is a record, so neither takes the
+   row hover the records above them use. */
+.bw-table tbody tr.bw-table__group:hover td,.bw-table tbody tr.bw-table__total:hover td{background:inherit}
+.bw-table__group:hover>td{background:var(--bw-surface-sunken)}
+/* An internal note on a row: for the administrator, never for the client. */
+.bw-table__note{display:flex;align-items:center;gap:var(--bw-space-3);font-size:var(--bw-size-sm);color:var(--bw-warning-deep)}
+.bw-table__legend{display:flex;flex-wrap:wrap;gap:var(--bw-space-7);font-size:var(--bw-size-sm);color:var(--bw-text-muted);padding:var(--bw-space-4) var(--bw-space-7)}
 
 .bw-toolbar{display:flex;align-items:center;gap:var(--bw-space-5);padding:var(--bw-space-6) var(--bw-space-7);border-bottom:1px solid var(--bw-border);flex-wrap:wrap}
 .bw-toolbar__search{flex:1 1 260px;max-width:320px}
@@ -639,7 +761,59 @@
 .bw-stat__delta--down{color:var(--bw-danger-deep)}
 .bw-stat__foot{font-size:var(--bw-size-sm);color:var(--bw-text-faint);margin:0}
 .bw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--bw-space-7)}
+/* Summary strip — the band of derived figures that sits under a page header and
+   stays put while the tabs beneath it change. Not .bw-stats: that is a grid of
+   cards on the canvas, this is one white band flush with the header above it,
+   divided by hairlines. Figures only — nothing here is editable or a link. */
+.bw-summary{display:flex;flex-wrap:wrap;gap:0;background:var(--bw-surface-card);border-bottom:1px solid var(--bw-border);padding:0 var(--bw-pad)}
+.bw-summary__cell{display:flex;flex-direction:column;gap:var(--bw-space-2);min-width:var(--bw-summary-min);padding:var(--bw-space-7) var(--bw-space-10) var(--bw-space-7) 0;margin-right:var(--bw-space-10);border-right:1px solid var(--bw-border)}
+.bw-summary__cell:last-child{border-right:0;margin-right:0}
+.bw-summary__label{font-size:var(--bw-size-xs);line-height:var(--bw-lh-tight);letter-spacing:var(--bw-track-label);text-transform:uppercase;color:var(--bw-text-muted);font-weight:var(--bw-weight-semibold)}
+.bw-summary__value{font-family:var(--bw-font-display);font-size:var(--bw-size-title);font-weight:var(--bw-weight-semibold);line-height:var(--bw-lh-tight);color:var(--bw-text-heading);font-variant-numeric:tabular-nums}
+.bw-summary__foot{font-size:var(--bw-size-sm);color:var(--bw-text-faint)}
+/* Gantt — phases positioned against a week or date scale. A bar's left and
+   width are the one thing a caller sets inline, because they are data, not
+   styling: they come from the phase's own start and end. Everything else about
+   a bar comes from its kind class. Weeks are authored, never derived from
+   estimated hours — a schedule is what the team can actually do. */
+.bw-gantt{display:flex;flex-direction:column;gap:var(--bw-space-5)}
+.bw-gantt__ruler{display:flex;gap:var(--bw-space-6);font-size:var(--bw-size-xs);letter-spacing:var(--bw-track-label);text-transform:uppercase;color:var(--bw-text-faint);font-weight:var(--bw-weight-semibold);padding-left:calc(var(--bw-gantt-label-w) + var(--bw-space-6))}
+.bw-gantt__tick{flex:1 1 0;min-width:0}
+.bw-gantt__rows{display:flex;flex-direction:column;gap:var(--bw-space-3)}
+.bw-gantt__row{display:flex;align-items:center;gap:var(--bw-space-6)}
+.bw-gantt__label{width:var(--bw-gantt-label-w);flex:none;display:flex;flex-direction:column;gap:var(--bw-space-1)}
+.bw-gantt__n{font-family:var(--bw-font-display);font-size:var(--bw-size-sm);color:var(--bw-text-faint)}
+.bw-gantt__title{font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading);font-size:var(--bw-size-body);display:flex;align-items:center;gap:var(--bw-space-3)}
+.bw-gantt__range{font-size:var(--bw-size-sm);line-height:var(--bw-lh-body);color:var(--bw-text-muted)}
+.bw-gantt__track{flex:1 1 auto;height:var(--bw-gantt-track-h);border-radius:var(--bw-control-radius);background:var(--bw-surface-sunken);border:1px solid var(--bw-border);position:relative}
+.bw-gantt__bar{position:absolute;top:var(--bw-gantt-bar-inset);bottom:var(--bw-gantt-bar-inset);border-radius:var(--bw-radius-sm);color:var(--bw-text-on-accent);font-size:var(--bw-size-xs);display:flex;align-items:center;padding:0 var(--bw-space-4);overflow:hidden;white-space:nowrap;background:var(--bw-brand)}
+.bw-gantt__bar--pre{background:var(--bw-brand)}
+.bw-gantt__bar--launch{background:var(--bw-timeline-launch)}
+.bw-gantt__bar--post{background:var(--bw-timeline-post)}
+.bw-gantt__bar.is-hidden{opacity:var(--bw-gantt-hidden-opacity)}
+.bw-gantt__actions{flex:none;display:flex;gap:var(--bw-space-2)}
+.bw-gantt__legend{display:flex;gap:var(--bw-space-7);align-items:center;flex-wrap:wrap;font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
+/* The swatch carries the colour, the label stays muted — so a legend key needs
+   no inline style, and the three kinds cannot drift from the bars they explain. */
+.bw-gantt__key{display:flex;gap:var(--bw-space-3);align-items:center}
+.bw-gantt__key::before{content:"";width:var(--bw-gantt-key-size);height:var(--bw-gantt-key-size);border-radius:var(--bw-radius-xs);background:var(--bw-brand);flex:none}
+.bw-gantt__key--launch::before{background:var(--bw-timeline-launch)}
+.bw-gantt__key--post::before{background:var(--bw-timeline-post)}
 
+/* Preview — a page of the site in a device frame, beside the fields that
+   change it. The stage scrolls rather than shrinking the frame: a preview
+   that scales to fit stops being a preview of anything real. */
+.bw-preview{display:flex;flex-direction:column;gap:var(--bw-space-6);border:1px solid var(--bw-border);border-radius:var(--bw-radius-lg);background:var(--bw-surface-sunken);overflow:hidden}
+.bw-preview__bar{display:flex;align-items:center;justify-content:space-between;gap:var(--bw-space-6);flex-wrap:wrap;padding:var(--bw-space-5) var(--bw-space-6);border-bottom:1px solid var(--bw-border);background:var(--bw-surface-card)}
+.bw-preview__devices{display:inline-flex;align-items:center;gap:var(--bw-space-2);padding:var(--bw-space-1);border:1px solid var(--bw-border);border-radius:var(--bw-radius-pill);background:var(--bw-surface-sunken)}
+.bw-preview__device{display:inline-flex;align-items:center;gap:var(--bw-space-3);padding:var(--bw-space-3) var(--bw-space-6);border:0;border-radius:var(--bw-radius-pill);background:transparent;color:var(--bw-text-muted);font-family:var(--bw-font-body);font-size:var(--bw-size-sm);font-weight:var(--bw-weight-semibold);cursor:pointer;transition:background var(--bw-dur) var(--bw-ease),color var(--bw-dur) var(--bw-ease)}
+.bw-preview__device:hover{color:var(--bw-text-body)}
+.bw-preview__device.is-current{background:var(--bw-surface-card);color:var(--bw-text-accent);box-shadow:var(--bw-shadow-card)}
+.bw-preview__actions{display:inline-flex;align-items:center;gap:var(--bw-space-5)}
+.bw-preview__stage{display:flex;justify-content:center;overflow:auto;padding:var(--bw-space-7);max-height:620px}
+.bw-preview__frame{flex:none;height:600px;border:1px solid var(--bw-border-strong);border-radius:var(--bw-radius-md);background:var(--bw-surface-card);box-shadow:var(--bw-shadow-card)}
+.bw-preview--empty{align-items:center;justify-content:center;gap:var(--bw-space-5);padding:var(--bw-space-11);text-align:center;color:var(--bw-text-muted)}
+.bw-preview__hint{margin:0;font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
 /* --- Components — data display, extended ------------------------------------- */
 /* Detail lists, avatars, activity, bulk actions */
 .bw-dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--bw-space-5) var(--bw-space-8);font-size:var(--bw-size-body);margin:0}

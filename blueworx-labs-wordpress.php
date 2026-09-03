@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.76.2
+ * Version:           1.78.2
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -63,7 +63,7 @@ if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN )
 $blueworx_update_checker->getVcsApi()->enableReleaseAssets();
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.76.2' );
+	define( 'BLUEWORX_LABS_VERSION', '1.78.2' );
 }
 
 // The main plugin file's own path. Two things need it by name rather than by
@@ -115,7 +115,9 @@ require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
 require_once BLUEWORX_LABS_PATH . 'includes/translate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
+require_once BLUEWORX_LABS_PATH . 'includes/readonly-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
+require_once BLUEWORX_LABS_PATH . 'includes/external-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/auto-updates.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-app-screens.php';
 
@@ -131,8 +133,32 @@ require_once BLUEWORX_LABS_PATH . 'includes/login-redirect.php';
 require_once BLUEWORX_LABS_PATH . 'includes/view-as-role.php';
 require_once BLUEWORX_LABS_PATH . 'includes/display-names.php';
 
-// Deactivation, not just uninstall: the support account is a near-administrator
-// whose read-only guarantee comes entirely from this plugin's request-layer
-// block. With the plugin switched off that block is gone but the account would
-// remain, so it is removed the moment the plugin is deactivated.
-register_deactivation_hook( __FILE__, 'blueworx_support_on_deactivate' );
+/**
+ * Puts back what deactivation took away.
+ *
+ * Only the external role, and only when the function is already on — which
+ * means this is a reactivation, and deactivation removed the role on the way
+ * out. A fresh install has the function off and registers the role when
+ * somebody switches it on.
+ *
+ * @return void
+ */
+function blueworx_labs_on_activate() {
+	blueworx_external_on_activate();
+}
+register_activation_hook( __FILE__, 'blueworx_labs_on_activate' );
+
+/**
+ * Tears down everything that must not outlive the plugin being switched off.
+ *
+ * Both read-only roles are near-administrator accounts whose safety comes from
+ * the request-layer block in includes/readonly-access.php. With the plugin off
+ * that block does not run, so the accounts must not be left standing.
+ *
+ * @return void
+ */
+function blueworx_labs_on_deactivate() {
+	blueworx_support_on_deactivate();
+	blueworx_external_on_deactivate();
+}
+register_deactivation_hook( __FILE__, 'blueworx_labs_on_deactivate' );

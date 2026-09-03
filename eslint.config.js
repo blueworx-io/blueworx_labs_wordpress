@@ -8,7 +8,7 @@ export default [
     // sync check — we cannot act on a lint finding in it without breaking that
     // check, so linting it only produces noise. It is an ES module; everything
     // else in assets/js is a plain script.
-    ignores: ['assets/js/blueworx-admin-design-icons.js'],
+    ignores: ['assets/blueworx-admin-icons.js'],
   },
   {
     files: ['assets/js/**/*.js'],

@@ -75,6 +75,15 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'security',
 			'detail'      => 'support_access',
 		),
+		'external_access'       => array(
+			'label'       => __( 'External viewer access', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Lets you invite somebody to look round the backend without being able to change anything. Each person gets their own sign-in, which they set themselves, and their access ends on a date you choose.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			// No detail panel: the dedicated External access screen owns the
+			// invite form, so this row stays a plain switch.
+			'detail'      => null,
+			'default'     => '0',
+		),
 		'user_roles'            => array(
 			'label'       => __( 'Flexible user roles', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Lists roles alphabetically on the add-user and edit-user screens, and lets one user hold more than one role at a time.', 'blueworx-labs-wordpress' ),
@@ -275,5 +284,41 @@ function blueworx_set_feature_enabled( $key, $on ) {
 		return;
 	}
 
+	$was_on = blueworx_feature_enabled( $key );
+
 	update_option( 'blueworx_feature_' . $key, $on ? '1' : '0' );
+
+	if ( $on && ! $was_on ) {
+		blueworx_on_feature_switched_on( $key );
+	}
+}
+
+/**
+ * Does the setting-up a function needs the first time it is switched on.
+ *
+ * Here rather than in the screen that owns the switch, because there is more
+ * than one screen: Enhancements posts the whole registry, and the External
+ * access screen posts one key. Hanging this off the screen meant a site owner
+ * who used Enhancements got the function without its setting-up, and nothing
+ * on screen explained the failure that followed.
+ *
+ * @param string $key Feature key that has just gone from off to on.
+ * @return void
+ */
+function blueworx_on_feature_switched_on( $key ) {
+	if ( 'external_access' !== $key ) {
+		return;
+	}
+
+	// Order matters: the role has to exist before it can be named in a
+	// protection list, or the list would carry a slug nothing answers to.
+	if ( function_exists( 'blueworx_external_register_role' ) ) {
+		blueworx_external_register_role();
+	}
+
+	// An invited viewer on a site with a Site Protection allow-list would
+	// otherwise meet a 403 at the door with nothing explaining why.
+	if ( function_exists( 'blueworx_external_allow_in_site_protection' ) ) {
+		blueworx_external_allow_in_site_protection();
+	}
 }

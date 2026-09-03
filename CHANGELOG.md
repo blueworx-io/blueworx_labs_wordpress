@@ -4,6 +4,103 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.78.2] - 2026-09-03
+
+### Changed
+- **The admin design system is up to date again.** The plugin now carries the
+  shared design system as published today, rather than the copy from early
+  August, and the check that keeps the two in step is pointed at that release.
+  The stylesheet itself is unchanged from 1.78.1 — this is what lets the check
+  confirm it.
+- **The icon set has moved to the name the shared checks expect**
+  (`assets/blueworx-admin-icons.js`) and picked up the icons added upstream
+  since August. Nothing looks different; the file lives somewhere else.
+
+## [1.78.1] - 2026-09-03
+
+### Changed
+- **The invite form asks for a client name and client email address**, rather
+  than "their name" and "their email address".
+- **The count of people invited has gone from the top of the screen.** The card
+  below already lists them, and when nobody had been invited it said so twice.
+
+### Fixed
+- **The gap above the first field was missing**, so the panel explaining what a
+  viewer can do butted straight against it while every other row was evenly
+  spaced.
+
+## [1.78.0] - 2026-09-03
+
+### Changed
+- **External viewers now see a much smaller site.** BlueWorx, Settings, Tools,
+  Plugins and Appearance are gone from their sidebar and closed to them if they
+  type the address. Guides is the exception — that stays, because it is there to
+  explain the site to the people using it. They still see the dashboard, posts,
+  pages, media and comments, and still cannot change any of it.
+- **Invitations now run 3, 7 or 14 days**, rather than 7, 30 or 90, with 7 the
+  default. The amber "ends soon" mark appears with a day left instead of three,
+  so a three-day invitation is not flagged the moment you send it.
+
+### Fixed
+- **The External access screen sat inset with a gap above it**, unlike every
+  other BlueWorx screen. It now runs full width and flush, as it should have.
+- **Send invitation stretched the whole width of the card** and read as a page-wide
+  bar. It is a normal button now, and the people you have invited have moved into
+  a card of their own instead of being butted against it.
+- **Body text stopped short of the space it had.** Help text, notices, page
+  introductions and card descriptions across every BlueWorx screen wrapped at a
+  fixed measure; they now use the width available and wrap only when the screen
+  makes them.
+- **Dropdowns showed two arrows.** WordPress draws its own on top of ours. This
+  had already been fixed in the shared design system — this plugin was simply
+  running an old copy of it.
+- **A switch and its Save button** in a card heading were spaced by whatever the
+  markup happened to carry rather than by a set value.
+
+## [1.77.1] - 2026-09-03
+
+### Fixed
+- **An external viewer could copy a page with one click.** The Duplicate link
+  on every page and post row was a plain link, and the rule that refuses
+  changes only looked at forms being submitted, so a viewer could use it. It is
+  refused now, for support access too.
+- **An external viewer could publish through the old remote-publishing
+  endpoint.** XML-RPC checks its password separately, after the read-only rule
+  has already had its say, so it never saw them. It does now — whether or not
+  that endpoint is switched on.
+- **The External viewer role was being rewritten on every admin page load**,
+  which is two database writes per page for everybody, and left a split second
+  where the role did not exist at all.
+- **Turning External access on from the Enhancements screen** now lets invited
+  people past Site Protection, the same way turning it on from its own screen
+  already did. Before, invitations sent that way met a "not allowed" page with
+  nothing explaining why.
+- **Withdrawing somebody's access now asks first.** It deletes their account and
+  there is no undo, and the button sits next to Resend.
+- **A resend that fails no longer kills the link the person already has.**
+
+## [1.77.0] - 2026-09-03
+
+### Added
+- **Invite somebody to look round the back end without letting them change
+  anything.** A new External access screen under BlueWorx is off until you turn
+  it on. Enter a name and email and choose how long they get in — 3, 7 or 14
+  days — and they receive one email with a link to choose their own password;
+  no password is ever sent. Once in, they see the back end the way an
+  administrator does, but nothing they click changes anything, and customer and
+  order screens stay hidden from them.
+- **The screen lists everyone you've invited** — when they last signed in and
+  when their access ends — with Extend, Resend and Withdraw on each row. Once
+  access runs out they can't sign back in, and any session they still had open
+  is ended there and then. Turning the feature off ends everyone's access at
+  once.
+
+### Changed
+- **Support access and external access now share one read-only guarantee.**
+  The rule that refuses every change was written for BlueWorx support access;
+  both now use the same one, so anything tightened for one is tightened for
+  both. Support access itself behaves exactly as before.
+
 ## [1.76.2] - 2026-09-02
 
 ### Changed

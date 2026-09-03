@@ -67,6 +67,27 @@ function blueworx_register_settings_page() {
 	);
 
 	// Registered under the BlueWorx menu while the function is on, and under no
+	// parent while it is off — the same treatment single sign-on gets, and for
+	// the same reason: the address keeps working so the screen can explain
+	// itself, without listing a settings page for something that is not running.
+	//
+	// Gated on create_users rather than promote_users: the handler behind this
+	// screen requires both (inviting somebody creates an account), and a
+	// multisite site administrator commonly holds promote_users without
+	// create_users. Registering on promote_users alone would let that person
+	// open the screen and submit the invite form only to have the handler
+	// silently refuse it — this refuses them the screen instead, which is the
+	// honest failure.
+	add_submenu_page(
+		blueworx_feature_enabled( 'external_access' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
+		esc_html__( 'External access', 'blueworx-labs-wordpress' ),
+		'create_users',
+		'blueworx-external',
+		'blueworx_render_external_page'
+	);
+
+	// Registered under the BlueWorx menu while the function is on, and under no
 	// parent while it is off — which keeps the address working so the screen can
 	// explain itself, without listing a settings page for something that is not
 	// running. remove_submenu_page() is not the same thing: it takes the page out
@@ -247,10 +268,6 @@ function blueworx_save_feature_settings() {
 
 	$posted = isset( $_POST['blueworx_feature'] ) ? (array) wp_unslash( $_POST['blueworx_feature'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
-		blueworx_set_feature_enabled( $key, isset( $posted[ $key ] ) );
-	}
-
 	// Login detail: editable slug.
 	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
 	update_option( 'blueworx_login_slug', blueworx_sanitize_login_slug( $raw_slug ) );
@@ -264,6 +281,15 @@ function blueworx_save_feature_settings() {
 
 		update_option( 'blueworx_' . $area . '_protection_enabled', $enabled );
 		update_option( 'blueworx_' . $area . '_protection_roles', $roles, false );
+	}
+
+	// The switches are written AFTER the Site Protection lists above, not before
+	// them. Switching a function on can add a role to those lists —
+	// blueworx_on_feature_switched_on() does exactly that for External access —
+	// and this form posts the lists wholesale, so writing the switches first
+	// would have this very request overwrite what the switch had just added.
+	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
+		blueworx_set_feature_enabled( $key, isset( $posted[ $key ] ) );
 	}
 
 	// Application Passwords detail.
