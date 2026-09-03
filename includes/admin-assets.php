@@ -185,9 +185,9 @@ add_action( 'admin_enqueue_scripts', 'blueworx_enqueue_admin_design_system' );
 function blueworx_enqueue_admin_design_icons() {
 	wp_enqueue_script(
 		'blueworx-admin-design-icons',
-		BLUEWORX_LABS_URL . 'assets/js/blueworx-admin-design-icons.js',
+		BLUEWORX_LABS_URL . 'assets/blueworx-admin-icons.js',
 		array(),
-		blueworx_get_admin_asset_version( 'assets/js/blueworx-admin-design-icons.js' ),
+		blueworx_get_admin_asset_version( 'assets/blueworx-admin-icons.js' ),
 		true
 	);
 }

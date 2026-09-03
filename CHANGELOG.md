@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.78.2] - 2026-09-03
+
+### Changed
+- **The admin design system is up to date again.** The plugin now carries the
+  shared design system as published today, rather than the copy from early
+  August, and the check that keeps the two in step is pointed at that release.
+  The stylesheet itself is unchanged from 1.78.1 — this is what lets the check
+  confirm it.
+- **The icon set has moved to the name the shared checks expect**
+  (`assets/blueworx-admin-icons.js`) and picked up the icons added upstream
+  since August. Nothing looks different; the file lives somewhere else.
+
 ## [1.78.1] - 2026-09-03
 
 ### Changed
