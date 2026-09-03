@@ -9,10 +9,15 @@
  * place a gap gets closed.
  *
  * The guarantee is not the capability map. It is blueworx_readonly_block_writes(),
- * which refuses every non-GET request these accounts make. Third-party plugins
- * routinely write through their own AJAX and REST endpoints without checking a
- * meaningful capability, so a rule that depends on plugin authors behaving
- * correctly is not a safety model. A method-level block does not depend on them.
+ * which refuses every non-GET request these accounts make, and refuses
+ * admin-post.php whatever the method because that endpoint only ever acts.
+ * Third-party plugins routinely write through their own AJAX and REST endpoints
+ * without checking a meaningful capability, so a rule that depends on plugin
+ * authors behaving correctly is not a safety model. A method-level block does
+ * not depend on them.
+ *
+ * XML-RPC is a separate door, because it authenticates from the request body
+ * after "init" has already passed. blueworx_readonly_block_xmlrpc() closes it.
  *
  * The capability map still does a job the block cannot: WordPress trashes,
  * deletes and activates through nonce'd GET links, which the method block never
@@ -20,7 +25,7 @@
  * access rather than a write.
  *
  * Known gap, disclosed on both consoles: a plugin that writes in response to an
- * ordinary GET request is not caught here.
+ * ordinary GET request on a screen of its own is not caught here.
  *
  * @package BlueWorxLabs
  */
@@ -790,6 +795,51 @@ add_action( 'admin_enqueue_scripts', 'blueworx_readonly_disable_heartbeat', 1 );
 add_action( 'wp_enqueue_scripts', 'blueworx_readonly_disable_heartbeat', 1 );
 
 /**
+ * Whether this request is aimed at an endpoint that exists only to act.
+ *
+ * admin-post.php is not a screen. It is the generic "do something" handler, and
+ * a plugin is free to hang an action off it and reach it with a plain link —
+ * this plugin's own Duplicate row action does exactly that. So a read-only
+ * account that is refused every POST could still create a post with one click,
+ * on a link the admin rendered for it, carrying a nonce minted for its own
+ * session. There is no read on that endpoint worth preserving, so the request
+ * method is not consulted: the endpoint itself is refused.
+ *
+ * Doing it here rather than in the feature that happens to own the action is
+ * the point. Any plugin that puts a GET action on admin-post.php has the same
+ * shape, and support access is covered by the same line.
+ *
+ * admin-ajax.php is deliberately NOT listed. Ordinary admin screens issue
+ * legitimate GET AJAX reads all over wp-admin, and refusing those would break
+ * the very looking-round these accounts exist to do. Its writes arrive as POST
+ * and the method check already refuses them.
+ *
+ * There is no second file to name: admin-post.php serves its own
+ * no-privilege actions (admin_post_nopriv_*) from the same address, and a
+ * read-only account is signed in, so it never reaches that branch anyway.
+ *
+ * @return bool True when the endpoint acts rather than reads.
+ */
+function blueworx_readonly_is_action_endpoint() {
+	global $pagenow;
+
+	/**
+	 * Filters the admin endpoints refused whatever the request method.
+	 *
+	 * For endpoints that only ever perform an action. Adding a screen a
+	 * read-only account has to be able to READ would refuse the read as well.
+	 *
+	 * @param array $endpoints $pagenow values.
+	 */
+	$endpoints = (array) apply_filters(
+		'blueworx_readonly_action_endpoints',
+		array( 'admin-post.php' )
+	);
+
+	return in_array( (string) $pagenow, $endpoints, true );
+}
+
+/**
  * Rejects every non-read request made by a read-only account.
  *
  * This — not the capability set — is what makes the account read-only.
@@ -799,7 +849,8 @@ add_action( 'wp_enqueue_scripts', 'blueworx_readonly_disable_heartbeat', 1 );
  * not.
  *
  * Known gap, documented in the console: a plugin that writes in response to a
- * GET request is not caught here.
+ * GET request on a screen of its own is not caught here. The generic action
+ * endpoint is, by blueworx_readonly_is_action_endpoint().
  *
  * @return void
  */
@@ -814,7 +865,9 @@ function blueworx_readonly_block_writes() {
 		? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) )
 		: 'GET';
 
-	if ( in_array( $method, array( 'GET', 'HEAD' ), true ) ) {
+	// A read method is only actually a read when it is not pointed at an
+	// endpoint whose entire purpose is to act on the site.
+	if ( in_array( $method, array( 'GET', 'HEAD' ), true ) && ! blueworx_readonly_is_action_endpoint() ) {
 		return;
 	}
 
@@ -832,6 +885,61 @@ function blueworx_readonly_block_writes() {
 	);
 }
 add_action( 'init', 'blueworx_readonly_block_writes', 0 );
+
+/**
+ * Refuses a read-only account on XML-RPC.
+ *
+ * xmlrpc.php reads its credentials out of the request body and authenticates
+ * long after "init" has fired — so blueworx_readonly_block_writes() has already
+ * run against an anonymous user and returned, and there is no XML-RPC
+ * equivalent of the rest_pre_dispatch net. wp.newPost, wp.editPost,
+ * wp.uploadFile and wp.newTerm all check capabilities these roles keep, which
+ * makes the endpoint a complete way round the guard.
+ *
+ * The support account escapes it by accident: its password is set to a value
+ * nothing can hash to, so no body can authenticate as it. An external viewer
+ * chooses a real password, so it does not escape, and both roles are covered
+ * here rather than relying on that difference.
+ *
+ * Refused at the door rather than per method. Nothing these accounts need is
+ * only reachable over XML-RPC, and an allow-list of "reading" methods would be
+ * the same losing race blueworx_readonly_allowed_actions() exists to avoid.
+ *
+ * This is not made redundant by the plugin's own xmlrpc function, which closes
+ * the endpoint outright: that is a switch site owners are told to turn off for
+ * Jetpack or the mobile app, and the read-only guarantee must not depend on an
+ * unrelated setting being left alone.
+ *
+ * @param mixed $user User or error resolved so far.
+ * @return mixed The user, or a WP_Error.
+ */
+function blueworx_readonly_block_xmlrpc( $user ) {
+	if ( ! defined( 'XMLRPC_REQUEST' ) || ! XMLRPC_REQUEST ) {
+		return $user;
+	}
+
+	if ( ! $user instanceof WP_User ) {
+		return $user;
+	}
+
+	foreach ( blueworx_readonly_roles() as $slug ) {
+		if ( ! blueworx_readonly_user_has_role( $user, $slug ) ) {
+			continue;
+		}
+
+		blueworx_readonly_log_event( $user, 'blocked_write' );
+
+		return new WP_Error(
+			'blueworx_readonly_no_xmlrpc',
+			__( 'This account is read-only. Nothing on this site can be changed from it.', 'blueworx-labs-wordpress' )
+		);
+	}
+
+	return $user;
+}
+// Priority 30: after core's wp_authenticate_username_password() at 20, so there
+// is a resolved user object to test rather than raw credentials.
+add_filter( 'authenticate', 'blueworx_readonly_block_xmlrpc', 30 );
 
 /**
  * Second net: refuses non-read REST requests from a read-only account.

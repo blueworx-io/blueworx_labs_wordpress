@@ -194,6 +194,109 @@ test.describe('An external viewer changes nothing', () => {
     await expect(page.locator('#original_post_status')).toHaveValue('publish');
   });
 
+  test('the Duplicate row action is refused, and duplicates nothing', async ({ page }) => {
+    // The hole this covers: Duplicate is a GET link to admin-post.php, and
+    // blueworx_readonly_block_writes() used to refuse non-GET methods only. The
+    // external role keeps edit_posts, edit_others_posts, edit_published_posts
+    // and publish_posts, so the link renders on every row for an invited
+    // viewer, carrying a nonce minted for their own session — and one click
+    // created a draft. blueworx_readonly_is_action_endpoint() is what refuses
+    // the endpoint now, whatever the method.
+    await signInAsViewer(page);
+
+    const before = Number(fixture('count-posts.php').trim());
+    expect(before).toBeGreaterThan(0);
+
+    await page.goto('/wp-admin/edit.php');
+
+    // The link must still be ON the page. The fix is in the request guard, not
+    // in hiding the control: if a later change removed the link instead, this
+    // test would go green while any hand-built URL still worked.
+    const link = page.locator('a[href*="action=blueworx_duplicate_post"]').first();
+    await expect(link).toHaveCount(1);
+
+    const href = await link.getAttribute('href');
+    expect(href, 'the Duplicate link must carry a real nonce').toContain('_wpnonce=');
+
+    const refused = await page.goto(href);
+
+    expect(refused.status(), 'Duplicate must be refused').toBe(403);
+    // Status alone proves nothing — check_admin_referer() answers 403 too. The
+    // body has to carry the read-only guard's own wording.
+    await expect(page.locator('.wp-die-message')).toContainText(READONLY_WRITE_MESSAGE);
+
+    // And nothing was actually copied.
+    expect(Number(fixture('count-posts.php').trim())).toBe(before);
+  });
+
+  test('XML-RPC cannot write, even with the endpoint open', async ({ request }) => {
+    // xmlrpc.php authenticates from the request body, long after "init" has
+    // run blueworx_readonly_block_writes() against an anonymous user, and there
+    // is no XML-RPC equivalent of the rest_pre_dispatch net. wp.newPost checks
+    // only capabilities this role keeps, so the endpoint was a complete way
+    // round the guard. blueworx_readonly_block_xmlrpc() closes it.
+    //
+    // The endpoint is opened for this test because the plugin's own xmlrpc
+    // function closes it by default — which masks the hole rather than fixing
+    // it, and is a switch site owners are told to turn off for Jetpack or the
+    // mobile app.
+    fixture('xmlrpc-endpoint.php', 'open');
+
+    try {
+      const call = (method, params) =>
+        `<?xml version="1.0"?><methodCall><methodName>${method}</methodName><params>${params}</params></methodCall>`;
+      const creds = (user, pass) =>
+        `<param><value><string>${user}</string></value></param><param><value><string>${pass}</string></value></param>`;
+      const post = (user, pass) =>
+        call(
+          'wp.newPost',
+          `<param><value><int>1</int></value></param>${creds(user, pass)}` +
+            '<param><value><struct>' +
+            '<member><name>post_type</name><value><string>post</string></value></member>' +
+            '<member><name>post_status</name><value><string>draft</string></value></member>' +
+            '<member><name>post_title</name><value><string>Should never exist</string></value></member>' +
+            '</struct></value></param>'
+        );
+
+      // The endpoint really is live and really does authenticate — without this
+      // the refusal below would be satisfied just as well by a closed endpoint,
+      // proving nothing about the guard. A read, so it leaves nothing behind.
+      const live = await request.post(`${baseURL}/xmlrpc.php`, {
+        headers: { 'content-type': 'text/xml' },
+        data: call('wp.getUsersBlogs', creds(ADMIN_USER, ADMIN_PASS)),
+      });
+
+      expect(await live.text(), 'XML-RPC must be reachable for this test to mean anything').not.toContain(
+        '<fault>'
+      );
+
+      const before = Number(fixture('count-posts.php').trim());
+
+      const refused = await request.post(`${baseURL}/xmlrpc.php`, {
+        headers: { 'content-type': 'text/xml' },
+        data: post(VIEWER, VIEWER_PASS),
+      });
+
+      const body = await refused.text();
+
+      // Core's wp_xmlrpc_server::login() replaces any authenticate error with
+      // its own generic wording, so the guard's message never reaches the
+      // caller — deliberate on core's part, and it means the fault is what can
+      // be asserted here. The account's password is provably good: every other
+      // test in this file signs in with it.
+      expect(body).toContain('<fault>');
+      expect(body).toContain('403');
+
+      // The only claim that really matters.
+      expect(Number(fixture('count-posts.php').trim())).toBe(before);
+    } finally {
+      // Always put the site's own setting back, including when an expectation
+      // above failed — a left-open endpoint would change what every later run
+      // is testing.
+      fixture('xmlrpc-endpoint.php', 'restore');
+    }
+  });
+
   test('an expired viewer cannot sign in', async ({ page }) => {
     fixture('force-external-expiry.php', VIEWER);
 
