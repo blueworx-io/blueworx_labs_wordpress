@@ -253,21 +253,15 @@ add_action( 'admin_post_blueworx_toggle_external_feature', 'blueworx_handle_exte
  * @return void
  */
 function blueworx_render_external_page() {
-	$on    = blueworx_feature_enabled( 'external_access' );
-	$count = $on ? count( blueworx_external_invitations() ) : 0;
+	$on = blueworx_feature_enabled( 'external_access' );
 
+	// No count badge in the header. The card below already names everybody who
+	// has access, so a pill saying how many there are only repeats it — and when
+	// there are none it says so twice, next to an empty state that says it better.
 	blueworx_open_admin_page(
 		array(
-			'title'   => __( 'External access', 'blueworx-labs-wordpress' ),
-			'lede'    => __( 'Invite somebody to look round the back end of this site without being able to change anything.', 'blueworx-labs-wordpress' ),
-			'actions' => blueworx_ds_badge(
-				$count > 0
-					/* translators: %d: number of people invited. */
-					? sprintf( _n( '%d person invited', '%d people invited', $count, 'blueworx-labs-wordpress' ), $count )
-					: __( 'Nobody invited', 'blueworx-labs-wordpress' ),
-				$count > 0 ? 'success' : 'neutral',
-				true
-			),
+			'title' => __( 'External access', 'blueworx-labs-wordpress' ),
+			'lede'  => __( 'Invite somebody to look round the back end of this site without being able to change anything.', 'blueworx-labs-wordpress' ),
 		)
 	);
 

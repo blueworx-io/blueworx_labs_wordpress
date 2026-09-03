@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.78.1] - 2026-09-03
+
+### Changed
+- **The invite form asks for a client name and client email address**, rather
+  than "their name" and "their email address".
+- **The count of people invited has gone from the top of the screen.** The card
+  below already lists them, and when nobody had been invited it said so twice.
+
+### Fixed
+- **The gap above the first field was missing**, so the panel explaining what a
+  viewer can do butted straight against it while every other row was evenly
+  spaced.
+
 ## [1.78.0] - 2026-09-03
 
 ### Changed

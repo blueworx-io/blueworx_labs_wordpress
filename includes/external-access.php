@@ -1130,6 +1130,25 @@ function blueworx_external_render_panel() {
 	$notice = blueworx_external_take_notice();
 	$self   = admin_url( 'admin.php?page=blueworx-external' );
 
+	$days = array();
+
+	foreach ( blueworx_external_durations() as $option ) {
+		$days[ (string) $option ] = sprintf(
+			/* translators: %d: number of days. */
+			_n( '%d day', '%d days', $option, 'blueworx-labs-wordpress' ),
+			$option
+		);
+	}
+
+	echo '<form method="post" action="' . esc_url( $self ) . '" class="bw-fields bw-fields--single">';
+	wp_nonce_field( 'blueworx_external_invite' );
+	echo '<input type="hidden" name="blueworx_external_action" value="invite" />';
+
+	// Both notices are rendered INSIDE the field grid, as its first rows. Outside
+	// it they were siblings in a plain block, where nothing sets a gap and the
+	// notice butted straight against the first label with 0px between them while
+	// every other row was spaced by 18. As grid rows they are spaced by the same
+	// value as everything else, and stay that way if that value ever changes.
 	if ( ! empty( $notice ) ) {
 		echo wp_kses( blueworx_ds_notice( $notice ), blueworx_ds_allowed_html() );
 	}
@@ -1145,23 +1164,9 @@ function blueworx_external_render_panel() {
 		blueworx_ds_allowed_html()
 	);
 
-	$days = array();
-
-	foreach ( blueworx_external_durations() as $option ) {
-		$days[ (string) $option ] = sprintf(
-			/* translators: %d: number of days. */
-			_n( '%d day', '%d days', $option, 'blueworx-labs-wordpress' ),
-			$option
-		);
-	}
-
-	echo '<form method="post" action="' . esc_url( $self ) . '" class="bw-fields bw-fields--single">';
-	wp_nonce_field( 'blueworx_external_invite' );
-	echo '<input type="hidden" name="blueworx_external_action" value="invite" />';
-
 	echo blueworx_ds_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 		array(
-			'label'   => __( 'Their name', 'blueworx-labs-wordpress' ),
+			'label'   => __( 'Client name', 'blueworx-labs-wordpress' ),
 			'for'     => 'blueworx_external_name',
 			'control' => blueworx_ds_input(
 				array(
@@ -1175,7 +1180,7 @@ function blueworx_external_render_panel() {
 
 	echo blueworx_ds_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Same.
 		array(
-			'label'   => __( 'Their email address', 'blueworx-labs-wordpress' ),
+			'label'   => __( 'Client email address', 'blueworx-labs-wordpress' ),
 			'for'     => 'blueworx_external_email',
 			'control' => blueworx_ds_input(
 				array(
