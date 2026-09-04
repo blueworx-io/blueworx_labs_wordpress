@@ -103,6 +103,19 @@ function blueworx_register_settings_page() {
 		'blueworx_render_sso_page'
 	);
 
+	// Directly under Single sign-on, and gated the same way. WordPress admin
+	// menus are only two deep, so a child of a child is not available — a
+	// sibling registered immediately after it reads as belonging to it, which is
+	// what the position in the list is actually doing here.
+	add_submenu_page(
+		blueworx_feature_enabled( 'sso' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'SSO Logs', 'blueworx-labs-wordpress' ),
+		esc_html__( 'SSO Logs', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-sso-logs',
+		'blueworx_render_sso_logs_page'
+	);
+
 	add_submenu_page(
 		'blueworx-labs-wordpress',
 		esc_html__( 'Embedded controls', 'blueworx-labs-wordpress' ),

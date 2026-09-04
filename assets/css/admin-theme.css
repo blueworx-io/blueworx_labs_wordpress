@@ -57,12 +57,18 @@ body.wp-admin #wpwrap {
 	background: var(--bw-canvas);
 }
 
-.wp-admin a {
+/* :where() so this is a default, not a winner. A plain `.wp-admin a` is a class
+   and an element, which outweighs the single class every design-system button
+   carries — so any plugin screen's `<a class="bw-btn bw-btn--primary">` took
+   brand text on a brand background and read as a blank blue block. Weighed at
+   nothing it still beats WordPress's own `a`, which is what it is here to do,
+   and loses to anything with a class of its own. */
+:where(.wp-admin) a {
 	color: var(--bw-brand);
 }
 
-.wp-admin a:hover,
-.wp-admin a:focus {
+:where(.wp-admin) a:hover,
+:where(.wp-admin) a:focus {
 	color: var(--bw-brand-deep);
 }
 

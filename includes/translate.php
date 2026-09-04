@@ -214,15 +214,85 @@ function blueworx_translate_position() {
 }
 
 /**
- * Reports whether the switcher is restricted to site administrators.
+ * Who the switcher is offered to.
  *
- * Off by default, so an install that has been using the switcher keeps showing
- * it to everyone.
- *
- * @return bool True when only administrators should see the switcher.
+ * @return array Audience labels keyed by audience id.
  */
-function blueworx_translate_admin_only() {
-	return '1' === get_option( 'blueworx_translate_admin_only', '0' );
+function blueworx_translate_audiences() {
+	return array(
+		'everyone' => __( 'Everyone, including visitors who are not signed in', 'blueworx-labs-wordpress' ),
+		'roles'    => __( 'Only people signed in with one of these roles', 'blueworx-labs-wordpress' ),
+	);
+}
+
+/**
+ * Gets the chosen audience.
+ *
+ * Everyone by default, so an install that has been using the switcher keeps
+ * showing it to everyone.
+ *
+ * @return string One of the keys of blueworx_translate_audiences().
+ */
+function blueworx_translate_audience() {
+	$saved = sanitize_key( (string) get_option( 'blueworx_translate_audience', 'everyone' ) );
+
+	return isset( blueworx_translate_audiences()[ $saved ] ) ? $saved : 'everyone';
+}
+
+/**
+ * Gets the roles that may be picked.
+ *
+ * Every role on the site, including ones another plugin registered: the people
+ * a site wants to give a language switcher to are as likely to be a membership
+ * or shop role as they are an editor.
+ *
+ * @return array Role labels keyed by slug.
+ */
+function blueworx_translate_role_choices() {
+	return function_exists( 'blueworx_get_site_protection_role_choices' )
+		? blueworx_get_site_protection_role_choices()
+		: array();
+}
+
+/**
+ * Gets the roles the switcher is shown to.
+ *
+ * Deliberately not validated against the live role list on read: a slug whose
+ * role has since been deleted simply never matches anybody, which is the right
+ * outcome, whereas dropping it here would empty the list and trip the fallback
+ * below instead.
+ *
+ * An empty list falls back to administrators rather than to nobody. "Show it to
+ * these roles" with none ticked is not a request to hide the switcher from
+ * everyone — the feature toggle already does that — and leaving the site owner
+ * unable to see the thing they have just configured helps nobody.
+ *
+ * @return array Role slugs.
+ */
+function blueworx_translate_roles() {
+	$saved = get_option( 'blueworx_translate_roles', array( 'administrator' ) );
+	$roles = is_array( $saved ) ? array_values( array_unique( array_filter( array_map( 'sanitize_key', $saved ) ) ) ) : array();
+
+	return array() !== $roles ? $roles : array( 'administrator' );
+}
+
+/**
+ * Reports whether the current viewer is allowed the switcher.
+ *
+ * @return bool True when this viewer should be sent the switcher.
+ */
+function blueworx_translate_viewer_allowed() {
+	if ( 'everyone' === blueworx_translate_audience() ) {
+		return true;
+	}
+
+	$user = wp_get_current_user();
+
+	if ( ! $user instanceof WP_User || 0 === $user->ID ) {
+		return false;
+	}
+
+	return array() !== array_intersect( blueworx_translate_roles(), (array) $user->roles );
 }
 
 /**
@@ -257,6 +327,15 @@ function blueworx_translate_save_settings( $post ) {
 	$raw_display = isset( $post['blueworx_translate_display'] ) ? sanitize_key( wp_unslash( $post['blueworx_translate_display'] ) ) : '';
 	$display     = isset( blueworx_translate_display_styles()[ $raw_display ] ) ? $raw_display : 'text';
 
+	$raw_audience = isset( $post['blueworx_translate_audience'] ) ? sanitize_key( wp_unslash( $post['blueworx_translate_audience'] ) ) : '';
+	$audience     = isset( blueworx_translate_audiences()[ $raw_audience ] ) ? $raw_audience : 'everyone';
+
+	// Intersected against the site's real roles, so a slug that was never on the
+	// form cannot be posted in, and the saved order follows the role list rather
+	// than the order the boxes happened to arrive in.
+	$raw_roles = isset( $post['blueworx_translate_roles'] ) ? (array) wp_unslash( $post['blueworx_translate_roles'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized below with sanitize_key and intersected against the site's registered roles.
+	$roles     = array_values( array_intersect( array_keys( blueworx_translate_role_choices() ), array_map( 'sanitize_key', $raw_roles ) ) );
+
 	// One selector per line, blank lines dropped, and hard caps on both the line
 	// length and the number of lines so a paste accident cannot bloat the option
 	// or the inline config payload on every page load.
@@ -280,7 +359,8 @@ function blueworx_translate_save_settings( $post ) {
 	update_option( 'blueworx_translate_languages', $languages, false );
 	update_option( 'blueworx_translate_position', $position );
 	update_option( 'blueworx_translate_display', $display );
-	update_option( 'blueworx_translate_admin_only', isset( $post['blueworx_translate_admin_only'] ) ? '1' : '0' );
+	update_option( 'blueworx_translate_audience', $audience );
+	update_option( 'blueworx_translate_roles', $roles, false );
 	update_option( 'blueworx_translate_exclusions', array_values( array_unique( $exclusions ) ), false );
 }
 
@@ -344,16 +424,27 @@ function blueworx_translate_render_detail() {
 		)
 	);
 
-	$fields .= blueworx_ds_field(
+	// The roles are always on show rather than revealed by the radio above them:
+	// the panel has no script, and a list that appears and disappears is worse
+	// than one that is simply ignored while "Everyone" is chosen.
+	$fields .= blueworx_ds_radio_group(
 		array(
-			'control' => blueworx_ds_checkbox(
+			'name'     => 'blueworx_translate_audience',
+			'id'       => 'blueworx-translate-audience',
+			'legend'   => __( 'Who sees the switcher', 'blueworx-labs-wordpress' ),
+			'choices'  => blueworx_translate_audiences(),
+			'selected' => blueworx_translate_audience(),
+			'extra'    => blueworx_ds_choice_group(
 				array(
-					'name'    => 'blueworx_translate_admin_only',
-					'label'   => __( 'Only show the switcher to site administrators', 'blueworx-labs-wordpress' ),
-					'checked' => blueworx_translate_admin_only(),
-					'help'    => __( 'For trying the switcher out on a live site before opening it up. Visitors and other logged-in users see no button at all, and none of its code is loaded for them.', 'blueworx-labs-wordpress' ),
+					'name'     => 'blueworx_translate_roles',
+					'id'       => 'blueworx-translate-roles',
+					'legend'   => __( 'Roles the switcher is shown to', 'blueworx-labs-wordpress' ),
+					'choices'  => blueworx_translate_role_choices(),
+					'selected' => blueworx_translate_roles(),
+					'help'     => __( 'Tick as many as you like. With none ticked, administrators see it. Only applies when the roles option above is chosen.', 'blueworx-labs-wordpress' ),
 				)
 			),
+			'help'     => __( 'Anyone who is not allowed the switcher sees no button at all, and none of its code is loaded for them. Pick roles to try it out on a live site before opening it up to visitors.', 'blueworx-labs-wordpress' ),
 		)
 	);
 
@@ -416,14 +507,11 @@ function blueworx_translate_render_detail() {
  * config and the root element all ask this one question, so a visitor who is
  * not allowed the switcher is not merely shown nothing — nothing is sent.
  *
- * "Site administrator" means manage_options, the same capability that gates the
- * settings screen this option lives on. An Editor is not one.
- *
  * Page caching is not a hole here, and the direction matters: hosts serving this
- * plugin (Cloudways/Varnish) cache logged-out responses only, and an
- * administrator always carries an auth cookie that bypasses the cache. So the
- * page that gets cached and reused is the one without the switcher. The worst
- * case is an admin briefly not seeing a button they just switched on, never a
+ * plugin (Cloudways/Varnish) cache logged-out responses only, and anybody signed
+ * in carries an auth cookie that bypasses the cache. Restricting the switcher to
+ * roles therefore only ever caches the page without it. The worst case is a
+ * signed-in user briefly not seeing a button that was just switched on, never a
  * visitor seeing one they should not.
  *
  * @return bool True when the feature is on, this is a frontend request, the
@@ -435,7 +523,7 @@ function blueworx_translate_should_load() {
 		return false;
 	}
 
-	if ( blueworx_translate_admin_only() && ! current_user_can( 'manage_options' ) ) {
+	if ( ! blueworx_translate_viewer_allowed() ) {
 		return false;
 	}
 

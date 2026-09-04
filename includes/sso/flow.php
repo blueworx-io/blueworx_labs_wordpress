@@ -55,11 +55,17 @@ const BLUEWORX_SSO_BINDER_COOKIE = 'blueworx_sso_binder';
  * provider, which Lax allows and Strict would drop.
  *
  * @param string $binder Random value; only its hash is stored server-side.
- * @return void
+ * @return bool True when the cookie was actually sent to the browser.
  */
 function blueworx_sso_set_binder_cookie( $binder ) {
+	/*
+	 * Reported rather than silently skipped. A sign-in that leaves without this
+	 * cookie is guaranteed to fail on the way back, and it fails with a message
+	 * about the browser — which sends whoever is debugging it looking at the
+	 * browser, when the answer is that the site never sent the cookie at all.
+	 */
 	if ( headers_sent() ) {
-		return;
+		return false;
 	}
 
 	setcookie(
@@ -74,6 +80,8 @@ function blueworx_sso_set_binder_cookie( $binder ) {
 			'samesite' => 'Lax',
 		)
 	);
+
+	return true;
 }
 
 /**
@@ -101,20 +109,42 @@ function blueworx_sso_clear_binder_cookie() {
 }
 
 /**
+ * Which of the ways the browser check can go, this one went.
+ *
+ * One boolean cannot tell these apart, and they have nothing to do with each
+ * other. A cookie that never arrived is a question about how it was written or
+ * what sits in front of the site; one that arrived holding something else is a
+ * second sign-in started in the same browser, overwriting the first. Answering
+ * both with "not bound to this browser" is what makes this failure so hard to
+ * place, so the reason is recorded and only the message stays generic.
+ *
+ * @param array $attempt The stored attempt.
+ * @return string 'ok', 'missing', 'mismatch', or 'unbound' when the attempt
+ *                itself recorded no binding.
+ */
+function blueworx_sso_binder_state( $attempt ) {
+	$expected = isset( $attempt['binder'] ) ? (string) $attempt['binder'] : '';
+	$given    = isset( $_COOKIE[ BLUEWORX_SSO_BINDER_COOKIE ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ BLUEWORX_SSO_BINDER_COOKIE ] ) ) : '';
+
+	if ( '' === $expected ) {
+		return 'unbound';
+	}
+
+	if ( '' === $given ) {
+		return 'missing';
+	}
+
+	return hash_equals( $expected, hash( 'sha256', $given ) ) ? 'ok' : 'mismatch';
+}
+
+/**
  * Whether the browser coming back is the one that left.
  *
  * @param array $attempt The stored attempt.
  * @return bool True when the cookie matches the hash recorded at the start.
  */
 function blueworx_sso_binder_matches( $attempt ) {
-	$expected = isset( $attempt['binder'] ) ? (string) $attempt['binder'] : '';
-	$given    = isset( $_COOKIE[ BLUEWORX_SSO_BINDER_COOKIE ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ BLUEWORX_SSO_BINDER_COOKIE ] ) ) : '';
-
-	if ( '' === $expected || '' === $given ) {
-		return false;
-	}
-
-	return hash_equals( $expected, hash( 'sha256', $given ) );
+	return 'ok' === blueworx_sso_binder_state( $attempt );
 }
 
 /**
@@ -269,7 +299,23 @@ function blueworx_sso_start( $intent = 'login' ) {
 		10 * MINUTE_IN_SECONDS
 	);
 
-	blueworx_sso_set_binder_cookie( $binder );
+	$cookie_sent = blueworx_sso_set_binder_cookie( $binder );
+
+	/*
+	 * The outbound half of the record. Written before the redirect, because
+	 * after it there is no more PHP — and a sign-in that never comes back is
+	 * otherwise invisible, which is precisely the case somebody needs to see.
+	 */
+	blueworx_sso_event(
+		'start',
+		'started',
+		$cookie_sent ? 'sent_to_provider' : 'cookie_not_set_headers_already_sent',
+		array(
+			'intent' => blueworx_sso_intent( $intent ),
+			'ref'    => blueworx_sso_log_ref( $state ),
+			'cookie' => $cookie_sent ? 'set' : 'not_set',
+		)
+	);
 
 	$args = blueworx_sso_build_authorize_args( $intent, $state, $nonce, $verifier );
 
@@ -281,10 +327,11 @@ function blueworx_sso_start( $intent = 'login' ) {
  * Ends a failed sign-in.
  *
  * @param string $reason Machine-readable reason, for the log only.
+ * @param array  $extra  What the caller knows about this attempt, for the log.
  * @return void
  */
-function blueworx_sso_fail( $reason ) {
-	blueworx_sso_log( 'failure', $reason );
+function blueworx_sso_fail( $reason, $extra = array() ) {
+	blueworx_sso_log( 'failure', $reason, $extra );
 
 	wp_safe_redirect( add_query_arg( 'blueworx_sso_error', '1', wp_login_url() ) );
 	exit;
@@ -297,11 +344,12 @@ function blueworx_sso_fail( $reason ) {
  * not sign you in" is actively unhelpful for it: nothing went wrong, they simply
  * have not joined yet. Sites without a joining page get the usual message.
  *
- * @param WP_Error $error  Why resolution failed.
- * @param string   $intent Which button started this.
+ * @param WP_Error $error   Why resolution failed.
+ * @param string   $intent  Which button started this.
+ * @param array    $context What is known about this attempt, for the log.
  * @return void Returns when this is not that case; otherwise redirects and exits.
  */
-function blueworx_sso_no_account_redirect( $error, $intent ) {
+function blueworx_sso_no_account_redirect( $error, $intent, $context = array() ) {
 	if ( 'blueworx_sso_no_account' !== $error->get_error_code() || 'login' !== blueworx_sso_intent( $intent ) ) {
 		return;
 	}
@@ -312,7 +360,7 @@ function blueworx_sso_no_account_redirect( $error, $intent ) {
 		return;
 	}
 
-	blueworx_sso_log( 'failure', 'no_account_sent_to_register' );
+	blueworx_sso_log( 'failure', 'no_account_sent_to_register', $context );
 
 	wp_safe_redirect( add_query_arg( 'blueworx_sso_no_account', '1', $destination ) );
 	exit;
@@ -480,16 +528,22 @@ function blueworx_sso_default_destination( $intent ) {
  */
 function blueworx_sso_handle_callback() {
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- This IS the verification: the state parameter is a single-use token this site minted.
-	if ( isset( $_GET['error'] ) ) {
-		blueworx_sso_fail( 'provider_error:' . sanitize_text_field( wp_unslash( $_GET['error'] ) ) );
-	}
-
 	$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
 	$code  = isset( $_GET['code'] ) ? sanitize_text_field( wp_unslash( $_GET['code'] ) ) : '';
+
+	// Carried into every outcome below, so one line in the log can be read
+	// against the line the outbound leg wrote for the same sign-in. Read before
+	// the provider's own refusal is handled, so that refusal is traceable to the
+	// sign-in it belongs to rather than floating on its own.
+	$context = array( 'ref' => blueworx_sso_log_ref( $state ) );
+
+	if ( isset( $_GET['error'] ) ) {
+		blueworx_sso_fail( 'provider_error:' . sanitize_text_field( wp_unslash( $_GET['error'] ) ), $context );
+	}
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 	if ( '' === $state || '' === $code ) {
-		blueworx_sso_fail( 'missing_state_or_code' );
+		blueworx_sso_fail( 'missing_state_or_code', $context );
 	}
 
 	$key     = blueworx_sso_attempt_key( $state );
@@ -502,24 +556,29 @@ function blueworx_sso_handle_callback() {
 	blueworx_sso_clear_binder_cookie();
 
 	if ( ! is_array( $attempt ) ) {
-		blueworx_sso_fail( 'unknown_or_replayed_state' );
+		blueworx_sso_fail( 'unknown_or_replayed_state', $context );
 	}
+
+	$context['intent'] = blueworx_sso_intent( isset( $attempt['intent'] ) ? $attempt['intent'] : 'login' );
 
 	// The state says a sign-in was started. This says it was started HERE, in
 	// this browser — without it, somebody can start a sign-in as themselves and
 	// hand the return address to someone else, who lands inside their account.
-	if ( ! blueworx_sso_binder_matches( $attempt ) ) {
-		blueworx_sso_fail( 'state_not_bound_to_this_browser' );
+	$binder            = blueworx_sso_binder_state( $attempt );
+	$context['cookie'] = 'ok' === $binder ? 'returned' : $binder;
+
+	if ( 'ok' !== $binder ) {
+		blueworx_sso_fail( 'state_not_bound_to_this_browser:' . $binder, $context );
 	}
 
 	// Whichever button was pressed on the way out, taken from this site's own
 	// record of the attempt rather than from anything the browser came back with.
-	$intent = blueworx_sso_intent( isset( $attempt['intent'] ) ? $attempt['intent'] : 'login' );
+	$intent = $context['intent'];
 
 	$tokens = blueworx_sso_exchange_code( $code, $attempt['verifier'] );
 
 	if ( is_wp_error( $tokens ) ) {
-		blueworx_sso_fail( $tokens->get_error_code() );
+		blueworx_sso_fail( $tokens->get_error_code(), $context );
 	}
 
 	$claims = blueworx_sso_verify_id_token(
@@ -530,23 +589,23 @@ function blueworx_sso_handle_callback() {
 	);
 
 	if ( is_wp_error( $claims ) ) {
-		blueworx_sso_fail( $claims->get_error_code() );
+		blueworx_sso_fail( $claims->get_error_code(), $context );
 	}
 
 	$claims = blueworx_sso_merge_claims( $claims, blueworx_sso_userinfo( $tokens ) );
 
 	if ( is_wp_error( $claims ) ) {
-		blueworx_sso_fail( $claims->get_error_code() );
+		blueworx_sso_fail( $claims->get_error_code(), $context );
 	}
 
 	$user = blueworx_sso_resolve_user( $claims, $intent );
 
 	if ( is_wp_error( $user ) ) {
-		blueworx_sso_no_account_redirect( $user, $intent );
-		blueworx_sso_fail( $user->get_error_code() );
+		blueworx_sso_no_account_redirect( $user, $intent, $context );
+		blueworx_sso_fail( $user->get_error_code(), $context );
 	}
 
-	blueworx_sso_log( 'success', $user->user_login );
+	blueworx_sso_log( 'success', $user->user_login, array_merge( $context, array( 'user' => $user->user_login ) ) );
 	update_option( 'blueworx_sso_last_success', time(), false );
 
 	// Kept only when the site actually signs people out at the provider, and
@@ -731,6 +790,15 @@ function blueworx_sso_logout( $user_id = 0 ) {
 	 * @param int   $user_id The person signing out.
 	 */
 	$args = apply_filters( 'blueworx_sso_end_session_args', $args, $user_id );
+
+	$signing_out = get_user_by( 'id', $user_id );
+
+	blueworx_sso_event(
+		'logout',
+		'success',
+		'sent_to_provider',
+		array( 'user' => $signing_out ? $signing_out->user_login : (string) $user_id )
+	);
 
 	wp_redirect( add_query_arg( array_map( 'rawurlencode', $args ), $endpoint ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- The destination is the configured identity provider, which is by definition off-site.
 	exit;

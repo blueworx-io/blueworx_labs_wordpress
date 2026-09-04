@@ -1237,4 +1237,30 @@ test.describe('BlueWorx admin theme', () => {
       }
     }
   });
+
+  // Every BlueWorx plugin's screens sit inside this re-skin, and they are built
+  // from the shared design system. A base rule weighed heavily enough to beat a
+  // component class repaints them: `.wp-admin a` outweighed `.bw-btn--primary`,
+  // so a plugin's primary button took brand text on its brand background and
+  // read as a blank blue block. The link colour still has to win against
+  // WordPress's own, which is the other half of this.
+  test('the re-skin colours WordPress links without repainting design-system buttons', async ({ page }) => {
+    await login(page);
+    await page.goto('/wp-admin/admin.php?page=blueworx-cache');
+
+    const painted = await page.evaluate(() => {
+      const host = document.createElement('div');
+      host.innerHTML =
+        '<a class="bw-btn bw-btn--primary" href="#">Primary</a>' +
+        '<a class="bw-btn bw-btn--secondary" href="#">Secondary</a>' +
+        '<a href="#">Plain link</a>';
+      document.querySelector('#wpbody-content').appendChild(host);
+      const colour = (i) => getComputedStyle(host.children[i]).color;
+      return { primary: colour(0), secondary: colour(1), plain: colour(2) };
+    });
+
+    expect(painted.primary).toBe('rgb(255, 255, 255)');
+    expect(painted.secondary).toBe('rgb(10, 12, 41)');
+    expect(painted.plain).toBe('rgb(79, 70, 229)');
+  });
 });
