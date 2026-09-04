@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.79.0] - 2026-09-04
+
+### Changed
+- **The language switcher can now be shown to whichever roles you choose, or to
+  everybody.** It was administrators or nothing. There is now a straight choice
+  between showing it to everyone, visitors included, and showing it only to
+  people signed in with the roles you tick — as many as you like, including
+  roles that came from another plugin. Sites that had it set to administrators
+  only keep exactly that; everyone else is unaffected.
+
+### Fixed
+- **Buttons on other BlueWorx plugins' screens are readable again.** The
+  re-skin's link colour was heavy enough to override the shared design system,
+  so a plugin's main button showed brand-coloured text on its brand-coloured
+  background — a blank blue block with nothing written on it. WordPress's own
+  links are still recoloured; a button styled by the design system is now left
+  alone.
+
 ## [1.78.2] - 2026-09-03
 
 ### Changed

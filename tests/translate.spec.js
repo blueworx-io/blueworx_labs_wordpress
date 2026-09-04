@@ -51,8 +51,8 @@ test.describe('BlueWorx on-page translation — settings', () => {
     await expect(detail.locator('input[name="blueworx_translate_languages[]"][value="en"]')).toHaveCount(0);
     await expect(detail.locator('select[name="blueworx_translate_position"]')).toHaveValue('bottom-right');
     await expect(detail.locator('select[name="blueworx_translate_display"]')).toHaveValue('text');
-    // Off by default: an install already using the switcher keeps showing it.
-    await expect(detail.locator('input[name="blueworx_translate_admin_only"]')).not.toBeChecked();
+    // Everyone by default: an install already using the switcher keeps showing it.
+    await expect(detail.locator('input[name="blueworx_translate_audience"][value="everyone"]')).toBeChecked();
   });
 
   test('the display style offers exactly the three documented options', async ({ page }) => {
@@ -242,25 +242,82 @@ test.describe('BlueWorx on-page translation — switcher UI', () => {
   });
 });
 
-test.describe('BlueWorx on-page translation — administrators only', () => {
+test.describe('BlueWorx on-page translation — who sees the switcher', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
 
-  const ADMIN_ONLY = 'input[name="blueworx_translate_admin_only"]';
+  const AUDIENCE = 'input[name="blueworx_translate_audience"]';
+  const ROLES = 'input[name="blueworx_translate_roles[]"]';
 
-  test('with the setting on, the switcher is sent to admins and to nobody else', async ({ page, browser }) => {
+  /**
+   * Puts the audience back to everyone, which is the shipped default.
+   *
+   * @param {import('@playwright/test').Page} page Playwright page.
+   */
+  async function restoreEveryone(page) {
+    await restoreAll([
+      ['translation audience', async () => {
+        await page.goto(SETTINGS_PATH);
+        await openSectionFor(page, 'translate');
+        const detail = page.locator('[data-blueworx-detail="translate"]');
+        await detail.locator(AUDIENCE + '[value="everyone"]').check();
+        await detail.locator(ROLES + '[value="editor"]').setChecked(false);
+        await detail.locator(ROLES + '[value="administrator"]').setChecked(true);
+        await page.getByRole('button', { name: 'Save Changes' }).click();
+        await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+      }],
+    ]);
+  }
+
+  test('the panel offers both audiences and a tick box for every role', async ({ page }) => {
     await gotoSettings(page);
     const detail = page.locator('[data-blueworx-detail="translate"]');
 
-    await detail.locator(ADMIN_ONLY).setChecked(true);
+    await expect(detail.locator(AUDIENCE + '[value="everyone"]')).toBeChecked();
+    await expect(detail.locator(AUDIENCE + '[value="roles"]')).not.toBeChecked();
+    // Core's roles at a minimum; a site with extra roles gets those too.
+    await expect(detail.locator(ROLES + '[value="administrator"]')).toBeVisible();
+    await expect(detail.locator(ROLES + '[value="editor"]')).toBeVisible();
+    await expect(detail.locator(ROLES + '[value="subscriber"]')).toBeVisible();
+    // Administrators are the fallback until roles are picked.
+    await expect(detail.locator(ROLES + '[value="administrator"]')).toBeChecked();
+  });
+
+  test('more than one role can be ticked, and the choice survives a save', async ({ page }) => {
+    await gotoSettings(page);
+    const detail = page.locator('[data-blueworx-detail="translate"]');
+
+    await detail.locator(AUDIENCE + '[value="roles"]').check();
+    await detail.locator(ROLES + '[value="administrator"]').setChecked(true);
+    await detail.locator(ROLES + '[value="editor"]').setChecked(true);
     await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
-    await expect(detail.locator(ADMIN_ONLY)).toBeChecked();
 
     try {
-      // The signed-in administrator still gets the whole feature.
+      await expect(detail.locator(AUDIENCE + '[value="roles"]')).toBeChecked();
+      await expect(detail.locator(ROLES + '[value="administrator"]')).toBeChecked();
+      await expect(detail.locator(ROLES + '[value="editor"]')).toBeChecked();
+      await expect(detail.locator(ROLES + '[value="subscriber"]')).not.toBeChecked();
+    } finally {
+      await restoreEveryone(page);
+    }
+  });
+
+  test('restricted to roles, the switcher is sent to a matching user and to nobody else', async ({ page, browser }) => {
+    await gotoSettings(page);
+    const detail = page.locator('[data-blueworx-detail="translate"]');
+
+    await detail.locator(AUDIENCE + '[value="roles"]').check();
+    await detail.locator(ROLES + '[value="administrator"]').setChecked(true);
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+    await expect(detail.locator(AUDIENCE + '[value="roles"]')).toBeChecked();
+
+    try {
+      // The signed-in administrator holds a ticked role, so they get the whole
+      // feature.
       await page.goto('/');
       await expect(page.locator('#blueworx-translate-root')).toHaveCount(1);
       expect(await page.evaluate(() => window.blueworxTranslate)).toBeTruthy();
@@ -284,21 +341,32 @@ test.describe('BlueWorx on-page translation — administrators only', () => {
         await anonContext.close();
       }
     } finally {
-      await restoreAll([
-        ['administrators-only setting', async () => {
-          await page.goto(SETTINGS_PATH);
-          await openSectionFor(page, 'translate');
-          await detail.locator(ADMIN_ONLY).setChecked(false);
-          await page.getByRole('button', { name: 'Save Changes' }).click();
-          await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
-        }],
-      ]);
+      await restoreEveryone(page);
     }
   });
 
-  test('with the setting off, a logged-out visitor gets the switcher', async ({ browser }) => {
-    // The default state, asserted from a clean context so the previous test's
-    // restore is proven to have actually restored something.
+  test('restricted to a role the viewer does not hold, an administrator gets nothing either', async ({ page }) => {
+    await gotoSettings(page);
+    const detail = page.locator('[data-blueworx-detail="translate"]');
+
+    await detail.locator(AUDIENCE + '[value="roles"]').check();
+    await detail.locator(ROLES + '[value="administrator"]').setChecked(false);
+    await detail.locator(ROLES + '[value="editor"]').setChecked(true);
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+
+    try {
+      await page.goto('/');
+      await expect(page.locator('#blueworx-translate-root')).toHaveCount(0);
+      expect(await page.evaluate(() => window.blueworxTranslate)).toBeUndefined();
+    } finally {
+      await restoreEveryone(page);
+    }
+  });
+
+  test('set to everyone, a logged-out visitor gets the switcher', async ({ browser }) => {
+    // The default state, asserted from a clean context so the restores above
+    // are proven to have actually restored something.
     const anonContext = await browser.newContext({ baseURL });
     const anon = await anonContext.newPage();
 
