@@ -14,6 +14,14 @@ versioning.
   roles that came from another plugin. Sites that had it set to administrators
   only keep exactly that; everyone else is unaffected.
 
+### Fixed
+- **Buttons on other BlueWorx plugins' screens are readable again.** The
+  re-skin's link colour was heavy enough to override the shared design system,
+  so a plugin's main button showed brand-coloured text on its brand-coloured
+  background — a blank blue block with nothing written on it. WordPress's own
+  links are still recoloured; a button styled by the design system is now left
+  alone.
+
 ## [1.78.2] - 2026-09-03
 
 ### Changed
