@@ -85,12 +85,15 @@ test.describe('Logout landing page', () => {
     }
   });
 
-  test('a blank setting hands back to WordPress', async ({ page }) => {
+  test('a blank setting lands on the home page, never the login screen', async ({ page }) => {
     await login(page);
     await setLandingPage(page, '');
 
     const landed = await signOutAndLand(page);
+    const path = new URL(landed).pathname;
+
     expect(landed).not.toContain('signed-out=1');
-    expect(landed).toMatch(/loggedout=true/);
+    expect(landed).not.toMatch(/loggedout=true/);
+    expect(path).toBe('/');
   });
 });

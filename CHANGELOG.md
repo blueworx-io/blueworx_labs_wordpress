@@ -11,9 +11,9 @@ versioning.
   the address to use: "Send people here after they log out". One address for
   everybody, however they signed in, in place of the WordPress "you are now
   logged out" screen — which on a members' site is a dead end. It can be
-  somewhere off the site. Leave it blank and nothing changes. Single sign-on's
-  own sign-out setting still wins for people who came in that way, and falls
-  back to this one when it is blank.
+  somewhere off the site. Blank means the home page. Single sign-on's own
+  sign-out setting still wins for people who came in that way, and falls back
+  to this one when it is blank.
 
 ## [1.80.1] - 2026-09-04
 

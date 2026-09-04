@@ -36,6 +36,10 @@ function admin_url( $path = '' ) {
 	return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' );
 }
 
+function home_url( $path = '' ) {
+	return 'https://example.test/' . ltrim( (string) $path, '/' );
+}
+
 function wp_parse_url( $url, $component = -1 ) {
 	return parse_url( (string) $url, $component ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- Stub for the WordPress wrapper.
 }
@@ -57,13 +61,12 @@ function blueworx_feature_enabled( $key ) {
 
 require dirname( __DIR__, 2 ) . '/includes/login-redirect.php';
 
-echo "With nothing set, nothing changes\n";
+echo "With nothing set, the home page\n";
 
-check( 'a sign-out lands where WordPress sends it', blueworx_logout_redirect_to_landing_page( WP_DEFAULT ), WP_DEFAULT );
-check( 'even one with a destination on the link', blueworx_logout_redirect_to_landing_page( WP_DEFAULT ), WP_DEFAULT );
+check( 'a sign-out lands on the home page, not the login screen', blueworx_logout_redirect_to_landing_page( WP_DEFAULT ), 'https://example.test/' );
 $GLOBALS['options']['blueworx_logout_redirect'] = '   ';
 
-check( 'whitespace is not a landing page', blueworx_logout_redirect_to_landing_page( WP_DEFAULT ), WP_DEFAULT );
+check( 'whitespace is not a landing page either', blueworx_logout_redirect_to_landing_page( WP_DEFAULT ), 'https://example.test/' );
 check( 'and no extra host is allowed through', blueworx_logout_allow_landing_host( array( 'example.test' ) ), array( 'example.test' ) );
 
 echo "\nWith a landing page set, everybody goes there\n";

@@ -825,7 +825,7 @@ function blueworx_get_feature_detail_html( $key ) {
 							'mono'        => true,
 						)
 					),
-					'help'    => __( 'Everyone, however they signed in. Leave blank for the usual WordPress "you are now logged out" screen.', 'blueworx-labs-wordpress' ),
+					'help'    => __( 'Everyone, however they signed in. Leave blank for the home page.', 'blueworx-labs-wordpress' ),
 				)
 			)
 		);

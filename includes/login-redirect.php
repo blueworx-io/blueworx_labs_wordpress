@@ -105,16 +105,19 @@ if ( blueworx_feature_enabled( 'login_redirect' ) ) {
 }
 
 /**
- * Where a sign-out lands, if the site has said.
+ * Where a sign-out lands.
  *
- * One address for everybody, however they signed in. Empty means the site has
- * not said, and WordPress does what it always did — the login screen with a
- * "you are now logged out" line, which on a members' site is a dead end.
+ * One address for everybody, however they signed in. Left blank, it is the
+ * home page — never the WordPress login screen with its "you are now logged
+ * out" line, which on a members' site is a dead end, and on one that has
+ * moved its login is an address nobody should be shown.
  *
- * @return string Absolute URL, or an empty string.
+ * @return string Absolute URL.
  */
 function blueworx_logout_landing_page() {
-	return trim( (string) get_option( 'blueworx_logout_redirect', '' ) );
+	$configured = trim( (string) get_option( 'blueworx_logout_redirect', '' ) );
+
+	return '' !== $configured ? $configured : home_url( '/' );
 }
 
 /**
