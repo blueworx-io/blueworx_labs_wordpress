@@ -103,3 +103,65 @@ function blueworx_login_redirect_to_dashboard( $redirect_to, $requested, $user )
 if ( blueworx_feature_enabled( 'login_redirect' ) ) {
 	add_filter( 'login_redirect', 'blueworx_login_redirect_to_dashboard', BLUEWORX_LOGIN_REDIRECT_PRIORITY, 3 );
 }
+
+/**
+ * Where a sign-out lands, if the site has said.
+ *
+ * One address for everybody, however they signed in. Empty means the site has
+ * not said, and WordPress does what it always did — the login screen with a
+ * "you are now logged out" line, which on a members' site is a dead end.
+ *
+ * @return string Absolute URL, or an empty string.
+ */
+function blueworx_logout_landing_page() {
+	return trim( (string) get_option( 'blueworx_logout_redirect', '' ) );
+}
+
+/**
+ * Sends every sign-out to the site's landing page.
+ *
+ * The setting wins over a destination on the sign-out link itself, which is
+ * why the filter's other two arguments — the requested destination and the
+ * person signing out — are not even taken. That is deliberate: the links come
+ * from whichever plugin drew the menu — a shop, a course, a booking system —
+ * and each sends people to its own screen. The point of the setting is one
+ * answer for the whole site, for everybody, chosen by the person running it
+ * rather than by whichever plugin got to the link first.
+ *
+ * @param string $redirect_to Destination as it currently stands.
+ * @return string Destination.
+ */
+function blueworx_logout_redirect_to_landing_page( $redirect_to ) {
+	$landing = blueworx_logout_landing_page();
+
+	return '' !== $landing ? $landing : $redirect_to;
+}
+
+/**
+ * Lets the landing page be somewhere other than this site.
+ *
+ * Core sends a sign-out through wp_safe_redirect(), which quietly swaps any
+ * off-site address for the dashboard. A site whose members' area lives on
+ * another domain would set the address, save it, and watch every sign-out
+ * ignore it — so the one host the site has named is allowed through.
+ *
+ * @param array $hosts Hosts a safe redirect may go to.
+ * @return array Hosts, with the landing page's host added.
+ */
+function blueworx_logout_allow_landing_host( $hosts ) {
+	$host = wp_parse_url( blueworx_logout_landing_page(), PHP_URL_HOST );
+
+	if ( is_string( $host ) && '' !== $host && ! in_array( $host, (array) $hosts, true ) ) {
+		$hosts[] = $host;
+	}
+
+	return $hosts;
+}
+
+// Under the custom login function rather than the sign-in redirect one: it is
+// offered on that function's panel, and a site that has moved its login is the
+// site that has somewhere of its own to send people afterwards.
+if ( blueworx_feature_enabled( 'login' ) ) {
+	add_filter( 'logout_redirect', 'blueworx_logout_redirect_to_landing_page', BLUEWORX_LOGIN_REDIRECT_PRIORITY );
+	add_filter( 'allowed_redirect_hosts', 'blueworx_logout_allow_landing_host' );
+}

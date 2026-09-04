@@ -747,7 +747,16 @@ function blueworx_sso_single_logout_enabled() {
 function blueworx_sso_post_logout_redirect() {
 	$configured = trim( (string) blueworx_sso_option( 'redirect_after_logout' ) );
 
-	return '' !== $configured ? $configured : home_url( '/' );
+	if ( '' !== $configured ) {
+		return $configured;
+	}
+
+	// The site-wide answer, when there is one: a landing page chosen for
+	// everybody should not be skipped just because this person came in through
+	// the provider.
+	$site_wide = function_exists( 'blueworx_logout_landing_page' ) ? blueworx_logout_landing_page() : '';
+
+	return '' !== $site_wide ? $site_wide : home_url( '/' );
 }
 
 /**
