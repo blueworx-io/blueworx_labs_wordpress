@@ -5,6 +5,7 @@ import {
   ADMIN_USER,
   ADMIN_PASS,
   login,
+  setFeature,
 } from './helpers.js';
 
 /**
@@ -98,18 +99,6 @@ test.describe('SSO Logs', () => {
     }
   });
 
-  test('the settings screen sends you here rather than repeating a few lines', async ({
-    page,
-  }) => {
-    await login(page);
-    await page.goto(SSO);
-
-    const link = page.locator('[data-testid="bw-sso-open-logs"]');
-
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', /page=blueworx-sso-logs/);
-  });
-
   test('no cookie value is ever printed on the page', async ({ page }) => {
     await login(page);
     await page.goto(LOGS);
@@ -124,5 +113,64 @@ test.describe('SSO Logs', () => {
         expect(body).not.toContain(cookie.value);
       }
     }
+  });
+});
+
+/**
+ * The way in from the settings screen.
+ *
+ * Its own group because the settings screen only draws its fields once the
+ * function is on — switched off, it is a notice and nothing else. Turned on
+ * around this one check and put back afterwards, so a failed run cannot leave
+ * sign-on switched on for whatever runs next.
+ */
+test.describe('Getting to the log from the settings screen', () => {
+  test.skip(
+    isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
+    'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
+  );
+
+  const SETTINGS = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
+
+  /**
+   * Switches single sign-on on or off from Enhancements.
+   *
+   * @param {import('@playwright/test').Page} page Playwright page.
+   * @param {boolean} on Whether the function should end up on.
+   * @return {Promise<void>} Resolves once the save has landed.
+   */
+  async function setSso(page, on) {
+    await page.goto(SETTINGS);
+    await setFeature(page, 'sso', on);
+    await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
+    await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+  }
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    // browser.newPage() bypasses the page fixture and its reduced-motion
+    // opt-out, without which headless Chromium stops painting after a submit.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await login(page);
+    await setSso(page, true);
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await login(page);
+    await setSso(page, false);
+    await page.close();
+  });
+
+  test('it links there rather than repeating a few lines of it', async ({ page }) => {
+    await login(page);
+    await page.goto(SSO);
+
+    const link = page.locator('[data-testid="bw-sso-open-logs"]');
+
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', /page=blueworx-sso-logs/);
   });
 });
