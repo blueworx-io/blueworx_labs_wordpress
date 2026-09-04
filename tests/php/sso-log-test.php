@@ -105,15 +105,15 @@ echo "\nWhat the browser sent, by name only\n";
 
 reset_log();
 $_COOKIE = array(
-	'wordpress_logged_in_abc' => 'a-real-session-value',
-	'blueworx_sso_binder'     => 'a-real-binder-value',
+	'wordpress_logged_in_abc'       => 'a-real-session-value',
+	'wordpress_blueworx_sso_binder' => 'a-real-binder-value',
 );
 
 blueworx_sso_event( 'return', 'failure', 'state_not_bound_to_this_browser:mismatch' );
 
 $events = blueworx_sso_events();
 
-check( 'the cookie names are listed', $events[0]['jar'], 'blueworx_sso_binder, wordpress_logged_in_abc' );
+check( 'the cookie names are listed', $events[0]['jar'], 'wordpress_blueworx_sso_binder, wordpress_logged_in_abc' );
 check( 'the binder value is never stored', false, false !== strpos( wp_json_encode( $events ), 'a-real-binder-value' ) );
 check( 'nor is the session value', false, false !== strpos( wp_json_encode( $events ), 'a-real-session-value' ) );
 

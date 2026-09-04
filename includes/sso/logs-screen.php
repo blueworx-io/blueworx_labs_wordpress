@@ -444,7 +444,7 @@ function blueworx_sso_reason_label( $reason ) {
 		'cookie_not_set_headers_already_sent'      => __( 'The page had already started sending, so the cookie could not be set. This sign-in could never have worked.', 'blueworx-labs-wordpress' ),
 		'missing_state_or_code'                    => __( 'The provider came back without the parts a sign-in needs.', 'blueworx-labs-wordpress' ),
 		'unknown_or_replayed_state'                => __( 'No sign-in was in progress for this. Either it had already been used, or it took more than ten minutes.', 'blueworx-labs-wordpress' ),
-		'state_not_bound_to_this_browser:missing'  => __( 'The sign-in cookie never came back. Look at the address and what sits in front of the site.', 'blueworx-labs-wordpress' ),
+		'state_not_bound_to_this_browser:missing'  => __( 'The sign-in cookie never came back. If the browser sent no cookies at all, a page cache is stripping them; otherwise look at the address.', 'blueworx-labs-wordpress' ),
 		'state_not_bound_to_this_browser:mismatch' => __( 'A second sign-in was started in the same browser before this one finished.', 'blueworx-labs-wordpress' ),
 		'state_not_bound_to_this_browser:unbound'  => __( 'This attempt was recorded without a cookie to check against.', 'blueworx-labs-wordpress' ),
 		'blueworx_sso_no_account'                  => __( 'Nobody here has that sign-in, and signing in never creates an account.', 'blueworx-labs-wordpress' ),

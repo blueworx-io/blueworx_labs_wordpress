@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.80.1] - 2026-09-04
+
+### Fixed
+- **Single sign-on now works on a site with a page cache in front of it.** The
+  cookie that ties a sign-in to the browser that started it was being stripped
+  by the cache on the way back from the provider — caches drop every cookie off
+  a visitor who is not logged in yet, which is everybody in the middle of
+  signing in — so every sign-in on such a site failed saying the browser was
+  not the one that left. The cookie now carries the same prefix as WordPress's
+  own login cookies, which every cache already lets through.
+
 ## [1.80.0] - 2026-09-04
 
 ### Added

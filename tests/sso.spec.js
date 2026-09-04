@@ -386,7 +386,10 @@ test.describe('Single sign-on flow', () => {
     const started = await page.request.get('/?blueworx_sso=login', { maxRedirects: 0 });
     const cookie = started.headers()['set-cookie'] || '';
 
-    expect(cookie).toContain('blueworx_sso_binder');
+    // The WordPress prefix is load-bearing: page caches strip every other
+    // cookie off a visitor who is not logged in yet, which is everybody who
+    // is in the middle of signing in.
+    expect(cookie).toContain('wordpress_blueworx_sso_binder');
     expect(cookie).toContain('HttpOnly');
     // Strict would be dropped on the way back from the provider, which is a
     // top-level navigation from another site.
