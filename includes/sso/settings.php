@@ -530,38 +530,45 @@ function blueworx_sso_role_choices() {
 }
 
 /**
- * Renders the recent attempts.
+ * Points at the log rather than repeating a few lines of it.
+ *
+ * This screen used to end with the last five attempts and their reason codes.
+ * That was enough to know something was failing and never enough to know why,
+ * so it sent everybody looking for a second source anyway. The whole record now
+ * has its own screen, and this is the way to it.
  *
  * @return void
  */
 function blueworx_sso_render_log() {
-	$entries = blueworx_sso_get_log();
+	$events = blueworx_sso_events();
+	$failed = 0;
 
-	if ( empty( $entries ) ) {
-		return;
-	}
-
-	$items = '';
-
-	foreach ( array_slice( $entries, 0, 5 ) as $entry ) {
-		$ok = 'success' === $entry['outcome'];
-
-		$items .= sprintf(
-			'<li class="bw-activity__item"><span class="bw-activity__dot">%1$s</span><div class="bw-activity__body"><p class="bw-activity__text">%2$s</p><p class="bw-activity__meta">%3$s</p></div></li>',
-			blueworx_ds_icon( $ok ? 'circle-check' : 'circle-alert', 14 ),
-			$ok ? esc_html__( 'Signed in', 'blueworx-labs-wordpress' ) : esc_html__( 'Failed', 'blueworx-labs-wordpress' ),
-			esc_html(
-				wp_date( 'j M Y H:i', (int) $entry['time'] )
-				. ( '' !== (string) $entry['detail'] ? ' — ' . $entry['detail'] : '' )
-			)
-		);
+	foreach ( array_slice( $events, 0, 10 ) as $event ) {
+		if ( isset( $event['outcome'] ) && 'failure' === $event['outcome'] ) {
+			++$failed;
+		}
 	}
 
 	echo wp_kses(
 		blueworx_ds_field(
 			array(
-				'label'   => __( 'Recent sign-ins', 'blueworx-labs-wordpress' ),
-				'control' => '<ul class="bw-activity blueworx-sso-log">' . $items . '</ul>',
+				'label'   => __( 'What has been happening', 'blueworx-labs-wordpress' ),
+				'help'    => empty( $events )
+					? __( 'Nothing has been attempted yet.', 'blueworx-labs-wordpress' )
+					: (
+						$failed > 0
+							/* translators: %s: how many of the last ten events failed. */
+							? sprintf( _n( '%s of the last ten attempts failed.', '%s of the last ten attempts failed.', $failed, 'blueworx-labs-wordpress' ), number_format_i18n( $failed ) )
+							: __( 'Nothing has failed recently.', 'blueworx-labs-wordpress' )
+					),
+				'control' => blueworx_ds_button(
+					array(
+						'label' => __( 'Open SSO Logs', 'blueworx-labs-wordpress' ),
+						'href'  => admin_url( 'admin.php?page=blueworx-sso-logs' ),
+						'size'  => 'sm',
+						'attrs' => array( 'data-testid' => 'bw-sso-open-logs' ),
+					)
+				),
 			)
 		),
 		blueworx_ds_allowed_html()

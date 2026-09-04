@@ -4,6 +4,28 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.80.0] - 2026-09-04
+
+### Added
+- **A new SSO Logs screen, under Single sign-on.** When a sign-in failed, the
+  person was shown a deliberately vague message and the settings screen listed a
+  reason code, which was rarely enough to tell you what to change. This records
+  both halves of every sign-in — leaving for the provider and coming back — and
+  says in plain words what went wrong.
+- **It states how the site is wired up before you read a single event.** The
+  return address, the address the site calls itself, the address you actually
+  reached it on, the cookie rules in force and whatever sits in front of the
+  site. Most sign-on faults are two of those disagreeing, and the screen now
+  says so outright when the addresses do not match.
+
+### Changed
+- **"Not bound to this browser" now says which of the three it was**: the cookie
+  never came back, it came back from a later sign-in, or it could never be set
+  in the first place. One message for all three was the main reason this failure
+  was so hard to place.
+- The sign-on settings screen no longer repeats the last five attempts. It links
+  to the log instead.
+
 ## [1.79.0] - 2026-09-04
 
 ### Changed
