@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.81.0] - 2026-09-04
+
+### Added
+- **A landing page for sign-outs.** Under Custom login and protection, below
+  the address to use: "Send people here after they log out". One address for
+  everybody, however they signed in, in place of the WordPress "you are now
+  logged out" screen — which on a members' site is a dead end. It can be
+  somewhere off the site. Blank means the home page. Single sign-on's own
+  sign-out setting still wins for people who came in that way, and falls back
+  to this one when it is blank.
+
 ## [1.80.1] - 2026-09-04
 
 ### Fixed

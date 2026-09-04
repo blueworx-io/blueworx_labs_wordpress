@@ -285,6 +285,11 @@ function blueworx_save_feature_settings() {
 	$raw_slug = isset( $_POST['blueworx_login_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['blueworx_login_slug'] ) ) : '';
 	update_option( 'blueworx_login_slug', blueworx_sanitize_login_slug( $raw_slug ) );
 
+	// Login detail: where a sign-out lands. Blank is a real value — it means
+	// "leave it to WordPress" — so it is saved rather than skipped.
+	$raw_logout = isset( $_POST['blueworx_logout_redirect'] ) ? esc_url_raw( trim( wp_unslash( $_POST['blueworx_logout_redirect'] ) ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- esc_url_raw() is the sanitizer.
+	update_option( 'blueworx_logout_redirect', $raw_logout, false );
+
 	// Site Protection detail: per-area enable + roles.
 	$choices = blueworx_get_site_protection_role_choices();
 	foreach ( array( 'frontend', 'backend' ) as $area ) {
@@ -804,6 +809,22 @@ function blueworx_get_feature_detail_html( $key ) {
 						)
 					),
 					'help'    => __( 'The last part of the address above. Changing it changes where you sign in the moment you save.', 'blueworx-labs-wordpress' ),
+				)
+			)
+			. blueworx_ds_field(
+				array(
+					'label'   => __( 'Send people here after they log out', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_logout_redirect',
+					'control' => blueworx_ds_input(
+						array(
+							'name'        => 'blueworx_logout_redirect',
+							'id'          => 'blueworx_logout_redirect',
+							'value'       => blueworx_logout_landing_page(),
+							'placeholder' => home_url( '/' ),
+							'mono'        => true,
+						)
+					),
+					'help'    => __( 'Everyone, however they signed in. Leave blank for the home page.', 'blueworx-labs-wordpress' ),
 				)
 			)
 		);
