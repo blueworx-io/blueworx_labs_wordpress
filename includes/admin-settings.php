@@ -819,7 +819,6 @@ function blueworx_get_feature_detail_html( $key ) {
 						array(
 							'name'        => 'blueworx_logout_redirect',
 							'id'          => 'blueworx_logout_redirect',
-							'type'        => 'url',
 							'value'       => blueworx_logout_landing_page(),
 							'placeholder' => home_url( '/' ),
 							'mono'        => true,

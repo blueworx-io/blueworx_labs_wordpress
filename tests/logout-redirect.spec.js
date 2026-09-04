@@ -76,7 +76,8 @@ test.describe('Logout landing page', () => {
     await login(page);
 
     try {
-      await setLandingPage(page, '/?signed-out=1');
+      // A full address, as a person would paste one.
+      await setLandingPage(page, new URL('/?signed-out=1', page.url()).href);
       const landed = await signOutAndLand(page);
       expect(landed).toContain('signed-out=1');
     } finally {
