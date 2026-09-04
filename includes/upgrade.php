@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 12;
+	return 13;
 }
 
 /**
@@ -546,6 +546,31 @@ function blueworx_migrate_remove_translate_label() {
 }
 
 /**
+ * Carries the retired administrators-only translation setting over.
+ *
+ * 1.79.0 replaces a single "administrators only" tick with a choice of audience
+ * and a list of roles. A site that had ticked it means "not visitors", so it
+ * becomes the roles audience with administrators as the one role; a site that
+ * had not ticked it already means everyone, which is the new default and needs
+ * nothing written.
+ *
+ * Safe to re-run: a site that has already answered the new question keeps its
+ * answer.
+ *
+ * @return void
+ */
+function blueworx_migrate_translate_audience() {
+	$admin_only = get_option( 'blueworx_translate_admin_only', null );
+
+	if ( '1' === $admin_only && null === get_option( 'blueworx_translate_audience', null ) ) {
+		update_option( 'blueworx_translate_audience', 'roles' );
+		update_option( 'blueworx_translate_roles', array( 'administrator' ), false );
+	}
+
+	delete_option( 'blueworx_translate_admin_only' );
+}
+
+/**
  * Gets the options the removed headless REST layer wrote.
  *
  * Listed explicitly rather than swept with a `blueworx_headless_%` LIKE delete:
@@ -685,6 +710,10 @@ function blueworx_run_pending_labs_migrations() {
 	// not get a role written for it a moment later.
 	if ( $stored_version < 12 ) {
 		blueworx_migrate_register_external_role();
+	}
+
+	if ( $stored_version < 13 ) {
+		blueworx_migrate_translate_audience();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );
