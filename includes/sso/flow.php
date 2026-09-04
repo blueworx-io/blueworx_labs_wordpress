@@ -39,8 +39,16 @@ function blueworx_sso_attempt_key( $state ) {
 
 /**
  * The cookie tying a sign-in attempt to the browser that started it.
+ *
+ * Named with the same prefix as WordPress's own login cookies, deliberately. A
+ * page cache in front of a site strips cookies off requests from anybody it
+ * takes for an anonymous visitor, and lets through only the names it knows —
+ * which, on every cache that lets WordPress log people in at all, means names
+ * starting "wordpress_". Somebody signing in is by definition not logged in
+ * yet, so under its previous name this cookie was stripped on every return
+ * from the provider, and every sign-in on such a site failed.
  */
-const BLUEWORX_SSO_BINDER_COOKIE = 'blueworx_sso_binder';
+const BLUEWORX_SSO_BINDER_COOKIE = 'wordpress_blueworx_sso_binder';
 
 /**
  * Remembers, in the browser, that this browser started a sign-in.

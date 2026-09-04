@@ -207,16 +207,16 @@ $attempt = $GLOBALS['transients'][ blueworx_sso_attempt_key( 'our-state' ) ];
 // The state says a sign-in was started. Only this says it was started here —
 // without it, somebody can start a sign-in as themselves and hand the return
 // address to someone else, who then lands inside their account.
-$_COOKIE = array( 'blueworx_sso_binder' => 'binder-secret' );
+$_COOKIE = array( 'wordpress_blueworx_sso_binder' => 'binder-secret' );
 check( 'the browser that left is let back in', blueworx_sso_binder_matches( $attempt ), true );
 
-$_COOKIE = array( 'blueworx_sso_binder' => 'some-other-browser' );
+$_COOKIE = array( 'wordpress_blueworx_sso_binder' => 'some-other-browser' );
 check( 'a different browser is refused', blueworx_sso_binder_matches( $attempt ), false );
 
 $_COOKIE = array();
 check( 'and so is one carrying nothing', blueworx_sso_binder_matches( $attempt ), false );
 
-$_COOKIE = array( 'blueworx_sso_binder' => 'binder-secret' );
+$_COOKIE = array( 'wordpress_blueworx_sso_binder' => 'binder-secret' );
 check( 'an attempt recorded without a binding is refused', blueworx_sso_binder_matches( array( 'nonce' => 'n' ) ), false );
 $_COOKIE = array();
 
