@@ -417,7 +417,7 @@ Append to `blueworx_check_guide_format()`:
 	// Every feature that is on and not flagged still has its first guide under
 	// the id it always had, so links and specs keep resolving.
 	foreach ( blueworx_get_feature_definitions() as $key => $feature ) {
-		if ( ! empty( $feature['guide'] ) || ( isset( $feature['guide'] ) && false === $feature['guide'] ) ) {
+		if ( isset( $feature['guide'] ) && false === $feature['guide'] ) {
 			continue;
 		}
 		if ( ! blueworx_feature_enabled( $key ) ) {
