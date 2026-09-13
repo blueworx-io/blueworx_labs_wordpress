@@ -363,7 +363,7 @@ function blueworx_render_guides_page() {
 				'wp-upkeep'    => 'site-health.php',
 				'lp-calendar'  => 'admin.php?page=latepoint&route_name=calendars__view',
 				'lp-services'  => 'admin.php?page=latepoint&route_name=services__index',
-				'lp-staff'     => 'admin.php?page=latepoint&route_name=default_agent__edit_form',
+				'lp-staff'     => 'admin.php?page=latepoint&route_name=settings__work_periods',
 				'lp-customers' => 'admin.php?page=latepoint&route_name=customers__index',
 			);
 

@@ -712,8 +712,9 @@ function blueworx_get_other_product_guides() {
 			'body'    => blueworx_guide_body( array(
 				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
 				'steps' => array(
-					$t( 'Press *Booking* at the top right.' ),
-					$t( 'Set the date and time.' ),
+					$t( 'Click an empty slot on the calendar, under the staff member and at the time you want.' ),
+					$t( 'Under *Service*, choose which one.' ),
+					$t( 'Check the date and time, and adjust them if you need to.' ),
 					$t( 'Under *Customer*, press *Find* to pick someone who has booked before, or *New* to type their details.' ),
 					$t( 'Press *Create Order*.' ),
 				),
@@ -823,11 +824,13 @@ function blueworx_get_other_product_guides() {
 			'body'    => blueworx_guide_body( array(
 				'where' => sprintf( $t( '%s > Agents' ), $lp ),
 				'steps' => array(
-					$t( 'The free version runs one agent only, shown here as *Recipient of Notifications* — it is the business owner\'s own calendar.' ),
-					$t( 'Set their name, email address and phone number.' ),
-					$t( 'Press *Save Changes*.' ),
+					$t( 'Press *Add Agent*.' ),
+					$t( 'Type their name and email address.' ),
+					$t( 'Under *Services*, tick what they provide.' ),
+					$t( 'Under *Schedule*, set their working days and hours.' ),
+					$t( 'Press *Save*.' ),
 				),
-				'then'  => $t( 'Bookings are emailed to this address. A second staff member, each with their own calendar, needs the paid version of LatePoint.' ),
+				'then'  => $t( 'They can be booked from now on, and get a WordPress account so they can sign in and see their own calendar. Find this screen under *Agents* in the left menu. If you only see one agent and a link to upgrade, this site is on the free version — ask BlueWorx.' ),
 			) ),
 		),
 		array(
