@@ -90,6 +90,35 @@ function blueworx_check_guide_format() {
 	check( 'an unknown product is empty', '', blueworx_guide_product_label( 'nope' ) );
 
 	$GLOBALS['options'] = array();
+
+	echo "\nOnly client-facing features get a guide\n";
+
+	$GLOBALS['options'] = array();
+	$feature_guides = blueworx_get_feature_guides();
+	$ids            = array_column( $feature_guides, 'id' );
+
+	$hidden = array( 'xmlrpc', 'rest_users', 'author_slugs', 'application_passwords', 'robots_txt', 'emails', 'revisions', 'login_session', 'login_redirect', 'profile_cleanup', 'dashboard_widgets', 'admin_bar', 'admin_theme', 'display_names', 'comments', 'user_roles' );
+	foreach ( $hidden as $key ) {
+		check( "no guide for $key", false, in_array( 'feature-' . $key, $ids, true ) );
+	}
+
+	// Every feature that is on and not flagged still has its first guide under
+	// the id it always had, so links and specs keep resolving.
+	foreach ( blueworx_get_feature_definitions() as $key => $feature ) {
+		if ( isset( $feature['guide'] ) && false === $feature['guide'] ) {
+			continue;
+		}
+		if ( ! blueworx_feature_enabled( $key ) ) {
+			continue;
+		}
+		check( "feature-$key still exists", true, in_array( 'feature-' . $key, $ids, true ) );
+	}
+
+	echo "\nA feature can carry more than one task\n";
+
+	check( 'sign-in address has a second guide', true, in_array( 'feature-login-changing', $ids, true ) );
+	check( 'the second guide sits in the same tab', 'security', $feature_guides[ array_search( 'feature-login-changing', $ids, true ) ]['tab'] );
+	check( 'and belongs to the same feature', 'login', $feature_guides[ array_search( 'feature-login-changing', $ids, true ) ]['feature'] );
 }
 
 blueworx_check_guide_format();

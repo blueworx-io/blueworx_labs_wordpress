@@ -667,131 +667,373 @@ function blueworx_normalize_guides( $guides ) {
 /**
  * Gets the guides for this plugin's own features.
  *
- * Every feature in the registry gets one. Where no written guide exists yet the
- * feature's own settings-page description is used, so a newly registered
- * feature is never missing from this page — it just starts brief.
+ * Every feature in the registry that is not flagged guide => false gets at
+ * least one. A feature can carry several tasks; the first keeps the id
+ * feature-<key> so nothing that links to it breaks.
  *
  * @return array List of guides.
  */
 function blueworx_get_feature_guides() {
-	$bodies = blueworx_get_feature_guide_bodies();
+	$tasks  = blueworx_get_feature_guide_tasks();
 	$guides = array();
 
 	foreach ( blueworx_get_feature_definitions() as $key => $feature ) {
+		if ( isset( $feature['guide'] ) && false === $feature['guide'] ) {
+			continue;
+		}
+
 		if ( ! blueworx_feature_enabled( $key ) ) {
 			continue;
 		}
 
-		$body = isset( $bodies[ $key ] ) ? $bodies[ $key ] : '<p>' . esc_html( $feature['description'] ) . '</p>';
-
-		$guides[] = array(
-			'id'      => 'feature-' . $key,
-			'title'   => $feature['label'],
-			'tab'     => $feature['section'],
-			'body'    => $body,
-			'feature' => $key,
+		// A feature with nothing written yet still gets one card, from its own
+		// settings description, so it is never missing — just brief.
+		$list = isset( $tasks[ $key ] ) ? $tasks[ $key ] : array(
+			array(
+				'slug'  => '',
+				'title' => $feature['label'],
+				'body'  => '<p>' . esc_html( $feature['description'] ) . '</p>',
+			),
 		);
+
+		foreach ( $list as $task ) {
+			$slug = isset( $task['slug'] ) ? sanitize_key( $task['slug'] ) : '';
+
+			$guides[] = array(
+				'id'      => 'feature-' . $key . ( '' === $slug ? '' : '-' . $slug ),
+				'title'   => $task['title'],
+				'tab'     => $feature['section'],
+				'body'    => $task['body'],
+				'feature' => $key,
+			);
+		}
 	}
 
 	return $guides;
 }
 
 /**
- * Gets the written guide body for each feature, keyed by feature key.
+ * The written tasks for each feature, keyed by feature key.
  *
- * @return array Guide bodies keyed by feature key.
+ * Each feature is a list: the first task keeps the id feature-<key>, any
+ * others get feature-<key>-<slug>. Only client-facing features are here;
+ * the rest are flagged guide => false in the registry.
+ *
+ * @return array Lists of tasks (slug, title, body) keyed by feature key.
  */
-function blueworx_get_feature_guide_bodies() {
+function blueworx_get_feature_guide_tasks() {
+	$t = static function ( $text ) {
+		return __( $text, 'blueworx-labs-wordpress' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
+	};
+
 	return array(
-		'login'                 => '<p>' . esc_html__( 'The standard WordPress sign-in address is replaced with one only your team knows. Anyone visiting the old address is sent away, which stops the automated attacks that hammer it around the clock.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Your current sign-in address is shown at the top of BlueWorx > Enhancements. Bookmark it. Change the slug there if it is ever shared outside the team, and tell everyone the new address before you save — the old one stops working immediately.', 'blueworx-labs-wordpress' ) . '</p>',
+		'login'           => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Finding your sign-in address' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Enhancements' ),
+					'intro' => $t( 'The usual WordPress sign-in address is switched off on this site. Your team signs in at an address only they know.' ),
+					'steps' => array(
+						$t( 'Open *BlueWorx > Enhancements*.' ),
+						$t( 'Look at the top of the *Security & Access* section. Your sign-in address is shown there.' ),
+						$t( 'Bookmark it in your browser.' ),
+					),
+					'then'  => $t( 'Anyone going to the old /wp-admin or /wp-login address is sent to the home page instead. That is expected, not a fault.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'changing',
+				'title' => $t( 'Changing the sign-in address' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
+					'steps' => array(
+						$t( 'Tell everyone on the team the new address first — the old one stops working the moment you save.' ),
+						$t( 'Open *Custom login and protection* and type the new word in the *Address to use* box.' ),
+						$t( 'Press *Save Changes*.' ),
+						$t( 'Sign out and sign back in at the new address to check it.' ),
+					),
+					'then'  => $t( 'If you cannot get back in, contact BlueWorx — we can reset it for you.' ),
+				) ),
+			),
+		),
 
-		'site_protection'       => '<p>' . esc_html__( 'Keeps the site private. Visitors who are not signed in, or who do not hold one of the roles you pick, cannot see the site at all.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Use it for a site in build, a staging copy, or a members-only area. Choose the front of the site, the admin area, or both, then tick the roles allowed through. Take care not to lock out the role you are signed in with.', 'blueworx-labs-wordpress' ) . '</p>',
+		'site_protection' => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Making the site private while you build' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
+					'steps' => array(
+						$t( 'Open *Site protection*.' ),
+						$t( 'Choose what to protect: the front of the site, the admin area, or both.' ),
+						$t( 'Tick the roles that may still get in. Make sure your own role is ticked.' ),
+						$t( 'Press *Save Changes*.' ),
+						$t( 'Open the site in a private browser window to check a visitor is turned away.' ),
+					),
+					'then'  => $t( 'Visitors who are not signed in see nothing. If you tick the wrong roles and lock yourself out, contact BlueWorx.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'opening',
+				'title' => $t( 'Opening the site up again' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
+					'steps' => array(
+						$t( 'Open *Site protection*.' ),
+						$t( 'Switch it off, or untick the front of the site if you only want the admin area kept private.' ),
+						$t( 'Press *Save Changes*.' ),
+						$t( 'Check the home page in a private browser window.' ),
+					),
+					'then'  => $t( 'The site is public straight away. If it still looks private, clear the cache — see the Cache guide.' ),
+				) ),
+			),
+		),
 
-		'sso'                   => '<p>' . esc_html__( 'Lets people sign in with an account they already have somewhere else — a company Google or Microsoft account, or a membership system — instead of a separate password here.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Your provider gives you three things: an address, a client ID and a client secret. Paste them in, and give the provider the return address shown on the settings screen. The connection line tells you whether the two ends can see each other.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'There are two buttons: one to sign in, one to join. Signing in finds an existing account and never makes a new one, so somebody who has not joined yet is sent to your joining page rather than into a fresh, empty account. Joining is the button that may create one — decide whether it should, and which role a newcomer lands on. Neither can ever make someone an administrator, whatever the provider says.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'The sign-in button is added to the login screen for you. Put the joining button on a page with the shortcode shown on the settings screen, and set where each of them lands afterwards.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'If a sign-in fails, the person only sees a general message — telling them why would help an attacker. The real reason is listed under Recent sign-ins on the settings screen.', 'blueworx-labs-wordpress' ) . '</p>',
+		'sso'             => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Signing in with your work account' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'The sign-in screen' ),
+					'steps' => array(
+						$t( 'Go to your sign-in address.' ),
+						$t( 'Press the *Sign in with single sign-on* button below the password box.' ),
+						$t( 'Sign in with your work account if it asks you to.' ),
+					),
+					'then'  => $t( 'You land on the site already signed in. If it says the sign-in did not work, you do not have an account here yet — ask whoever runs the site to add you, or use the joining page if there is one.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'join-button',
+				'title' => $t( 'Putting the Join button on a page' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Single sign-on' ),
+					'steps' => array(
+						$t( 'Copy the join shortcode shown under *Buttons*.' ),
+						$t( 'Open the page where people should join, add a *Shortcode* block, and paste it in.' ),
+						$t( 'Back on the Single sign-on screen, choose which role a newcomer gets and where they land afterwards.' ),
+						$t( 'Press *Save Changes* on the Single sign-on screen, then *Save* the page.' ),
+					),
+					'then'  => $t( 'The button appears on the page. Nobody who joins this way can ever be made an administrator, whatever their work account says.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'failed',
+				'title' => $t( 'Finding out why a sign-in failed' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Single sign-on > SSO Logs' ),
+					'steps' => array(
+						$t( 'Ask the person roughly when they tried.' ),
+						$t( 'Press *Open SSO Logs* and find their attempt by time.' ),
+						$t( 'Read the reason in the *Outcome* column.' ),
+					),
+					'then'  => $t( 'The person only ever sees a general message — the real reason is here. "No account" means they need adding; "Provider refused" means their work account, not this site.' ),
+				) ),
+			),
+		),
 
-		'support_access'        => '<p>' . esc_html__( 'Lets BlueWorx look at your site to help with a problem, without you sharing a password or creating an account.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Nothing is open until you act. Generate a key, send it to us, and switch the window on. Access is read-only and expires after 24 hours on its own. You can close it early at any time by switching the window off.', 'blueworx-labs-wordpress' ) . '</p>',
+		'support_access'  => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Letting BlueWorx look at the site' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Support access' ),
+					'steps' => array(
+						$t( 'Press *Generate key*.' ),
+						$t( 'Copy the key and send it to BlueWorx in the thread you are already talking in.' ),
+						$t( 'Press *Allow support access for 24 hours*.' ),
+					),
+					'then'  => $t( 'We can look but not change anything. The window closes on its own after 24 hours, and you never need to share a password.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'closing',
+				'title' => $t( 'Closing the window early' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Support access' ),
+					'steps' => array(
+						$t( 'Press *Revoke access*.' ),
+					),
+					'then'  => $t( 'Access ends immediately. The old key stops working; generate a new one next time.' ),
+				) ),
+			),
+		),
 
-		'user_roles'            => '<p>' . esc_html__( 'Roles are listed alphabetically when you add or edit a user, which makes the one you want easier to find on a site with many roles.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'It also lets one person hold more than one role at once — useful where someone needs, say, both shop manager and editor without you building a custom role for the combination.', 'blueworx-labs-wordpress' ) . '</p>',
+		'cache_manual'    => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Clearing the cache when something looks stale' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Cache' ),
+					'steps' => array(
+						$t( 'Press *Refresh cache now*.' ),
+						$t( 'Wait for the confirmation.' ),
+						$t( 'Reload the page that looked wrong.' ),
+					),
+					'then'  => $t( 'Visitors see the current version. If it still looks old, reload once more with Ctrl+Shift+R (Cmd+Shift+R on a Mac) — your own browser keeps a copy too.' ),
+				) ),
+			),
+		),
 
-		'application_passwords' => '<p>' . esc_html__( 'Application Passwords let an outside app connect to this site as a particular user. They are hidden by default because most people never need them and they are a common way in for an attacker.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Switch this on only when an integration asks for one, and only administrators will see the option on their profile. Delete the password from the profile screen as soon as the integration is retired.', 'blueworx-labs-wordpress' ) . '</p>',
+		'cache_auto'      => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'What clears on its own when you publish' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'Any page or post' ),
+					'steps' => array(
+						$t( 'Press *Publish* or *Save* as normal.' ),
+					),
+					'then'  => $t( 'The cached copy of that page is thrown away for you, so what you just changed is what people see. You only need the Cache screen when something else changed — a menu, a theme setting, a plugin.' ),
+				) ),
+			),
+		),
 
-		'comments'              => '<p>' . esc_html__( 'Turns comments off across the whole site and removes the comment areas from the admin screens, so nobody is left moderating spam on a site that never wanted comments.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Existing comments are hidden rather than deleted. Switch this off again and they come back.', 'blueworx-labs-wordpress' ) . '</p>',
+		'menu_editor'     => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Reordering the sidebar' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Edit Menu' ),
+					'steps' => array(
+						$t( 'Drag an item up or down the list.' ),
+						$t( 'Press *Save changes*.' ),
+					),
+					'then'  => $t( 'The sidebar changes for everyone on the site, not just you.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'hiding',
+				'title' => $t( 'Hiding things nobody uses' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Edit Menu' ),
+					'steps' => array(
+						$t( 'Drag the item into *Hidden*, or use its arrows to move it there.' ),
+						$t( 'Press *Save changes*.' ),
+					),
+					'then'  => $t( 'Hiding is tidying, not a lock: anyone who knows the address can still get there. To stop somebody doing something, change their role instead.' ),
+				) ),
+			),
+		),
 
-		'page_excerpts'         => '<p>' . esc_html__( 'Adds the Excerpt box to Pages, which WordPress normally offers on Posts only.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'An excerpt is the short summary used in search results, link previews and listings. Without one those places fall back to the first few lines of the page, which often reads badly. If you cannot see the box, open the three-dot menu at the top right of the editor, choose Preferences, and turn Excerpt on.', 'blueworx-labs-wordpress' ) . '</p>',
+		'view_as_role'    => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Checking what an editor can see' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'The foot of the sidebar, above Log Out' ),
+					'steps' => array(
+						$t( 'Press *My own view* and choose a role.' ),
+						$t( 'Click around the admin area as that person would.' ),
+						$t( 'Press *My own view* again when you are done.' ),
+					),
+					'then'  => $t( 'You see less, never more, so nothing you do here can affect access. If a role cannot reach something it should, change the role on Users > Roles or ask BlueWorx.' ),
+				) ),
+			),
+		),
 
-		'translate'             => '<p>' . esc_html__( 'Adds a floating language button so a visitor can read the site in their own language.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'The translation happens on the visitor\'s own device, so nothing is sent anywhere and the site stays fast. It works in Chrome and Edge; other browsers simply do not see the button. Search engines always index your original wording, so this cannot affect your rankings.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Choose which languages to offer, where the button sits, and any pages to leave out, in the settings under this feature.', 'blueworx-labs-wordpress' ) . '</p>',
+		'content_tools'   => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Duplicating a page' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'Pages, or Posts' ),
+					'steps' => array(
+						$t( 'Hover over the page in the list and press *Duplicate*.' ),
+						$t( 'Open the new draft — it has "(copy)" in the title.' ),
+						$t( 'Change the title and the address (*Slug*) in the panel on the right, then edit the content.' ),
+						$t( 'Press *Publish* when it is ready.' ),
+					),
+					'then'  => $t( 'The copy is a draft until you publish it, so nothing is live by accident.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'external-link',
+				'title' => $t( 'Pointing a menu entry at another site' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'Pages' ),
+					'steps' => array(
+						$t( 'Open the page that sits in the menu, or create a new one with just a title.' ),
+						$t( 'In the panel on the right, open *Link to another site* and paste the full address into *External address*, starting https://.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'Anyone opening that page, from the menu or a link, is sent to the other site instead.' ),
+				) ),
+			),
+		),
 
-		'emails'                => '<p>' . esc_html__( 'WordPress emails the site administrator whenever a user changes their password, a plugin updates, and so on. On a busy site that is a lot of mail nobody reads.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This stops those routine notifications. Genuine mail your site sends — order confirmations, contact form messages, password resets to the person who asked — is untouched.', 'blueworx-labs-wordpress' ) . '</p>',
+		'media_tools'     => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Replacing a file without breaking links' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'Media > Library' ),
+					'steps' => array(
+						$t( 'Click the file you want to replace.' ),
+						$t( 'Under *Replace file*, choose the new version.' ),
+						$t( 'Press *Replace*.' ),
+					),
+					'then'  => $t( 'The address stays the same, so every page, link and email pointing at the old file now shows the new one. Do not delete and re-upload — that gives the file a new address and breaks every link to it.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'svg',
+				'title' => $t( 'Uploading a logo as SVG' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'Media > Add New' ),
+					'steps' => array(
+						$t( 'Drop the .svg file onto the page, or press *Select Files*.' ),
+					),
+					'then'  => $t( 'If it is refused, your role is not allowed SVG uploads — an administrator can allow it under BlueWorx > Enhancements > Media tools. Every SVG is cleaned of anything that could run, so it is safe to use once it is in.' ),
+				) ),
+			),
+		),
 
-		'profile_cleanup'       => '<p>' . esc_html__( 'Hides the parts of the user profile screen that nobody uses, along with the Elementor AI and Elementor Notes panels.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Purely tidying. Nothing is deleted and no setting changes — the options are simply out of the way.', 'blueworx-labs-wordpress' ) . '</p>',
+		'page_excerpts'   => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Writing the summary that search results show' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'Pages' ),
+					'steps' => array(
+						$t( 'Open the page.' ),
+						$t( 'In the panel on the right, press *Add an excerpt…* and write one or two sentences.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'Search results, link previews and listings use this instead of the first few lines of the page.' ),
+				) ),
+			),
+		),
 
-		'cache_auto'            => '<p>' . esc_html__( 'A cache keeps a ready-made copy of your pages so they load quickly. The catch is that after you edit something, visitors can keep seeing the old copy.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This clears the relevant cache automatically whenever you publish or update a page or post, so what you just changed is what people see.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'cache_manual'          => '<p>' . esc_html__( 'Adds BlueWorx > Cache, with a button that clears the whole cache on demand.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Reach for it when something looks stale and you cannot work out why — after a theme change, a plugin update, or an edit made straight in the database. Clearing the cache is safe; the site simply rebuilds its copies as people visit.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'menu_editor'           => '<p>' . esc_html__( 'Adds BlueWorx > Edit Menu, where you decide what the admin sidebar looks like for everyone on the site.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Drag items into the order that suits how you work, hide the ones nobody uses, or move rarely needed items into More to shorten the list. Hiding an item does not remove the feature — anyone who knows the address can still reach it — so treat it as tidying, not as a permission.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'admin_theme'           => '<p>' . esc_html__( 'Restyles the admin and sign-in screens with the BlueWorx look.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Appearance only — every screen works exactly as it does normally. Switch it off at any time to go back to the standard WordPress look.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'login_session'         => '<p>' . esc_html__( 'Decides how long somebody stays signed in before WordPress asks for their password again. Out of the box that is two days, which on a site people dip in and out of feels like being logged out constantly.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Pick a length that matches how the site is used. A longer session is more convenient and slightly less safe on a shared computer, so choose "Until they sign out" only where everyone has their own machine. The change applies the next time each person signs in.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'login_redirect'        => '<p>' . esc_html__( 'Booking, shop and membership plugins often take over where people land after signing in, so an editor who signs in to write a page arrives on a bookings dashboard or a shop account page instead.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This puts anyone who works in the admin area on the dashboard instead. Customers are left where the shop or booking plugin wanted them, and a link that asked for a particular page still goes to that page.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'view_as_role'          => '<p>' . esc_html__( 'Lets you look at the admin area the way one of your other roles sees it, so you can check what an editor or a member can actually reach before you tell them.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'The control sits at the foot of the sidebar, above Log Out. It says which view you are in and puts you back with one click. You are only offered the roles below your own, and it can only ever show you less than you normally see, never more, so it cannot be used to gain access to anything.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'display_names'         => '<p>' . esc_html__( 'Plugins and roles are named after the product they came from, not the job they do. Somebody looking for the shop finds "SureCart", and a customer account is called a "Subscriber", which means nothing to anyone who did not install it.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This renames them on screen: SureCart reads as Commerce, LatePoint as Bookings, SureForms as Forms Builder and SureDash as Dashboards. Roles say where they belong before they say what they do — Site: Editor, Site: Basic User, Commerce: Manager, Bookings: Agent — so a list of them falls into groups and an editor of the site is never mistaken for an editor of the shop. Administrator is left as it is; there is only one of those and it runs everything.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'It changes the words and nothing else. Nobody gains or loses access, no plugin behaves differently, and nothing is written into those plugins — switch it off and every original name is back on the next page. The one place a name can still show through is inside a plugin\'s own buttons and messages, which belong to that plugin.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'xmlrpc'                => '<p>' . esc_html__( 'XML-RPC is an old way of posting to WordPress from another program. Almost nobody uses it any more, but attackers do: it lets them try hundreds of passwords in a single request.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Leave this on. Turn it off only if you publish from the WordPress mobile app or use Jetpack, both of which need it.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'author_slugs'          => '<p>' . esc_html__( 'By default a WordPress author page has the person\'s sign-in name in its address, which hands an attacker half of what they need to get in.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This replaces that name with a meaningless code. It is off by default because it changes those addresses, so switch it on early in a site\'s life rather than after the pages have been shared or indexed.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'rest_users'            => '<p>' . esc_html__( 'WordPress publishes the list of everyone with an account on the site, readable by anyone, with no sign-in needed. It gives away the names people sign in with, which is half of what someone needs to break in.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This closes that off, so only people who are signed in and allowed to manage users can read it. Leave it on. Turn it off only if something outside the site — a separate app or a directory page — genuinely needs to read your list of users.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'content_tools'         => '<p>' . esc_html__( 'Adds a Duplicate link beside every page and post. It makes a complete copy as a draft — the content, the categories, and all the field values — so you can build the next one from a page that already works rather than starting again.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'The copy is always a draft, and nothing is published until you say so. There is also an optional setting that lets a page point at an address on another site, for when a menu entry needs to send people somewhere else entirely.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'revisions'             => '<p>' . esc_html__( 'WordPress keeps a copy of a page every time you save it, forever. On a site that is edited often that quietly becomes the largest thing in the database and slows everything down.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'This keeps the most recent ones and lets the older ones go. Twenty is plenty for undoing a mistake. Copies already saved are left alone; the limit applies from now on.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'robots_txt'            => '<p>' . esc_html__( 'robots.txt is the short file that tells search engines which parts of the site to look at. This gives you a box to edit it in rather than needing access to the server.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Be careful: one wrong line here can remove the site from Google. If an SEO plugin is already managing this, leave it switched off and let that plugin do it. After saving, open /robots.txt in a browser and check it says what you expect.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'media_tools'           => '<p>' . esc_html__( 'Three things at once. You can replace a file with a new version without the address changing, so every page already using it updates by itself instead of you hunting them down.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'Photos straight from a phone or camera are far larger than any screen needs, so oversized images are scaled down as they are uploaded — the page loads faster and nobody has to remember to resize anything.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'SVG logos can also be allowed, for chosen roles only. WordPress blocks them by default for a good reason: an SVG is a document that can carry code. Every one uploaded here is stripped of anything that could run, but still only allow it for people you trust with the whole site.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'admin_bar'             => '<p>' . esc_html__( 'Tidies the black bar across the top of the screen: the WordPress logo, the Customize link, the update counter and the Help drawer all go, leaving the things your team actually uses.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'It can also hide that bar completely on the public side of the site, either for everyone but administrators or for the roles you choose, so a logged-in member sees the site the way a visitor does.', 'blueworx-labs-wordpress' ) . '</p>',
-
-		'dashboard_widgets'     => '<p>' . esc_html__( 'Removes the dashboard panels nobody on your site uses, so the first screen after signing in shows what matters instead of WordPress news and an empty draft box.', 'blueworx-labs-wordpress' ) . '</p>'
-			. '<p>' . esc_html__( 'These are removed rather than hidden, so they stay gone for everybody instead of reappearing the moment someone opens Screen Options.', 'blueworx-labs-wordpress' ) . '</p>',
+		'translate'       => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Choosing which languages the button offers' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Enhancements > Translation' ),
+					'steps' => array(
+						$t( 'Open *On-page translation*.' ),
+						$t( 'Tick the languages to offer and choose which corner the button sits in.' ),
+						$t( 'Press *Save Changes*.' ),
+					),
+					'then'  => $t( 'The button appears on the front of the site in Chrome and Edge. Other browsers do not show it, and search engines always read your original words.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'excluding',
+				'title' => $t( 'Keeping something out of translation' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > Enhancements > Translation' ),
+					'steps' => array(
+						$t( 'Open *On-page translation*.' ),
+						$t( 'Under *Never translate (one CSS selector per line)*, add a CSS selector for the text to leave alone — for example .price or #legal-notice.' ),
+						$t( 'Press *Save Changes*.' ),
+					),
+					'then'  => $t( 'Anything matching that selector keeps its original wording. Code blocks and anything already marked notranslate are always left alone too.' ),
+				) ),
+			),
+		),
 	);
 }
 
