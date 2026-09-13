@@ -29,6 +29,61 @@ if ( ! defined( 'ABSPATH' ) ) {
 const BLUEWORX_GUIDES_FALLBACK_TAB = 'other';
 
 /**
+ * Escapes one line of guide text and adds the emphasis a guide is allowed.
+ *
+ * Guides name buttons in *asterisks* — "press *Save*" — which become <em> after
+ * escaping, so a guide can point at a label without ever handing raw markup to
+ * the page. A lone asterisk (2 * 3) is left as it is.
+ *
+ * @param string $text Plain text with optional *emphasis*.
+ * @return string Escaped HTML.
+ */
+function blueworx_guide_text( $text ) {
+	return preg_replace( '/\*([^*\s][^*]*?)\*/', '<em>$1</em>', esc_html( (string) $text ) );
+}
+
+/**
+ * Builds a guide body from its parts, so every guide reads the same way.
+ *
+ * Where, an optional opening sentence, the numbered steps, then what happens
+ * next. Everything is escaped here, so the result already passes wp_kses_post
+ * on output and a third party using this helper gets the same shape as ours.
+ *
+ * @param array $parts {
+ *     @type string   $where The menu path, as the sidebar labels it.
+ *     @type string   $intro Optional framing sentence.
+ *     @type string[] $steps One action per step.
+ *     @type string   $then  What the person should now see.
+ * }
+ * @return string HTML.
+ */
+function blueworx_guide_body( $parts ) {
+	$html = '';
+
+	if ( ! empty( $parts['where'] ) ) {
+		$html .= '<p class="bw-guide__where"><strong>' . esc_html__( 'Where:', 'blueworx-labs-wordpress' ) . '</strong> ' . blueworx_guide_text( $parts['where'] ) . '</p>';
+	}
+
+	if ( ! empty( $parts['intro'] ) ) {
+		$html .= '<p>' . blueworx_guide_text( $parts['intro'] ) . '</p>';
+	}
+
+	if ( ! empty( $parts['steps'] ) ) {
+		$html .= '<ol class="bw-guide__steps">';
+		foreach ( (array) $parts['steps'] as $step ) {
+			$html .= '<li>' . blueworx_guide_text( $step ) . '</li>';
+		}
+		$html .= '</ol>';
+	}
+
+	if ( ! empty( $parts['then'] ) ) {
+		$html .= '<p class="bw-guide__then">' . blueworx_guide_text( $parts['then'] ) . '</p>';
+	}
+
+	return $html;
+}
+
+/**
  * Gets the ordered Guides tabs.
  *
  * Getting started first, then the feature sections in their settings-page
