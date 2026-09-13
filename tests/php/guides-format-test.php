@@ -44,6 +44,7 @@ function class_exists_stub( $name ) {
 
 require __DIR__ . '/../../includes/features.php';
 require __DIR__ . '/../../includes/guides.php';
+require __DIR__ . '/../../includes/display-names.php';
 
 function blueworx_check_guide_format() {
 	echo "The helper builds the three parts in order\n";
@@ -75,6 +76,20 @@ function blueworx_check_guide_format() {
 	check( 'angle brackets never reach the page', 'a &lt;b&gt; c', blueworx_guide_text( 'a <b> c' ) );
 	check( 'asterisks become emphasis', 'press <em>Save</em> now', blueworx_guide_text( 'press *Save* now' ) );
 	check( 'a lone asterisk is left alone', '2 * 3', blueworx_guide_text( '2 * 3' ) );
+
+	echo "\nProduct names follow Display names\n";
+
+	$GLOBALS['options'] = array( 'blueworx_feature_display_names' => '0' );
+	check( 'SureCart is SureCart with the feature off', 'SureCart', blueworx_guide_product_label( 'surecart' ) );
+	check( 'LatePoint too', 'LatePoint', blueworx_guide_product_label( 'latepoint' ) );
+
+	$GLOBALS['options'] = array( 'blueworx_feature_display_names' => '1' );
+	check( 'SureCart becomes Commerce with it on', 'Commerce', blueworx_guide_product_label( 'surecart' ) );
+	check( 'LatePoint becomes Bookings', 'Bookings', blueworx_guide_product_label( 'latepoint' ) );
+	check( 'WordPress is never renamed', 'WordPress', blueworx_guide_product_label( 'wordpress' ) );
+	check( 'an unknown product is empty', '', blueworx_guide_product_label( 'nope' ) );
+
+	$GLOBALS['options'] = array();
 }
 
 blueworx_check_guide_format();

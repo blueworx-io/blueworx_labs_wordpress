@@ -304,6 +304,42 @@ function blueworx_get_all_guide_tabs() {
 }
 
 /**
+ * A product's name as the sidebar currently shows it.
+ *
+ * With Display names on, SureCart is "Commerce" and LatePoint is "Bookings"
+ * across the admin. A guide telling somebody to open "LatePoint" when the menu
+ * says "Bookings" is a guide that sends them looking for a word that is not
+ * there, so the product tabs and every Where line come through here.
+ *
+ * @param string $product Product key.
+ * @return string Label, or '' for an unknown product.
+ */
+function blueworx_guide_product_label( $product ) {
+	$names = array(
+		'blueworx'  => 'BlueWorx',
+		'wordpress' => 'WordPress',
+		'surecart'  => 'SureCart',
+		'sureforms' => 'SureForms',
+		'latepoint' => 'LatePoint',
+	);
+
+	if ( ! isset( $names[ $product ] ) ) {
+		return '';
+	}
+
+	$name = $names[ $product ];
+
+	if ( function_exists( 'blueworx_plugin_display_names' ) && blueworx_feature_enabled( 'display_names' ) ) {
+		$renamed = blueworx_rename_display_text( $name, blueworx_plugin_display_names() );
+		if ( null !== $renamed ) {
+			return $renamed;
+		}
+	}
+
+	return $name;
+}
+
+/**
  * Gets the guide products, in display order.
  *
  * A product is the thing a guide is about — this plugin, WordPress itself, or
@@ -317,16 +353,16 @@ function blueworx_get_all_guide_tabs() {
  */
 function blueworx_get_guide_products() {
 	$products = array(
-		'blueworx'  => __( 'BlueWorx', 'blueworx-labs-wordpress' ),
-		'wordpress' => __( 'WordPress', 'blueworx-labs-wordpress' ),
+		'blueworx'  => blueworx_guide_product_label( 'blueworx' ),
+		'wordpress' => blueworx_guide_product_label( 'wordpress' ),
 	);
 
 	if ( blueworx_guide_product_is_active( 'surecart' ) ) {
-		$products['surecart'] = __( 'SureCart', 'blueworx-labs-wordpress' );
+		$products['surecart'] = blueworx_guide_product_label( 'surecart' );
 	}
 
 	if ( blueworx_guide_product_is_active( 'sureforms' ) ) {
-		$products['sureforms'] = __( 'SureForms', 'blueworx-labs-wordpress' );
+		$products['sureforms'] = blueworx_guide_product_label( 'sureforms' );
 	}
 
 	/**
