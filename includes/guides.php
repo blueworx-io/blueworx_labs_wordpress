@@ -126,70 +126,335 @@ function blueworx_get_guide_tabs() {
  * @return array List of guides.
  */
 function blueworx_get_other_product_guides() {
+	$t = static function ( $text ) {
+		return __( $text, 'blueworx-labs-wordpress' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
+	};
+
 	$guides = array(
+		// ── Blog posts ──
+		array(
+			'id'      => 'wp-posts-writing',
+			'title'   => $t( 'Writing and publishing a post' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Posts > Add New' ),
+				'steps' => array(
+					$t( 'Type the title where it says *Add title*.' ),
+					$t( 'Click below it and start writing. Press Enter for a new paragraph; press the black *+* for an image, heading or list.' ),
+					$t( 'Press *Save draft* as you go.' ),
+					$t( 'Press *Publish*, then *Publish* again to confirm.' ),
+				),
+				'then'  => $t( 'The post appears at the top of your blog or news page. The address is made from the title — change it under *URL* in the panel on the right before publishing, not after.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-featured-image',
+			'title'   => $t( 'Adding a featured image' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The post editor, panel on the right' ),
+				'steps' => array(
+					$t( 'Make sure the *Post* tab is chosen at the top of the panel, not *Block*.' ),
+					$t( 'Open *Featured image* and press *Set featured image*.' ),
+					$t( 'Upload a picture or choose one from the library, then press *Set featured image*.' ),
+					$t( 'Press *Save* or *Publish*.' ),
+				),
+				'then'  => $t( 'This is the picture shown in listings and when the post is shared. Without one, those places may show nothing at all.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-categories',
+			'title'   => $t( 'Putting a post in a category, and adding tags' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The post editor, panel on the right' ),
+				'intro' => $t( 'A category is a section of the blog — News, Events. A tag is a keyword — a place, a name, a product.' ),
+				'steps' => array(
+					$t( 'Open *Categories* and tick one. Press *Add Category* if the right one does not exist yet.' ),
+					$t( 'Open *Tags*, type a word and press Enter. Reuse tags you already have rather than inventing spellings.' ),
+					$t( 'Press *Save* or *Publish*.' ),
+				),
+				'then'  => $t( 'A post with no category lands in "Uncategorized", which visitors can see. One category per post is usually right; tags can be many.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-scheduling',
+			'title'   => $t( 'Scheduling a post for later' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The post editor, panel on the right' ),
+				'steps' => array(
+					$t( 'Next to *Publish*, click the date (it says *Immediately*).' ),
+					$t( 'Pick the day and time.' ),
+					$t( 'Press *Schedule*, then *Schedule* again to confirm.' ),
+				),
+				'then'  => $t( 'The post goes live on its own at that time. It shows as *Scheduled* in the Posts list until then. To change your mind, open it and change the date, or switch it back to Draft.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-editing',
+			'title'   => $t( 'Editing a post that is already live' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Posts' ),
+				'steps' => array(
+					$t( 'Hover over the post in the list and press *Edit*.' ),
+					$t( 'Make your changes.' ),
+					$t( 'Press *Save*.' ),
+				),
+				'then'  => $t( 'Visitors see the change immediately. The old version is kept — see "Undoing a change you regret" under Getting started.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-unpublishing',
+			'title'   => $t( 'Taking a post down without deleting it' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The post editor, panel on the right' ),
+				'steps' => array(
+					$t( 'Open the post.' ),
+					$t( 'Under *Status*, choose *Draft*.' ),
+					$t( 'Press *Save*.' ),
+				),
+				'then'  => $t( 'The post disappears from the site but is kept in your list, ready to publish again. Anyone with the old link sees a "not found" page.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-trash',
+			'title'   => $t( 'Getting a post back from the trash' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Posts' ),
+				'steps' => array(
+					$t( 'Press *Trash* in the row of links above the list.' ),
+					$t( 'Hover over the post and press *Restore*.' ),
+				),
+				'then'  => $t( 'It comes back as a draft. Items in the trash are removed for good after 30 days.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-posts-author',
+			'title'   => $t( 'Changing who a post says wrote it' ),
+			'tab'     => 'wp-posts',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The post editor, panel on the right' ),
+				'steps' => array(
+					$t( 'Find *Author* in the panel on the right.' ),
+					$t( 'Choose a name from the list.' ),
+					$t( 'Press *Save*.' ),
+				),
+				'then'  => $t( 'Only people with an account on the site are listed. If the person is not there, add them first — see "Adding someone to the site".' ),
+			) ),
+		),
+
+		// ── Pages ──
 		array(
 			'id'      => 'wp-writing-blocks',
-			'title'   => __( 'Writing a page, block by block', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Building a page block by block' ),
 			'tab'     => 'wp-writing',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'A page is built from blocks — a heading, a paragraph, an image, a button. Press the black + at the top left to add one, or type / on an empty line and start naming what you want.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Nothing is live until you press Publish or Update. Save draft keeps your work without showing it to anybody, and Preview opens it exactly as a visitor would see it.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Pages > Add New' ),
+				'intro' => $t( 'A page is built from blocks — a heading, a paragraph, an image, a button.' ),
+				'steps' => array(
+					$t( 'Press the black *+* at the top left, or type / on an empty line and start typing what you want.' ),
+					$t( 'Click a block to select it; use the toolbar above it to move it up or down or delete it.' ),
+					$t( 'Press *Save draft* often, and *View* to see it as a visitor would.' ),
+					$t( 'Press *Publish* when it is ready.' ),
+				),
+				'then'  => $t( 'The page is live but not in the menu — see "Adding a page to the menu".' ),
+			) ),
 		),
 		array(
 			'id'      => 'wp-writing-links',
-			'title'   => __( 'Links, headings and the things that break', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Adding a link' ),
 			'tab'     => 'wp-writing',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'Select some text and press Ctrl+K, or Cmd+K on a Mac, to make it a link. Start typing a page name and the site offers its own pages — always pick one from that list rather than pasting an address, so the link follows the page if it is ever renamed.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Use one Heading 1 per page and go down in order. Skipping from a Heading 1 to a Heading 3 because it looked the right size is the most common reason a page is hard to use with a screen reader.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The editor' ),
+				'steps' => array(
+					$t( 'Select the words that should be the link.' ),
+					$t( 'Press Ctrl+K (Cmd+K on a Mac).' ),
+					$t( 'For a page on this site, start typing its name and pick it from the list. For another site, paste the full address.' ),
+					$t( 'Press Enter.' ),
+				),
+				'then'  => $t( 'Picking a page from the list, rather than pasting its address, means the link keeps working if that page is ever renamed.' ),
+			) ),
 		),
 		array(
+			'id'      => 'wp-writing-headings',
+			'title'   => $t( 'Headings in the right order' ),
+			'tab'     => 'wp-writing',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The editor' ),
+				'steps' => array(
+					$t( 'Add a *Heading* block.' ),
+					$t( 'In the toolbar above it, choose the level: H2 for a main section, H3 for a part of that section.' ),
+					$t( 'Never skip a level — H2 then H4 because it looked the right size is the most common mistake.' ),
+				),
+				'then'  => $t( 'The page title is already the H1, so start at H2. Screen readers and search engines both use the order to understand the page. Change the size with a style, not the level.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-writing-menu',
+			'title'   => $t( 'Adding a page to the menu' ),
+			'tab'     => 'wp-writing',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Appearance > Menus' ),
+				'steps' => array(
+					$t( 'Tick the page under *Add menu items* and press *Add to Menu*.' ),
+					$t( 'Drag it into position.' ),
+					$t( 'Press *Save Menu*.' ),
+				),
+				'then'  => $t( 'If *Appearance > Menus* is not there, your site uses the Site Editor: go to *Appearance > Editor*, click the navigation, and add the page there.' ),
+			) ),
+		),
+
+		// ── Media library ──
+		array(
 			'id'      => 'wp-media-uploads',
-			'title'   => __( 'Adding images without slowing the site down', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Uploading an image' ),
 			'tab'     => 'wp-media',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'Upload the best version you have and let the site make the smaller ones. It keeps a set of sizes for every image and serves whichever fits the space, so a photo straight off a camera is not what a visitor downloads.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Give every image alt text that says what is in it. Screen readers read it aloud and search engines read it too. A decorative flourish can be left empty; a photograph of your team cannot.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Media > Add New' ),
+				'steps' => array(
+					$t( 'Drop the file onto the page, or press *Select Files*.' ),
+					$t( 'Once it appears, click it and fill in *Alternative text* with what the picture shows.' ),
+				),
+				'then'  => $t( 'Upload the best version you have; the site makes the smaller copies. A decorative flourish can have empty alt text; a photograph of your team cannot.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-media-alt',
+			'title'   => $t( 'Writing alt text' ),
+			'tab'     => 'wp-media',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Media > Library' ),
+				'steps' => array(
+					$t( 'Click the image.' ),
+					$t( 'In *Alternative text*, describe what is in it in one sentence, as if to someone on the phone.' ),
+					$t( 'Click away — it saves on its own.' ),
+				),
+				'then'  => $t( 'Screen readers read it aloud and search engines read it too. Do not start with "Image of" — they already know it is an image.' ),
+			) ),
 		),
 		array(
 			'id'      => 'wp-media-replacing',
-			'title'   => __( 'Replacing a file people already have the link to', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Replacing a file people already have the link to' ),
 			'tab'     => 'wp-media',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'Deleting a file and uploading a new one gives it a new address, and every link and embed pointing at the old one stops working. Nothing warns you when that happens.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Open the file in the media library and use Replace file instead. The address stays the same, so a price list you have emailed to two hundred people keeps working.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Media > Library' ),
+				'steps' => array(
+					$t( 'Click the file.' ),
+					$t( 'Under *Replace file*, choose the new version, then press *Replace*.' ),
+				),
+				'then'  => $t( 'The address stays the same, so a price list you emailed to two hundred people keeps working. Deleting and re-uploading gives the file a new address and nothing warns you the old links broke. If there is no *Replace file* field, ask BlueWorx to switch it on.' ),
+			) ),
+		),
+		array(
+			'id'      => 'wp-media-usage',
+			'title'   => $t( 'Finding where an image is used' ),
+			'tab'     => 'wp-media',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Media > Library' ),
+				'steps' => array(
+					$t( 'Switch to the list view (the icon at the top left).' ),
+					$t( 'Look at the *Uploaded to* column.' ),
+				),
+				'then'  => $t( 'That column only shows the page the image was first added from. An image placed on several pages is not tracked by WordPress — search the page content, or ask BlueWorx, before deleting one.' ),
+			) ),
+		),
+
+		// ── Users & roles ──
+		array(
+			'id'      => 'wp-people-add',
+			'title'   => $t( 'Adding somebody' ),
+			'tab'     => 'wp-people',
+			'product' => 'wordpress',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Users > Add New' ),
+				'steps' => array(
+					$t( 'Type their email address and a username.' ),
+					$t( 'Choose a role.' ),
+					$t( 'Press *Add User*.' ),
+				),
+				'then'  => $t( 'They get an email with a link to set their own password. Never type a password in and send it to them.' ),
+			) ),
 		),
 		array(
 			'id'      => 'wp-people-roles',
-			'title'   => __( 'Which role to give somebody', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Which role to give somebody' ),
 			'tab'     => 'wp-people',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'Administrator can change anything, including installing plugins and removing other people. Editor can publish and edit anyone else\'s content but cannot touch settings. Author can publish their own. Contributor can write but not publish. Subscriber can only sign in.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Give the smallest role that lets somebody do their job. Most people who say they need admin need Editor, and an extra administrator is an extra way for the site to be taken over.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Users' ),
+				'steps' => array(
+					$t( 'Writes their own posts only: *Author*.' ),
+					$t( 'Edits and publishes everyone\'s pages and posts: *Editor*.' ),
+					$t( 'Writes but should not publish: *Contributor*.' ),
+					$t( 'Installs plugins, changes settings, removes people: *Administrator* — and only if they really must.' ),
+				),
+				'then'  => $t( 'Give the smallest role that lets somebody do their job. Most people who ask for admin need Editor. Every extra administrator is an extra way for the site to be taken over.' ),
+			) ),
 		),
 		array(
 			'id'      => 'wp-people-leaving',
-			'title'   => __( 'When somebody leaves', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'When somebody leaves' ),
 			'tab'     => 'wp-people',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'Delete the account rather than changing its password. WordPress asks what to do with anything they wrote — choose another person and their posts are reassigned rather than deleted with them.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Do it the day they leave. A dormant account with a known password is the most common way a site is broken into months after anybody was still watching.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Users' ),
+				'steps' => array(
+					$t( 'Hover over their name and press *Delete*.' ),
+					$t( 'Choose *Attribute all content to* and pick another person.' ),
+					$t( 'Press *Confirm Deletion*.' ),
+				),
+				'then'  => $t( 'Their pages and posts now belong to the person you chose. Delete the account rather than changing its password — a dormant account is a way in.' ),
+			) ),
 		),
+
+		// ── Updates & health ──
 		array(
 			'id'      => 'wp-upkeep-updates',
-			'title'   => __( 'Updates, and which ones can wait', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'What to do when the update badge appears' ),
 			'tab'     => 'wp-upkeep',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'A security release is not the same as a feature release. If an update says it fixes a vulnerability, apply it now. Everything else can wait for whoever looks after the site.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Never update a plugin for the first time an hour before something important. Where the site has a staging copy, updates are tried there first and reach the live site afterwards.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'Dashboard > Updates' ),
+				'steps' => array(
+					$t( 'If BlueWorx maintains the site, do nothing — we apply updates for you.' ),
+					$t( 'Otherwise press *Update Now* for WordPress, then tick every plugin and press *Update Plugins*, then the same for themes.' ),
+				),
+				'then'  => $t( 'Updates are the single most effective thing you can do to stay safe. Do them regularly rather than letting them pile up.' ),
+			) ),
 		),
 		array(
 			'id'      => 'wp-upkeep-health',
-			'title'   => __( 'Reading Site Health without panicking', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Checking the site after an update' ),
 			'tab'     => 'wp-upkeep',
 			'product' => 'wordpress',
-			'body'    => '<p>' . esc_html__( 'Site Health lists critical issues and recommended improvements. Critical means something is actually broken. Recommended usually means a setting could be better, and a site can run for years with several of them showing.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'The score is not a grade. Do not chase it. Read the critical list, ignore the number, and send anything you do not understand to whoever maintains the site.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The front of the site, then Tools > Site Health' ),
+				'steps' => array(
+					$t( 'Open the home page and one or two pages people use most. Check they look right and a form or a button still works.' ),
+					$t( 'Open *Tools > Site Health* and read anything marked *Critical*.' ),
+				),
+				'then'  => $t( 'Recommendations in Site Health can be ignored; only Critical needs action. If something looks broken, tell BlueWorx which plugin you updated.' ),
+			) ),
 		),
 		array(
 			'id'      => 'sc-products-plans',
@@ -252,7 +517,8 @@ function blueworx_get_other_product_guides() {
  */
 function blueworx_get_wordpress_guide_tabs() {
 	return array(
-		'wp-writing' => __( 'Writing & editing', 'blueworx-labs-wordpress' ),
+		'wp-posts'   => __( 'Blog posts', 'blueworx-labs-wordpress' ),
+		'wp-writing' => __( 'Pages', 'blueworx-labs-wordpress' ),
 		'wp-media'   => __( 'Media library', 'blueworx-labs-wordpress' ),
 		'wp-people'  => __( 'Users & roles', 'blueworx-labs-wordpress' ),
 		'wp-upkeep'  => __( 'Updates & health', 'blueworx-labs-wordpress' ),
@@ -1020,19 +1286,6 @@ function blueworx_get_feature_guide_tasks() {
 					'then'  => $t( 'The button appears on the front of the site in Chrome and Edge. Other browsers do not show it, and search engines always read your original words.' ),
 				) ),
 			),
-			array(
-				'slug'  => 'excluding',
-				'title' => $t( 'Keeping something out of translation' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Enhancements > Translation' ),
-					'steps' => array(
-						$t( 'Open *On-page translation*.' ),
-						$t( 'Under *Never translate (one CSS selector per line)*, add a CSS selector for the text to leave alone — for example .price or #legal-notice.' ),
-						$t( 'Press *Save Changes*.' ),
-					),
-					'then'  => $t( 'Anything matching that selector keeps its original wording. Code blocks and anything already marked notranslate are always left alone too.' ),
-				) ),
-			),
 		),
 	);
 }
@@ -1046,61 +1299,114 @@ function blueworx_get_feature_guide_tasks() {
  * @return array List of guides.
  */
 function blueworx_get_wordpress_basics_guides() {
+	$t = static function ( $text ) {
+		return __( $text, 'blueworx-labs-wordpress' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
+	};
+
 	return array(
 		array(
 			'id'    => 'basics-pages-and-posts',
-			'title' => __( 'Pages and posts: which to use', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Pages and posts: which to use' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'A page is a fixed part of the site — About, Contact, Services. A post is a dated entry in a series, such as news or a blog.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'The rule of thumb: if it belongs in the navigation menu and will still be there next year, make it a page. If it is one of many similar items that arrive over time, make it a post.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'Pages, or Posts' ),
+				'intro' => $t( 'A page is a fixed part of the site — About, Contact, Services. A post is a dated entry in a series, such as news or a blog.' ),
+				'steps' => array(
+					$t( 'Ask: will this still be in the menu next year? Then it is a page — go to *Pages > Add New*.' ),
+					$t( 'Is it one of many similar items that arrive over time? Then it is a post — go to *Posts > Add New*.' ),
+				),
+				'then'  => $t( 'Posts appear on the blog or news page on their own. Pages appear only where you put them — see "Changing the site navigation".' ),
+			) ),
 		),
 		array(
 			'id'    => 'basics-publishing',
-			'title' => __( 'Saving, previewing and publishing', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Saving, previewing and publishing' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'Save draft keeps your work private. Preview shows how it will look without publishing it. Publish makes it live for everyone.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'To schedule something instead, click the date next to Publish and pick a future time — the wording changes to Schedule. To take a live page down without deleting it, switch its status to Draft.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'The top right of the editor' ),
+				'steps' => array(
+					$t( 'Press *Save draft* to keep your work without showing it to anyone.' ),
+					$t( 'Press *View* to see it exactly as a visitor would.' ),
+					$t( 'Press *Publish* (or *Save* on something already live) when it is ready.' ),
+				),
+				'then'  => $t( 'Nothing is live until you press Publish or Save. To take a live page down without deleting it, change its status to Draft in the panel on the right.' ),
+			) ),
 		),
 		array(
 			'id'    => 'basics-revisions',
-			'title' => __( 'Undoing a change you regret', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Undoing a change you regret' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'WordPress keeps earlier versions of your pages and posts. Open the item, find Revisions in the settings panel on the right, and step back through the versions until you find the one you want.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Deleted the whole thing? Look in Trash on the Pages or Posts list. Items stay there for 30 days before WordPress removes them for good.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'The page or post you changed' ),
+				'steps' => array(
+					$t( 'Open the item.' ),
+					$t( 'In the panel on the right, press *Revisions*.' ),
+					$t( 'Drag the slider back until you see the version you want.' ),
+					$t( 'Press *Restore this revision*, then *Save*.' ),
+				),
+				'then'  => $t( 'Deleted the whole thing? Look under *Trash* at the top of the Pages or Posts list. Items stay there for 30 days.' ),
+			) ),
 		),
 		array(
 			'id'    => 'basics-images',
-			'title' => __( 'Adding images well', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Adding images well' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'Resize a photo before uploading it. A picture straight off a phone is far larger than any screen needs and is the most common reason a site feels slow.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Always fill in the alt text. It is what a blind visitor hears in place of the image, and what search engines read. Describe what the image shows, in a sentence, as if to someone on the phone.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'The featured image is the one used in listings and link previews. Set it in the settings panel on the right; without one, those places may show nothing at all.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'The editor' ),
+				'steps' => array(
+					$t( 'Press the black *+* and choose *Image*, then *Upload*.' ),
+					$t( 'With the image selected, fill in *Alt text* in the panel on the right: say what is in the picture, as if to someone on the phone.' ),
+					$t( 'For the picture that represents the whole page in listings and link previews, open *Featured image* in the panel on the right and set one.' ),
+				),
+				'then'  => $t( 'The site makes smaller copies of every image itself, so upload the best version you have. Alt text is what a blind visitor hears and what search engines read.' ),
+			) ),
 		),
 		array(
 			'id'    => 'basics-menus',
-			'title' => __( 'Changing the site navigation', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Changing the site navigation' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'Publishing a page does not add it to the menu — the two are separate on purpose, so you can build pages before they are announced.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Find the navigation under Appearance, add the page to the menu, drag it into position, and save. Dragging an item slightly to the right nests it underneath the one above as a dropdown.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'Appearance > Menus' ),
+				'intro' => $t( 'Publishing a page does not add it to the menu — the two are separate on purpose.' ),
+				'steps' => array(
+					$t( 'Tick the page under *Add menu items* and press *Add to Menu*.' ),
+					$t( 'Drag it into position. Drag it slightly to the right to tuck it under the item above as a dropdown.' ),
+					$t( 'Press *Save Menu*.' ),
+				),
+				'then'  => $t( 'The change shows on the site straight away. If your site uses the block-based Site Editor instead, the menu is under *Appearance > Editor > Navigation* — ask BlueWorx if you are not sure which you have.' ),
+			) ),
 		),
 		array(
 			'id'    => 'basics-users',
-			'title' => __( 'Adding someone to the site', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Adding someone to the site' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'Go to Users > Add New. Give each person their own account rather than sharing one — it is safer, and you can see who changed what.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Give the lowest role that lets them do their job. Author for someone writing their own posts, Editor for someone managing everyone\'s content, Administrator only for people who should be able to install plugins and change settings.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'When someone leaves, delete the account rather than changing its password. WordPress will offer to reassign their content to someone else first.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'Users > Add New' ),
+				'steps' => array(
+					$t( 'Type their email address and a username.' ),
+					$t( 'Choose the smallest role that lets them do their job — see "Which role to give somebody".' ),
+					$t( 'Leave *Send the new user an email about their account* ticked and press *Add User*.' ),
+				),
+				'then'  => $t( 'They get an email with a link to set their own password. Give each person their own account rather than sharing one, so you can see who changed what.' ),
+			) ),
 		),
 		array(
 			'id'    => 'basics-updates',
-			'title' => __( 'Updates, and why they matter', 'blueworx-labs-wordpress' ),
+			'title' => $t( 'Updates, and why they matter' ),
 			'tab'   => 'getting-started',
-			'body'  => '<p>' . esc_html__( 'Most attacks on WordPress sites use a known weakness in an out-of-date plugin. Updates are the single most effective thing you can do to stay safe.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'If BlueWorx maintains this site, updates are handled for you and you can ignore the badges. Otherwise apply them regularly, and check the site afterwards — look at the home page and one or two key pages.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'  => blueworx_guide_body( array(
+				'where' => $t( 'Dashboard > Updates' ),
+				'intro' => $t( 'Most attacks on WordPress sites use a known weakness in an out-of-date plugin.' ),
+				'steps' => array(
+					$t( 'If BlueWorx maintains this site, stop here — updates are done for you and you can ignore the badges.' ),
+					$t( 'Otherwise, press *Update Now* for WordPress itself, then tick all plugins and press *Update Plugins*.' ),
+					$t( 'Open the home page and one or two key pages to check they still look right.' ),
+				),
+				'then'  => $t( 'If something breaks after an update, tell BlueWorx which plugin you updated — that is the first thing we will ask.' ),
+			) ),
 		),
 	);
 }
-
 /**
  * The capability a tab's guides actually describe.
  *
@@ -1127,6 +1433,7 @@ function blueworx_guide_tab_capability( $tab ) {
 		// The other products' topics. Same rule: the capability somebody needs
 		// to do the thing the guide describes, so the role pills on the card are
 		// worked out from this site's own roles rather than written down.
+		'wp-posts'        => 'edit_posts',
 		'wp-writing'      => 'edit_posts',
 		'wp-media'        => 'upload_files',
 		'wp-people'       => 'list_users',

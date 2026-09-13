@@ -356,7 +356,8 @@ function blueworx_render_guides_page() {
 			// A guide about a WordPress screen sends you to that screen. A guide
 			// about one of our functions sends you to its section on Enhancements.
 			$screens = array(
-				'wp-writing' => 'edit.php',
+				'wp-posts'   => 'edit.php',
+				'wp-writing' => 'edit.php?post_type=page',
 				'wp-media'   => 'upload.php',
 				'wp-people'  => 'users.php',
 				'wp-upkeep'  => 'site-health.php',

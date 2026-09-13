@@ -119,6 +119,16 @@ function blueworx_check_guide_format() {
 	check( 'sign-in address has a second guide', true, in_array( 'feature-login-changing', $ids, true ) );
 	check( 'the second guide sits in the same tab', 'security', $feature_guides[ array_search( 'feature-login-changing', $ids, true ) ]['tab'] );
 	check( 'and belongs to the same feature', 'login', $feature_guides[ array_search( 'feature-login-changing', $ids, true ) ]['feature'] );
+
+	echo "\nEvery guide in the registry is a task\n";
+
+	$GLOBALS['options'] = array();
+	foreach ( array_merge( blueworx_get_wordpress_basics_guides(), blueworx_get_feature_guides(), blueworx_get_other_product_guides() ) as $guide ) {
+		$ok = false !== strpos( $guide['body'], 'bw-guide__where' )
+			&& false !== strpos( $guide['body'], '<ol class="bw-guide__steps">' )
+			&& false !== strpos( $guide['body'], 'bw-guide__then' );
+		check( $guide['id'] . ' has where, steps and then', true, $ok );
+	}
 }
 
 blueworx_check_guide_format();
