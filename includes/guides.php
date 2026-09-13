@@ -132,6 +132,7 @@ function blueworx_get_other_product_guides() {
 
 	$sc = blueworx_guide_product_label( 'surecart' );
 	$sf = blueworx_guide_product_label( 'sureforms' );
+	$lp = blueworx_guide_product_label( 'latepoint' );
 
 	$guides = array(
 		// ── Blog posts ──
@@ -687,6 +688,223 @@ function blueworx_get_other_product_guides() {
 				'then'  => $t( 'A form quietly delivering to somebody who left last year is the most common fault there is, and nothing on the site looks wrong while it happens.' ),
 			) ),
 		),
+
+		array(
+			'id'      => 'lp-calendar-today',
+			'title'   => $t( 'Seeing today\'s bookings' ),
+			'tab'     => 'lp-calendar',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+				'steps' => array(
+					$t( 'Press *Today* at the top of the calendar.' ),
+					$t( 'Choose *Day* to see one day in detail, or *Week* for the week ahead.' ),
+					$t( 'Click any booking to see who it is and what they booked.' ),
+				),
+				'then'  => $t( 'Colours are by service. If a staff member sees nothing, check they are looking at their own calendar and not the whole team\'s.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-calendar-add',
+			'title'   => $t( 'Booking somebody in by hand' ),
+			'tab'     => 'lp-calendar',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+				'steps' => array(
+					$t( 'Press *Booking* at the top right.' ),
+					$t( 'Set the date and time.' ),
+					$t( 'Under *Customer*, press *Find* to pick someone who has booked before, or *New* to type their details.' ),
+					$t( 'Press *Create Order*.' ),
+				),
+				'then'  => $t( 'It appears on the calendar and the customer gets the same confirmation email as an online booking.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-calendar-move',
+			'title'   => $t( 'Moving a booking' ),
+			'tab'     => 'lp-calendar',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+				'steps' => array(
+					$t( 'Click the booking.' ),
+					$t( 'Change the date or time.' ),
+					$t( 'Press *Save*.' ),
+				),
+				'then'  => $t( 'The customer is emailed the new time. Only free slots are offered, so if the time you want is not there, somebody else has it.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-calendar-cancel',
+			'title'   => $t( 'Cancelling a booking' ),
+			'tab'     => 'lp-calendar',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+				'steps' => array(
+					$t( 'Click the booking.' ),
+					$t( 'Change *Status* to *Cancelled*.' ),
+					$t( 'Press *Save*.' ),
+				),
+				'then'  => $t( 'The slot is free again and the customer is told. Cancel rather than delete — a deleted booking leaves no record that it ever existed.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-calendar-no-show',
+			'title'   => $t( 'Marking a no-show' ),
+			'tab'     => 'lp-calendar',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+				'steps' => array(
+					$t( 'Click the booking.' ),
+					$t( 'Change *Status* to *No Show*.' ),
+					$t( 'Press *Save*.' ),
+				),
+				'then'  => $t( 'It stays on the customer\'s record, so you can see a pattern before you next take a booking from them.' ),
+			) ),
+		),
+
+		// ── LatePoint: Services ──
+		array(
+			'id'      => 'lp-services-add',
+			'title'   => $t( 'Adding a service' ),
+			'tab'     => 'lp-services',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Services' ), $lp ),
+				'steps' => array(
+					$t( 'Press *Add Service*.' ),
+					$t( 'Type the name, how long it takes, and the price.' ),
+					$t( 'Under *Agents*, tick who can provide it.' ),
+					$t( 'Press *Save Changes*.' ),
+				),
+				'then'  => $t( 'It appears on the booking form straight away. A service with no staff ticked cannot be booked and shows to nobody.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-services-edit',
+			'title'   => $t( 'Changing how long a service takes, or its price' ),
+			'tab'     => 'lp-services',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Services' ), $lp ),
+				'steps' => array(
+					$t( 'Click the service.' ),
+					$t( 'Change *Duration* or *Charge Amount*.' ),
+					$t( 'Press *Save Changes*.' ),
+				),
+				'then'  => $t( 'Bookings already made keep their old length and price. Only new bookings use the new ones.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-services-hide',
+			'title'   => $t( 'Hiding a service without deleting it' ),
+			'tab'     => 'lp-services',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Services' ), $lp ),
+				'steps' => array(
+					$t( 'Click the service.' ),
+					$t( 'Change *Status* to *Disabled*.' ),
+					$t( 'Press *Save Changes*.' ),
+				),
+				'then'  => $t( 'It vanishes from the booking form but past bookings still show it. Use this for a seasonal service rather than deleting and recreating it.' ),
+			) ),
+		),
+
+		// ── LatePoint: Staff & hours ──
+		array(
+			'id'      => 'lp-staff-add',
+			'title'   => $t( 'Adding a staff member' ),
+			'tab'     => 'lp-staff',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Agents' ), $lp ),
+				'steps' => array(
+					$t( 'The free version runs one agent only, shown here as *Recipient of Notifications* — it is the business owner\'s own calendar.' ),
+					$t( 'Set their name, email address and phone number.' ),
+					$t( 'Press *Save Changes*.' ),
+				),
+				'then'  => $t( 'Bookings are emailed to this address. A second staff member, each with their own calendar, needs the paid version of LatePoint.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-staff-hours',
+			'title'   => $t( 'Setting working hours' ),
+			'tab'     => 'lp-staff',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
+				'steps' => array(
+					$t( 'Under *General Weekly Schedule*, for each day set the start and end time, or switch the day off.' ),
+					$t( 'Press *Save Weekly Schedule*.' ),
+				),
+				'then'  => $t( 'These are the hours for the whole business. The free version runs one agent, so this is also that person\'s own schedule.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-staff-holiday',
+			'title'   => $t( 'Adding a day off or a holiday' ),
+			'tab'     => 'lp-staff',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
+				'steps' => array(
+					$t( 'Under *Holidays & Days Off*, press *Add Day*.' ),
+					$t( 'Pick the date.' ),
+					$t( 'Press *Set as Day Off*.' ),
+				),
+				'then'  => $t( 'Nobody can book that day. Add each date separately — there is no way to mark a day as off every year.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-staff-block',
+			'title'   => $t( 'Blocking out part of a day' ),
+			'tab'     => 'lp-staff',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
+				'steps' => array(
+					$t( 'Under *Days With Custom Schedules*, press *Add Day* and pick the date.' ),
+					$t( 'Set *Start* and *Finish* to the hours you are available — say 9 to 12 — and leave the rest of the day out.' ),
+					$t( 'Press *Save Schedule*.' ),
+				),
+				'then'  => $t( 'Only those hours are offered that day. Bookings already made outside them are not moved — check the calendar first.' ),
+			) ),
+		),
+
+		// ── LatePoint: Customers ──
+		array(
+			'id'      => 'lp-customers-find',
+			'title'   => $t( 'Finding a customer and their history' ),
+			'tab'     => 'lp-customers',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Customers' ), $lp ),
+				'steps' => array(
+					$t( 'Search by name, email or phone.' ),
+					$t( 'Click the customer.' ),
+				),
+				'then'  => $t( 'You see every booking they have made, past and future, and any no-shows.' ),
+			) ),
+		),
+		array(
+			'id'      => 'lp-customers-edit',
+			'title'   => $t( 'Changing a customer\'s details' ),
+			'tab'     => 'lp-customers',
+			'product' => 'latepoint',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Customers' ), $lp ),
+				'steps' => array(
+					$t( 'Click the customer.' ),
+					$t( 'Change the name, email or phone.' ),
+					$t( 'Press *Save Changes*.' ),
+				),
+				'then'  => $t( 'Emails about future bookings go to the new address. Their past bookings stay attached to them.' ),
+			) ),
+		),
 	);
 
 	$products = blueworx_get_guide_products();
@@ -742,6 +960,20 @@ function blueworx_get_sureforms_guide_tabs() {
 }
 
 /**
+ * The LatePoint topics. Only reached when LatePoint is running.
+ *
+ * @return array Tab labels keyed by tab id.
+ */
+function blueworx_get_latepoint_guide_tabs() {
+	return array(
+		'lp-calendar'  => __( 'Calendar & bookings', 'blueworx-labs-wordpress' ),
+		'lp-services'  => __( 'Services', 'blueworx-labs-wordpress' ),
+		'lp-staff'     => __( 'Staff & hours', 'blueworx-labs-wordpress' ),
+		'lp-customers' => __( 'Customers', 'blueworx-labs-wordpress' ),
+	);
+}
+
+/**
  * Every tab on the screen, whichever product it belongs to.
  *
  * @return array Tab labels keyed by tab id.
@@ -755,6 +987,10 @@ function blueworx_get_all_guide_tabs() {
 
 	if ( blueworx_guide_product_is_active( 'sureforms' ) ) {
 		$tabs += blueworx_get_sureforms_guide_tabs();
+	}
+
+	if ( blueworx_guide_product_is_active( 'latepoint' ) ) {
+		$tabs += blueworx_get_latepoint_guide_tabs();
 	}
 
 	return $tabs;
@@ -822,6 +1058,10 @@ function blueworx_get_guide_products() {
 		$products['sureforms'] = blueworx_guide_product_label( 'sureforms' );
 	}
 
+	if ( blueworx_guide_product_is_active( 'latepoint' ) ) {
+		$products['latepoint'] = blueworx_guide_product_label( 'latepoint' );
+	}
+
 	/**
 	 * Filters the guide products.
 	 *
@@ -858,6 +1098,7 @@ function blueworx_guide_product_is_active( $product ) {
 	$signatures = array(
 		'surecart'  => array( 'classes' => array( 'SureCart' ), 'constants' => array( 'SURECART_PLUGIN_FILE' ) ),
 		'sureforms' => array( 'classes' => array( 'SRFM_Loader' ), 'constants' => array( 'SRFM_FILE' ) ),
+		'latepoint' => array( 'classes' => array( 'OsSettingsHelper' ), 'constants' => array( 'LATEPOINT_VERSION' ) ),
 	);
 
 	if ( ! isset( $signatures[ $product ] ) ) {
@@ -916,6 +1157,10 @@ function blueworx_get_guide_tab_products() {
 
 	foreach ( array_keys( blueworx_get_sureforms_guide_tabs() ) as $tab ) {
 		$map[ $tab ] = 'sureforms';
+	}
+
+	foreach ( array_keys( blueworx_get_latepoint_guide_tabs() ) as $tab ) {
+		$map[ $tab ] = 'latepoint';
 	}
 
 	/**
@@ -1634,6 +1879,10 @@ function blueworx_guide_tab_capability( $tab ) {
 		'sc-payments'     => 'manage_options',
 		'sf-forms'        => 'edit_posts',
 		'sf-spam'         => 'manage_options',
+		'lp-calendar'     => 'manage_options',
+		'lp-services'     => 'manage_options',
+		'lp-staff'        => 'manage_options',
+		'lp-customers'    => 'manage_options',
 	);
 
 	/**

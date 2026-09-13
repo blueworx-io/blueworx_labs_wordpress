@@ -153,7 +153,15 @@ function blueworx_check_guide_format() {
 	check( 'SureCart has thirteen guides', 13, count( $by_product['surecart'] ) );
 	check( 'the old SureCart ids are still there', true, in_array( 'sc-products-plans', $by_product['surecart'], true ) && in_array( 'sc-orders-refunds', $by_product['surecart'], true ) && in_array( 'sc-payments-test', $by_product['surecart'], true ) );
 
+	check( 'LatePoint has fourteen guides', 14, count( $by_product['latepoint'] ) );
+	check( 'LatePoint tabs belong to LatePoint', 'latepoint', blueworx_guide_product_for_tab( 'lp-calendar' ) );
+	check( 'LatePoint topics are administrator-only', 'manage_options', blueworx_guide_tab_capability( 'lp-services' ) );
+
 	unset( $GLOBALS['filters']['blueworx_guide_products'] );
+
+	check( 'LatePoint is not offered when it is not installed', false, isset( blueworx_get_guide_products()['latepoint'] ) );
+	define( 'LATEPOINT_VERSION', '5.0.0' );
+	check( 'and is once it is', true, isset( blueworx_get_guide_products()['latepoint'] ) );
 }
 
 blueworx_check_guide_format();
