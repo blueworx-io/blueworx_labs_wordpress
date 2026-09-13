@@ -129,6 +129,31 @@ function blueworx_check_guide_format() {
 			&& false !== strpos( $guide['body'], 'bw-guide__then' );
 		check( $guide['id'] . ' has where, steps and then', true, $ok );
 	}
+
+	echo "\nOther products' guides are tasks too\n";
+
+	// Force every product active by answering the filter the registry asks.
+	$GLOBALS['filters']['blueworx_guide_products'] = static function ( $products ) {
+		$products['surecart']  = 'SureCart';
+		$products['sureforms'] = 'SureForms';
+		$products['latepoint'] = 'LatePoint';
+		return $products;
+	};
+
+	$others = blueworx_get_other_product_guides();
+	$by_product = array();
+	foreach ( $others as $guide ) {
+		$by_product[ $guide['product'] ][] = $guide['id'];
+		$ok = false !== strpos( $guide['body'], 'bw-guide__where' )
+			&& false !== strpos( $guide['body'], '<ol class="bw-guide__steps">' )
+			&& false !== strpos( $guide['body'], 'bw-guide__then' );
+		check( $guide['id'] . ' has where, steps and then', true, $ok );
+	}
+
+	check( 'SureCart has thirteen guides', 13, count( $by_product['surecart'] ) );
+	check( 'the old SureCart ids are still there', true, in_array( 'sc-products-plans', $by_product['surecart'], true ) && in_array( 'sc-orders-refunds', $by_product['surecart'], true ) && in_array( 'sc-payments-test', $by_product['surecart'], true ) );
+
+	unset( $GLOBALS['filters']['blueworx_guide_products'] );
 }
 
 blueworx_check_guide_format();

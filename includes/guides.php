@@ -130,6 +130,9 @@ function blueworx_get_other_product_guides() {
 		return __( $text, 'blueworx-labs-wordpress' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
 	};
 
+	$sc = blueworx_guide_product_label( 'surecart' );
+	$sf = blueworx_guide_product_label( 'sureforms' );
+
 	$guides = array(
 		// ── Blog posts ──
 		array(
@@ -456,45 +459,233 @@ function blueworx_get_other_product_guides() {
 				'then'  => $t( 'Recommendations in Site Health can be ignored; only Critical needs action. If something looks broken, tell BlueWorx which plugin you updated.' ),
 			) ),
 		),
+		// ── SureCart: Products & plans ──
 		array(
 			'id'      => 'sc-products-plans',
-			'title'   => __( 'Products, prices and plans', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Adding a product' ),
 			'tab'     => 'sc-products',
 			'product' => 'surecart',
-			'body'    => '<p>' . esc_html__( 'A product is the thing being sold. A price is what it costs, and one product can carry several — a monthly price and an annual one, say. Changing a price does not change what anybody already pays; it only affects new purchases.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'To stop selling something, archive the product rather than deleting it. Deleting takes its order history with it.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Products' ), $sc ),
+				'steps' => array(
+					$t( 'Press *Add New*.' ),
+					$t( 'Type the name and a description.' ),
+					$t( 'Under *Pricing*, press *Add a Price*, enter the amount, and choose *One time* or *Subscription*.' ),
+					$t( 'Add an image, then press *Publish*.' ),
+				),
+				'then'  => $t( 'The product has its own page and can be added to any page with the *Buy Button* block. A product is the thing; a price is what it costs — one product can carry several prices.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-products-price',
+			'title'   => $t( 'Changing a price' ),
+			'tab'     => 'sc-products',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Products' ), $sc ),
+				'steps' => array(
+					$t( 'Open the product.' ),
+					$t( 'Under *Pricing*, press the price and change the amount.' ),
+					$t( 'Press *Update*.' ),
+				),
+				'then'  => $t( 'Only new purchases pay the new amount. Anyone already on a subscription keeps paying what they signed up for.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-products-second-price',
+			'title'   => $t( 'Offering monthly and annual' ),
+			'tab'     => 'sc-products',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Products' ), $sc ),
+				'steps' => array(
+					$t( 'Open the product.' ),
+					$t( 'Under *Pricing*, press *Add a Price*.' ),
+					$t( 'Choose *Subscription*, set the amount and pick *Yearly*.' ),
+					$t( 'Press *Update*.' ),
+				),
+				'then'  => $t( 'The checkout offers both and the customer picks. Give each price a short name so they can tell them apart.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-products-coupon',
+			'title'   => $t( 'Making a discount code' ),
+			'tab'     => 'sc-products',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Coupons' ), $sc ),
+				'steps' => array(
+					$t( 'Press *Add New*.' ),
+					$t( 'Choose a percentage or a fixed amount off.' ),
+					$t( 'Under *Promotion Code*, type the code customers will enter.' ),
+					$t( 'Set an end date or a maximum number of uses if you want one, then press *Create Coupon*.' ),
+				),
+				'then'  => $t( 'Customers type the code at the checkout. A coupon is the discount; a code is the word that unlocks it — one coupon can have several codes.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-products-archive',
+			'title'   => $t( 'Stopping selling something' ),
+			'tab'     => 'sc-products',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Products' ), $sc ),
+				'steps' => array(
+					$t( 'Open the product.' ),
+					$t( 'Press *Archive* (in the three-dot menu at the top right).' ),
+				),
+				'then'  => $t( 'It stops being sold but its order history stays. Do not delete a product that has ever sold — deleting takes the orders with it.' ),
+			) ),
+		),
+
+		// ── SureCart: Orders & customers ──
+		array(
+			'id'      => 'sc-orders-find',
+			'title'   => $t( 'Finding an order' ),
+			'tab'     => 'sc-orders',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Orders' ), $sc ),
+				'steps' => array(
+					$t( 'Type the customer\'s email address or the order number into the search box.' ),
+					$t( 'Click the order.' ),
+				),
+				'then'  => $t( 'The order shows what was bought, what was paid and who paid it. If you cannot find it, check you are not in test mode — test orders are kept separately.' ),
+			) ),
 		),
 		array(
 			'id'      => 'sc-orders-refunds',
-			'title'   => __( 'Orders, customers and refunds', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Refunding a payment' ),
 			'tab'     => 'sc-orders',
 			'product' => 'surecart',
-			'body'    => '<p>' . esc_html__( 'Every order shows what was bought, what was paid and who paid it. A refund is issued from the order itself and goes back to the card that paid, which can take a few working days to appear.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Cancelling a subscription and refunding a payment are separate actions. Cancelling stops the next payment; it does not return the last one.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Orders' ), $sc ),
+				'steps' => array(
+					$t( 'Open the order.' ),
+					$t( 'Press *Refund*.' ),
+					$t( 'Enter the amount — the whole payment or part of it.' ),
+					$t( 'Press *Refund* to confirm.' ),
+				),
+				'then'  => $t( 'The money goes back to the card that paid and can take a few working days to appear. Refunding does not cancel a subscription — that is a separate step.' ),
+			) ),
 		),
 		array(
+			'id'      => 'sc-orders-cancel-subscription',
+			'title'   => $t( 'Cancelling a subscription' ),
+			'tab'     => 'sc-orders',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Subscriptions' ), $sc ),
+				'steps' => array(
+					$t( 'Find the subscription by the customer\'s email address and open it.' ),
+					$t( 'Press *Actions*, then *Cancel Subscription*.' ),
+					$t( 'Choose whether to stop now or at the end of the current period.' ),
+					$t( 'Confirm.' ),
+				),
+				'then'  => $t( 'The next payment does not happen. The last payment is not returned — refund it from the order if you mean to.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-orders-customer',
+			'title'   => $t( 'Looking up a customer' ),
+			'tab'     => 'sc-orders',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Customers' ), $sc ),
+				'steps' => array(
+					$t( 'Search by name or email address and open the customer.' ),
+				),
+				'then'  => $t( 'You see everything they have bought, every subscription, and their saved details. Change their email address here if they ask — it is also how they sign in.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-orders-receipt',
+			'title'   => $t( 'Resending a receipt' ),
+			'tab'     => 'sc-orders',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Orders' ), $sc ),
+				'steps' => array(
+					$t( 'Open the order.' ),
+					$t( 'Press *Resend Receipt* (in the three-dot menu at the top right).' ),
+				),
+				'then'  => $t( 'The receipt goes to the email address on the order. If they say it never arrived, check their spam folder before anything else.' ),
+			) ),
+		),
+
+		// ── SureCart: Payments & test mode ──
+		array(
 			'id'      => 'sc-payments-test',
-			'title'   => __( 'Test mode, and how to tell you are in it', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Checking whether you are in test mode' ),
 			'tab'     => 'sc-payments',
 			'product' => 'surecart',
-			'body'    => '<p>' . esc_html__( 'In test mode no real money moves and no real card is charged. It is the right way to check a checkout works before opening it up.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Test orders never become live ones. Before you take a real payment, switch test mode off and place one small real order yourself — a checkout left in test mode looks entirely normal to a customer, right up until you wonder where the money is.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Settings > Payment Processors' ), $sc ),
+				'steps' => array(
+					$t( 'Look for the *Test mode* switch, and for an orange *Test mode* banner across the top of the shop screens.' ),
+				),
+				'then'  => $t( 'In test mode no real money moves. A checkout left in test mode looks completely normal to a customer, right up until you wonder where the money is.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-payments-test-order',
+			'title'   => $t( 'Placing a test order' ),
+			'tab'     => 'sc-payments',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => $t( 'The checkout on the front of the site' ),
+				'steps' => array(
+					$t( 'Make sure test mode is on.' ),
+					$t( 'Buy something with card number 4242 4242 4242 4242, any future expiry date, and any three digits.' ),
+					$t( 'Check the order arrived under Orders and the receipt email arrived.' ),
+				),
+				'then'  => $t( 'Test orders never become live ones and are listed separately. Delete them or leave them; they do not count.' ),
+			) ),
+		),
+		array(
+			'id'      => 'sc-payments-live',
+			'title'   => $t( 'Going live' ),
+			'tab'     => 'sc-payments',
+			'product' => 'surecart',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Settings > Payment Processors' ), $sc ),
+				'steps' => array(
+					$t( 'Switch *Test mode* off.' ),
+					$t( 'Check the payment processor shows as connected in live mode.' ),
+					$t( 'Place one small real order yourself with a real card, then refund it.' ),
+				),
+				'then'  => $t( 'The refund proves the whole loop works. If the order fails, the processor is not finished being set up — ask BlueWorx before taking real orders.' ),
+			) ),
 		),
 		array(
 			'id'      => 'sf-forms-entries',
-			'title'   => __( 'Building a form and finding what it collected', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Building a form and finding what it collected' ),
 			'tab'     => 'sf-forms',
 			'product' => 'sureforms',
-			'body'    => '<p>' . esc_html__( 'Build the form, then place it on a page with its block. Every submission is stored under Entries as well as emailed, which matters the day an email does not arrive.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Label every field with what you actually want, not with a placeholder inside the box. A placeholder disappears the moment somebody starts typing, which is exactly when they need it.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Forms' ), $sf ),
+				'steps' => array(
+					$t( 'Build the form, then place it on a page with its block.' ),
+					$t( 'Label every field with what you actually want, not with a placeholder inside the box.' ),
+					$t( 'Open *Entries* to see everything a form has collected.' ),
+				),
+				'then'  => $t( 'Every submission is stored under Entries as well as emailed, which matters the day an email does not arrive. A placeholder disappears the moment somebody starts typing, which is exactly when they need the label instead.' ),
+			) ),
 		),
 		array(
 			'id'      => 'sf-spam-notifications',
-			'title'   => __( 'Spam, and where the notification goes', 'blueworx-labs-wordpress' ),
+			'title'   => $t( 'Spam, and where the notification goes' ),
 			'tab'     => 'sf-spam',
 			'product' => 'sureforms',
-			'body'    => '<p>' . esc_html__( 'Turn the spam protection on before the form goes live, not after. A public form without it starts collecting rubbish within days.', 'blueworx-labs-wordpress' ) . '</p>'
-				. '<p>' . esc_html__( 'Check where the notification email is sent, and send yourself a test. A form quietly delivering to somebody who left last year is the most common fault there is, and nothing on the site looks wrong while it happens.', 'blueworx-labs-wordpress' ) . '</p>',
+			'body'    => blueworx_guide_body( array(
+				'where' => sprintf( $t( '%s > Settings' ), $sf ),
+				'steps' => array(
+					$t( 'Turn spam protection on before the form goes live, not after.' ),
+					$t( 'Open the form\'s notification settings and check which email address it sends to.' ),
+					$t( 'Send yourself a test submission.' ),
+				),
+				'then'  => $t( 'A form quietly delivering to somebody who left last year is the most common fault there is, and nothing on the site looks wrong while it happens.' ),
+			) ),
 		),
 	);
 
