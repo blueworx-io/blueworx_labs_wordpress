@@ -57,7 +57,8 @@ add_action( 'admin_menu', 'blueworx_register_guides_page', 11 );
  * A tab with nothing in it is not shown: with every feature switchable, an
  * empty Performance tab is a dead end rather than information.
  *
- * @param array $guides Normalized guides.
+ * @param array  $guides  Normalized guides.
+ * @param string $product Product key to count within, or '' for all.
  * @return array Tab labels keyed by tab id.
  */
 function blueworx_get_populated_guide_tabs( $guides, $product = '' ) {

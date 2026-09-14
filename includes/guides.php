@@ -49,7 +49,8 @@ function blueworx_guide_text( $text ) {
  * next. Everything is escaped here, so the result already passes wp_kses_post
  * on output and a third party using this helper gets the same shape as ours.
  *
- * @param array $parts {
+ * @param array $parts The guide's parts.
+ *
  *     @type string   $where The menu path, as the sidebar labels it.
  *     @type string   $intro Optional framing sentence.
  *     @type string[] $steps One action per step.
@@ -141,122 +142,138 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Writing and publishing a post' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Posts > Add New' ),
-				'steps' => array(
-					$t( 'Type the title where it says *Add title*.' ),
-					$t( 'Click below it and start writing. Press Enter for a new paragraph; press the black *+* for an image, heading or list.' ),
-					$t( 'Press *Save draft* as you go.' ),
-					$t( 'Press *Publish*, then *Publish* again to confirm.' ),
-				),
-				'then'  => $t( 'The post appears at the top of your blog or news page. The address is made from the title — change it under *URL* in the panel on the right before publishing, not after.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Posts > Add New' ),
+					'steps' => array(
+						$t( 'Type the title where it says *Add title*.' ),
+						$t( 'Click below it and start writing. Press Enter for a new paragraph; press the black *+* for an image, heading or list.' ),
+						$t( 'Press *Save draft* as you go.' ),
+						$t( 'Press *Publish*, then *Publish* again to confirm.' ),
+					),
+					'then'  => $t( 'The post appears at the top of your blog or news page. The address is made from the title — change it under *URL* in the panel on the right before publishing, not after.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-featured-image',
 			'title'   => $t( 'Adding a featured image' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The post editor, panel on the right' ),
-				'steps' => array(
-					$t( 'Make sure the *Post* tab is chosen at the top of the panel, not *Block*.' ),
-					$t( 'Open *Featured image* and press *Set featured image*.' ),
-					$t( 'Upload a picture or choose one from the library, then press *Set featured image*.' ),
-					$t( 'Press *Save* or *Publish*.' ),
-				),
-				'then'  => $t( 'This is the picture shown in listings and when the post is shared. Without one, those places may show nothing at all.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The post editor, panel on the right' ),
+					'steps' => array(
+						$t( 'Make sure the *Post* tab is chosen at the top of the panel, not *Block*.' ),
+						$t( 'Open *Featured image* and press *Set featured image*.' ),
+						$t( 'Upload a picture or choose one from the library, then press *Set featured image*.' ),
+						$t( 'Press *Save* or *Publish*.' ),
+					),
+					'then'  => $t( 'This is the picture shown in listings and when the post is shared. Without one, those places may show nothing at all.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-categories',
 			'title'   => $t( 'Putting a post in a category, and adding tags' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The post editor, panel on the right' ),
-				'intro' => $t( 'A category is a section of the blog — News, Events. A tag is a keyword — a place, a name, a product.' ),
-				'steps' => array(
-					$t( 'Open *Categories* and tick one. Press *Add Category* if the right one does not exist yet.' ),
-					$t( 'Open *Tags*, type a word and press Enter. Reuse tags you already have rather than inventing spellings.' ),
-					$t( 'Press *Save* or *Publish*.' ),
-				),
-				'then'  => $t( 'A post with no category lands in "Uncategorized", which visitors can see. One category per post is usually right; tags can be many.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The post editor, panel on the right' ),
+					'intro' => $t( 'A category is a section of the blog — News, Events. A tag is a keyword — a place, a name, a product.' ),
+					'steps' => array(
+						$t( 'Open *Categories* and tick one. Press *Add Category* if the right one does not exist yet.' ),
+						$t( 'Open *Tags*, type a word and press Enter. Reuse tags you already have rather than inventing spellings.' ),
+						$t( 'Press *Save* or *Publish*.' ),
+					),
+					'then'  => $t( 'A post with no category lands in "Uncategorized", which visitors can see. One category per post is usually right; tags can be many.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-scheduling',
 			'title'   => $t( 'Scheduling a post for later' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The post editor, panel on the right' ),
-				'steps' => array(
-					$t( 'Next to *Publish*, click the date (it says *Immediately*).' ),
-					$t( 'Pick the day and time.' ),
-					$t( 'Press *Schedule*, then *Schedule* again to confirm.' ),
-				),
-				'then'  => $t( 'The post goes live on its own at that time. To change your mind, open it and change the date, or switch it back to Draft.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The post editor, panel on the right' ),
+					'steps' => array(
+						$t( 'Next to *Publish*, click the date (it says *Immediately*).' ),
+						$t( 'Pick the day and time.' ),
+						$t( 'Press *Schedule*, then *Schedule* again to confirm.' ),
+					),
+					'then'  => $t( 'The post goes live on its own at that time. To change your mind, open it and change the date, or switch it back to Draft.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-editing',
 			'title'   => $t( 'Editing a post that is already live' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Posts' ),
-				'steps' => array(
-					$t( 'Hover over the post in the list and press *Edit*.' ),
-					$t( 'Make your changes.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'Visitors see the change immediately. The old version is kept — see "Undoing a change you regret" under Getting started.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Posts' ),
+					'steps' => array(
+						$t( 'Hover over the post in the list and press *Edit*.' ),
+						$t( 'Make your changes.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'Visitors see the change immediately. The old version is kept — see "Undoing a change you regret" under Getting started.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-unpublishing',
 			'title'   => $t( 'Taking a post down without deleting it' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The post editor, panel on the right' ),
-				'steps' => array(
-					$t( 'Open the post.' ),
-					$t( 'Under *Status*, choose *Draft*.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'The post disappears from the site but is kept in your list, ready to publish again. Anyone with the old link sees a "not found" page.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The post editor, panel on the right' ),
+					'steps' => array(
+						$t( 'Open the post.' ),
+						$t( 'Under *Status*, choose *Draft*.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'The post disappears from the site but is kept in your list, ready to publish again. Anyone with the old link sees a "not found" page.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-trash',
 			'title'   => $t( 'Getting a post back from the trash' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Posts' ),
-				'steps' => array(
-					$t( 'Press *Trash* in the row of links above the list.' ),
-					$t( 'Hover over the post and press *Restore*.' ),
-				),
-				'then'  => $t( 'It comes back as a draft. Items in the trash are removed for good after 30 days.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Posts' ),
+					'steps' => array(
+						$t( 'Press *Trash* in the row of links above the list.' ),
+						$t( 'Hover over the post and press *Restore*.' ),
+					),
+					'then'  => $t( 'It comes back as a draft. Items in the trash are removed for good after 30 days.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-posts-author',
 			'title'   => $t( 'Changing who a post says wrote it' ),
 			'tab'     => 'wp-posts',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The post editor, panel on the right' ),
-				'steps' => array(
-					$t( 'Find *Author* in the panel on the right.' ),
-					$t( 'Choose a name from the list.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'Only people with an account on the site are listed. If the person is not there, add them first — see "Adding someone to the site".' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The post editor, panel on the right' ),
+					'steps' => array(
+						$t( 'Find *Author* in the panel on the right.' ),
+						$t( 'Choose a name from the list.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'Only people with an account on the site are listed. If the person is not there, add them first — see "Adding someone to the site".' ),
+				)
+			),
 		),
 
 		// ── Pages ──
@@ -265,63 +282,71 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Building a page block by block' ),
 			'tab'     => 'wp-writing',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Pages > Add New' ),
-				'intro' => $t( 'A page is built from blocks — a heading, a paragraph, an image, a button.' ),
-				'steps' => array(
-					$t( 'Press the black *+* at the top left, or type / on an empty line and start typing what you want.' ),
-					$t( 'Click a block to select it; use the toolbar above it to move it up or down or delete it.' ),
-					$t( 'Press *Save draft* often, and *View* to see it as a visitor would.' ),
-					$t( 'Press *Publish* when it is ready.' ),
-				),
-				'then'  => $t( 'The page is live but not in the menu — see "Adding a page to the menu".' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Pages > Add New' ),
+					'intro' => $t( 'A page is built from blocks — a heading, a paragraph, an image, a button.' ),
+					'steps' => array(
+						$t( 'Press the black *+* at the top left, or type / on an empty line and start typing what you want.' ),
+						$t( 'Click a block to select it; use the toolbar above it to move it up or down or delete it.' ),
+						$t( 'Press *Save draft* often, and *View* to see it as a visitor would.' ),
+						$t( 'Press *Publish* when it is ready.' ),
+					),
+					'then'  => $t( 'The page is live but not in the menu — see "Adding a page to the menu".' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-writing-links',
 			'title'   => $t( 'Adding a link' ),
 			'tab'     => 'wp-writing',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The editor' ),
-				'steps' => array(
-					$t( 'Select the words that should be the link.' ),
-					$t( 'Press Ctrl+K (Cmd+K on a Mac).' ),
-					$t( 'For a page on this site, start typing its name and pick it from the list. For another site, paste the full address.' ),
-					$t( 'Press Enter.' ),
-				),
-				'then'  => $t( 'Picking a page from the list, rather than pasting its address, means the link keeps working if that page is ever renamed.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The editor' ),
+					'steps' => array(
+						$t( 'Select the words that should be the link.' ),
+						$t( 'Press Ctrl+K (Cmd+K on a Mac).' ),
+						$t( 'For a page on this site, start typing its name and pick it from the list. For another site, paste the full address.' ),
+						$t( 'Press Enter.' ),
+					),
+					'then'  => $t( 'Picking a page from the list, rather than pasting its address, means the link keeps working if that page is ever renamed.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-writing-headings',
 			'title'   => $t( 'Headings in the right order' ),
 			'tab'     => 'wp-writing',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The editor' ),
-				'steps' => array(
-					$t( 'Add a *Heading* block.' ),
-					$t( 'In the toolbar above it, choose the level: H2 for a main section, H3 for a part of that section.' ),
-					$t( 'Go down one level at a time — H2, then H3.' ),
-				),
-				'then'  => $t( 'The page title is already the H1, so start at H2. Skipping a level because it looked the right size is the most common mistake.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The editor' ),
+					'steps' => array(
+						$t( 'Add a *Heading* block.' ),
+						$t( 'In the toolbar above it, choose the level: H2 for a main section, H3 for a part of that section.' ),
+						$t( 'Go down one level at a time — H2, then H3.' ),
+					),
+					'then'  => $t( 'The page title is already the H1, so start at H2. Skipping a level because it looked the right size is the most common mistake.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-writing-menu',
 			'title'   => $t( 'Adding a page to the menu' ),
 			'tab'     => 'wp-writing',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Appearance > Menus' ),
-				'steps' => array(
-					$t( 'Tick the page under *Add menu items* and press *Add to Menu*.' ),
-					$t( 'Drag it into position.' ),
-					$t( 'Press *Save Menu*.' ),
-				),
-				'then'  => $t( 'If *Appearance > Menus* is not there, your site uses the Site Editor: go to *Appearance > Editor*, click the navigation, and add the page there.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Appearance > Menus' ),
+					'steps' => array(
+						$t( 'Tick the page under *Add menu items* and press *Add to Menu*.' ),
+						$t( 'Drag it into position.' ),
+						$t( 'Press *Save Menu*.' ),
+					),
+					'then'  => $t( 'If *Appearance > Menus* is not there, your site uses the Site Editor: go to *Appearance > Editor*, click the navigation, and add the page there.' ),
+				)
+			),
 		),
 
 		// ── Media library ──
@@ -330,57 +355,65 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Uploading an image' ),
 			'tab'     => 'wp-media',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Media > Add New' ),
-				'steps' => array(
-					$t( 'Drop the file onto the page, or press *Select Files*.' ),
-					$t( 'Once it appears, click it and fill in *Alternative text* with what the picture shows.' ),
-				),
-				'then'  => $t( 'Upload the best version you have; the site makes the smaller copies. A decorative flourish can have empty alt text; a photograph of your team cannot.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Media > Add New' ),
+					'steps' => array(
+						$t( 'Drop the file onto the page, or press *Select Files*.' ),
+						$t( 'Once it appears, click it and fill in *Alternative text* with what the picture shows.' ),
+					),
+					'then'  => $t( 'Upload the best version you have; the site makes the smaller copies. A decorative flourish can have empty alt text; a photograph of your team cannot.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-media-alt',
 			'title'   => $t( 'Writing alt text' ),
 			'tab'     => 'wp-media',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Media > Library' ),
-				'steps' => array(
-					$t( 'Click the image.' ),
-					$t( 'In *Alternative text*, describe what is in it in one sentence, as if to someone on the phone.' ),
-					$t( 'Click away — it saves on its own.' ),
-				),
-				'then'  => $t( 'Screen readers read it aloud and search engines read it too. Do not start with "Image of" — they already know it is an image.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Media > Library' ),
+					'steps' => array(
+						$t( 'Click the image.' ),
+						$t( 'In *Alternative text*, describe what is in it in one sentence, as if to someone on the phone.' ),
+						$t( 'Click away — it saves on its own.' ),
+					),
+					'then'  => $t( 'Screen readers read it aloud and search engines read it too. Do not start with "Image of" — they already know it is an image.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-media-replacing',
 			'title'   => $t( 'Replacing a file people already have the link to' ),
 			'tab'     => 'wp-media',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Media > Library' ),
-				'steps' => array(
-					$t( 'Click the file.' ),
-					$t( 'Under *Replace file*, choose the new version, then press *Replace*.' ),
-				),
-				'then'  => $t( 'The address stays the same, so a price list you emailed to two hundred people keeps working. If there is no *Replace file* field, ask BlueWorx to switch it on.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Media > Library' ),
+					'steps' => array(
+						$t( 'Click the file.' ),
+						$t( 'Under *Replace file*, choose the new version, then press *Replace*.' ),
+					),
+					'then'  => $t( 'The address stays the same, so a price list you emailed to two hundred people keeps working. If there is no *Replace file* field, ask BlueWorx to switch it on.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-media-usage',
 			'title'   => $t( 'Finding where an image is used' ),
 			'tab'     => 'wp-media',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Media > Library' ),
-				'steps' => array(
-					$t( 'Switch to the list view (the icon at the top left).' ),
-					$t( 'Look at the *Uploaded to* column.' ),
-				),
-				'then'  => $t( 'That column only shows the page the image was first added from. An image placed on several pages is not tracked by WordPress — search the page content, or ask BlueWorx, before deleting one.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Media > Library' ),
+					'steps' => array(
+						$t( 'Switch to the list view (the icon at the top left).' ),
+						$t( 'Look at the *Uploaded to* column.' ),
+					),
+					'then'  => $t( 'That column only shows the page the image was first added from. An image placed on several pages is not tracked by WordPress — search the page content, or ask BlueWorx, before deleting one.' ),
+				)
+			),
 		),
 
 		// ── Users & roles ──
@@ -389,46 +422,52 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Adding somebody' ),
 			'tab'     => 'wp-people',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Users > Add New' ),
-				'steps' => array(
-					$t( 'Type their email address and a username.' ),
-					$t( 'Choose a role.' ),
-					$t( 'Press *Add User*.' ),
-				),
-				'then'  => $t( 'They get an email with a link to set their own password. Never type a password in and send it to them.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Users > Add New' ),
+					'steps' => array(
+						$t( 'Type their email address and a username.' ),
+						$t( 'Choose a role.' ),
+						$t( 'Press *Add User*.' ),
+					),
+					'then'  => $t( 'They get an email with a link to set their own password. Never type a password in and send it to them.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-people-roles',
 			'title'   => $t( 'Which role to give somebody' ),
 			'tab'     => 'wp-people',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Users' ),
-				'steps' => array(
-					$t( 'Writes their own posts only: *Author*.' ),
-					$t( 'Edits and publishes everyone\'s pages and posts: *Editor*.' ),
-					$t( 'Writes but should not publish: *Contributor*.' ),
-					$t( 'Installs plugins, changes settings, removes people: *Administrator* — and only if they really must.' ),
-				),
-				'then'  => $t( 'Give the smallest role that lets somebody do their job. Every extra administrator is an extra way for the site to be taken over.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Users' ),
+					'steps' => array(
+						$t( 'Writes their own posts only: *Author*.' ),
+						$t( 'Edits and publishes everyone\'s pages and posts: *Editor*.' ),
+						$t( 'Writes but should not publish: *Contributor*.' ),
+						$t( 'Installs plugins, changes settings, removes people: *Administrator* — and only if they really must.' ),
+					),
+					'then'  => $t( 'Give the smallest role that lets somebody do their job. Every extra administrator is an extra way for the site to be taken over.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-people-leaving',
 			'title'   => $t( 'When somebody leaves' ),
 			'tab'     => 'wp-people',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Users' ),
-				'steps' => array(
-					$t( 'Hover over their name and press *Delete*.' ),
-					$t( 'Choose *Attribute all content to* and pick another person.' ),
-					$t( 'Press *Confirm Deletion*.' ),
-				),
-				'then'  => $t( 'Their pages and posts now belong to the person you chose. Delete the account rather than changing its password — a dormant account is a way in.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Users' ),
+					'steps' => array(
+						$t( 'Hover over their name and press *Delete*.' ),
+						$t( 'Choose *Attribute all content to* and pick another person.' ),
+						$t( 'Press *Confirm Deletion*.' ),
+					),
+					'then'  => $t( 'Their pages and posts now belong to the person you chose. Delete the account rather than changing its password — a dormant account is a way in.' ),
+				)
+			),
 		),
 
 		// ── Updates & health ──
@@ -437,28 +476,32 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'What to do when the update badge appears' ),
 			'tab'     => 'wp-upkeep',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'Dashboard > Updates' ),
-				'steps' => array(
-					$t( 'If BlueWorx maintains the site, do nothing — we apply updates for you.' ),
-					$t( 'Otherwise press *Update Now* for WordPress, then tick every plugin and press *Update Plugins*, then the same for themes.' ),
-				),
-				'then'  => $t( 'Updates are the single most effective thing you can do to stay safe. Do them regularly rather than letting them pile up.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'Dashboard > Updates' ),
+					'steps' => array(
+						$t( 'If BlueWorx maintains the site, do nothing — we apply updates for you.' ),
+						$t( 'Otherwise press *Update Now* for WordPress, then tick every plugin and press *Update Plugins*, then the same for themes.' ),
+					),
+					'then'  => $t( 'Updates are the single most effective thing you can do to stay safe. Do them regularly rather than letting them pile up.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'wp-upkeep-health',
 			'title'   => $t( 'Checking the site after an update' ),
 			'tab'     => 'wp-upkeep',
 			'product' => 'wordpress',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The front of the site, then Tools > Site Health' ),
-				'steps' => array(
-					$t( 'Open the home page and one or two pages people use most. Check they look right and a form or a button still works.' ),
-					$t( 'Open *Tools > Site Health* and read anything marked *Critical*.' ),
-				),
-				'then'  => $t( 'Recommendations in Site Health can be ignored; only Critical needs action. If something looks broken, tell BlueWorx which plugin you updated.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The front of the site, then Tools > Site Health' ),
+					'steps' => array(
+						$t( 'Open the home page and one or two pages people use most. Check they look right and a form or a button still works.' ),
+						$t( 'Open *Tools > Site Health* and read anything marked *Critical*.' ),
+					),
+					'then'  => $t( 'Recommendations in Site Health can be ignored; only Critical needs action. If something looks broken, tell BlueWorx which plugin you updated.' ),
+				)
+			),
 		),
 		// ── SureCart: Products & plans ──
 		array(
@@ -466,77 +509,87 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Adding a product' ),
 			'tab'     => 'sc-products',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Products' ), $sc ),
-				'steps' => array(
-					$t( 'Press *Add New*.' ),
-					$t( 'Type the name and a description.' ),
-					$t( 'Under *Pricing*, press *Add a Price*, enter the amount, and choose *One time* or *Subscription*.' ),
-					$t( 'Add an image, then press *Publish*.' ),
-				),
-				'then'  => $t( 'The product has its own page and can be added to any page with the *Buy Button* block. A product is the thing; a price is what it costs — one product can carry several prices.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Products' ), $sc ),
+					'steps' => array(
+						$t( 'Press *Add New*.' ),
+						$t( 'Type the name and a description.' ),
+						$t( 'Under *Pricing*, press *Add a Price*, enter the amount, and choose *One time* or *Subscription*.' ),
+						$t( 'Add an image, then press *Publish*.' ),
+					),
+					'then'  => $t( 'The product has its own page and can be added to any page with the *Buy Button* block. A product is the thing; a price is what it costs — one product can carry several prices.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-products-price',
 			'title'   => $t( 'Changing a price' ),
 			'tab'     => 'sc-products',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Products' ), $sc ),
-				'steps' => array(
-					$t( 'Open the product.' ),
-					$t( 'Under *Pricing*, press the price and change the amount.' ),
-					$t( 'Press *Update*.' ),
-				),
-				'then'  => $t( 'Only new purchases pay the new amount. Anyone already on a subscription keeps paying what they signed up for.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Products' ), $sc ),
+					'steps' => array(
+						$t( 'Open the product.' ),
+						$t( 'Under *Pricing*, press the price and change the amount.' ),
+						$t( 'Press *Update*.' ),
+					),
+					'then'  => $t( 'Only new purchases pay the new amount. Anyone already on a subscription keeps paying what they signed up for.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-products-second-price',
 			'title'   => $t( 'Offering monthly and annual' ),
 			'tab'     => 'sc-products',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Products' ), $sc ),
-				'steps' => array(
-					$t( 'Open the product.' ),
-					$t( 'Under *Pricing*, press *Add a Price*.' ),
-					$t( 'Choose *Subscription*, set the amount and pick *Yearly*.' ),
-					$t( 'Press *Update*.' ),
-				),
-				'then'  => $t( 'The checkout offers both and the customer picks. Give each price a short name so they can tell them apart.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Products' ), $sc ),
+					'steps' => array(
+						$t( 'Open the product.' ),
+						$t( 'Under *Pricing*, press *Add a Price*.' ),
+						$t( 'Choose *Subscription*, set the amount and pick *Yearly*.' ),
+						$t( 'Press *Update*.' ),
+					),
+					'then'  => $t( 'The checkout offers both and the customer picks. Give each price a short name so they can tell them apart.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-products-coupon',
 			'title'   => $t( 'Making a discount code' ),
 			'tab'     => 'sc-products',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Coupons' ), $sc ),
-				'steps' => array(
-					$t( 'Press *Add New*.' ),
-					$t( 'Choose a percentage or a fixed amount off.' ),
-					$t( 'Under *Promotion Code*, type the code customers will enter.' ),
-					$t( 'Set an end date or a maximum number of uses if you want one, then press *Create Coupon*.' ),
-				),
-				'then'  => $t( 'Customers type the code at the checkout. A coupon is the discount; a code is the word that unlocks it — one coupon can have several codes.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Coupons' ), $sc ),
+					'steps' => array(
+						$t( 'Press *Add New*.' ),
+						$t( 'Choose a percentage or a fixed amount off.' ),
+						$t( 'Under *Promotion Code*, type the code customers will enter.' ),
+						$t( 'Set an end date or a maximum number of uses if you want one, then press *Create Coupon*.' ),
+					),
+					'then'  => $t( 'Customers type the code at the checkout. A coupon is the discount; a code is the word that unlocks it — one coupon can have several codes.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-products-archive',
 			'title'   => $t( 'Stopping selling something' ),
 			'tab'     => 'sc-products',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Products' ), $sc ),
-				'steps' => array(
-					$t( 'Open the product.' ),
-					$t( 'Press *Archive* (in the three-dot menu at the top right).' ),
-				),
-				'then'  => $t( 'It stops being sold but its order history stays. Do not delete a product that has ever sold — deleting takes the orders with it.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Products' ), $sc ),
+					'steps' => array(
+						$t( 'Open the product.' ),
+						$t( 'Press *Archive* (in the three-dot menu at the top right).' ),
+					),
+					'then'  => $t( 'It stops being sold but its order history stays. Do not delete a product that has ever sold — deleting takes the orders with it.' ),
+				)
+			),
 		),
 
 		// ── SureCart: Orders & customers ──
@@ -545,73 +598,83 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Finding an order' ),
 			'tab'     => 'sc-orders',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Orders' ), $sc ),
-				'steps' => array(
-					$t( 'Type the customer\'s email address or the order number into the search box.' ),
-					$t( 'Click the order.' ),
-				),
-				'then'  => $t( 'The order shows what was bought, what was paid and who paid it. If you cannot find it, check you are not in test mode — test orders are kept separately.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Orders' ), $sc ),
+					'steps' => array(
+						$t( 'Type the customer\'s email address or the order number into the search box.' ),
+						$t( 'Click the order.' ),
+					),
+					'then'  => $t( 'The order shows what was bought, what was paid and who paid it. If you cannot find it, check you are not in test mode — test orders are kept separately.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-orders-refunds',
 			'title'   => $t( 'Refunding a payment' ),
 			'tab'     => 'sc-orders',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Orders' ), $sc ),
-				'steps' => array(
-					$t( 'Open the order.' ),
-					$t( 'Press *Refund*.' ),
-					$t( 'Enter the amount — the whole payment or part of it.' ),
-					$t( 'Press *Refund* to confirm.' ),
-				),
-				'then'  => $t( 'The money goes back to the card that paid and can take a few working days to appear. Refunding does not cancel a subscription — that is a separate step.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Orders' ), $sc ),
+					'steps' => array(
+						$t( 'Open the order.' ),
+						$t( 'Press *Refund*.' ),
+						$t( 'Enter the amount — the whole payment or part of it.' ),
+						$t( 'Press *Refund* to confirm.' ),
+					),
+					'then'  => $t( 'The money goes back to the card that paid and can take a few working days to appear. Refunding does not cancel a subscription — that is a separate step.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-orders-cancel-subscription',
 			'title'   => $t( 'Cancelling a subscription' ),
 			'tab'     => 'sc-orders',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Subscriptions' ), $sc ),
-				'steps' => array(
-					$t( 'Find the subscription by the customer\'s email address and open it.' ),
-					$t( 'Press *Actions*, then *Cancel Subscription*.' ),
-					$t( 'Choose whether to stop now or at the end of the current period.' ),
-					$t( 'Confirm.' ),
-				),
-				'then'  => $t( 'The next payment does not happen. The last payment is not returned — refund it from the order if you mean to.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Subscriptions' ), $sc ),
+					'steps' => array(
+						$t( 'Find the subscription by the customer\'s email address and open it.' ),
+						$t( 'Press *Actions*, then *Cancel Subscription*.' ),
+						$t( 'Choose whether to stop now or at the end of the current period.' ),
+						$t( 'Confirm.' ),
+					),
+					'then'  => $t( 'The next payment does not happen. The last payment is not returned — refund it from the order if you mean to.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-orders-customer',
 			'title'   => $t( 'Looking up a customer' ),
 			'tab'     => 'sc-orders',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Customers' ), $sc ),
-				'steps' => array(
-					$t( 'Search by name or email address and open the customer.' ),
-				),
-				'then'  => $t( 'You see everything they have bought, every subscription, and their saved details. Change their email address here if they ask — it is also how they sign in.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Customers' ), $sc ),
+					'steps' => array(
+						$t( 'Search by name or email address and open the customer.' ),
+					),
+					'then'  => $t( 'You see everything they have bought, every subscription, and their saved details. Change their email address here if they ask — it is also how they sign in.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-orders-receipt',
 			'title'   => $t( 'Resending a receipt' ),
 			'tab'     => 'sc-orders',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Orders' ), $sc ),
-				'steps' => array(
-					$t( 'Open the order.' ),
-					$t( 'Press *Resend Receipt* (in the three-dot menu at the top right).' ),
-				),
-				'then'  => $t( 'The receipt goes to the email address on the order. If they say it never arrived, check their spam folder before anything else.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Orders' ), $sc ),
+					'steps' => array(
+						$t( 'Open the order.' ),
+						$t( 'Press *Resend Receipt* (in the three-dot menu at the top right).' ),
+					),
+					'then'  => $t( 'The receipt goes to the email address on the order. If they say it never arrived, check their spam folder before anything else.' ),
+				)
+			),
 		),
 
 		// ── SureCart: Payments & test mode ──
@@ -620,73 +683,83 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Checking whether you are in test mode' ),
 			'tab'     => 'sc-payments',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Settings > Payment Processors' ), $sc ),
-				'steps' => array(
-					$t( 'Look for the *Test mode* switch, and for an orange *Test mode* banner across the top of the shop screens.' ),
-				),
-				'then'  => $t( 'In test mode no real money moves. A checkout left in test mode looks completely normal to a customer, right up until you wonder where the money is.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Settings > Payment Processors' ), $sc ),
+					'steps' => array(
+						$t( 'Look for the *Test mode* switch, and for an orange *Test mode* banner across the top of the shop screens.' ),
+					),
+					'then'  => $t( 'In test mode no real money moves. A checkout left in test mode looks completely normal to a customer, right up until you wonder where the money is.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-payments-test-order',
 			'title'   => $t( 'Placing a test order' ),
 			'tab'     => 'sc-payments',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => $t( 'The checkout on the front of the site' ),
-				'steps' => array(
-					$t( 'Make sure test mode is on.' ),
-					$t( 'Buy something with card number 4242 4242 4242 4242, any future expiry date, and any three digits.' ),
-					$t( 'Check the order arrived under Orders and the receipt email arrived.' ),
-				),
-				'then'  => $t( 'Test orders never become live ones and are listed separately. Delete them or leave them; they do not count.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => $t( 'The checkout on the front of the site' ),
+					'steps' => array(
+						$t( 'Make sure test mode is on.' ),
+						$t( 'Buy something with card number 4242 4242 4242 4242, any future expiry date, and any three digits.' ),
+						$t( 'Check the order arrived under Orders and the receipt email arrived.' ),
+					),
+					'then'  => $t( 'Test orders never become live ones and are listed separately. Delete them or leave them; they do not count.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sc-payments-live',
 			'title'   => $t( 'Going live' ),
 			'tab'     => 'sc-payments',
 			'product' => 'surecart',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Settings > Payment Processors' ), $sc ),
-				'steps' => array(
-					$t( 'Switch *Test mode* off.' ),
-					$t( 'Check the payment processor shows as connected in live mode.' ),
-					$t( 'Place one small real order yourself with a real card, then refund it.' ),
-				),
-				'then'  => $t( 'The refund proves the whole loop works. If the order fails, the processor is not finished being set up — ask BlueWorx before taking real orders.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Settings > Payment Processors' ), $sc ),
+					'steps' => array(
+						$t( 'Switch *Test mode* off.' ),
+						$t( 'Check the payment processor shows as connected in live mode.' ),
+						$t( 'Place one small real order yourself with a real card, then refund it.' ),
+					),
+					'then'  => $t( 'The refund proves the whole loop works. If the order fails, the processor is not finished being set up — ask BlueWorx before taking real orders.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sf-forms-entries',
 			'title'   => $t( 'Building a form and finding what it collected' ),
 			'tab'     => 'sf-forms',
 			'product' => 'sureforms',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Forms' ), $sf ),
-				'steps' => array(
-					$t( 'Build the form, then place it on a page with its block.' ),
-					$t( 'Label every field with what you actually want, not with a placeholder inside the box.' ),
-					$t( 'Open *Entries* to see everything a form has collected.' ),
-				),
-				'then'  => $t( 'Every submission is stored under Entries as well as emailed, which matters the day an email does not arrive. A placeholder disappears the moment somebody starts typing, which is exactly when they need the label instead.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Forms' ), $sf ),
+					'steps' => array(
+						$t( 'Build the form, then place it on a page with its block.' ),
+						$t( 'Label every field with what you actually want, not with a placeholder inside the box.' ),
+						$t( 'Open *Entries* to see everything a form has collected.' ),
+					),
+					'then'  => $t( 'Every submission is stored under Entries as well as emailed, which matters the day an email does not arrive. A placeholder disappears the moment somebody starts typing, which is exactly when they need the label instead.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'sf-spam-notifications',
 			'title'   => $t( 'Spam, and where the notification goes' ),
 			'tab'     => 'sf-spam',
 			'product' => 'sureforms',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Settings' ), $sf ),
-				'steps' => array(
-					$t( 'Turn spam protection on before the form goes live, not after.' ),
-					$t( 'Open the form\'s notification settings and check which email address it sends to.' ),
-					$t( 'Send yourself a test submission.' ),
-				),
-				'then'  => $t( 'A form quietly delivering to somebody who left last year is the most common fault there is, and nothing on the site looks wrong while it happens.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Settings' ), $sf ),
+					'steps' => array(
+						$t( 'Turn spam protection on before the form goes live, not after.' ),
+						$t( 'Open the form\'s notification settings and check which email address it sends to.' ),
+						$t( 'Send yourself a test submission.' ),
+					),
+					'then'  => $t( 'A form quietly delivering to somebody who left last year is the most common fault there is, and nothing on the site looks wrong while it happens.' ),
+				)
+			),
 		),
 
 		array(
@@ -694,77 +767,87 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Seeing today\'s bookings' ),
 			'tab'     => 'lp-calendar',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
-				'steps' => array(
-					$t( 'Press *Today* at the top of the calendar.' ),
-					$t( 'Choose *Day* to see one day in detail, or *Week* for the week ahead.' ),
-					$t( 'Click any booking to see who it is and what they booked.' ),
-				),
-				'then'  => $t( 'Colours are by service. If a staff member sees nothing, check they are looking at their own calendar and not the whole team\'s.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+					'steps' => array(
+						$t( 'Press *Today* at the top of the calendar.' ),
+						$t( 'Choose *Day* to see one day in detail, or *Week* for the week ahead.' ),
+						$t( 'Click any booking to see who it is and what they booked.' ),
+					),
+					'then'  => $t( 'Colours are by service. If a staff member sees nothing, check they are looking at their own calendar and not the whole team\'s.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-calendar-add',
 			'title'   => $t( 'Booking somebody in by hand' ),
 			'tab'     => 'lp-calendar',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
-				'steps' => array(
-					$t( 'Click an empty slot on the calendar, under the staff member and at the time you want.' ),
-					$t( 'Under *Service*, choose which one.' ),
-					$t( 'Check the date and time, and adjust them if you need to.' ),
-					$t( 'Under *Customer*, press *Find* to pick someone who has booked before, or *New* to type their details.' ),
-					$t( 'Press *Create Order*.' ),
-				),
-				'then'  => $t( 'It appears on the calendar and the customer gets the same confirmation email as an online booking.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+					'steps' => array(
+						$t( 'Click an empty slot on the calendar, under the staff member and at the time you want.' ),
+						$t( 'Under *Service*, choose which one.' ),
+						$t( 'Check the date and time, and adjust them if you need to.' ),
+						$t( 'Under *Customer*, press *Find* to pick someone who has booked before, or *New* to type their details.' ),
+						$t( 'Press *Create Order*.' ),
+					),
+					'then'  => $t( 'It appears on the calendar and the customer gets the same confirmation email as an online booking.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-calendar-move',
 			'title'   => $t( 'Moving a booking' ),
 			'tab'     => 'lp-calendar',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
-				'steps' => array(
-					$t( 'Click the booking.' ),
-					$t( 'Change the date or time.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'The customer is emailed the new time. Only free slots are offered, so if the time you want is not there, somebody else has it.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+					'steps' => array(
+						$t( 'Click the booking.' ),
+						$t( 'Change the date or time.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'The customer is emailed the new time. Only free slots are offered, so if the time you want is not there, somebody else has it.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-calendar-cancel',
 			'title'   => $t( 'Cancelling a booking' ),
 			'tab'     => 'lp-calendar',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
-				'steps' => array(
-					$t( 'Click the booking.' ),
-					$t( 'Change *Status* to *Cancelled*.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'The slot is free again and the customer is told. Cancel rather than delete — a deleted booking leaves no record that it ever existed.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+					'steps' => array(
+						$t( 'Click the booking.' ),
+						$t( 'Change *Status* to *Cancelled*.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'The slot is free again and the customer is told. Cancel rather than delete — a deleted booking leaves no record that it ever existed.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-calendar-no-show',
 			'title'   => $t( 'Marking a no-show' ),
 			'tab'     => 'lp-calendar',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Calendar' ), $lp ),
-				'steps' => array(
-					$t( 'Click the booking.' ),
-					$t( 'Change *Status* to *No Show*.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'It stays on the customer\'s record, so you can see a pattern before you next take a booking from them.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Calendar' ), $lp ),
+					'steps' => array(
+						$t( 'Click the booking.' ),
+						$t( 'Change *Status* to *No Show*.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'It stays on the customer\'s record, so you can see a pattern before you next take a booking from them.' ),
+				)
+			),
 		),
 
 		// ── LatePoint: Services ──
@@ -773,46 +856,52 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Adding a service' ),
 			'tab'     => 'lp-services',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Services' ), $lp ),
-				'steps' => array(
-					$t( 'Press *Add Service*.' ),
-					$t( 'Type the name, how long it takes, and the price.' ),
-					$t( 'Under *Agents*, tick who can provide it.' ),
-					$t( 'Press *Save Changes*.' ),
-				),
-				'then'  => $t( 'It appears on the booking form straight away. A service with no staff ticked cannot be booked and shows to nobody.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Services' ), $lp ),
+					'steps' => array(
+						$t( 'Press *Add Service*.' ),
+						$t( 'Type the name, how long it takes, and the price.' ),
+						$t( 'Under *Agents*, tick who can provide it.' ),
+						$t( 'Press *Save Changes*.' ),
+					),
+					'then'  => $t( 'It appears on the booking form straight away. A service with no staff ticked cannot be booked and shows to nobody.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-services-edit',
 			'title'   => $t( 'Changing how long a service takes, or its price' ),
 			'tab'     => 'lp-services',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Services' ), $lp ),
-				'steps' => array(
-					$t( 'Click the service.' ),
-					$t( 'Change *Duration* or *Charge Amount*.' ),
-					$t( 'Press *Save Changes*.' ),
-				),
-				'then'  => $t( 'Bookings already made keep their old length and price. Only new bookings use the new ones.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Services' ), $lp ),
+					'steps' => array(
+						$t( 'Click the service.' ),
+						$t( 'Change *Duration* or *Charge Amount*.' ),
+						$t( 'Press *Save Changes*.' ),
+					),
+					'then'  => $t( 'Bookings already made keep their old length and price. Only new bookings use the new ones.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-services-hide',
 			'title'   => $t( 'Hiding a service without deleting it' ),
 			'tab'     => 'lp-services',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Services' ), $lp ),
-				'steps' => array(
-					$t( 'Click the service.' ),
-					$t( 'Change *Status* to *Disabled*.' ),
-					$t( 'Press *Save Changes*.' ),
-				),
-				'then'  => $t( 'It vanishes from the booking form but past bookings still show it. Use this for a seasonal service rather than deleting and recreating it.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Services' ), $lp ),
+					'steps' => array(
+						$t( 'Click the service.' ),
+						$t( 'Change *Status* to *Disabled*.' ),
+						$t( 'Press *Save Changes*.' ),
+					),
+					'then'  => $t( 'It vanishes from the booking form but past bookings still show it. Use this for a seasonal service rather than deleting and recreating it.' ),
+				)
+			),
 		),
 
 		// ── LatePoint: Staff & hours ──
@@ -821,61 +910,69 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Adding a staff member' ),
 			'tab'     => 'lp-staff',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Agents' ), $lp ),
-				'steps' => array(
-					$t( 'Press *Add Agent*.' ),
-					$t( 'Type their name and email address.' ),
-					$t( 'Under *Services*, tick what they provide.' ),
-					$t( 'Under *Schedule*, set their working days and hours.' ),
-					$t( 'Press *Save*.' ),
-				),
-				'then'  => $t( 'They can be booked from now on, and get a WordPress account so they can sign in and see their own calendar. If you only see one agent and a link to upgrade, this site is on the free version — ask BlueWorx.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Agents' ), $lp ),
+					'steps' => array(
+						$t( 'Press *Add Agent*.' ),
+						$t( 'Type their name and email address.' ),
+						$t( 'Under *Services*, tick what they provide.' ),
+						$t( 'Under *Schedule*, set their working days and hours.' ),
+						$t( 'Press *Save*.' ),
+					),
+					'then'  => $t( 'They can be booked from now on, and get a WordPress account so they can sign in and see their own calendar. If you only see one agent and a link to upgrade, this site is on the free version — ask BlueWorx.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-staff-hours',
 			'title'   => $t( 'Setting working hours' ),
 			'tab'     => 'lp-staff',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
-				'steps' => array(
-					$t( 'Under *General Weekly Schedule*, for each day set the start and end time, or switch the day off.' ),
-					$t( 'Press *Save Weekly Schedule*.' ),
-				),
-				'then'  => $t( 'These are the hours for the whole business. The free version runs one agent, so this is also that person\'s own schedule.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
+					'steps' => array(
+						$t( 'Under *General Weekly Schedule*, for each day set the start and end time, or switch the day off.' ),
+						$t( 'Press *Save Weekly Schedule*.' ),
+					),
+					'then'  => $t( 'These are the hours for the whole business. The free version runs one agent, so this is also that person\'s own schedule.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-staff-holiday',
 			'title'   => $t( 'Adding a day off or a holiday' ),
 			'tab'     => 'lp-staff',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
-				'steps' => array(
-					$t( 'Under *Holidays & Days Off*, press *Add Day*.' ),
-					$t( 'Pick the date.' ),
-					$t( 'Press *Set as Day Off*.' ),
-				),
-				'then'  => $t( 'Nobody can book that day. Add each date separately — there is no way to mark a day as off every year.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
+					'steps' => array(
+						$t( 'Under *Holidays & Days Off*, press *Add Day*.' ),
+						$t( 'Pick the date.' ),
+						$t( 'Press *Set as Day Off*.' ),
+					),
+					'then'  => $t( 'Nobody can book that day. Add each date separately — there is no way to mark a day as off every year.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-staff-block',
 			'title'   => $t( 'Blocking out part of a day' ),
 			'tab'     => 'lp-staff',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
-				'steps' => array(
-					$t( 'Under *Days With Custom Schedules*, press *Add Day* and pick the date.' ),
-					$t( 'Set *Start* and *Finish* to the hours you are available — say 9 to 12 — and leave the rest of the day out.' ),
-					$t( 'Press *Save Schedule*.' ),
-				),
-				'then'  => $t( 'Only those hours are offered that day. Bookings already made outside them are not moved — check the calendar first.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Settings > Schedule' ), $lp ),
+					'steps' => array(
+						$t( 'Under *Days With Custom Schedules*, press *Add Day* and pick the date.' ),
+						$t( 'Set *Start* and *Finish* to the hours you are available — say 9 to 12 — and leave the rest of the day out.' ),
+						$t( 'Press *Save Schedule*.' ),
+					),
+					'then'  => $t( 'Only those hours are offered that day. Bookings already made outside them are not moved — check the calendar first.' ),
+				)
+			),
 		),
 
 		// ── LatePoint: Customers ──
@@ -884,29 +981,33 @@ function blueworx_get_other_product_guides() {
 			'title'   => $t( 'Finding a customer and their history' ),
 			'tab'     => 'lp-customers',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Customers' ), $lp ),
-				'steps' => array(
-					$t( 'Search by name, email or phone.' ),
-					$t( 'Click the customer.' ),
-				),
-				'then'  => $t( 'You see every booking they have made, past and future, and any no-shows.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Customers' ), $lp ),
+					'steps' => array(
+						$t( 'Search by name, email or phone.' ),
+						$t( 'Click the customer.' ),
+					),
+					'then'  => $t( 'You see every booking they have made, past and future, and any no-shows.' ),
+				)
+			),
 		),
 		array(
 			'id'      => 'lp-customers-edit',
 			'title'   => $t( 'Changing a customer\'s details' ),
 			'tab'     => 'lp-customers',
 			'product' => 'latepoint',
-			'body'    => blueworx_guide_body( array(
-				'where' => sprintf( $t( '%s > Customers' ), $lp ),
-				'steps' => array(
-					$t( 'Click the customer.' ),
-					$t( 'Change the name, email or phone.' ),
-					$t( 'Press *Save Changes*.' ),
-				),
-				'then'  => $t( 'Emails about future bookings go to the new address. Their past bookings stay attached to them.' ),
-			) ),
+			'body'    => blueworx_guide_body(
+				array(
+					'where' => sprintf( $t( '%s > Customers' ), $lp ),
+					'steps' => array(
+						$t( 'Click the customer.' ),
+						$t( 'Change the name, email or phone.' ),
+						$t( 'Press *Save Changes*.' ),
+					),
+					'then'  => $t( 'Emails about future bookings go to the new address. Their past bookings stay attached to them.' ),
+				)
+			),
 		),
 	);
 
@@ -1099,9 +1200,18 @@ function blueworx_get_guide_products() {
  */
 function blueworx_guide_product_is_active( $product ) {
 	$signatures = array(
-		'surecart'  => array( 'classes' => array( 'SureCart' ), 'constants' => array( 'SURECART_PLUGIN_FILE' ) ),
-		'sureforms' => array( 'classes' => array( 'SRFM_Loader' ), 'constants' => array( 'SRFM_FILE' ) ),
-		'latepoint' => array( 'classes' => array( 'OsSettingsHelper' ), 'constants' => array( 'LATEPOINT_VERSION' ) ),
+		'surecart'  => array(
+			'classes'   => array( 'SureCart' ),
+			'constants' => array( 'SURECART_PLUGIN_FILE' ),
+		),
+		'sureforms' => array(
+			'classes'   => array( 'SRFM_Loader' ),
+			'constants' => array( 'SRFM_FILE' ),
+		),
+		'latepoint' => array(
+			'classes'   => array( 'OsSettingsHelper' ),
+			'constants' => array( 'LATEPOINT_VERSION' ),
+		),
 	);
 
 	if ( ! isset( $signatures[ $product ] ) ) {
@@ -1151,7 +1261,7 @@ function blueworx_get_guide_tab_products() {
 	}
 
 	foreach ( array_keys( blueworx_get_wordpress_guide_tabs() ) as $tab ) {
-		$map[ $tab ] = 'wordpress';
+		$map[ $tab ] = 'wordpress'; // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- product key, not prose.
 	}
 
 	foreach ( array_keys( blueworx_get_surecart_guide_tabs() ) as $tab ) {
@@ -1436,30 +1546,34 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Finding your sign-in address' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Enhancements' ),
-					'intro' => $t( 'The usual WordPress sign-in address is switched off on this site. Your team signs in at an address only they know.' ),
-					'steps' => array(
-						$t( 'Open *BlueWorx > Enhancements*.' ),
-						$t( 'Look at the top of the *Security & Access* section. Your sign-in address is shown there.' ),
-						$t( 'Bookmark it in your browser.' ),
-					),
-					'then'  => $t( 'Anyone going to the old /wp-admin or /wp-login address is sent to the home page instead. That is expected, not a fault.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Enhancements' ),
+						'intro' => $t( 'The usual WordPress sign-in address is switched off on this site. Your team signs in at an address only they know.' ),
+						'steps' => array(
+							$t( 'Open *BlueWorx > Enhancements*.' ),
+							$t( 'Look at the top of the *Security & Access* section. Your sign-in address is shown there.' ),
+							$t( 'Bookmark it in your browser.' ),
+						),
+						'then'  => $t( 'Anyone going to the old /wp-admin or /wp-login address is sent to the home page instead. That is expected, not a fault.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'changing',
 				'title' => $t( 'Changing the sign-in address' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
-					'steps' => array(
-						$t( 'Tell everyone on the team the new address first — the old one stops working the moment you save.' ),
-						$t( 'Open *Custom login and protection* and type the new word in the *Address to use* box.' ),
-						$t( 'Press *Save Changes*.' ),
-						$t( 'Sign out and sign back in at the new address to check it.' ),
-					),
-					'then'  => $t( 'If you cannot get back in, contact BlueWorx — we can reset it for you.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
+						'steps' => array(
+							$t( 'Tell everyone on the team the new address first — the old one stops working the moment you save.' ),
+							$t( 'Open *Custom login and protection* and type the new word in the *Address to use* box.' ),
+							$t( 'Press *Save Changes*.' ),
+							$t( 'Sign out and sign back in at the new address to check it.' ),
+						),
+						'then'  => $t( 'If you cannot get back in, contact BlueWorx — we can reset it for you.' ),
+					)
+				),
 			),
 		),
 
@@ -1467,31 +1581,35 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Making the site private while you build' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
-					'steps' => array(
-						$t( 'Open *Site protection*.' ),
-						$t( 'Choose what to protect: the front of the site, the admin area, or both.' ),
-						$t( 'Tick the roles that may still get in. Make sure your own role is ticked.' ),
-						$t( 'Press *Save Changes*.' ),
-						$t( 'Open the site in a private browser window to check a visitor is turned away.' ),
-					),
-					'then'  => $t( 'Visitors who are not signed in see nothing. If you tick the wrong roles and lock yourself out, contact BlueWorx.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
+						'steps' => array(
+							$t( 'Open *Site protection*.' ),
+							$t( 'Choose what to protect: the front of the site, the admin area, or both.' ),
+							$t( 'Tick the roles that may still get in. Make sure your own role is ticked.' ),
+							$t( 'Press *Save Changes*.' ),
+							$t( 'Open the site in a private browser window to check a visitor is turned away.' ),
+						),
+						'then'  => $t( 'Visitors who are not signed in see nothing. If you tick the wrong roles and lock yourself out, contact BlueWorx.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'opening',
 				'title' => $t( 'Opening the site up again' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
-					'steps' => array(
-						$t( 'Open *Site protection*.' ),
-						$t( 'Switch it off, or untick the front of the site if you only want the admin area kept private.' ),
-						$t( 'Press *Save Changes*.' ),
-						$t( 'Check the home page in a private browser window.' ),
-					),
-					'then'  => $t( 'The site is public straight away. If it still looks private, clear the cache — see the Cache guide.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Enhancements > Security & Access' ),
+						'steps' => array(
+							$t( 'Open *Site protection*.' ),
+							$t( 'Switch it off, or untick the front of the site if you only want the admin area kept private.' ),
+							$t( 'Press *Save Changes*.' ),
+							$t( 'Check the home page in a private browser window.' ),
+						),
+						'then'  => $t( 'The site is public straight away. If it still looks private, clear the cache — see the Cache guide.' ),
+					)
+				),
 			),
 		),
 
@@ -1499,42 +1617,48 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Signing in with your work account' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'The sign-in screen' ),
-					'steps' => array(
-						$t( 'Go to your sign-in address.' ),
-						$t( 'Press the *Sign in with single sign-on* button below the password box.' ),
-						$t( 'Sign in with your work account if it asks you to.' ),
-					),
-					'then'  => $t( 'You land on the site already signed in. If it says the sign-in did not work, you do not have an account here yet — ask whoever runs the site to add you, or use the joining page if there is one.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'The sign-in screen' ),
+						'steps' => array(
+							$t( 'Go to your sign-in address.' ),
+							$t( 'Press the *Sign in with single sign-on* button below the password box.' ),
+							$t( 'Sign in with your work account if it asks you to.' ),
+						),
+						'then'  => $t( 'You land on the site already signed in. If it says the sign-in did not work, you do not have an account here yet — ask whoever runs the site to add you, or use the joining page if there is one.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'join-button',
 				'title' => $t( 'Putting the Join button on a page' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Single sign-on' ),
-					'steps' => array(
-						$t( 'Copy the join shortcode shown under *Buttons*.' ),
-						$t( 'Open the page where people should join, add a *Shortcode* block, and paste it in.' ),
-						$t( 'Back on the Single sign-on screen, choose which role a newcomer gets and where they land afterwards.' ),
-						$t( 'Press *Save Changes* on the Single sign-on screen, then *Save* the page.' ),
-					),
-					'then'  => $t( 'The button appears on the page. Nobody who joins this way can ever be made an administrator, whatever their work account says.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Single sign-on' ),
+						'steps' => array(
+							$t( 'Copy the join shortcode shown under *Buttons*.' ),
+							$t( 'Open the page where people should join, add a *Shortcode* block, and paste it in.' ),
+							$t( 'Back on the Single sign-on screen, choose which role a newcomer gets and where they land afterwards.' ),
+							$t( 'Press *Save Changes* on the Single sign-on screen, then *Save* the page.' ),
+						),
+						'then'  => $t( 'The button appears on the page. Nobody who joins this way can ever be made an administrator, whatever their work account says.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'failed',
 				'title' => $t( 'Finding out why a sign-in failed' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Single sign-on > SSO Logs' ),
-					'steps' => array(
-						$t( 'Ask the person roughly when they tried.' ),
-						$t( 'Press *Open SSO Logs* and find their attempt by time.' ),
-						$t( 'Read the reason in the *Outcome* column.' ),
-					),
-					'then'  => $t( 'The person only ever sees a general message — the real reason is here. "No account" means they need adding; "Provider refused" means their work account, not this site.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Single sign-on > SSO Logs' ),
+						'steps' => array(
+							$t( 'Ask the person roughly when they tried.' ),
+							$t( 'Press *Open SSO Logs* and find their attempt by time.' ),
+							$t( 'Read the reason in the *Outcome* column.' ),
+						),
+						'then'  => $t( 'The person only ever sees a general message — the real reason is here. "No account" means they need adding; "Provider refused" means their work account, not this site.' ),
+					)
+				),
 			),
 		),
 
@@ -1542,26 +1666,30 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Letting BlueWorx look at the site' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Support access' ),
-					'steps' => array(
-						$t( 'Press *Generate key*.' ),
-						$t( 'Copy the key and send it to BlueWorx in the thread you are already talking in.' ),
-						$t( 'Press *Allow support access for 24 hours*.' ),
-					),
-					'then'  => $t( 'We can look but not change anything. The window closes on its own after 24 hours, and you never need to share a password.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Support access' ),
+						'steps' => array(
+							$t( 'Press *Generate key*.' ),
+							$t( 'Copy the key and send it to BlueWorx in the thread you are already talking in.' ),
+							$t( 'Press *Allow support access for 24 hours*.' ),
+						),
+						'then'  => $t( 'We can look but not change anything. The window closes on its own after 24 hours, and you never need to share a password.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'closing',
 				'title' => $t( 'Closing the window early' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Support access' ),
-					'steps' => array(
-						$t( 'Press *Revoke access*.' ),
-					),
-					'then'  => $t( 'Access ends immediately. The old key stops working; generate a new one next time.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Support access' ),
+						'steps' => array(
+							$t( 'Press *Revoke access*.' ),
+						),
+						'then'  => $t( 'Access ends immediately. The old key stops working; generate a new one next time.' ),
+					)
+				),
 			),
 		),
 
@@ -1569,28 +1697,32 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Inviting somebody to look round the site' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > External access' ),
-					'steps' => array(
-						$t( 'Type their name in *Client name*.' ),
-						$t( 'Type their email address in *Client email address*.' ),
-						$t( 'Choose how long they get under *How long they get*.' ),
-						$t( 'Press *Send invitation*.' ),
-					),
-					'then'  => $t( 'They get an email with a link to set their own password. They can see everything an administrator sees but change nothing, and their access ends on the date you chose.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > External access' ),
+						'steps' => array(
+							$t( 'Type their name in *Client name*.' ),
+							$t( 'Type their email address in *Client email address*.' ),
+							$t( 'Choose how long they get under *How long they get*.' ),
+							$t( 'Press *Send invitation*.' ),
+						),
+						'then'  => $t( 'They get an email with a link to set their own password. They can see everything an administrator sees but change nothing, and their access ends on the date you chose.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'ending',
 				'title' => $t( 'Ending their access early' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > External access' ),
-					'steps' => array(
-						$t( 'Find them under *Who has access*.' ),
-						$t( 'Press *Withdraw*, then confirm.' ),
-					),
-					'then'  => $t( 'Access ends immediately and their account is deleted. You can invite them again at any time.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > External access' ),
+						'steps' => array(
+							$t( 'Find them under *Who has access*.' ),
+							$t( 'Press *Withdraw*, then confirm.' ),
+						),
+						'then'  => $t( 'Access ends immediately and their account is deleted. You can invite them again at any time.' ),
+					)
+				),
 			),
 		),
 
@@ -1598,15 +1730,17 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Clearing the cache when something looks stale' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Cache' ),
-					'steps' => array(
-						$t( 'Press *Refresh cache now*.' ),
-						$t( 'Wait for the confirmation.' ),
-						$t( 'Reload the page that looked wrong.' ),
-					),
-					'then'  => $t( 'Visitors see the current version. If it still looks old, reload once more with Ctrl+Shift+R (Cmd+Shift+R on a Mac) — your own browser keeps a copy too.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Cache' ),
+						'steps' => array(
+							$t( 'Press *Refresh cache now*.' ),
+							$t( 'Wait for the confirmation.' ),
+							$t( 'Reload the page that looked wrong.' ),
+						),
+						'then'  => $t( 'Visitors see the current version. If it still looks old, reload once more with Ctrl+Shift+R (Cmd+Shift+R on a Mac) — your own browser keeps a copy too.' ),
+					)
+				),
 			),
 		),
 
@@ -1614,13 +1748,15 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'What clears on its own when you publish' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'Any page or post' ),
-					'steps' => array(
-						$t( 'Press *Publish* or *Save* as normal.' ),
-					),
-					'then'  => $t( 'The cached copy of that page is thrown away for you, so what you just changed is what people see. You only need the Cache screen when something else changed — a menu, a theme setting, a plugin.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Any page or post' ),
+						'steps' => array(
+							$t( 'Press *Publish* or *Save* as normal.' ),
+						),
+						'then'  => $t( 'The cached copy of that page is thrown away for you, so what you just changed is what people see. You only need the Cache screen when something else changed — a menu, a theme setting, a plugin.' ),
+					)
+				),
 			),
 		),
 
@@ -1628,26 +1764,30 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Reordering the sidebar' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Edit Menu' ),
-					'steps' => array(
-						$t( 'Drag an item up or down the list.' ),
-						$t( 'Press *Save changes*.' ),
-					),
-					'then'  => $t( 'The sidebar changes for everyone on the site, not just you.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Edit Menu' ),
+						'steps' => array(
+							$t( 'Drag an item up or down the list.' ),
+							$t( 'Press *Save changes*.' ),
+						),
+						'then'  => $t( 'The sidebar changes for everyone on the site, not just you.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'hiding',
 				'title' => $t( 'Hiding things nobody uses' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Edit Menu' ),
-					'steps' => array(
-						$t( 'Drag the item into *Hidden*, or use its arrows to move it there.' ),
-						$t( 'Press *Save changes*.' ),
-					),
-					'then'  => $t( 'Hiding is tidying, not a lock: anyone who knows the address can still get there. To stop somebody doing something, change their role instead.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Edit Menu' ),
+						'steps' => array(
+							$t( 'Drag the item into *Hidden*, or use its arrows to move it there.' ),
+							$t( 'Press *Save changes*.' ),
+						),
+						'then'  => $t( 'Hiding is tidying, not a lock: anyone who knows the address can still get there. To stop somebody doing something, change their role instead.' ),
+					)
+				),
 			),
 		),
 
@@ -1655,15 +1795,17 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Checking what an editor can see' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'The foot of the sidebar, above Log Out' ),
-					'steps' => array(
-						$t( 'Press *My own view* and choose a role.' ),
-						$t( 'Click around the admin area as that person would.' ),
-						$t( 'Press *My own view* again when you are done.' ),
-					),
-					'then'  => $t( 'You see less, never more, so nothing you do here can affect access. If a role cannot reach something it should, change the role on their user profile or ask BlueWorx.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'The foot of the sidebar, above Log Out' ),
+						'steps' => array(
+							$t( 'Press *My own view* and choose a role.' ),
+							$t( 'Click around the admin area as that person would.' ),
+							$t( 'Press *My own view* again when you are done.' ),
+						),
+						'then'  => $t( 'You see less, never more, so nothing you do here can affect access. If a role cannot reach something it should, change the role on their user profile or ask BlueWorx.' ),
+					)
+				),
 			),
 		),
 
@@ -1671,29 +1813,33 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Duplicating a page' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'Pages, or Posts' ),
-					'steps' => array(
-						$t( 'Hover over the page in the list and press *Duplicate*.' ),
-						$t( 'Open the new draft — it has "(copy)" in the title.' ),
-						$t( 'Change the title and the address (*Slug*) in the panel on the right, then edit the content.' ),
-						$t( 'Press *Publish* when it is ready.' ),
-					),
-					'then'  => $t( 'The copy is a draft until you publish it, so nothing is live by accident.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Pages, or Posts' ),
+						'steps' => array(
+							$t( 'Hover over the page in the list and press *Duplicate*.' ),
+							$t( 'Open the new draft — it has "(copy)" in the title.' ),
+							$t( 'Change the title and the address (*Slug*) in the panel on the right, then edit the content.' ),
+							$t( 'Press *Publish* when it is ready.' ),
+						),
+						'then'  => $t( 'The copy is a draft until you publish it, so nothing is live by accident.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'external-link',
 				'title' => $t( 'Pointing a menu entry at another site' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'Pages' ),
-					'steps' => array(
-						$t( 'Open the page that sits in the menu, or create a new one with just a title.' ),
-						$t( 'In the panel on the right, open *Link to another site* and paste the full address into *External address*, starting https://.' ),
-						$t( 'Press *Save*.' ),
-					),
-					'then'  => $t( 'Anyone opening that page, from the menu or a link, is sent to the other site instead.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Pages' ),
+						'steps' => array(
+							$t( 'Open the page that sits in the menu, or create a new one with just a title.' ),
+							$t( 'In the panel on the right, open *Link to another site* and paste the full address into *External address*, starting https://.' ),
+							$t( 'Press *Save*.' ),
+						),
+						'then'  => $t( 'Anyone opening that page, from the menu or a link, is sent to the other site instead.' ),
+					)
+				),
 			),
 		),
 
@@ -1701,26 +1847,30 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Replacing a file without breaking links' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'Media > Library' ),
-					'steps' => array(
-						$t( 'Click the file you want to replace.' ),
-						$t( 'Under *Replace file*, choose the new version.' ),
-						$t( 'Press *Replace*.' ),
-					),
-					'then'  => $t( 'The address stays the same, so every page, link and email pointing at the old file now shows the new one. Do not delete and re-upload — that gives the file a new address and breaks every link to it.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Media > Library' ),
+						'steps' => array(
+							$t( 'Click the file you want to replace.' ),
+							$t( 'Under *Replace file*, choose the new version.' ),
+							$t( 'Press *Replace*.' ),
+						),
+						'then'  => $t( 'The address stays the same, so every page, link and email pointing at the old file now shows the new one. Do not delete and re-upload — that gives the file a new address and breaks every link to it.' ),
+					)
+				),
 			),
 			array(
 				'slug'  => 'svg',
 				'title' => $t( 'Uploading a logo as SVG' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'Media > Add New' ),
-					'steps' => array(
-						$t( 'Drop the .svg file onto the page, or press *Select Files*.' ),
-					),
-					'then'  => $t( 'If it is refused, your role is not allowed SVG uploads — an administrator can allow it under BlueWorx > Enhancements > Media tools. Every SVG is cleaned of anything that could run, so it is safe to use once it is in.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Media > Add New' ),
+						'steps' => array(
+							$t( 'Drop the .svg file onto the page, or press *Select Files*.' ),
+						),
+						'then'  => $t( 'If it is refused, your role is not allowed SVG uploads — an administrator can allow it under BlueWorx > Enhancements > Media tools. Every SVG is cleaned of anything that could run, so it is safe to use once it is in.' ),
+					)
+				),
 			),
 		),
 
@@ -1728,15 +1878,17 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Writing the summary that search results show' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'Pages' ),
-					'steps' => array(
-						$t( 'Open the page.' ),
-						$t( 'In the panel on the right, press *Add an excerpt…* and write one or two sentences.' ),
-						$t( 'Press *Save*.' ),
-					),
-					'then'  => $t( 'Search results, link previews and listings use this instead of the first few lines of the page.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Pages' ),
+						'steps' => array(
+							$t( 'Open the page.' ),
+							$t( 'In the panel on the right, press *Add an excerpt…* and write one or two sentences.' ),
+							$t( 'Press *Save*.' ),
+						),
+						'then'  => $t( 'Search results, link previews and listings use this instead of the first few lines of the page.' ),
+					)
+				),
 			),
 		),
 
@@ -1744,15 +1896,17 @@ function blueworx_get_feature_guide_tasks() {
 			array(
 				'slug'  => '',
 				'title' => $t( 'Choosing which languages the button offers' ),
-				'body'  => blueworx_guide_body( array(
-					'where' => $t( 'BlueWorx > Enhancements > Translation' ),
-					'steps' => array(
-						$t( 'Open *On-page translation*.' ),
-						$t( 'Tick the languages to offer and choose which corner the button sits in.' ),
-						$t( 'Press *Save Changes*.' ),
-					),
-					'then'  => $t( 'The button appears on the front of the site in Chrome and Edge. Other browsers do not show it, and search engines always read your original words.' ),
-				) ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Enhancements > Translation' ),
+						'steps' => array(
+							$t( 'Open *On-page translation*.' ),
+							$t( 'Tick the languages to offer and choose which corner the button sits in.' ),
+							$t( 'Press *Save Changes*.' ),
+						),
+						'then'  => $t( 'The button appears on the front of the site in Chrome and Edge. Other browsers do not show it, and search engines always read your original words.' ),
+					)
+				),
 			),
 		),
 	);
@@ -1776,102 +1930,116 @@ function blueworx_get_wordpress_basics_guides() {
 			'id'    => 'basics-pages-and-posts',
 			'title' => $t( 'Pages and posts: which to use' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'Pages, or Posts' ),
-				'intro' => $t( 'A page is a fixed part of the site — About, Contact, Services. A post is a dated entry in a series, such as news or a blog.' ),
-				'steps' => array(
-					$t( 'Ask: will this still be in the menu next year? Then it is a page — go to *Pages > Add New*.' ),
-					$t( 'Is it one of many similar items that arrive over time? Then it is a post — go to *Posts > Add New*.' ),
-				),
-				'then'  => $t( 'Posts appear on the blog or news page on their own. Pages appear only where you put them — see "Changing the site navigation".' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'Pages, or Posts' ),
+					'intro' => $t( 'A page is a fixed part of the site — About, Contact, Services. A post is a dated entry in a series, such as news or a blog.' ),
+					'steps' => array(
+						$t( 'Ask: will this still be in the menu next year? Then it is a page — go to *Pages > Add New*.' ),
+						$t( 'Is it one of many similar items that arrive over time? Then it is a post — go to *Posts > Add New*.' ),
+					),
+					'then'  => $t( 'Posts appear on the blog or news page on their own. Pages appear only where you put them — see "Changing the site navigation".' ),
+				)
+			),
 		),
 		array(
 			'id'    => 'basics-publishing',
 			'title' => $t( 'Saving, previewing and publishing' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'The top right of the editor' ),
-				'steps' => array(
-					$t( 'Press *Save draft* to keep your work without showing it to anyone.' ),
-					$t( 'Press *View* to see it exactly as a visitor would.' ),
-					$t( 'Press *Publish* (or *Save* on something already live) when it is ready.' ),
-				),
-				'then'  => $t( 'Nothing is live until you press Publish or Save. To take a live page down without deleting it, change its status to Draft in the panel on the right.' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'The top right of the editor' ),
+					'steps' => array(
+						$t( 'Press *Save draft* to keep your work without showing it to anyone.' ),
+						$t( 'Press *View* to see it exactly as a visitor would.' ),
+						$t( 'Press *Publish* (or *Save* on something already live) when it is ready.' ),
+					),
+					'then'  => $t( 'Nothing is live until you press Publish or Save. To take a live page down without deleting it, change its status to Draft in the panel on the right.' ),
+				)
+			),
 		),
 		array(
 			'id'    => 'basics-revisions',
 			'title' => $t( 'Undoing a change you regret' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'The page or post you changed' ),
-				'steps' => array(
-					$t( 'Open the item.' ),
-					$t( 'In the panel on the right, press *Revisions*.' ),
-					$t( 'Drag the slider back until you see the version you want.' ),
-					$t( 'Press *Restore this revision*, then *Save*.' ),
-				),
-				'then'  => $t( 'Deleted the whole thing? Look under *Trash* at the top of the Pages or Posts list.' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'The page or post you changed' ),
+					'steps' => array(
+						$t( 'Open the item.' ),
+						$t( 'In the panel on the right, press *Revisions*.' ),
+						$t( 'Drag the slider back until you see the version you want.' ),
+						$t( 'Press *Restore this revision*, then *Save*.' ),
+					),
+					'then'  => $t( 'Deleted the whole thing? Look under *Trash* at the top of the Pages or Posts list.' ),
+				)
+			),
 		),
 		array(
 			'id'    => 'basics-images',
 			'title' => $t( 'Adding images well' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'The editor' ),
-				'steps' => array(
-					$t( 'Press the black *+* and choose *Image*, then *Upload*.' ),
-					$t( 'With the image selected, fill in *Alt text* in the panel on the right: say what is in the picture, as if to someone on the phone.' ),
-					$t( 'For the picture that represents the whole page in listings and link previews, open *Featured image* in the panel on the right and set one.' ),
-				),
-				'then'  => $t( 'The site makes smaller copies of every image itself, so upload the best version you have. Alt text is what a blind visitor hears and what search engines read.' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'The editor' ),
+					'steps' => array(
+						$t( 'Press the black *+* and choose *Image*, then *Upload*.' ),
+						$t( 'With the image selected, fill in *Alt text* in the panel on the right: say what is in the picture, as if to someone on the phone.' ),
+						$t( 'For the picture that represents the whole page in listings and link previews, open *Featured image* in the panel on the right and set one.' ),
+					),
+					'then'  => $t( 'The site makes smaller copies of every image itself, so upload the best version you have. Alt text is what a blind visitor hears and what search engines read.' ),
+				)
+			),
 		),
 		array(
 			'id'    => 'basics-menus',
 			'title' => $t( 'Changing the site navigation' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'Appearance > Menus' ),
-				'intro' => $t( 'Publishing a page does not add it to the menu — the two are separate on purpose.' ),
-				'steps' => array(
-					$t( 'Tick the page under *Add menu items* and press *Add to Menu*.' ),
-					$t( 'Drag it into position. Drag it slightly to the right to tuck it under the item above as a dropdown.' ),
-					$t( 'Press *Save Menu*.' ),
-				),
-				'then'  => $t( 'The change shows on the site straight away. If your site uses the block-based Site Editor instead, the menu is under *Appearance > Editor > Navigation* — ask BlueWorx if you are not sure which you have.' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'Appearance > Menus' ),
+					'intro' => $t( 'Publishing a page does not add it to the menu — the two are separate on purpose.' ),
+					'steps' => array(
+						$t( 'Tick the page under *Add menu items* and press *Add to Menu*.' ),
+						$t( 'Drag it into position. Drag it slightly to the right to tuck it under the item above as a dropdown.' ),
+						$t( 'Press *Save Menu*.' ),
+					),
+					'then'  => $t( 'The change shows on the site straight away. If your site uses the block-based Site Editor instead, the menu is under *Appearance > Editor > Navigation* — ask BlueWorx if you are not sure which you have.' ),
+				)
+			),
 		),
 		array(
 			'id'    => 'basics-users',
 			'title' => $t( 'Adding someone to the site' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'Users > Add New' ),
-				'steps' => array(
-					$t( 'Type their email address and a username.' ),
-					$t( 'Choose the smallest role that lets them do their job — see "Which role to give somebody".' ),
-					$t( 'Leave *Send the new user an email about their account* ticked and press *Add User*.' ),
-				),
-				'then'  => $t( 'They get an email with a link to set their own password. Give each person their own account rather than sharing one, so you can see who changed what.' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'Users > Add New' ),
+					'steps' => array(
+						$t( 'Type their email address and a username.' ),
+						$t( 'Choose the smallest role that lets them do their job — see "Which role to give somebody".' ),
+						$t( 'Leave *Send the new user an email about their account* ticked and press *Add User*.' ),
+					),
+					'then'  => $t( 'They get an email with a link to set their own password. Give each person their own account rather than sharing one, so you can see who changed what.' ),
+				)
+			),
 		),
 		array(
 			'id'    => 'basics-updates',
 			'title' => $t( 'Updates, and why they matter' ),
 			'tab'   => 'getting-started',
-			'body'  => blueworx_guide_body( array(
-				'where' => $t( 'Dashboard > Updates' ),
-				'intro' => $t( 'Most attacks on WordPress sites use a known weakness in an out-of-date plugin.' ),
-				'steps' => array(
-					$t( 'If BlueWorx maintains this site, stop here — updates are done for you and you can ignore the badges.' ),
-					$t( 'Otherwise, press *Update Now* for WordPress itself, then tick all plugins and press *Update Plugins*.' ),
-					$t( 'Open the home page and one or two key pages to check they still look right.' ),
-				),
-				'then'  => $t( 'If something breaks after an update, tell BlueWorx which plugin you updated — that is the first thing we will ask.' ),
-			) ),
+			'body'  => blueworx_guide_body(
+				array(
+					'where' => $t( 'Dashboard > Updates' ),
+					'intro' => $t( 'Most attacks on WordPress sites use a known weakness in an out-of-date plugin.' ),
+					'steps' => array(
+						$t( 'If BlueWorx maintains this site, stop here — updates are done for you and you can ignore the badges.' ),
+						$t( 'Otherwise, press *Update Now* for WordPress itself, then tick all plugins and press *Update Plugins*.' ),
+						$t( 'Open the home page and one or two key pages to check they still look right.' ),
+					),
+					'then'  => $t( 'If something breaks after an update, tell BlueWorx which plugin you updated — that is the first thing we will ask.' ),
+				)
+			),
 		),
 	);
 }
