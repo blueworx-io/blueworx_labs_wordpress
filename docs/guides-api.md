@@ -78,8 +78,8 @@ add_filter( 'blueworx_guide_tab_products', function ( $map ) {
 } );
 ```
 
-A tab not in the map is treated as yours-but-BlueWorx's, and a product with no
-guides is not shown.
+A tab not in the map is treated as BlueWorx's own, so it is administrator-only.
+A product with no guides is not shown.
 
 ## What the page does with your input
 

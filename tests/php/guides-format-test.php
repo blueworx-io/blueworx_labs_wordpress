@@ -129,13 +129,20 @@ function blueworx_check_guide_format() {
 
 	echo "\nEvery guide in the registry is a task\n";
 
-	$GLOBALS['options'] = array();
+	// Switch every feature on so default-off ones (sso, view_as_role,
+	// external_access) get their guides format-checked too.
+	$all_on = array();
+	foreach ( array_keys( blueworx_get_feature_definitions() ) as $key ) {
+		$all_on[ 'blueworx_feature_' . $key ] = '1';
+	}
+	$GLOBALS['options'] = $all_on;
 	foreach ( array_merge( blueworx_get_wordpress_basics_guides(), blueworx_get_feature_guides(), blueworx_get_other_product_guides() ) as $guide ) {
 		$ok = false !== strpos( $guide['body'], 'bw-guide__where' )
 			&& false !== strpos( $guide['body'], '<ol class="bw-guide__steps">' )
 			&& false !== strpos( $guide['body'], 'bw-guide__then' );
 		check( $guide['id'] . ' has where, steps and then', true, $ok );
 	}
+	$GLOBALS['options'] = array();
 
 	echo "\nOther products' guides are tasks too\n";
 
@@ -163,6 +170,13 @@ function blueworx_check_guide_format() {
 	check( 'LatePoint has fourteen guides', 14, count( $by_product['latepoint'] ) );
 	check( 'LatePoint tabs belong to LatePoint', 'latepoint', blueworx_guide_product_for_tab( 'lp-calendar' ) );
 	check( 'LatePoint topics are administrator-only', 'manage_options', blueworx_guide_tab_capability( 'lp-services' ) );
+
+	// A Where line is composed from the product's Display name, not hard-coded.
+	$GLOBALS['options'] = array( 'blueworx_feature_display_names' => '1' );
+	$renamed            = blueworx_get_other_product_guides();
+	$plans              = $renamed[ array_search( 'sc-products-plans', array_column( $renamed, 'id' ), true ) ];
+	check( 'a SureCart Where line reads Commerce with Display names on', true, false !== strpos( $plans['body'], 'Commerce &gt; Products' ) );
+	$GLOBALS['options'] = array();
 
 	unset( $GLOBALS['filters']['blueworx_guide_products'] );
 

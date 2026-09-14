@@ -196,7 +196,7 @@ function blueworx_get_other_product_guides() {
 					$t( 'Pick the day and time.' ),
 					$t( 'Press *Schedule*, then *Schedule* again to confirm.' ),
 				),
-				'then'  => $t( 'The post goes live on its own at that time. It shows as *Scheduled* in the Posts list until then. To change your mind, open it and change the date, or switch it back to Draft.' ),
+				'then'  => $t( 'The post goes live on its own at that time. To change your mind, open it and change the date, or switch it back to Draft.' ),
 			) ),
 		),
 		array(
@@ -303,9 +303,9 @@ function blueworx_get_other_product_guides() {
 				'steps' => array(
 					$t( 'Add a *Heading* block.' ),
 					$t( 'In the toolbar above it, choose the level: H2 for a main section, H3 for a part of that section.' ),
-					$t( 'Never skip a level — H2 then H4 because it looked the right size is the most common mistake.' ),
+					$t( 'Go down one level at a time — H2, then H3.' ),
 				),
-				'then'  => $t( 'The page title is already the H1, so start at H2. Screen readers and search engines both use the order to understand the page. Change the size with a style, not the level.' ),
+				'then'  => $t( 'The page title is already the H1, so start at H2. Skipping a level because it looked the right size is the most common mistake.' ),
 			) ),
 		),
 		array(
@@ -365,7 +365,7 @@ function blueworx_get_other_product_guides() {
 					$t( 'Click the file.' ),
 					$t( 'Under *Replace file*, choose the new version, then press *Replace*.' ),
 				),
-				'then'  => $t( 'The address stays the same, so a price list you emailed to two hundred people keeps working. Deleting and re-uploading gives the file a new address and nothing warns you the old links broke. If there is no *Replace file* field, ask BlueWorx to switch it on.' ),
+				'then'  => $t( 'The address stays the same, so a price list you emailed to two hundred people keeps working. If there is no *Replace file* field, ask BlueWorx to switch it on.' ),
 			) ),
 		),
 		array(
@@ -412,7 +412,7 @@ function blueworx_get_other_product_guides() {
 					$t( 'Writes but should not publish: *Contributor*.' ),
 					$t( 'Installs plugins, changes settings, removes people: *Administrator* — and only if they really must.' ),
 				),
-				'then'  => $t( 'Give the smallest role that lets somebody do their job. Most people who ask for admin need Editor. Every extra administrator is an extra way for the site to be taken over.' ),
+				'then'  => $t( 'Give the smallest role that lets somebody do their job. Every extra administrator is an extra way for the site to be taken over.' ),
 			) ),
 		),
 		array(
@@ -830,7 +830,7 @@ function blueworx_get_other_product_guides() {
 					$t( 'Under *Schedule*, set their working days and hours.' ),
 					$t( 'Press *Save*.' ),
 				),
-				'then'  => $t( 'They can be booked from now on, and get a WordPress account so they can sign in and see their own calendar. Find this screen under *Agents* in the left menu. If you only see one agent and a link to upgrade, this site is on the free version — ask BlueWorx.' ),
+				'then'  => $t( 'They can be booked from now on, and get a WordPress account so they can sign in and see their own calendar. If you only see one agent and a link to upgrade, this site is on the free version — ask BlueWorx.' ),
 			) ),
 		),
 		array(
@@ -1662,7 +1662,7 @@ function blueworx_get_feature_guide_tasks() {
 						$t( 'Click around the admin area as that person would.' ),
 						$t( 'Press *My own view* again when you are done.' ),
 					),
-					'then'  => $t( 'You see less, never more, so nothing you do here can affect access. If a role cannot reach something it should, change the role on Users > Roles or ask BlueWorx.' ),
+					'then'  => $t( 'You see less, never more, so nothing you do here can affect access. If a role cannot reach something it should, change the role on their user profile or ask BlueWorx.' ),
 				) ),
 			),
 		),
@@ -1812,7 +1812,7 @@ function blueworx_get_wordpress_basics_guides() {
 					$t( 'Drag the slider back until you see the version you want.' ),
 					$t( 'Press *Restore this revision*, then *Save*.' ),
 				),
-				'then'  => $t( 'Deleted the whole thing? Look under *Trash* at the top of the Pages or Posts list. Items stay there for 30 days.' ),
+				'then'  => $t( 'Deleted the whole thing? Look under *Trash* at the top of the Pages or Posts list.' ),
 			) ),
 		),
 		array(
