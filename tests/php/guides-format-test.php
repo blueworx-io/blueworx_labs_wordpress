@@ -120,6 +120,13 @@ function blueworx_check_guide_format() {
 	check( 'the second guide sits in the same tab', 'security', $feature_guides[ array_search( 'feature-login-changing', $ids, true ) ]['tab'] );
 	check( 'and belongs to the same feature', 'login', $feature_guides[ array_search( 'feature-login-changing', $ids, true ) ]['feature'] );
 
+	// external_access defaults to off, unlike login above, so it needs
+	// switching on before its guide can appear in $ids.
+	$GLOBALS['options']['blueworx_feature_external_access'] = '1';
+	$feature_guides = blueworx_get_feature_guides();
+	$ids            = array_column( $feature_guides, 'id' );
+	check( 'external access has its two guides', true, in_array( 'feature-external_access', $ids, true ) && in_array( 'feature-external_access-ending', $ids, true ) );
+
 	echo "\nEvery guide in the registry is a task\n";
 
 	$GLOBALS['options'] = array();

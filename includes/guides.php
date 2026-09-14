@@ -1565,6 +1565,35 @@ function blueworx_get_feature_guide_tasks() {
 			),
 		),
 
+		'external_access' => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Inviting somebody to look round the site' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > External access' ),
+					'steps' => array(
+						$t( 'Type their name in *Client name*.' ),
+						$t( 'Type their email address in *Client email address*.' ),
+						$t( 'Choose how long they get under *How long they get*.' ),
+						$t( 'Press *Send invitation*.' ),
+					),
+					'then'  => $t( 'They get an email with a link to set their own password. They can see everything an administrator sees but change nothing, and their access ends on the date you chose.' ),
+				) ),
+			),
+			array(
+				'slug'  => 'ending',
+				'title' => $t( 'Ending their access early' ),
+				'body'  => blueworx_guide_body( array(
+					'where' => $t( 'BlueWorx > External access' ),
+					'steps' => array(
+						$t( 'Find them under *Who has access*.' ),
+						$t( 'Press *Withdraw*, then confirm.' ),
+					),
+					'then'  => $t( 'Access ends immediately and their account is deleted. You can invite them again at any time.' ),
+				) ),
+			),
+		),
+
 		'cache_manual'    => array(
 			array(
 				'slug'  => '',
