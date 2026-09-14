@@ -41,6 +41,46 @@ Tabs render in array order, so `array_merge` puts yours at the end and
 `array_splice` places it mid-list. A tab with no guides in it is not rendered —
 you cannot create an empty tab.
 
+## Write it as a task
+
+Every guide on the page is one task: where to go, numbered steps, what happens
+next. Build the body with the helper so yours reads the same way:
+
+```php
+'body' => blueworx_guide_body( array(
+    'where' => __( 'Acme > Shipping', 'acme' ),
+    'steps' => array(
+        __( 'Press *Add zone*.', 'acme' ),
+        __( 'Type the postcodes and press *Save*.', 'acme' ),
+    ),
+    'then'  => __( 'Orders to those postcodes now get that rate.', 'acme' ),
+) ),
+```
+
+Text in `*asterisks*` is shown as emphasis — use it for the label on a button.
+Everything else is escaped. Guard with `function_exists( 'blueworx_guide_body' )`
+and fall back to plain HTML if your plugin can run without BlueWorx.
+
+## Add a product
+
+A product is the top row of tabs — BlueWorx, WordPress, and each plugin the
+site runs. Register one, then say which tabs belong to it:
+
+```php
+add_filter( 'blueworx_guide_products', function ( $products ) {
+    $products['acme'] = __( 'Acme', 'acme' );
+    return $products;
+} );
+
+add_filter( 'blueworx_guide_tab_products', function ( $map ) {
+    $map['acme-shipping'] = 'acme';
+    return $map;
+} );
+```
+
+A tab not in the map is treated as yours-but-BlueWorx's, and a product with no
+guides is not shown.
+
 ## What the page does with your input
 
 - **`body` is filtered through `wp_kses_post`.** Script tags, event handlers and
