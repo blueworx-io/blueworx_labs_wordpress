@@ -204,6 +204,40 @@
 	margin-bottom: 0;
 }
 
+/* A guide is a task: where to go, numbered steps, what happens next. The Where
+   line is set apart as a label; the list keeps the body's own rhythm rather
+   than the browser's indent. */
+.bw-guide__body .bw-guide__where {
+	color: var(--bw-text-muted);
+	font-size: var(--bw-size-sm);
+}
+
+.bw-guide__body .bw-guide__where strong {
+	color: var(--bw-text-body);
+	font-weight: 600;
+}
+
+.bw-guide__body ol.bw-guide__steps {
+	margin: 0 0 var(--bw-space-6);
+	padding-left: 1.5em;
+	max-width: var(--bw-content-max);
+}
+
+.bw-guide__body ol.bw-guide__steps li {
+	font-size: var(--bw-size-body);
+	line-height: var(--bw-lh-body);
+	color: var(--bw-text-body);
+	margin: 0 0 var(--bw-space-3);
+}
+
+.bw-guide__body ol.bw-guide__steps li:last-child {
+	margin-bottom: 0;
+}
+
+.bw-guide__body .bw-guide__then {
+	color: var(--bw-text-muted);
+}
+
 /* ─── Guides section band ───
    Section and topic are a white band under the page header, full width with a
    hairline along the bottom — the header's own continuation, not two rows of

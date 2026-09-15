@@ -46,6 +46,11 @@ function blueworx_get_feature_sections() {
  * capability. Those must be an explicit decision by a site owner, never
  * something an update switches on underneath them.
  *
+ * 'guide' => false keeps a feature off the Guides page. Use it for anything a
+ * client never touches — the Guides page is for the people using the site,
+ * and the Enhancements screen already describes every feature to whoever
+ * configures it.
+ *
  * @return array Feature definitions keyed by feature key, in display order.
  */
 function blueworx_get_feature_definitions() {
@@ -89,6 +94,7 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Lists roles alphabetically on the add-user and edit-user screens, and lets one user hold more than one role at a time.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'view_as_role'          => array(
 			'label'       => __( 'View the admin as another role', 'blueworx-labs-wordpress' ),
@@ -102,18 +108,21 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Chooses how long someone stays signed in before they have to sign in again.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => 'login_session',
+			'guide'       => false,
 		),
 		'login_redirect'        => array(
 			'label'       => __( 'Land on the dashboard after signing in', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Takes anyone who works in the admin area to the dashboard when they sign in, instead of wherever a booking or shop plugin decides to send them. Customers are left alone, and a link that asked for a particular page still goes there.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'xmlrpc'                => array(
 			'label'       => __( 'XML-RPC disabled', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Closes the old remote-publishing endpoint that attackers use to guess passwords in bulk. Leave this on unless you use the WordPress mobile app or Jetpack.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'author_slugs'          => array(
 			'label'       => __( 'Hide usernames in author links', 'blueworx-labs-wordpress' ),
@@ -121,24 +130,28 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'security',
 			'detail'      => null,
 			'default'     => '0',
+			'guide'       => false,
 		),
 		'rest_users'            => array(
 			'label'       => __( 'Hide the user list from the public API', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Stops anyone reading your list of accounts straight off the site without signing in. WordPress publishes it by default, which hands an attacker the sign-in names to try. Turn this off only if something outside the site genuinely needs to read your users.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'application_passwords' => array(
 			'label'       => __( 'Application passwords', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hidden by default. When enabled, only admins can see Application Passwords on admin user profiles.', 'blueworx-labs-wordpress' ),
 			'section'     => 'security',
 			'detail'      => 'application_passwords',
+			'guide'       => false,
 		),
 		'comments'              => array(
 			'label'       => __( 'Comments disabled', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Turns comments off and removes comment areas from the admin screens.', 'blueworx-labs-wordpress' ),
 			'section'     => 'content',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'page_excerpts'         => array(
 			'label'       => __( 'Page excerpts', 'blueworx-labs-wordpress' ),
@@ -157,6 +170,7 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Keeps a set number of saved drafts per page or post instead of every version forever, which stops the database growing without limit.', 'blueworx-labs-wordpress' ),
 			'section'     => 'content',
 			'detail'      => 'revisions',
+			'guide'       => false,
 		),
 		'robots_txt'            => array(
 			'label'       => __( 'Search engine rules (robots.txt)', 'blueworx-labs-wordpress' ),
@@ -164,6 +178,7 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'content',
 			'detail'      => 'robots_txt',
 			'default'     => '0',
+			'guide'       => false,
 		),
 		'media_tools'           => array(
 			'label'       => __( 'Media tools', 'blueworx-labs-wordpress' ),
@@ -182,12 +197,14 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Stops extra admin emails for user, password, plugin, and theme changes.', 'blueworx-labs-wordpress' ),
 			'section'     => 'notifications',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'profile_cleanup'       => array(
 			'label'       => __( 'Profile cleanup', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hides unused profile options, Elementor AI, and Elementor Notes.', 'blueworx-labs-wordpress' ),
 			'section'     => 'notifications',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'cache_auto'            => array(
 			'label'       => __( 'Automatic cache refresh', 'blueworx-labs-wordpress' ),
@@ -212,24 +229,28 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Restyles the WordPress admin and login screens with the BlueWorx look. Purely visual; turn off to return to the standard WordPress appearance.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => null,
+			'guide'       => false,
 		),
 		'admin_bar'             => array(
 			'label'       => __( 'Toolbar cleanup', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Takes the WordPress logo, Customize, update counter and Help drawer out of the black toolbar, and can hide the toolbar entirely on the front of the site.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => 'admin_bar',
+			'guide'       => false,
 		),
 		'display_names'         => array(
 			'label'       => __( 'Friendlier names', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Renames plugins and roles on the admin screens so they read as the job they do rather than the product they came from — SureCart becomes Commerce, LatePoint becomes Bookings, and every role says where it belongs first: Site: Editor, Commerce: Manager, Bookings: Agent. Display only: nobody\'s access changes and no plugin is altered.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => 'display_names',
+			'guide'       => false,
 		),
 		'dashboard_widgets'     => array(
 			'label'       => __( 'Dashboard tidy-up', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Removes the dashboard panels you never use, rather than just hiding them behind Screen Options where they come back.', 'blueworx-labs-wordpress' ),
 			'section'     => 'appearance',
 			'detail'      => 'dashboard_widgets',
+			'guide'       => false,
 		),
 	);
 }

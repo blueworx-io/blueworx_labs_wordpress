@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.86.0] - 2026-09-14
+
+### Changed
+- **Guides now tell you what to click, step by step.** Every guide is one job:
+  where to go, the steps in order, and what you should see afterwards.
+- **The BlueWorx tab only lists what a client uses.** Technical and security
+  settings are still on the Enhancements screen but no longer clutter the
+  guides.
+
+### Added
+- **A Blog posts topic** under WordPress: writing, featured images, categories,
+  scheduling, editing a live post, taking one down, and the trash.
+- **Thirteen SureCart guides** covering products, prices, discount codes,
+  orders, refunds, subscriptions and going live.
+- **LatePoint guides**, shown only on sites that run it: the calendar,
+  services, staff hours and days off, and customers.
+- **Guides for sharing external viewer access**, covering how to invite
+  someone in and how to end their access again.
+
 ## [1.85.1] - 2026-09-09
 
 ### Fixed

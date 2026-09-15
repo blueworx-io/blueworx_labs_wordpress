@@ -57,7 +57,8 @@ add_action( 'admin_menu', 'blueworx_register_guides_page', 11 );
  * A tab with nothing in it is not shown: with every feature switchable, an
  * empty Performance tab is a dead end rather than information.
  *
- * @param array $guides Normalized guides.
+ * @param array  $guides  Normalized guides.
+ * @param string $product Product key to count within, or '' for all.
  * @return array Tab labels keyed by tab id.
  */
 function blueworx_get_populated_guide_tabs( $guides, $product = '' ) {
@@ -356,10 +357,15 @@ function blueworx_render_guides_page() {
 			// A guide about a WordPress screen sends you to that screen. A guide
 			// about one of our functions sends you to its section on Enhancements.
 			$screens = array(
-				'wp-writing' => 'edit.php',
-				'wp-media'   => 'upload.php',
-				'wp-people'  => 'users.php',
-				'wp-upkeep'  => 'site-health.php',
+				'wp-posts'     => 'edit.php',
+				'wp-writing'   => 'edit.php?post_type=page',
+				'wp-media'     => 'upload.php',
+				'wp-people'    => 'users.php',
+				'wp-upkeep'    => 'site-health.php',
+				'lp-calendar'  => 'admin.php?page=latepoint&route_name=calendars__view',
+				'lp-services'  => 'admin.php?page=latepoint&route_name=services__index',
+				'lp-staff'     => 'admin.php?page=latepoint&route_name=settings__work_periods',
+				'lp-customers' => 'admin.php?page=latepoint&route_name=customers__index',
 			);
 
 			if ( isset( $screens[ $guide['tab'] ] ) ) {
