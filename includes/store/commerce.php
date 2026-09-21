@@ -150,8 +150,7 @@ function blueworx_store_dress_content( $content ) {
 				$context['site_name']
 			);
 		}
-		// 'dashboard' is handled in dashboard.php (Task 7), which wraps this
-		// function's answer: until then the page is left as it is.
+		// 'dashboard': the whole screen, from dashboard.php.
 		return blueworx_store_dashboard_content( $content, $context );
 	} finally {
 		$rendering = false;
@@ -208,19 +207,6 @@ function blueworx_store_checkout_links() {
 		);
 	}
 	return $out;
-}
-
-if ( ! function_exists( 'blueworx_store_dashboard_content' ) ) {
-	/**
-	 * The dashboard page's content. Replaced by dashboard.php.
-	 *
-	 * @param string $content The page's own content.
-	 * @param array  $context From blueworx_store_context().
-	 * @return string
-	 */
-	function blueworx_store_dashboard_content( $content, $context ) {
-		return $content;
-	}
 }
 
 if ( function_exists( 'add_filter' ) && function_exists( 'blueworx_feature_enabled' ) && blueworx_feature_enabled( 'store_pages' ) ) {

@@ -1,7 +1,7 @@
 <?php
 /**
- * The whole document for the pages this plugin dresses: checkout and the
- * thank-you page after it.
+ * The whole document for the three pages this plugin dresses: checkout, the
+ * thank-you page after it, and the customer dashboard.
  *
  * Without this they render inside the theme's page template, which draws its
  * own header above and its own footer below — so the checkout carried the

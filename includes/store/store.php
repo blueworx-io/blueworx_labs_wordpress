@@ -24,5 +24,4 @@ require_once BLUEWORX_LABS_PATH . 'includes/store/shell.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/context.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/assets.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/commerce.php';
-
-// Task 7 adds dashboard.php here, after commerce.php.
+require_once BLUEWORX_LABS_PATH . 'includes/store/dashboard.php';

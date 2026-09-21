@@ -60,11 +60,13 @@ function blueworx_store_default_context() {
 	$site_name = function_exists( 'get_bloginfo' ) ? trim( (string) get_bloginfo( 'name' ) ) : '';
 	$home_url  = function_exists( 'home_url' ) ? (string) home_url( '/' ) : '';
 
-	// The address being read, so a sign-in comes back to it. add_query_arg()
-	// with nothing to add hands back the current request's own path and query.
-	$current   = ( function_exists( 'home_url' ) && function_exists( 'add_query_arg' ) )
-		? (string) home_url( add_query_arg( array() ) )
-		: '';
+	// The address being read, so a sign-in comes back to it. Built from the
+	// request itself rather than home_url( add_query_arg( array() ) ), which
+	// doubles the path on a site installed in a subdirectory.
+	$current = '';
+	if ( function_exists( 'set_url_scheme' ) && function_exists( 'esc_url_raw' ) && isset( $_SERVER['HTTP_HOST'], $_SERVER['REQUEST_URI'] ) ) {
+		$current = esc_url_raw( set_url_scheme( 'http://' . wp_unslash( $_SERVER['HTTP_HOST'] ) . wp_unslash( $_SERVER['REQUEST_URI'] ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- esc_url_raw() is the sanitizer.
+	}
 	$login_url = function_exists( 'wp_login_url' ) ? (string) wp_login_url( $current ) : '';
 
 	$logout_url = function_exists( 'wp_logout_url' ) ? (string) wp_logout_url( $home_url ) : '';

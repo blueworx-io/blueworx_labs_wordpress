@@ -26,6 +26,55 @@ const WP_LOAD = join(WP_ROOT, 'wp-load.php');
 const MU_PLUGINS = join(WP_ROOT, 'wp-content', 'mu-plugins');
 const TEST_HOOKS = join(MU_PLUGINS, 'blueworx-store-test-hooks.php');
 
+/**
+ * The mu-plugin the dashboard specs rely on: exercises the store pages' five
+ * filters the way another plugin would.
+ */
+const TEST_HOOKS_PHP = `<?php
+/**
+ * Plugin Name: BlueWorx store pages test hooks
+ * Description: Exercises the five blueworx_store_* filters the way another plugin would. Test fixture only.
+ */
+
+add_shortcode( 'bw_store_test_panel', static function () {
+	return '<p id="test-panel">TEST PANEL</p>';
+} );
+
+add_filter( 'blueworx_store_views', static function ( $views ) {
+	$views[] = array(
+		'key'       => 'club',
+		'label'     => 'Club',
+		'title'     => 'Your club',
+		'lede'      => 'A view another plugin added.',
+		'icon'      => 'calendar',
+		'where'     => 'both',
+		'shortcode' => 'bw_store_test_panel',
+	);
+	return $views;
+} );
+
+add_filter( 'blueworx_store_panel', static function ( $html, $key ) {
+	return 'dashboard' === $key ? '<p id="test-welcome">WELCOME</p>' . $html : $html;
+}, 10, 2 );
+
+add_filter( 'blueworx_store_context', static function ( $context ) {
+	$context['site_name']  = 'Fixture Club';
+	$context['home_label'] = 'Back to Fixture Club';
+	return $context;
+} );
+
+add_filter( 'blueworx_store_checkout_links', static function ( $links ) {
+	$links[] = array( 'label' => 'Fixture terms', 'href' => home_url( '/terms-fixture/' ) );
+	return $links;
+} );
+
+// Claims the dashboard address only when the request asks it to, so the same
+// site can prove both "dressed here" and "redirected there".
+add_filter( 'blueworx_store_dashboard_url', static function ( $url ) {
+	return isset( $_GET['bw_claim'] ) ? home_url( '/claimed-fixture/' ) : $url; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+} );
+`;
+
 export default async function globalSetup() {
   if (!isHarness) {
     return;
@@ -119,7 +168,7 @@ echo (int) get_option( 'surecart_checkout_page_id' ) > 0 ? 'seeded' : 'failed';
   // The hooks the dashboard specs register from inside WordPress. Written on
   // every run so a harness rebuilt from scratch still has it.
   mkdirSync(MU_PLUGINS, { recursive: true });
-  writeFileSync(TEST_HOOKS, '<?php\n');
+  writeFileSync(TEST_HOOKS, TEST_HOOKS_PHP);
 
   console.log('global-setup: store fixture pages seeded.');
 }
