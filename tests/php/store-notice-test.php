@@ -21,6 +21,9 @@ function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
 function esc_url( $url ) {
 	return $url;
 }
+function blueworx_ds_notice( $args ) {
+	return '<ds>' . json_encode( $args ) . '</ds>';
+}
 
 require __DIR__ . '/../../includes/store/pages.php';
 require __DIR__ . '/../../includes/store/pages-notice.php';
@@ -45,8 +48,19 @@ check( 'the owner is told to finish setting the shop up', $m['footnote'], 'Open 
 
 echo "\nThe markup escapes what it prints\n";
 $html = blueworx_store_notice_html( array( 'lines' => array( 'a <b>' ), 'button' => 'Go', 'footnote' => '' ), 'http://x/?a=1&b=2' );
-check( 'prefix', false !== strpos( $html, '<strong>BlueWorx:</strong> your shop is not ready to take payments.' ), true );
-check( 'line escaped', false !== strpos( $html, 'a &lt;b&gt;' ), true );
-check( 'button present', false !== strpos( $html, '>Go</a>' ), true );
+check( 'wrapper', false !== strpos( $html, '<div class="notice"><div class="bw-admin"><ds>' ), true );
+preg_match( '/<ds>(.*)<\/ds>/', $html, $matches );
+$args = json_decode( $matches[1], true );
+check( 'tone', $args['tone'], 'warning' );
+check( 'title', $args['title'], 'BlueWorx: your shop is not ready to take payments.' );
+check( 'line escaped', false !== strpos( $args['html'], 'a &lt;b&gt;' ), true );
+check( 'button class', false !== strpos( $args['actions'], 'bw-btn bw-btn--primary' ), true );
+check( 'button present', false !== strpos( $args['actions'], '>Go</a>' ), true );
+
+echo "\nNo button means no actions\n";
+$html = blueworx_store_notice_html( array( 'lines' => array( 'a' ), 'button' => '', 'footnote' => '' ), 'http://x/' );
+preg_match( '/<ds>(.*)<\/ds>/', $html, $matches );
+$args = json_decode( $matches[1], true );
+check( 'no actions', $args['actions'], '' );
 
 finish();

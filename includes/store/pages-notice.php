@@ -81,11 +81,12 @@ function blueworx_store_notice_message( $problems, $pages, $can_seed ) {
  * The notice markup. Pure, so the escaping is asserted in a test rather
  * than by eye.
  *
- * Plain WordPress core notice/button classes, not the BlueWorx design
- * system: this notice is printed by admin_notices on every wp-admin screen,
- * most of which never enqueue the design system's stylesheet, so its own
- * classes would render unstyled almost everywhere they are seen. The same
- * reasoning keeps the admin re-skin's topbar icons as hand-drawn SVG.
+ * The outer wrapper is core's own `.notice` — the class admin_notices hoists
+ * to the top of the screen — with `.bw-admin` inside it opting that div into
+ * the design system, the same pairing blueworx_media_replace_notice() in
+ * includes/media-tools.php uses. Everything inside is the design system's
+ * own Notice and Button markup, built with the shared PHP helpers in
+ * includes/admin-design.php.
  *
  * @param array{lines:array<int,string>,button:string,footnote:string}|null $message    From blueworx_store_notice_message().
  * @param string                                                            $action_url Where the repair button submits to.
@@ -95,19 +96,35 @@ function blueworx_store_notice_html( $message, $action_url ) {
 	if ( null === $message ) {
 		return '';
 	}
-	$html = '<div class="notice notice-warning"><p><strong>BlueWorx:</strong> your shop is not ready to take payments.</p><ul>';
+
+	$body = '<ul>';
 	foreach ( $message['lines'] as $line ) {
-		$html .= '<li>' . esc_html( $line ) . '</li>';
+		$body .= '<li>' . esc_html( $line ) . '</li>';
 	}
-	$html .= '</ul>';
-	if ( '' !== $message['button'] ) {
-		$html .= '<p><a class="button button-primary" href="' . esc_url( $action_url ) . '">'
-			. esc_html( $message['button'] ) . '</a></p>';
-	}
+	$body .= '</ul>';
 	if ( '' !== $message['footnote'] ) {
-		$html .= '<p>' . esc_html( $message['footnote'] ) . '</p>';
+		$body .= '<p>' . esc_html( $message['footnote'] ) . '</p>';
 	}
-	return $html . '</div>';
+
+	$actions = '';
+	if ( '' !== $message['button'] ) {
+		$actions = '<a class="bw-btn bw-btn--primary" href="' . esc_url( $action_url ) . '">'
+			. esc_html( $message['button'] ) . '</a>';
+	}
+
+	// .notice keeps core's placement; .bw-admin inside it is what the design
+	// system styles. Core's own notices on the same screen are untouched.
+	return sprintf(
+		'<div class="notice"><div class="bw-admin">%s</div></div>',
+		blueworx_ds_notice(
+			array(
+				'tone'    => 'warning',
+				'title'   => 'BlueWorx: your shop is not ready to take payments.',
+				'html'    => $body,
+				'actions' => $actions,
+			)
+		)
+	);
 }
 
 /**
