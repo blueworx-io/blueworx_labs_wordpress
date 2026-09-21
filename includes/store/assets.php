@@ -52,6 +52,22 @@ function blueworx_store_page_key( $post_id ) {
 }
 
 /**
+ * Which store page this request is, or '' for anything else.
+ *
+ * Gated on is_singular(): get_queried_object_id() answers a term id on a
+ * category archive and a user id on an author archive, and either can equal
+ * a page id by coincidence. Only a single post can be one of the pages.
+ *
+ * @return string 'checkout', 'order-confirmation', 'dashboard' or ''.
+ */
+function blueworx_store_queried_page_key() {
+	if ( ! function_exists( 'is_singular' ) || ! is_singular() || ! function_exists( 'get_queried_object_id' ) ) {
+		return '';
+	}
+	return blueworx_store_page_key( (int) get_queried_object_id() );
+}
+
+/**
  * Whether this page needs the SureCart token mapping. Pure.
  *
  * Checkout alone. The order confirmation page renders SureCart's
@@ -110,10 +126,7 @@ function blueworx_store_declare_assets() {
 		);
 	}
 
-	if ( ! function_exists( 'get_queried_object_id' ) ) {
-		return;
-	}
-	$key = blueworx_store_page_key( (int) get_queried_object_id() );
+	$key = blueworx_store_queried_page_key();
 	if ( '' === $key ) {
 		return;
 	}

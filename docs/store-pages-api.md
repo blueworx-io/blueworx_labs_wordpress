@@ -2,8 +2,9 @@
 
 Store pages dress SureCart's checkout, thank-you and customer dashboard
 pages in the BlueWorx look, and keep the four pages SureCart needs present
-and published. The feature is on by default and does nothing until SureCart
-is installed — no SureCart, no dashboard, no dressed pages.
+and published. The feature is on by default. Each page is found through the
+id SureCart records for it (`surecart_*_page_id`), so nothing is dressed
+until SureCart has made the pages.
 
 Another BlueWorx plugin can add its own panel to the dashboard, change what
 a panel shows, say who the site is, add a checkout footer link, or serve the
@@ -103,8 +104,10 @@ add_filter( 'blueworx_store_context', function ( $context ) {
 ## Checkout footer links
 
 `blueworx_store_checkout_links( $links, $context )` — filters the links in
-the checkout page's footer. `$links` already has the privacy policy link
-when the site has one published.
+the checkout page's footer. `$links` already has a "Privacy policy" link
+when the site has one set under Settings → Privacy and it is published. A
+plugin adding its own privacy link should replace that entry rather than
+append a second one.
 
 ```php
 add_filter( 'blueworx_store_checkout_links', function ( $links, $context ) {
@@ -121,6 +124,8 @@ add_filter( 'blueworx_store_checkout_links', function ( $links, $context ) {
 `blueworx_store_dashboard_url( $url )` — filters where the dashboard lives.
 Return your own URL to claim it: SureCart's own dashboard page then
 redirects there, carrying the requested view and any pending action across.
+A signed-out visitor is redirected to the claimed address unchanged — the
+claimant enforces sign-in, not this plugin.
 
 ```php
 add_filter( 'blueworx_store_dashboard_url', function ( $url ) {
@@ -140,6 +145,10 @@ add_action( 'wp_enqueue_scripts', function () {
 // Wherever you render the page's content:
 echo blueworx_store_dashboard_screen( home_url( '/my-account/' ), home_url( '/' ) );
 ```
+
+`blueworx_store_enqueue_dashboard()` only loads anything while the Store
+pages feature itself is switched on — call it freely, it is a no-op when
+the feature is off.
 
 `blueworx_store_page_url( $key )` gives you the address of any of the four
 store pages, once they exist: `checkout`, `order-confirmation`, `dashboard`,

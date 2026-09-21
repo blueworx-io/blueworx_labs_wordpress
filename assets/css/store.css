@@ -49,7 +49,7 @@
 /* The two-column shell the design draws: the club and the member down the
    left, full height, with the page head to their right. */
 .blueworx-store .blueworx-store__shell{display:flex;align-items:stretch;min-height:100vh}
-/* Sticky and capped to the window (Task 5): the sidebar stays put while the
+/* Sticky and capped to the window: the sidebar stays put while the
    panel scrolls. overflow:hidden here so only the nav (below) scrolls when
    it has more items than fit — the brand block and the person block must
    stay put too. Undone in the phone media query, where the sidebar is a

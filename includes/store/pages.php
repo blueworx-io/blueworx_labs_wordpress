@@ -19,8 +19,7 @@
  * presses the button.
  *
  * Page names and option keys are read from SureCart's source, and the whole
- * flow is verified against a real install — see
- * docs/integrations/surecart-notes.md.
+ * flow is verified against a real SureCart install.
  *
  * @package BlueWorxLabs
  */
@@ -57,7 +56,7 @@ function blueworx_store_pages() {
 	return array(
 		'checkout'           => array(
 			'label'       => 'checkout page',
-			'consequence' => 'nobody can pay and membership Join buttons fall back to your contact page',
+			'consequence' => 'nobody can pay',
 		),
 		'order-confirmation' => array(
 			'label'       => 'order confirmation page',
@@ -65,7 +64,7 @@ function blueworx_store_pages() {
 		),
 		'dashboard'          => array(
 			'label'       => 'customer dashboard',
-			'consequence' => 'members have nowhere to manage what they have paid for',
+			'consequence' => 'customers have nowhere to manage what they have bought',
 		),
 		'shop'               => array(
 			'label'       => 'shop page',

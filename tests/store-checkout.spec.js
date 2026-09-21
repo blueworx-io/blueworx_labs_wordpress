@@ -65,3 +65,11 @@ test('an ordinary page is left alone', async ({ page }) => {
   await expect(page.locator('.bw-admin')).toHaveCount(0);
   await expect(page.locator('#claimed-content')).toHaveText('CLAIMED');
 });
+
+test('an archive is left alone even if its id collided with a store page', async ({ page }) => {
+  // get_queried_object_id() answers a term id here, not a post id — a store
+  // page is only ever a single post, so an archive must never be dressed.
+  await page.goto('/category/uncategorized/');
+  await expect(page.locator('.blueworx-checkout')).toHaveCount(0);
+  await expect(page.locator('head link[href*="store.css"]')).toHaveCount(0);
+});

@@ -53,11 +53,11 @@ function blueworx_store_template_for( $page_key, $default, $ours ) {
  */
 function blueworx_store_serve_template( $template ) {
 	$template = (string) $template;
-	if ( ! function_exists( 'get_queried_object_id' ) || ! defined( 'BLUEWORX_LABS_PATH' ) ) {
+	if ( ! defined( 'BLUEWORX_LABS_PATH' ) ) {
 		return $template;
 	}
 	return blueworx_store_template_for(
-		blueworx_store_page_key( (int) get_queried_object_id() ),
+		blueworx_store_queried_page_key(),
 		$template,
 		BLUEWORX_LABS_PATH . 'includes/store/template.php'
 	);

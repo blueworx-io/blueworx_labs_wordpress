@@ -81,6 +81,11 @@ function blueworx_store_notice_message( $problems, $pages, $can_seed ) {
  * The notice markup. Pure, so the escaping is asserted in a test rather
  * than by eye.
  *
+ * The lines are inline markup — a `<span>` per line, joined with `<br>` —
+ * rather than a `<ul>`: `html` is printed inside blueworx_ds_notice()'s own
+ * `<p class="bw-notice__text">`, and a block element such as `<ul>` or `<p>`
+ * nested inside a `<p>` is invalid HTML.
+ *
  * The outer wrapper is core's own `.notice` — the class admin_notices hoists
  * to the top of the screen — with `.bw-admin` inside it opting that div into
  * the design system, the same pairing blueworx_media_replace_notice() in
@@ -97,13 +102,17 @@ function blueworx_store_notice_html( $message, $action_url ) {
 		return '';
 	}
 
-	$body = '<ul>';
-	foreach ( $message['lines'] as $line ) {
-		$body .= '<li>' . esc_html( $line ) . '</li>';
-	}
-	$body .= '</ul>';
+	$body = implode(
+		'<br>',
+		array_map(
+			static function ( $line ) {
+				return '<span>' . esc_html( $line ) . '</span>';
+			},
+			$message['lines']
+		)
+	);
 	if ( '' !== $message['footnote'] ) {
-		$body .= '<p>' . esc_html( $message['footnote'] ) . '</p>';
+		$body .= '<br><span>' . esc_html( $message['footnote'] ) . '</span>';
 	}
 
 	$actions = '';

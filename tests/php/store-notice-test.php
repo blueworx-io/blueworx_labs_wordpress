@@ -36,8 +36,8 @@ check( 'and no markup', blueworx_store_notice_html( null, 'x' ), '' );
 
 echo "\nOne line per problem, in plain words\n";
 $m = blueworx_store_notice_message( array( 'checkout' => 'missing', 'dashboard' => 'unpublished' ), $pages, true );
-check( 'missing', $m['lines'][0], 'Your checkout page is missing, so nobody can pay and membership Join buttons fall back to your contact page.' );
-check( 'unpublished', $m['lines'][1], 'Your customer dashboard is in the trash or unpublished, so members have nowhere to manage what they have paid for.' );
+check( 'missing', $m['lines'][0], 'Your checkout page is missing, so nobody can pay.' );
+check( 'unpublished', $m['lines'][1], 'Your customer dashboard is in the trash or unpublished, so customers have nowhere to manage what they have bought.' );
 check( 'the button is offered', $m['button'], 'Put the missing pages back' );
 check( 'no footnote when everything is fixable', $m['footnote'], '' );
 
@@ -54,8 +54,15 @@ $args = json_decode( $matches[1], true );
 check( 'tone', $args['tone'], 'warning' );
 check( 'title', $args['title'], 'BlueWorx: your shop is not ready to take payments.' );
 check( 'line escaped', false !== strpos( $args['html'], 'a &lt;b&gt;' ), true );
+check( 'line is inline markup, not a block element', $args['html'], '<span>a &lt;b&gt;</span>' );
 check( 'button class', false !== strpos( $args['actions'], 'bw-btn bw-btn--primary' ), true );
 check( 'button present', false !== strpos( $args['actions'], '>Go</a>' ), true );
+
+echo "\nA footnote trails the lines, still inline\n";
+$html = blueworx_store_notice_html( array( 'lines' => array( 'a', 'b' ), 'button' => '', 'footnote' => 'c' ), 'http://x/' );
+preg_match( '/<ds>(.*)<\/ds>/', $html, $matches );
+$args = json_decode( $matches[1], true );
+check( 'lines and footnote, no block elements', $args['html'], '<span>a</span><br><span>b</span><br><span>c</span>' );
 
 echo "\nNo button means no actions\n";
 $html = blueworx_store_notice_html( array( 'lines' => array( 'a' ), 'button' => '', 'footnote' => '' ), 'http://x/' );

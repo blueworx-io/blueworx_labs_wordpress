@@ -109,13 +109,15 @@ function blueworx_store_route() {
 	if ( ! function_exists( 'wp_safe_redirect' ) || ! function_exists( 'get_queried_object_id' ) ) {
 		return;
 	}
-	$queried_id   = (int) get_queried_object_id();
-	$dashboard_id = blueworx_store_page_id( 'dashboard' );
-	// blueworx_store_redirect_to() makes this same decision; asking it first
-	// only spares every other page on the site the context lookup below.
-	if ( $dashboard_id <= 0 || $queried_id !== $dashboard_id ) {
+	// Gated the same way as the dressed pages and their assets: an archive or
+	// author page can share an id with the dashboard by coincidence, and only
+	// a single post can actually be it. Asking first also spares every other
+	// page on the site the context lookup below.
+	if ( 'dashboard' !== blueworx_store_queried_page_key() ) {
 		return;
 	}
+	$queried_id   = (int) get_queried_object_id();
+	$dashboard_id = blueworx_store_page_id( 'dashboard' );
 	$asked   = blueworx_store_requested_action();
 	$context = blueworx_store_context();
 	$target  = blueworx_store_redirect_to(

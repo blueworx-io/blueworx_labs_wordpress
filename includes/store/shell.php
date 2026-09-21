@@ -7,16 +7,18 @@
  *
  * The classes are the BlueWorx admin design system's, not a shop's own look.
  * The two never meet: nothing else styles this markup, and every rule in
- * bw.css is scoped to .bw-admin, which only this markup carries. Our own
- * classes use the `blueworx-` prefix rather than `bw-`, because `bw-` is the
- * design system's own namespace and these are not design-system patterns.
+ * assets/css/store.css is scoped to .bw-admin, which only this markup
+ * carries. Our own classes use the `blueworx-` prefix rather than `bw-`,
+ * because `bw-` is the design system's own namespace and these are not
+ * design-system patterns.
  *
  * The nav is links rather than buttons because each view is its own address —
  * openable in a new tab, bookmarkable, and working with no JavaScript at all.
  *
  * Icons are the design system's own element — an <i> carrying a data-lucide
- * name, inlined by its icons module (Task 6 enqueues it on these pages) —
- * rather than an icon font, a script of our own, or inline SVG.
+ * name, inlined by its icons module, which blueworx_store_declare_assets()
+ * enqueues on these pages — rather than an icon font, a script of our own, or
+ * inline SVG.
  *
  * @package BlueWorxLabs
  */

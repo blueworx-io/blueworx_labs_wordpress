@@ -96,7 +96,7 @@ Unchanged in behaviour, moved whole from `Commerce_Pages`:
   section 3.
 - Thank you gets the bare frame: title, lede, one card with the page's
   content, a back link.
-- Both are served from Labs' own template `templates/store.php` so the theme
+- Both are served from Labs' own template `includes/store/template.php` so the theme
   draws no header or footer around them, and the theme's `core/post-title`
   block is blanked on them so the page has one h1.
 - No sign-in check: a guest may pay.
