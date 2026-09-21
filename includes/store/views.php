@@ -146,7 +146,6 @@ function blueworx_store_normalize_views( $views ) {
 			'title'     => isset( $view['title'] ) ? (string) $view['title'] : $label,
 			'lede'      => isset( $view['lede'] ) ? (string) $view['lede'] : '',
 			'icon'      => isset( $view['icon'] ) ? (string) $view['icon'] : 'layout-dashboard',
-			'icon_svg'  => isset( $view['icon_svg'] ) ? (string) $view['icon_svg'] : '',
 			'where'     => isset( $view['where'] ) ? (string) $view['where'] : 'both',
 			'blocks'    => isset( $view['blocks'] ) && is_array( $view['blocks'] ) ? $view['blocks'] : array(),
 			'shortcode' => isset( $view['shortcode'] ) ? (string) $view['shortcode'] : '',
