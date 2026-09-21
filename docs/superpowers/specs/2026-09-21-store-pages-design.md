@@ -146,7 +146,7 @@ The dashboard's views, in nav order. Each:
 | `label`     | string   | Nav text. |
 | `title`     | string   | Page heading when the view is open. |
 | `lede`      | string   | One line under the heading. |
-| `icon`      | string   | Lucide glyph name from the shell's set, or `icon_svg` with inline SVG for one it lacks. |
+| `icon`      | string   | A Lucide icon name the design system ships. |
 | `where`     | string   | `both`, `side` or `bar` — desktop sidebar, phone bottom bar, or both. |
 | `blocks`    | string[] | Block names, each rendered in its own card. |
 | `shortcode` | string   | A shortcode tag that takes the whole view instead. |
@@ -223,8 +223,8 @@ The design system stylesheet itself is not vendored again: Labs already
 ships `assets/blueworx-admin-design.css` and its newest-wins registrar. The
 store pages enqueue that handle, then `store.css` on top of it.
 
-CSS class names: `clubhouse-member__*` becomes `bw-store__*`,
-`clubhouse-checkout__*` becomes `bw-checkout__*`. The `bw-admin`, `bw-page`,
+CSS class names: `clubhouse-member__*` becomes `blueworx-store__*`,
+`clubhouse-checkout__*` becomes `blueworx-checkout__*`. The `bw-admin`, `bw-page`,
 `bw-card`, `bw-secnav` and `bw-panels` classes are the design system's and
 stay.
 

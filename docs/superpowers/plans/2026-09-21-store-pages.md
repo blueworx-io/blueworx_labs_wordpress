@@ -18,7 +18,7 @@
 - Every function is prefixed `blueworx_store_`. Files are procedural, no classes, `if ( ! defined( 'ABSPATH' ) ) { exit; }` at the top, docblocks on every function (phpcs runs in CI: `composer lint`).
 - SureCart loads **after** this plugin (alphabetical plugin order), so "is SureCart active" is only ever asked inside a hook callback, never at file scope.
 - Feature gating follows `includes/disable-comments.php`: hooks are added at file scope inside `if ( blueworx_feature_enabled( 'store_pages' ) )`.
-- CSS classes: what ClubHouse calls `clubhouse-member__*` becomes `bw-store__*`; `clubhouse-checkout__*` becomes `bw-checkout__*`; the root `clubhouse-member` class becomes `bw-store`; `clubhouse-checkout` becomes `bw-checkout`; `data-clubhouse-member` becomes `data-bw-store`; ids `clubhouse-member-navtab-*` / `clubhouse-member-tab-*` / `clubhouse-member-view` become `bw-store-navtab-*` / `bw-store-tab-*` / `bw-store-view`. Design-system classes (`bw-admin`, `bw-page`, `bw-card`, `bw-secnav`, `bw-panels`, `bw-pagehead`, `bw-person`, `bw-avatar`, `bw-empty`, `bw-btn`, `bw-icon`) stay.
+- CSS classes (the `bw-` prefix is reserved for the design system's own vocabulary and the adherence hook enforces that; icons are `<i class="bw-icon" data-lucide="…">`, never inline SVG): what ClubHouse calls `clubhouse-member__*` becomes `blueworx-store__*`; `clubhouse-checkout__*` becomes `blueworx-checkout__*`; the root `clubhouse-member` class becomes `blueworx-store`; `clubhouse-checkout` becomes `blueworx-checkout`; `data-clubhouse-member` becomes `data-blueworx-store`; ids `clubhouse-member-navtab-*` / `clubhouse-member-tab-*` / `clubhouse-member-view` become `blueworx-store-navtab-*` / `blueworx-store-tab-*` / `blueworx-store-view`. Design-system classes (`bw-admin`, `bw-page`, `bw-card`, `bw-secnav`, `bw-panels`, `bw-pagehead`, `bw-person`, `bw-avatar`, `bw-empty`, `bw-btn`, `bw-icon`) stay.
 - The plugin zip ships only `includes/`, `assets/` and the top-level files (`scripts/build-zip.mjs`), so the template lives at `includes/store/template.php`, not a top-level `templates/`.
 - Copy in notices and guides is plain English, no jargon. Notice prefix is "BlueWorx:".
 - Commit after every task with a one-line message and the trailer `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`.
@@ -62,7 +62,7 @@ Every later task uses these exact names. Signatures are PHP 8, typed where the h
 
 `includes/store/views.php`
 - `blueworx_store_default_views(): array` — the seven SureCart views
-- `blueworx_store_normalize_views( $views ): array` — pure; drops junk, guarantees `dashboard` first
+- `blueworx_store_normalize_views( $views ): array` — pure; drops junk, guarantees `dashboard` first (Task 5 removes its `icon_svg` default)
 - `blueworx_store_views(): array` — applies `blueworx_store_views`, memoised per request
 - `blueworx_store_views_side( $views ): array`, `blueworx_store_views_bar( $views ): array`
 - `blueworx_store_resolve_view( $requested, $views ): string`
@@ -84,7 +84,7 @@ Every later task uses these exact names. Signatures are PHP 8, typed where the h
 - `blueworx_store_shell_checkout( $args ): string`
 - `blueworx_store_shell_card( $title, $body ): string`
 - `blueworx_store_shell_empty_state( $title, $text, $href, $label ): string`
-- `blueworx_store_shell_icon( $name, $svg = '' ): string`
+- `blueworx_store_shell_icon( $name ): string` — the design-system icon element `<i class="bw-icon" data-lucide="…" aria-hidden="true"></i>`, or '' for an empty name
 
 `includes/store/context.php`
 - `blueworx_store_default_context(): array`
@@ -554,7 +554,7 @@ finish();
 
 `views.php`:
 - `blueworx_store_default_views()` returns the seven entries from `Blueworx_Clubhouse_Dashboard_Views::all()` **without** the `bookings` entry and **without** the `requires` and `panel` keys. Keep `key, label, title, lede, icon, where, blocks, shortcode`. Keep the comments explaining Billing and Account.
-- `blueworx_store_normalize_views( $views )`: for each item, skip if not an array or `key` is empty or already seen; fill defaults `label => ucfirst(key)`, `title => label`, `lede => ''`, `icon => 'layout-dashboard'`, `icon_svg => ''`, `where => 'both'`, `blocks => []`, `shortcode => ''`; if no `dashboard` survives, unshift the default dashboard entry from `blueworx_store_default_views()`; if it is present but not first, move it first.
+- `blueworx_store_normalize_views( $views )`: for each item, skip if not an array or `key` is empty or already seen; fill defaults `label => ucfirst(key)`, `title => label`, `lede => ''`, `icon => 'layout-dashboard'`, `where => 'both'`, `blocks => []`, `shortcode => ''`; if no `dashboard` survives, unshift the default dashboard entry from `blueworx_store_default_views()`; if it is present but not first, move it first.
 - `blueworx_store_views()`: memoise in a static; base list is `blueworx_store_default_views()` when `blueworx_store_surecart_active()`, else only its first (dashboard) entry; then:
 
 ```php
@@ -618,7 +618,7 @@ $html = blueworx_store_shell_page( array(
 ) );
 
 echo "The frame\n";
-check( 'root carries the design system and our own class', false !== strpos( $html, '<div class="bw-admin bw-page bw-store" data-bw-store data-view-initial="orders">' ), true );
+check( 'root carries the design system and our own class', false !== strpos( $html, '<div class="bw-admin bw-page blueworx-store" data-blueworx-store data-view-initial="orders">' ), true );
 check( 'no clubhouse class survives', false === strpos( $html, 'clubhouse' ), true );
 check( 'the site name is escaped', false !== strpos( $html, 'Fixture &amp; Co' ), true );
 check( 'ampersands are not double-escaped', false === strpos( $html, '&amp;amp;' ), true );
@@ -637,10 +637,10 @@ $html = blueworx_store_shell_checkout( array(
 	'footnote'   => '',
 	'links'      => array( array( 'label' => 'Terms', 'href' => 'http://x/terms/' ), array( 'label' => '', 'href' => 'http://x/none/' ) ),
 ) );
-check( 'root', false !== strpos( $html, '<div class="bw-admin bw-checkout">' ), true );
+check( 'root', false !== strpos( $html, '<div class="bw-admin blueworx-checkout">' ), true );
 check( 'one h1', substr_count( $html, '<h1' ), 1 );
 check( 'the body is passed through untouched', false !== strpos( $html, '<p id="shop-content">SHOP</p>' ), true );
-check( 'a link with no label is skipped', substr_count( $html, '<nav class="bw-checkout__links"' ), 1 );
+check( 'a link with no label is skipped', substr_count( $html, '<nav class="blueworx-checkout__links"' ), 1 );
 check( 'and the real one is drawn', false !== strpos( $html, '>Terms</a>' ), true );
 check( 'no nav offered', false === strpos( $html, 'bw-secnav' ), true );
 
@@ -648,14 +648,13 @@ echo "\nSmaller pieces\n";
 check( 'a bare view url', blueworx_store_view_url( 'orders' ), '?view=orders' );
 check( 'appended to a query', blueworx_store_view_url( 'orders', 'http://x/?page_id=4' ), 'http://x/?page_id=4&view=orders' );
 check( 'a card', blueworx_store_shell_card( '', '<p>x</p>' ), '<div class="bw-card"><div class="bw-card__body"><p>x</p></div></div>' );
-check( 'a known icon', false !== strpos( blueworx_store_shell_icon( 'lock' ), '<svg' ), true );
-check( 'an unknown icon with no svg is empty', blueworx_store_shell_icon( 'nope' ), '' );
-check( 'a supplied svg is used', blueworx_store_shell_icon( 'nope', '<path d="M1 1"/>' ), '<svg class="bw-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1"/></svg>' );
+check( 'an icon is the design-system element', blueworx_store_shell_icon( 'lock' ), '<i class="bw-icon" data-lucide="lock" aria-hidden="true"></i>' );
+check( 'no name, no icon', blueworx_store_shell_icon( '' ), '' );
 
 finish();
 ```
 
-Before running, read the source's `card()` (line 474) and `icon()` (line 506) and make the two expected strings above match the exact markup they emit (the wrapper attributes in `icon()` must be copied, not guessed).
+Before running, read the source's `card()` (line 474) and make the expected card string above match the exact markup it emits.
 
 - [ ] **Step 2: Run it to see it fail** — fatal, file missing.
 
@@ -665,7 +664,7 @@ Port every method of `Blueworx_Clubhouse_Dashboard_Shell` (lines 43–525) into 
 
 - `Blueworx_Clubhouse_Dashboard_Views::side()/bar()` → `blueworx_store_views_side()/bar()`.
 - `club_name` → `site_name` in `$args`; the sidebar's "Member area" sub-line becomes "Your account".
-- `icon( $name )` becomes `blueworx_store_shell_icon( $name, $svg = '' )`: the eight inline Lucide paths stay; when `$name` is not in the set and `$svg` is non-empty, wrap `$svg` in the same `<svg …>` element. Callers that draw a view's icon pass `$view['icon'], $view['icon_svg']`.
+- `icon( $name )` becomes `blueworx_store_shell_icon( $name )`: no inline SVG at all — it returns `<i class="bw-icon" data-lucide="<name>" aria-hidden="true"></i>` (the design system's icon element, inlined by its icons module which Task 6 enqueues on these pages), or `''` for an empty name. Callers pass `$view['icon']`. Also remove the `icon_svg` default from `blueworx_store_normalize_views()` in views.php — the key is gone.
 - `checkout()`'s h1 text stays "Checkout"; `bare()`'s "Back to the club site" fallback becomes "Back to the site".
 
 Add `require_once BLUEWORX_LABS_PATH . 'includes/store/shell.php';` to `store.php`.
@@ -745,9 +744,9 @@ const THANKS = '/thanks-fixture/';
 
 test('the checkout wears its own frame', async ({ page }) => {
   await page.goto(CHECKOUT);
-  await expect(page.locator('.bw-admin.bw-checkout')).toHaveCount(1);
-  await expect(page.locator('.bw-checkout__head')).toBeVisible();
-  await expect(page.locator('.bw-checkout__foot')).toBeVisible();
+  await expect(page.locator('.bw-admin.blueworx-checkout')).toHaveCount(1);
+  await expect(page.locator('.blueworx-checkout__head')).toBeVisible();
+  await expect(page.locator('.blueworx-checkout__foot')).toBeVisible();
 });
 
 test("the shop's own content is passed through untouched", async ({ page }) => {
@@ -758,7 +757,7 @@ test("the shop's own content is passed through untouched", async ({ page }) => {
 test('a buyer is offered no nav to wander off into', async ({ page }) => {
   await page.goto(CHECKOUT);
   await expect(page.locator('.bw-secnav')).toHaveCount(0);
-  await expect(page.locator('.bw-store__tabbar')).toHaveCount(0);
+  await expect(page.locator('.blueworx-store__tabbar')).toHaveCount(0);
 });
 
 test('the page has exactly one heading at the top level', async ({ page }) => {
@@ -782,7 +781,7 @@ test('the checkout owns the whole page, with no theme chrome around it', async (
 test('the footer stacks into full-width targets on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(CHECKOUT);
-  const back = page.locator('.bw-checkout__back');
+  const back = page.locator('.blueworx-checkout__back');
   await expect(back).toBeVisible();
   const box = await back.boundingBox();
   expect(box.height).toBeGreaterThanOrEqual(44);
@@ -790,7 +789,7 @@ test('the footer stacks into full-width targets on a phone', async ({ page }) =>
 
 test('the thank-you page wears the bare frame', async ({ page }) => {
   await page.goto(THANKS);
-  await expect(page.locator('.bw-admin.bw-page.bw-store')).toHaveCount(1);
+  await expect(page.locator('.bw-admin.bw-page.blueworx-store')).toHaveCount(1);
   await expect(page.locator('h1')).toHaveText('Thank you');
   await expect(page.locator('#shop-content')).toHaveText('THANKS CONTENT');
   await expect(page.locator('head link[rel="stylesheet"][href*="store-surecart.css"]')).toHaveCount(0);
@@ -805,7 +804,7 @@ test('an ordinary page is left alone', async ({ page }) => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `npx playwright test tests/store-checkout.spec.js` — Expected: the frame assertions fail (no `.bw-checkout`).
+Run: `npx playwright test tests/store-checkout.spec.js` — Expected: the frame assertions fail (no `.blueworx-checkout`).
 
 - [ ] **Step 4: Write context, assets, template, stylesheets and commerce**
 
@@ -838,11 +837,11 @@ function blueworx_store_context() {
 
 `blueworx_store_default_context()` builds: `site_name` from `get_bloginfo( 'name' )`; `logo_url` from `get_site_icon_url( 64 )`, else `wp_get_attachment_image_url( get_theme_mod( 'custom_logo' ), 'thumbnail' )`, else `''`; `home_url` = `home_url( '/' )`; `home_label` = `blueworx_store_back_label( site_name )`; `login_url` = `wp_login_url( $current )` where `$current` is the request URL (`home_url( add_query_arg( array() ) )`) — the login feature already filters `wp_login_url`; `logout_url` = `wp_logout_url( home_url( '/' ) )`; `member_name`/`member_email` from `wp_get_current_user()` as the source's `member_name()`/`member_email()` do. Every WordPress call guarded with `function_exists` so the file loads under the CLI stubs. `blueworx_store_back_label()` ports `Commerce_Pages::back_label()` with "Back to the site" as the fallback.
 
-`assets.php`: port `Dashboard_Assets`. Handles: `blueworx-store` → `assets/css/store.css` (depends on `blueworx-admin-design`), `blueworx-store-surecart` → `assets/css/store-surecart.css` (depends on `blueworx-store`), `blueworx-store-dashboard` → `assets/js/store-dashboard.js` (deferred, footer; Task 7 adds the file). `blueworx_store_page_key( $post_id )` returns `'checkout'`, `'order-confirmation'` or `'dashboard'` by comparing against the three `blueworx_store_page_id()` answers, `''` otherwise and for `$post_id <= 0`. `blueworx_store_declare_assets()` on `wp_enqueue_scripts`: register all three, then if the queried object's key is non-empty call `blueworx_store_enqueue_frame()`, plus the SureCart style when `blueworx_store_wants_surecart_style( $key )` (checkout only), plus `blueworx_store_enqueue_dashboard()` when the key is `dashboard`. `blueworx_store_enqueue_frame()` calls `blueworx_admin_design_enqueue()` then enqueues `blueworx-store`. `blueworx_store_enqueue_dashboard()` = frame + `blueworx-store-dashboard` script + `blueworx_store_enqueue_shop_assets()` (port of `Member_Dashboard::enqueue_shop_assets()`).
+`assets.php`: port `Dashboard_Assets`. Handles: `blueworx-store` → `assets/css/store.css` (depends on `blueworx-admin-design`), `blueworx-store-surecart` → `assets/css/store-surecart.css` (depends on `blueworx-store`), `blueworx-store-dashboard` → `assets/js/store-dashboard.js` (deferred, footer; Task 7 adds the file). `blueworx_store_page_key( $post_id )` returns `'checkout'`, `'order-confirmation'` or `'dashboard'` by comparing against the three `blueworx_store_page_id()` answers, `''` otherwise and for `$post_id <= 0`. `blueworx_store_declare_assets()` on `wp_enqueue_scripts`: register all three, then if the queried object's key is non-empty call `blueworx_store_enqueue_frame()`, plus the SureCart style when `blueworx_store_wants_surecart_style( $key )` (checkout only), plus `blueworx_store_enqueue_dashboard()` when the key is `dashboard`. `blueworx_store_enqueue_frame()` calls `blueworx_admin_design_enqueue()` and `blueworx_admin_design_enqueue_icons()` (the icons module inlines every `data-lucide` element) then enqueues `blueworx-store`. `blueworx_store_enqueue_dashboard()` = frame + `blueworx-store-dashboard` script + `blueworx_store_enqueue_shop_assets()` (port of `Member_Dashboard::enqueue_shop_assets()`).
 
 `template.php`: port `templates/commerce.php` verbatim (its comment updated to name this plugin).
 
-`assets/css/store.css`: copy `assets/bw/bw.css` lines 622–767 **except** the `.clubhouse-profile*` rules (lines 670–690 — they are ClubHouse's profile card and stay there), then copy `assets/bw/surecart.css` lines 69 to the end (the `.clubhouse-checkout*` rules; verify the line where the token mapping ends and the checkout layout begins by reading the file). Apply the class rename table with a global replace. Header comment: "Store pages layout. Sits on top of blueworx-admin-design.css, same tokens, same scoping: every rule is under .bw-store or .bw-checkout."
+`assets/css/store.css`: copy `assets/bw/bw.css` lines 622–767 **except** the `.clubhouse-profile*` rules (lines 670–690 — they are ClubHouse's profile card and stay there), then copy `assets/bw/surecart.css` lines 69 to the end (the `.clubhouse-checkout*` rules; verify the line where the token mapping ends and the checkout layout begins by reading the file). Apply the class rename table with a global replace. Header comment: "Store pages layout. Sits on top of blueworx-admin-design.css, same tokens, same scoping: every rule is under .blueworx-store or .blueworx-checkout."
 
 `assets/css/store-surecart.css`: copy `assets/bw/surecart.css` lines 1 to just before the checkout layout rules (the SureCart token mapping only). Apply the rename table (there should be no `clubhouse` left; grep to confirm).
 
@@ -964,8 +963,7 @@ add_filter( 'blueworx_store_views', static function ( $views ) {
 		'label'     => 'Club',
 		'title'     => 'Your club',
 		'lede'      => 'A view another plugin added.',
-		'icon'      => 'star',
-		'icon_svg'  => '<path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/>',
+		'icon'      => 'calendar',
 		'where'     => 'both',
 		'shortcode' => 'bw_store_test_panel',
 	);
@@ -1013,7 +1011,7 @@ check( 'claimed, signed out: still the claim (the claimant guards its own door)'
 echo "\nThe overview links to every other view\n";
 $views = blueworx_store_normalize_views( array( array( 'key' => 'dashboard' ), array( 'key' => 'club', 'label' => 'Club', 'lede' => 'L' ) ) );
 $html  = blueworx_store_overview( $views, 'http://x/', 'http://x/acct/' );
-check( 'one quick link', substr_count( $html, 'bw-store__quick"' ), 1 );
+check( 'one quick link', substr_count( $html, 'blueworx-store__quick"' ), 1 );
 check( 'to the club view', false !== strpos( $html, 'href="http://x/acct/?view=club"' ), true );
 check( 'none to itself', false === strpos( $html, '?view=dashboard' ), true );
 $html = blueworx_store_overview( blueworx_store_normalize_views( array() ), 'http://x/', '' );
@@ -1090,7 +1088,7 @@ if ( '' === trim( $body ) ) {
 - `blueworx_store_dashboard_content( $content, $context )` (move here from `commerce.php`, delete the stub there): when `blueworx_store_dashboard_url()` is non-empty return `$content` (the route already redirected; this is belt and braces); otherwise return `blueworx_store_dashboard_screen( get_permalink( get_the_ID() ), $context['home_url'] )`, and if that is `''` return `$content`.
 - Hooks: `template_redirect` → `blueworx_store_route` at 5; `init` → `blueworx_store_slot_install` (the real block/shortcode renderers, installed once WordPress has registered them). Both inside the feature check.
 
-`assets/js/store-dashboard.js`: copy `member-area.js`, replacing `[data-clubhouse-member]` with `[data-bw-store]` and `.clubhouse-member__panel` / `__tab` / `__navtab` etc. with the `bw-store__` names; `data-member-title` / `data-member-lede` stay. Run `npm run lint` once at the end of the task (not in a loop); it lints `assets/js`.
+`assets/js/store-dashboard.js`: copy `member-area.js`, replacing `[data-clubhouse-member]` with `[data-blueworx-store]` and `.clubhouse-member__panel` / `__tab` / `__navtab` etc. with the `blueworx-store__` names; `data-member-title` / `data-member-lede` stay. Run `npm run lint` once at the end of the task (not in a loop); it lints `assets/js`.
 
 Add `require_once BLUEWORX_LABS_PATH . 'includes/store/dashboard.php';` last in `store.php`.
 
@@ -1127,10 +1125,10 @@ test('a signed-out visitor is sent to the login page', async ({ page }) => {
 test('a member sees the frame, the nav and the overview', async ({ page }) => {
   await signInAsMember(page);
   await page.goto(DASHBOARD);
-  await expect(page.locator('.bw-admin.bw-page.bw-store')).toHaveCount(1);
+  await expect(page.locator('.bw-admin.bw-page.blueworx-store')).toHaveCount(1);
   await expect(page.locator('#foreign-content')).toHaveCount(0);
   await expect(page.locator('.bw-secnav__item', { hasText: 'Club' })).toBeVisible();
-  await expect(page.locator('.bw-store__panel[data-view="dashboard"]:not([hidden])')).toHaveCount(1);
+  await expect(page.locator('.blueworx-store__panel[data-view="dashboard"]:not([hidden])')).toHaveCount(1);
 });
 
 test('another plugin can put content on the overview', async ({ page }) => {
@@ -1142,20 +1140,20 @@ test('another plugin can put content on the overview', async ({ page }) => {
 test('another plugin can add a whole view', async ({ page }) => {
   await signInAsMember(page);
   await page.goto(`${DASHBOARD}?view=club`);
-  await expect(page.locator('.bw-store__panel[data-view="club"]:not([hidden]) #test-panel')).toHaveText('TEST PANEL');
-  await expect(page.locator('.bw-store__panel[data-view="dashboard"]')).toHaveAttribute('hidden', '');
+  await expect(page.locator('.blueworx-store__panel[data-view="club"]:not([hidden]) #test-panel')).toHaveText('TEST PANEL');
+  await expect(page.locator('.blueworx-store__panel[data-view="dashboard"]')).toHaveAttribute('hidden', '');
 });
 
 test('the context filter reaches the frame', async ({ page }) => {
   await signInAsMember(page);
   await page.goto(DASHBOARD);
-  await expect(page.locator('.bw-store__brandname')).toHaveText('Fixture Club');
+  await expect(page.locator('.blueworx-store__brandname')).toHaveText('Fixture Club');
 });
 
 test('junk in the address lands on the overview', async ({ page }) => {
   await signInAsMember(page);
   await page.goto(`${DASHBOARD}?view=nope`);
-  await expect(page.locator('.bw-store__panel[data-view="dashboard"]:not([hidden])')).toHaveCount(1);
+  await expect(page.locator('.blueworx-store__panel[data-view="dashboard"]:not([hidden])')).toHaveCount(1);
 });
 
 test("a plugin that claims the dashboard's address gets the visitor, panel and all", async ({ page }) => {
@@ -1167,8 +1165,8 @@ test("a plugin that claims the dashboard's address gets the visitor, panel and a
 
 test('the checkout footer carries the links a plugin adds', async ({ page }) => {
   await page.goto('/checkout-fixture/');
-  await expect(page.locator('.bw-checkout__links a', { hasText: 'Fixture terms' })).toHaveCount(1);
-  await expect(page.locator('.bw-checkout__back')).toHaveText(/Back to Fixture Club/);
+  await expect(page.locator('.blueworx-checkout__links a', { hasText: 'Fixture terms' })).toHaveCount(1);
+  await expect(page.locator('.blueworx-checkout__back')).toHaveText(/Back to Fixture Club/);
 });
 
 test('with the feature off, the page is left alone', async ({ page }) => {
@@ -1180,7 +1178,7 @@ test('with the feature off, the page is left alone', async ({ page }) => {
     await setFeature(page, 'store_pages', false);
     await saveEnhancements(page);
     await page.goto('/checkout-fixture/');
-    await expect(page.locator('.bw-checkout')).toHaveCount(0);
+    await expect(page.locator('.blueworx-checkout')).toHaveCount(0);
     await expect(page.locator('#shop-content')).toHaveText('SHOP CONTENT');
   } finally {
     await page.goto('/wp-admin/admin.php?page=blueworx-enhancements');
