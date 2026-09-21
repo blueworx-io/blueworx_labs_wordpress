@@ -284,17 +284,17 @@ function blueworx_store_shell_head( $views, $current, $args ) {
 /**
  * One view's entry, or an empty array.
  *
+ * The lookup itself is blueworx_store_find_view()'s job, already shared with
+ * the rest of the plugin; this only adapts its null for a caller that wants
+ * an array to read optional keys off of with no isset() of its own.
+ *
  * @param array<int,array<string,mixed>> $views Views to search.
  * @param string                          $key   View key.
  * @return array<string,mixed>
  */
 function blueworx_store_shell_view( $views, $key ) {
-	foreach ( $views as $view ) {
-		if ( (string) $view['key'] === $key ) {
-			return $view;
-		}
-	}
-	return array();
+	$view = blueworx_store_find_view( $key, $views );
+	return null === $view ? array() : $view;
 }
 
 /**
