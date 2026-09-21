@@ -1,0 +1,182 @@
+/* Store pages layout. Sits on top of blueworx-admin-design.css, same tokens,
+   same scoping: every rule is under .blueworx-store or .blueworx-checkout. */
+/* The top bar: the title and the line under it sit closer together, and the
+   buttons centre against that block rather than hanging off its baseline. */
+.bw-pagehead{align-items:center}
+.bw-pagehead__eyebrow{margin-bottom:var(--bw-space-2)}
+.bw-pagehead__h1{font-size:var(--bw-size-h2)}
+.bw-pagehead__lede{margin-top:var(--bw-space-2)}
+/* A link drawn as a control is a control, not a link. Each of these already
+   asks for no underline, but .bw-admin a's prose-link underline outranks
+   them, so it has to be undone here. .bw-btn--link is the exception — it is
+   meant to read as a link. */
+.bw-admin a.bw-btn,
+.bw-admin a.bw-secnav__item,
+.bw-admin a.bw-tab,
+.bw-admin a.bw-menu__item,
+.bw-admin a.bw-rowactions__link,
+.bw-admin .bw-crumbs a,
+.bw-admin a.blueworx-store__back,
+.bw-admin a.blueworx-store__tab,
+.bw-admin a.blueworx-store__quick{text-decoration:none}
+.bw-admin a.bw-btn--link{text-decoration:underline}
+.bw-admin a.bw-rowactions__link:hover{text-decoration:underline}
+.blueworx-store .blueworx-store__navlabel{display:flex;align-items:center;gap:10px}
+.blueworx-store .bw-secnav__item .bw-icon{flex:none}
+.blueworx-store .bw-pagehead__actions .bw-icon{margin-right:6px}
+/* LatePoint's customer dashboard ships its own sign-out link and "Welcome
+   <name>" heading. The member area already carries both, so hide the vendor
+   pair — direct children only, so the nested booking form's own .latepoint-w
+   is left alone. */
+.blueworx-store .latepoint-w>a[href*="customer_cabinet__logout"],
+.blueworx-store .latepoint-w>h4{display:none}
+/* The member area's own rhythm: half the stack gap the admin screens use, so
+   the shortcut grid and the cards inside a panel sit closer together. */
+.blueworx-store{--bw-member-gap:var(--bw-space-5)}
+.blueworx-store .blueworx-store__quicks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--bw-member-gap)}
+/* A panel holding more than one card — Billing's three, Account's two — spaces
+   them itself. .bw-panels' gap falls between panels, of which only one is ever
+   shown, so without this the cards sit flush against one another. The [hidden]
+   rule must follow, or display:flex would show every panel at once. */
+.blueworx-store .blueworx-store__panel{display:flex;flex-direction:column;gap:var(--bw-member-gap)}
+.blueworx-store .blueworx-store__panel[hidden]{display:none}
+.blueworx-store .blueworx-store__quick{display:flex;flex-direction:column;gap:var(--bw-space-3);padding:var(--bw-panel-pad);text-decoration:none;color:var(--bw-text-body);transition:var(--bw-transition-control)}
+.blueworx-store .blueworx-store__quick:hover{border-color:var(--bw-brand);color:var(--bw-text-accent)}
+.blueworx-store .blueworx-store__quick-icon{color:var(--bw-text-accent)}
+.blueworx-store .blueworx-store__quick-title{font-family:var(--bw-font-display);font-size:var(--bw-size-h3);font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading)}
+.blueworx-store .blueworx-store__quick-lede{font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
+
+/* The two-column shell the design draws: the club and the member down the
+   left, full height, with the page head to their right. */
+.blueworx-store .blueworx-store__shell{display:flex;align-items:stretch;min-height:100vh}
+/* Sticky and capped to the window (Task 5): the sidebar stays put while the
+   panel scrolls. overflow:hidden here so only the nav (below) scrolls when
+   it has more items than fit — the brand block and the person block must
+   stay put too. Undone in the phone media query, where the sidebar is a
+   short row, not a full-height column. */
+.blueworx-store .blueworx-store__side{flex:0 0 268px;display:flex;flex-direction:column;gap:var(--bw-space-5);padding:var(--bw-space-7) var(--bw-space-6);border-right:1px solid var(--bw-border);background:var(--bw-surface-card);position:sticky;top:0;height:100vh;overflow:hidden}
+.blueworx-store .blueworx-store__main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.blueworx-store .blueworx-store__head{padding:var(--bw-space-7) var(--bw-space-8)}
+.blueworx-store .bw-panels{padding:var(--bw-space-8);flex:1 1 auto}
+.blueworx-store .blueworx-store__brand{display:flex;align-items:center;gap:var(--bw-space-5);min-width:0;padding-bottom:var(--bw-space-5)}
+.blueworx-store .blueworx-store__brandmark{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:var(--bw-radius-sm);background:var(--bw-brand-wash);color:var(--bw-text-accent);font-family:var(--bw-font-display);font-weight:var(--bw-weight-semibold);overflow:hidden}
+.blueworx-store .blueworx-store__brandmark img{width:100%;height:100%;object-fit:contain}
+.blueworx-store .blueworx-store__brandtext{display:flex;flex-direction:column;min-width:0}
+.blueworx-store .blueworx-store__brandname{font-family:var(--bw-font-display);font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blueworx-store .blueworx-store__brandsub{font-size:var(--bw-size-sm);color:var(--bw-text-muted)}
+/* The phone-only title/lede pair and sign-out link (Tasks 2 and 3), hidden
+   above the phone breakpoint. Must sit before the media query below, same
+   selectors, same specificity, so the query can override them. */
+.blueworx-store .blueworx-store__viewtext{display:none}
+.blueworx-store .blueworx-store__brandsignout{display:none}
+.blueworx-store .blueworx-store__nav{flex:0 0 auto;overflow-y:auto;min-height:0}
+/* The spacer the design uses to push the way out to the foot of the column. */
+/* Takes the whole of .bw-secnav__item's look from the nav above it — all this
+   adds is the push to the foot of the column. */
+.blueworx-store .blueworx-store__back{margin-top:auto}
+.blueworx-store .blueworx-store__person{padding-top:var(--bw-space-5);border-top:1px solid var(--bw-border)}
+.blueworx-store .blueworx-store__avatar{width:36px;height:36px;font-size:var(--bw-size-sm)}
+.blueworx-store .blueworx-store__persontext{min-width:0;overflow:hidden}
+.blueworx-store .bw-person__name,.blueworx-store .bw-person__sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The phone's bottom bar is drawn only on a phone — see the media query in
+   Task 4. Hidden here so a desktop never sees two navs. */
+.blueworx-store .blueworx-store__tabbar{display:none}
+
+/* The phone. The sidebar becomes a fixed bar along the bottom, as the design
+   draws it: five destinations, icon over label, and the page head shrinks to
+   the view's name. 782px is WordPress's own phone breakpoint, which the rest
+   of this stylesheet already uses. */
+@media (max-width:782px){
+	.blueworx-store .blueworx-store__shell{flex-direction:column;min-height:auto}
+	/* Undoes the desktop's sticky, capped-height column (Task 5) — on a phone
+	   the sidebar is a short row, not a full-height rail, and its nav is
+	   already hidden below, so there is nothing left to scroll inside it. */
+	.blueworx-store .blueworx-store__side{flex:none;width:100%;border-right:0;border-bottom:1px solid var(--bw-border);padding:var(--bw-space-5) var(--bw-space-6);gap:var(--bw-space-4);position:static;height:auto}
+	/* The sidebar keeps the club and the member on a phone; its nav is the
+	   bottom bar's job, so only the nav is hidden here. The way out now has an
+	   equivalent in the bar — its last item — so the sidebar's own copy is
+	   hidden too, rather than showing beside the brand twice over. */
+	.blueworx-store .blueworx-store__side .blueworx-store__nav{display:none}
+	.blueworx-store .blueworx-store__side .blueworx-store__back{display:none}
+	/* flex:1 so the sign-out link's margin-left:auto below has room to push it
+	   to the right of the row, rather than sitting flush against the title. */
+	.blueworx-store .blueworx-store__brand{padding-bottom:0;flex:1 1 auto}
+	/* The page head (Task 1) is replaced by the pair drawn in the brand block
+	   instead — see Tasks 2 and 3. */
+	.blueworx-store .blueworx-store__head{display:none}
+	.blueworx-store .blueworx-store__brandtext{display:none}
+	.blueworx-store .blueworx-store__viewtext{display:flex;flex-direction:column;min-width:0}
+	.blueworx-store .blueworx-store__viewtitle{font-family:var(--bw-font-display);font-weight:var(--bw-weight-semibold);color:var(--bw-text-heading);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+	.blueworx-store .blueworx-store__viewlede{font-size:var(--bw-size-sm);color:var(--bw-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+	.blueworx-store .blueworx-store__brandsignout{display:inline-flex;margin-left:auto}
+	/* Who is signed in is desktop-only: a phone's top row is already carrying
+	   the section's name, its description and the way out, and a member does
+	   not need telling whose account they are looking at on their own phone. */
+	.blueworx-store .blueworx-store__person{display:none}
+	.blueworx-store .blueworx-store__side{flex-direction:row;align-items:center}
+	.blueworx-store .bw-panels{padding:var(--bw-space-6)}
+	/* Clear of the fixed bar, so the last card is never trapped behind it. */
+	.blueworx-store .blueworx-store__main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+	.blueworx-store .blueworx-store__tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--bw-surface-card);border-top:1px solid var(--bw-border);padding-bottom:env(safe-area-inset-bottom)}
+	.blueworx-store .blueworx-store__tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:var(--bw-space-4) 2px;color:var(--bw-text-muted);text-decoration:none;font-size:11px;text-align:center}
+	.blueworx-store .blueworx-store__tab.is-active{color:var(--bw-text-accent)}
+	.blueworx-store .blueworx-store__tablabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+}
+
+/* The frame itself. Chrome only — the columns inside are SureCart's. */
+.blueworx-checkout { display: flex; flex-direction: column; min-height: 100dvh; background: var(--bw-surface-page); }
+.blueworx-checkout__head { display: flex; align-items: center; gap: var(--bw-space-6, 24px); padding: 0 var(--bw-space-8, 32px); min-height: 64px; background: var(--bw-surface-card); border-bottom: 1px solid var(--bw-border); }
+.blueworx-checkout__brand { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; }
+.blueworx-checkout__crest { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; border-radius: 8px; object-fit: cover; background: var(--bw-brand-wash); color: var(--bw-text-accent); font-family: var(--bw-font-display); font-size: 13px; font-weight: 700; }
+.blueworx-checkout__titles { display: flex; flex-direction: column; min-width: 0; }
+.blueworx-checkout__club { font-size: 12px; color: var(--bw-text-muted); }
+.blueworx-checkout__h1 { margin: 0; font-family: var(--bw-font-display); font-size: 15px; font-weight: 600; color: var(--bw-text-heading); }
+.blueworx-checkout__secure { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--bw-text-muted); }
+.blueworx-checkout__body { flex: 1 1 auto; }
+.blueworx-checkout__foot { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 14px var(--bw-space-8, 32px); background: var(--bw-surface-card); border-top: 1px solid var(--bw-border); }
+.blueworx-checkout__back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.blueworx-checkout__links { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-left: auto; }
+.blueworx-checkout__links a { font-size: 12px; color: var(--bw-text-muted); text-decoration: none; }
+.blueworx-checkout__links a:hover { color: var(--bw-text-link); }
+.blueworx-checkout__footnote { margin: 0; font-size: 12px; color: var(--bw-text-faint); }
+
+/* On a phone the header stacks and the footer becomes a list, so every link
+   is a full-width target rather than three words wedged against a neighbour. */
+@media (max-width: 640px) {
+  .blueworx-checkout__head { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+  .blueworx-checkout__secure { width: 100%; }
+  .blueworx-checkout__foot { flex-direction: column; align-items: stretch; padding: 16px; }
+  .blueworx-checkout__links { flex-direction: column; align-items: stretch; gap: 0; margin-left: 0; }
+  .blueworx-checkout__links a { display: flex; align-items: center; min-height: 44px; }
+  .blueworx-checkout__back { min-height: 44px; }
+
+  /* The pay bar: stays in view rather than scrolling away with the form.
+     Sticky, not fixed, so it only takes over the bottom of the viewport once
+     the form has scrolled that far, and never covers content on a short
+     phone screen. The fields column gets matching bottom padding so the bar
+     can never sit on top of the last field. */
+  .bw-admin .wp-block-surecart-submit {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin: 0 -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--bw-surface-card);
+    border-top: 1px solid var(--bw-border);
+  }
+  /* The pay button is the primary action on this screen; give it the same
+     44px finger target as the links above rather than the desktop 34px. */
+  .bw-admin sc-order-submit sc-button { --sc-input-height-large: 44px; }
+  .blueworx-checkout__main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+}
+
+/* The two columns are SureCart's own blocks; these give them the member
+   area's rhythm and keep the summary in view while the form is scrolled. */
+.blueworx-checkout__cols { display: flex; align-items: flex-start; gap: 32px; max-width: 1160px; margin: 0 auto; padding: 32px; }
+.blueworx-checkout__main { flex: 1 1 auto; min-width: 0; }
+.blueworx-checkout__rail { flex: 0 0 400px; position: sticky; top: 32px; }
+
+@media (max-width: 900px) {
+  .blueworx-checkout__cols { flex-direction: column; gap: 20px; padding: 16px; }
+  .blueworx-checkout__rail { flex: 1 1 auto; width: 100%; position: static; }
+}

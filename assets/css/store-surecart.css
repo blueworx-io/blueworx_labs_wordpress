@@ -1,0 +1,65 @@
+/*
+ * SureCart's checkout, wearing the store pages' clothes.
+ *
+ * SureCart's fields are Stencil web components and 406 of its 482 components
+ * render into shadow DOM, so an ordinary selector cannot reach the input
+ * inside <sc-input>. Custom properties can — they inherit through the shadow
+ * boundary — and SureCart exposes a generous set of them (thirty-nine on the
+ * text input alone). Setting them on an ancestor is the supported way to theme
+ * the checkout, and it is the only way that survives their updates.
+ *
+ * Scoped to .bw-admin, like store.css, so it cannot reach the site's public
+ * pages. Loaded on the checkout page only — see blueworx_store_wants_surecart_style().
+ *
+ * If SureCart renames a token, the declaration stops applying and their own
+ * default shows through. Ugly for a release, never broken.
+ *
+ * Token names read from SureCart 4.6.4 —
+ * dist/components/collection/components/ui/.
+ */
+
+.bw-admin {
+  /* Type. SureCart sets its own stack on every control. */
+  --sc-font-sans: var(--bw-font-body);
+  --sc-input-font-family: var(--bw-font-body);
+
+  /* Fields, matching .bw-input. */
+  --sc-input-height-small: var(--bw-control-h-sm);
+  --sc-input-height-medium: var(--bw-control-h);
+  --sc-input-height-large: var(--bw-control-h);
+  --sc-input-border-radius-small: var(--bw-control-radius);
+  --sc-input-border-radius-medium: var(--bw-control-radius);
+  --sc-input-border-radius-large: var(--bw-control-radius);
+  --sc-input-border-color: var(--bw-border-field);
+  --sc-input-border-color-hover: var(--bw-border-strong);
+  --sc-input-border-color-focus: var(--bw-brand);
+  --sc-input-background-color: var(--bw-control-bg);
+  --sc-input-background-color-hover: var(--bw-control-bg-hover);
+  --sc-input-color: var(--bw-text-body);
+  --sc-input-placeholder-color: var(--bw-text-faint);
+
+  /* Labels, help and errors. */
+  --sc-input-label-color: var(--bw-text-heading);
+  --sc-input-help-text-color: var(--bw-text-muted);
+  --sc-input-error-text-color: var(--bw-danger);
+
+  /* The focus ring is the one thing a keyboard user depends on. */
+  --sc-focus-ring-color-primary: var(--bw-focus-color);
+  --sc-focus-ring-width: var(--bw-focus-width);
+
+  /* The pay button. */
+  --sc-color-primary-500: var(--bw-brand);
+}
+
+/* The pay button itself. sc-order-submit renders straight into light DOM
+   (SureCart 4.6.4, order-submit/sc-order-submit.js: render() returns
+   h("sc-button", …)), so bw-btn classes on the host would double-paint a
+   button-shaped background behind the real one. <sc-button> is its own
+   shadow-DOM component, so the way in is the same custom properties
+   .bw-input uses (height, radius) plus the font, scoped to just this button
+   rather than every field. */
+.bw-admin sc-order-submit sc-button {
+  --sc-input-height-large: var(--bw-control-h);
+  --sc-input-border-radius-large: var(--bw-control-radius);
+  --sc-input-font-family: var(--bw-font-display);
+}

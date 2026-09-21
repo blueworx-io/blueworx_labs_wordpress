@@ -21,6 +21,8 @@ require_once BLUEWORX_LABS_PATH . 'includes/store/slot.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/views.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/actions.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/shell.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/context.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/assets.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/commerce.php';
 
-// Later tasks add one require_once per file here, in this order:
-// context, assets, commerce, dashboard.
+// Task 7 adds dashboard.php here, after commerce.php.
