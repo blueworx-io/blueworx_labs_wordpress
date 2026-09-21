@@ -140,6 +140,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/login-session.php';
 require_once BLUEWORX_LABS_PATH . 'includes/login-redirect.php';
 require_once BLUEWORX_LABS_PATH . 'includes/view-as-role.php';
 require_once BLUEWORX_LABS_PATH . 'includes/display-names.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/store.php';
 
 /**
  * Puts back what deactivation took away.

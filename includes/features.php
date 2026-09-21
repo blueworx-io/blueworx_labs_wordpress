@@ -30,6 +30,7 @@ function blueworx_get_feature_sections() {
 		'performance'   => __( 'Performance', 'blueworx-labs-wordpress' ),
 		'admin_menu'    => __( 'Admin Menu', 'blueworx-labs-wordpress' ),
 		'appearance'    => __( 'Appearance', 'blueworx-labs-wordpress' ),
+		'store'         => __( 'Store', 'blueworx-labs-wordpress' ),
 	);
 }
 
@@ -251,6 +252,11 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'appearance',
 			'detail'      => 'dashboard_widgets',
 			'guide'       => false,
+		),
+		'store_pages'           => array(
+			'label'       => __( 'Store pages', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Gives SureCart\'s checkout, thank-you and account pages the BlueWorx look, and keeps the four pages SureCart needs present and published. Does nothing until SureCart is installed.', 'blueworx-labs-wordpress' ),
+			'section'     => 'store',
 		),
 	);
 }
