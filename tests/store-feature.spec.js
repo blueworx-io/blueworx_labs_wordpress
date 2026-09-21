@@ -13,7 +13,7 @@ import {
   ADMIN_USER,
   ADMIN_PASS,
   login,
-  openSection,
+  openSectionFor,
   featureIsOn,
 } from './helpers.js';
 
@@ -28,7 +28,7 @@ test.describe('Store pages feature', () => {
   test('is listed under Store and is on by default', async ({ page }) => {
     await login(page);
     await page.goto(SETTINGS_PATH);
-    await openSection(page, 'store');
+    await openSectionFor(page, 'store_pages');
 
     const toggle = page.locator(
       'input.blueworx-feature-toggle[data-blueworx-feature="store_pages"]'
