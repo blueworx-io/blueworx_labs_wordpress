@@ -127,7 +127,7 @@ function blueworx_store_action_block() {
  * @param callable|null $check Null restores the real one.
  * @return void
  */
-function blueworx_store_action_set_check( $check ) {
+function blueworx_store_set_action_check( $check ) {
 	$GLOBALS['blueworx_store_action_check'] = $check;
 }
 
@@ -139,7 +139,7 @@ function blueworx_store_action_set_check( $check ) {
  *
  * @return callable
  */
-function blueworx_store_action_site_check() {
+function blueworx_store_action_check() {
 	if ( isset( $GLOBALS['blueworx_store_action_check'] ) && null !== $GLOBALS['blueworx_store_action_check'] ) {
 		return $GLOBALS['blueworx_store_action_check'];
 	}
@@ -153,7 +153,7 @@ function blueworx_store_action_site_check() {
  *
  * @return array{model:string,action:string}
  */
-function blueworx_store_action_requested() {
+function blueworx_store_requested_action() {
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- reading which screen to draw; SureCart's own controllers check permissions before acting on anything.
 	$model  = isset( $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] ) ? $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] : '';
 	$action = isset( $_GET[ BLUEWORX_STORE_ACTION_ARG ] ) ? $_GET[ BLUEWORX_STORE_ACTION_ARG ] : '';

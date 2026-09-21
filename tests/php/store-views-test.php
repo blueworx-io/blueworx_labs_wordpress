@@ -75,4 +75,10 @@ check( 'payment_method under account', blueworx_store_action_view( 'payment_meth
 check( 'download has no panel', blueworx_store_action_view( 'download' ), '' );
 check( 'the wrapper block', blueworx_store_action_block(), 'surecart/dashboard-page' );
 
+blueworx_store_set_action_check( static fn ( $c, $m ) => true );
+check( 'the installed check is used', blueworx_store_is_action( 'order', 'anything', blueworx_store_action_check() ), true );
+blueworx_store_set_action_check( null );
+$_GET = array();
+check( 'no address means no action', blueworx_store_requested_action(), array( 'model' => '', 'action' => '' ) );
+
 finish();
