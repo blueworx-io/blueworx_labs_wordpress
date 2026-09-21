@@ -107,7 +107,7 @@ function blueworx_store_option_name( $key ) {
 }
 
 /**
- * What state one page is in. Pure — blueworx_store_status() below reads the
+ * What state one page is in. Pure — blueworx_store_page_status() below reads the
  * arguments off the site.
  *
  * @param bool   $shop_active Whether SureCart is here at all.
@@ -131,7 +131,7 @@ function blueworx_store_decide( $shop_active, $page_id, $post_status ) {
 /**
  * Only the pages with something wrong. Pure.
  *
- * @param array $statuses From blueworx_store_statuses().
+ * @param array $statuses From blueworx_store_page_statuses().
  * @return array<string,string>
  */
 function blueworx_store_problems( $statuses ) {
@@ -186,7 +186,7 @@ function blueworx_store_page_id( $key ) {
  * @param string $key Page key.
  * @return string
  */
-function blueworx_store_status( $key ) {
+function blueworx_store_page_status( $key ) {
 	$active  = blueworx_store_surecart_active();
 	$page_id = $active ? blueworx_store_page_id( $key ) : 0;
 	return blueworx_store_decide( $active, $page_id, blueworx_store_post_status( $page_id ) );
@@ -197,10 +197,10 @@ function blueworx_store_status( $key ) {
  *
  * @return array<string,string>
  */
-function blueworx_store_statuses() {
+function blueworx_store_page_statuses() {
 	$out = array();
 	foreach ( array_keys( blueworx_store_pages() ) as $key ) {
-		$out[ $key ] = blueworx_store_status( $key );
+		$out[ $key ] = blueworx_store_page_status( $key );
 	}
 	return $out;
 }
@@ -216,7 +216,7 @@ function blueworx_store_statuses() {
  * @return string
  */
 function blueworx_store_page_url( $key ) {
-	if ( 'ok' !== blueworx_store_status( $key ) || ! function_exists( 'get_permalink' ) ) {
+	if ( 'ok' !== blueworx_store_page_status( $key ) || ! function_exists( 'get_permalink' ) ) {
 		return '';
 	}
 	$url = get_permalink( blueworx_store_page_id( $key ) );
@@ -250,7 +250,7 @@ function blueworx_store_can_seed() {
  * @return bool
  */
 function blueworx_store_repair() {
-	$problems = blueworx_store_problems( blueworx_store_statuses() );
+	$problems = blueworx_store_problems( blueworx_store_page_statuses() );
 
 	foreach ( $problems as $key => $status ) {
 		if ( 'unpublished' === $status ) {
@@ -259,7 +259,7 @@ function blueworx_store_repair() {
 	}
 
 	$still_missing = array_filter(
-		blueworx_store_problems( blueworx_store_statuses() ),
+		blueworx_store_problems( blueworx_store_page_statuses() ),
 		static function ( $status ) {
 			return 'missing' === $status;
 		}
@@ -268,7 +268,7 @@ function blueworx_store_repair() {
 		blueworx_store_seed();
 	}
 
-	return array() === blueworx_store_repairable( blueworx_store_problems( blueworx_store_statuses() ), blueworx_store_pages() );
+	return array() === blueworx_store_repairable( blueworx_store_problems( blueworx_store_page_statuses() ), blueworx_store_pages() );
 }
 
 /**

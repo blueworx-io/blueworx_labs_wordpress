@@ -56,4 +56,9 @@ check( 'and its own block', $page['content'], '<!-- wp:surecart/order-confirmati
 echo "\nThe four pages\n";
 check( 'are checkout, order-confirmation, dashboard, shop', array_keys( $pages ), array( 'checkout', 'order-confirmation', 'dashboard', 'shop' ) );
 
+echo "\nA page's status and statuses, by name\n";
+$GLOBALS['options']['surecart_checkout_page_id'] = 0;
+check( 'status with no shop', blueworx_store_page_status( 'checkout' ), 'no-shop' );
+check( 'statuses cover the four pages', array_keys( blueworx_store_page_statuses() ), array( 'checkout', 'order-confirmation', 'dashboard', 'shop' ) );
+
 finish();
