@@ -17,6 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once BLUEWORX_LABS_PATH . 'includes/store/pages.php';
 require_once BLUEWORX_LABS_PATH . 'includes/store/pages-notice.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/slot.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/views.php';
+require_once BLUEWORX_LABS_PATH . 'includes/store/actions.php';
 
 // Later tasks add one require_once per file here, in this order:
-// slot, views, actions, shell, context, assets, commerce, dashboard.
+// shell, context, assets, commerce, dashboard.
