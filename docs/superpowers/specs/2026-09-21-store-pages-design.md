@@ -209,7 +209,7 @@ Labs, new:
 | `includes/store/slot.php` | `class-plugin-slot.php` |
 | `includes/store/shell.php` | `class-dashboard-shell.php` |
 | `includes/store/assets.php` | `class-dashboard-assets.php` |
-| `templates/store.php` | `templates/commerce.php` |
+| `includes/store/template.php` | `templates/commerce.php` |
 | `assets/css/store.css` | the member-area rules from `assets/bw/bw.css` (the rules that mention `clubhouse-member`), renamed |
 | `assets/css/store-surecart.css` | `assets/bw/surecart.css` |
 | `assets/js/store-dashboard.js` | `assets/js/member-area.js` |
