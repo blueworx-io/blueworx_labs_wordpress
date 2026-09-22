@@ -27,12 +27,12 @@ define( 'BLUEWORX_STORE_CONTENT_PRIORITY', 30 );
  * Which template a page should be served with. Pure.
  *
  * @param string $page_key Empty for any page this plugin does not dress.
- * @param string $default  Whatever WordPress had chosen.
+ * @param string $chosen   Whatever WordPress had chosen.
  * @param string $ours     This plugin's store template.
  * @return string
  */
-function blueworx_store_template_for( $page_key, $default, $ours ) {
-	return '' !== (string) $page_key ? (string) $ours : (string) $default;
+function blueworx_store_template_for( $page_key, $chosen, $ours ) {
+	return '' !== (string) $page_key ? (string) $ours : (string) $chosen;
 }
 
 /**
@@ -111,7 +111,7 @@ function blueworx_store_strip_post_title( $block_content, $block, $instance = nu
  */
 function blueworx_store_dress_content( $content ) {
 	static $rendering = false;
-	$content = (string) $content;
+	$content          = (string) $content;
 	if ( $rendering ) {
 		return $content;
 	}

@@ -57,6 +57,8 @@ function blueworx_store_slot_shortcode( $tag ) {
 }
 
 /**
+ * Draw one slot from a source, or nothing when there is no source.
+ *
  * @param callable|null $source Returns markup for a name, or null when unregistered.
  * @param string        $name   Block name or shortcode tag.
  * @return string

@@ -81,7 +81,7 @@ function blueworx_store_action_views() {
  *
  * @param string   $model  The model named in the address.
  * @param string   $action The action named in the address.
- * @param callable $exists Does this controller have this method?
+ * @param callable $exists Does this controller have this method? Answers a bool.
  * @return bool
  */
 function blueworx_store_is_action( $model, $action, $exists ) {
@@ -155,11 +155,11 @@ function blueworx_store_action_check() {
  */
 function blueworx_store_requested_action() {
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- reading which screen to draw; SureCart's own controllers check permissions before acting on anything.
-	$model  = isset( $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] ) ? $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] : '';
-	$action = isset( $_GET[ BLUEWORX_STORE_ACTION_ARG ] ) ? $_GET[ BLUEWORX_STORE_ACTION_ARG ] : '';
+	$model  = isset( $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] ) && is_string( $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ BLUEWORX_STORE_ACTION_MODEL_ARG ] ) ) : '';
+	$action = isset( $_GET[ BLUEWORX_STORE_ACTION_ARG ] ) && is_string( $_GET[ BLUEWORX_STORE_ACTION_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ BLUEWORX_STORE_ACTION_ARG ] ) ) : '';
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	return array(
-		'model'  => is_string( $model ) ? $model : '',
-		'action' => is_string( $action ) ? $action : '',
+		'model'  => $model,
+		'action' => $action,
 	);
 }

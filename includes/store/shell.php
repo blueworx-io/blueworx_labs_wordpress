@@ -80,13 +80,7 @@ function blueworx_store_view_url( $key, $base = '' ) {
  * alive when the page loads, so a panel fetched later would render as an
  * empty box. Showing and hiding what is already there costs one attribute.
  *
- * @param array{
- *   views:array<int,array<string,mixed>>,
- *   current:string,
- *   panels:array<string,string>,
- *   home_url?:string, site_name?:string, logo_url?:string, base?:string,
- *   logout_url?:string, member_name?:string, member_email?:string
- * } $args Page arguments.
+ * @param array<string,mixed> $args Page arguments: views, current, panels, and optionally home_url, site_name, logo_url, base, logout_url, member_name, member_email.
  * @return string
  */
 function blueworx_store_shell_page( $args ) {
@@ -115,8 +109,8 @@ function blueworx_store_shell_page( $args ) {
  * rather than drawn empty.
  *
  * @param array<int,array<string,mixed>> $views   Views in nav order.
- * @param string                          $current The current view's key.
- * @param array<string,string>            $panels  Rendered panel markup by key.
+ * @param string                         $current The current view's key.
+ * @param array<string,string>           $panels  Rendered panel markup by key.
  * @return string
  */
 function blueworx_store_shell_panels( $views, $current, $panels ) {
@@ -146,9 +140,9 @@ function blueworx_store_shell_panels( $views, $current, $panels ) {
  * signed in as. Full height, as the design draws it.
  *
  * @param array<int,array<string,mixed>> $views   Views in nav order.
- * @param string                          $current The current view's key.
- * @param string                          $base    Base URL to build view links on.
- * @param array<string,mixed>             $args    Page arguments.
+ * @param string                         $current The current view's key.
+ * @param string                         $base    Base URL to build view links on.
+ * @param array<string,mixed>            $args    Page arguments.
  * @return string
  */
 function blueworx_store_shell_sidebar( $views, $current, $base, $args ) {
@@ -257,8 +251,8 @@ function blueworx_store_initials( $name ) {
  * anywhere — leave, or sign out.
  *
  * @param array<int,array<string,mixed>> $views   Views in nav order.
- * @param string                          $current The current view's key.
- * @param array<string,mixed>             $args    Page arguments.
+ * @param string                         $current The current view's key.
+ * @param array<string,mixed>            $args    Page arguments.
  * @return string
  */
 function blueworx_store_shell_head( $views, $current, $args ) {
@@ -291,7 +285,7 @@ function blueworx_store_shell_head( $views, $current, $args ) {
  * an array to read optional keys off of with no isset() of its own.
  *
  * @param array<int,array<string,mixed>> $views Views to search.
- * @param string                          $key   View key.
+ * @param string                         $key   View key.
  * @return array<string,mixed>
  */
 function blueworx_store_shell_view( $views, $key ) {
@@ -344,9 +338,7 @@ function blueworx_store_shell_bare( $title, $lede, $body, $home_url, $site_name 
  *
  * Pure: everything drawn arrives in $args.
  *
- * @param array{site_name?:string, logo_url?:string, home_url?:string,
- *              home_label?:string, body?:string, footnote?:string,
- *              links?:array<int,array{label:string,href:string}>} $args Checkout arguments.
+ * @param array<string,mixed> $args Checkout arguments: site_name, logo_url, home_url, home_label, body, footnote, links (each a label and href).
  * @return string
  */
 function blueworx_store_shell_checkout( $args ) {
@@ -401,10 +393,10 @@ function blueworx_store_shell_checkout_head( $site, $logo ) {
  * announces a navigation landmark holding nothing, which is worse for a
  * screen reader than no nav at all.
  *
- * @param string                                        $home     Address to go home to.
- * @param string                                        $label    Home link label.
- * @param array<int,array{label:string,href:string}>    $links    Footer links.
- * @param string                                        $footnote Footer footnote.
+ * @param string                                     $home     Address to go home to.
+ * @param string                                     $label    Home link label.
+ * @param array<int,array{label:string,href:string}> $links    Footer links.
+ * @param string                                     $footnote Footer footnote.
  * @return string
  */
 function blueworx_store_shell_checkout_foot( $home, $label, $links, $footnote ) {
@@ -442,8 +434,8 @@ function blueworx_store_shell_checkout_foot( $home, $label, $links, $footnote ) 
  * these in place.
  *
  * @param array<int,array<string,mixed>> $views   Views in nav order.
- * @param string                          $current The current view's key.
- * @param string                          $base    Base URL to build view links on.
+ * @param string                         $current The current view's key.
+ * @param string                         $base    Base URL to build view links on.
  * @return string
  */
 function blueworx_store_shell_nav( $views, $current, $base = '' ) {
@@ -475,9 +467,9 @@ function blueworx_store_shell_nav( $views, $current, $base = '' ) {
  * leaves it alone and it navigates for real.
  *
  * @param array<int,array<string,mixed>> $views   Views in nav order.
- * @param string                          $current The current view's key.
- * @param string                          $base    Base URL to build view links on.
- * @param string                          $home    Address to go home to.
+ * @param string                         $current The current view's key.
+ * @param string                         $base    Base URL to build view links on.
+ * @param string                         $home    Address to go home to.
  * @return string
  */
 function blueworx_store_shell_tabbar( $views, $current, $base = '', $home = '' ) {

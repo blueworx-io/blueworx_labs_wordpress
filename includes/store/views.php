@@ -161,7 +161,7 @@ function blueworx_store_normalize_views( $views ) {
 	}
 
 	if ( null === $dashboard_index ) {
-		$defaults    = blueworx_store_default_views();
+		$defaults = blueworx_store_default_views();
 		array_unshift( $out, $defaults[0] );
 	} elseif ( 0 !== $dashboard_index ) {
 		$dashboard = $out[ $dashboard_index ];
@@ -243,8 +243,8 @@ function blueworx_store_views_bar( $views ) {
  * bookmark from before a plugin was removed — lands on the dashboard, which
  * always exists.
  *
- * @param string                          $requested The requested view key.
- * @param array<int,array<string,mixed>>  $available From blueworx_store_views().
+ * @param string                         $requested The requested view key.
+ * @param array<int,array<string,mixed>> $available From blueworx_store_views().
  * @return string
  */
 function blueworx_store_resolve_view( $requested, $available ) {
@@ -260,8 +260,8 @@ function blueworx_store_resolve_view( $requested, $available ) {
 /**
  * One view by key, or null.
  *
- * @param string                          $key   View key.
- * @param array<int,array<string,mixed>>  $views Views to search.
+ * @param string                         $key   View key.
+ * @param array<int,array<string,mixed>> $views Views to search.
  * @return array<string,mixed>|null
  */
 function blueworx_store_find_view( $key, $views ) {

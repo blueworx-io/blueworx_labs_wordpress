@@ -118,9 +118,9 @@ function blueworx_store_route() {
 	}
 	$queried_id   = (int) get_queried_object_id();
 	$dashboard_id = blueworx_store_page_id( 'dashboard' );
-	$asked   = blueworx_store_requested_action();
-	$context = blueworx_store_context();
-	$target  = blueworx_store_redirect_to(
+	$asked        = blueworx_store_requested_action();
+	$context      = blueworx_store_context();
+	$target       = blueworx_store_redirect_to(
 		$queried_id,
 		$dashboard_id,
 		blueworx_store_dashboard_url(),

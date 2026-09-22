@@ -26,9 +26,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * is a shop that was never finished, and four warnings about one cause is
  * four times the noise for no extra information.
  *
- * @param array<string,string>                                  $problems From blueworx_store_problems().
- * @param array<string,array{label:string,consequence:string}>  $pages    From blueworx_store_pages().
- * @param bool                                                  $can_seed Whether SureCart can create what is missing.
+ * @param array<string,string>                                 $problems From blueworx_store_problems().
+ * @param array<string,array{label:string,consequence:string}> $pages    From blueworx_store_pages().
+ * @param bool                                                 $can_seed Whether SureCart can create what is missing.
  * @return array{lines:array<int,string>,button:string,footnote:string}|null Null when nothing is wrong.
  */
 function blueworx_store_notice_message( $problems, $pages, $can_seed ) {
@@ -38,7 +38,7 @@ function blueworx_store_notice_message( $problems, $pages, $can_seed ) {
 
 	$lines = array();
 	foreach ( $problems as $key => $status ) {
-		$page = isset( $pages[ $key ] ) ? $pages[ $key ] : array(
+		$page    = isset( $pages[ $key ] ) ? $pages[ $key ] : array(
 			'label'       => $key,
 			'consequence' => 'it cannot be reached',
 		);
@@ -64,7 +64,7 @@ function blueworx_store_notice_message( $problems, $pages, $can_seed ) {
 			},
 			array_keys( $left )
 		);
-		$footnote = 'Open SureCart and finish setting the shop up — the button above cannot create the '
+		$footnote       = 'Open SureCart and finish setting the shop up — the button above cannot create the '
 			. implode( ' or the ', $missing_labels ) . '.';
 	} elseif ( '' === $button ) {
 		$footnote = 'Open SureCart and finish setting the shop up.';

@@ -385,7 +385,7 @@ function blueworx_store_publish_existing( $page_id ) {
 /**
  * A page's status, or '' when the id points at nothing.
  *
- * get_post_status() answers false for a missing post and a status string
+ * WordPress answers false for a missing post and a status string
  * otherwise, including 'trash' — the case a bare permalink lookup silently
  * turned into a dead link.
  *
