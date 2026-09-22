@@ -33,7 +33,7 @@ const TEST_HOOKS = join(MU_PLUGINS, 'blueworx-store-test-hooks.php');
 const TEST_HOOKS_PHP = `<?php
 /**
  * Plugin Name: BlueWorx store pages test hooks
- * Description: Exercises the five blueworx_store_* filters the way another plugin would. Test fixture only.
+ * Description: Exercises the store pages and Source column filters the way another plugin would. Test fixture only.
  */
 
 add_shortcode( 'bw_store_test_panel', static function () {
@@ -67,6 +67,13 @@ add_filter( 'blueworx_store_checkout_links', static function ( $links ) {
 	$links[] = array( 'label' => 'Fixture terms', 'href' => home_url( '/terms-fixture/' ) );
 	return $links;
 } );
+
+// Names a page in the Pages list's Source column, the way a plugin that
+// built one would.
+add_filter( 'blueworx_page_source', static function ( $label, $post_id ) {
+	$page = get_post( $post_id );
+	return $page && 'claimed-fixture' === $page->post_name ? 'Fixture page' : $label;
+}, 10, 2 );
 
 // Claims the dashboard address only when the request asks it to, so the same
 // site can prove both "dressed here" and "redirected there".

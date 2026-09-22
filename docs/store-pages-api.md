@@ -154,6 +154,24 @@ the feature is off.
 store pages, once they exist: `checkout`, `order-confirmation`, `dashboard`,
 `shop`. It returns `''` if that page is missing or unpublished.
 
+## Name your pages in the Pages list
+
+WordPress's Pages list has a **Source** column. Labs fills it with
+"Commerce page" for the store's four pages. If your plugin builds pages the
+site is served from, name them too:
+
+```php
+add_filter( 'blueworx_page_source', function ( $label, $post_id ) {
+    return my_plugin_owns( $post_id ) ? 'Club page' : $label;
+}, 10, 2 );
+```
+
+Return `$label` unchanged for pages that are not yours — a label another
+plugin gave first is kept. A page with a source is read-only from the list:
+only View and Edit are offered, and trashing or deleting it is refused,
+whichever route the request takes. This column is always on, not part of
+the store pages feature.
+
 ## Testing your integration
 
 `tests/global-setup.js` writes a small mu-plugin that hooks all five
