@@ -399,3 +399,33 @@ function blueworx_store_post_status( $page_id ) {
 	$status = get_post_status( $page_id );
 	return is_string( $status ) ? $status : '';
 }
+
+/**
+ * What the Pages list's Source column calls a store page. Pure.
+ *
+ * Answers only for a page one of the SureCart options names, and never
+ * overrides a label another plugin gave first.
+ *
+ * @param string $label   The label so far.
+ * @param int    $post_id The page.
+ * @return string
+ */
+function blueworx_store_page_source( $label, $post_id ) {
+	if ( '' !== (string) $label ) {
+		return $label;
+	}
+	$post_id = (int) $post_id;
+	if ( $post_id <= 0 ) {
+		return '';
+	}
+	foreach ( array_keys( blueworx_store_pages() ) as $key ) {
+		if ( blueworx_store_page_id( $key ) === $post_id ) {
+			return 'Commerce page';
+		}
+	}
+	return '';
+}
+
+if ( blueworx_feature_enabled( 'store_pages' ) ) {
+	add_filter( 'blueworx_page_source', 'blueworx_store_page_source', 10, 2 );
+}

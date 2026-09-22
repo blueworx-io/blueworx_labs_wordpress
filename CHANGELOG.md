@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.88.0] - 2026-09-22
+
+### Added
+- **A Source column on the Pages list.** It says which plugin built each
+  page — "Commerce page" for the shop's checkout, thank-you, account and
+  shop pages — and any page with a source can only be viewed or edited from
+  the list: trashing or deleting it is refused, whichever way it is asked.
+  Other BlueWorx plugins name their own pages through the
+  `blueworx_page_source` filter.
+
 ## [1.87.0] - 2026-09-21
 
 ### Added
