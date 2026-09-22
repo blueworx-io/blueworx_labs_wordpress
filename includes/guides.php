@@ -1909,6 +1909,25 @@ function blueworx_get_feature_guide_tasks() {
 				),
 			),
 		),
+
+		'store_pages'     => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Finding your store\'s pages' ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'Pages' ),
+						'intro' => $t( 'Your store needs four pages: Shop, Checkout, Thank you and Dashboard. SureCart makes them, and BlueWorx keeps them dressed and published.' ),
+						'steps' => array(
+							$t( 'Open *Pages* and look for *Shop*, *Checkout*, *Thank you!* and *Dashboard*.' ),
+							$t( 'If a yellow notice at the top of the admin says one is missing or in the trash, press *Put the missing pages back*.' ),
+							$t( 'Open your site\'s checkout by pressing any Buy button.' ),
+						),
+						'then'  => $t( 'The checkout, the thank-you page and a customer\'s account page all wear the BlueWorx look. Leave those four pages alone: if you edit or delete one, the notice will tell you.' ),
+					)
+				),
+			),
+		),
 	);
 }
 
@@ -2065,6 +2084,7 @@ function blueworx_guide_tab_capability( $tab ) {
 		'performance'     => 'manage_options',
 		'admin_menu'      => 'manage_options',
 		'appearance'      => 'edit_theme_options',
+		'store'           => 'manage_options',
 
 		// The other products' topics. Same rule: the capability somebody needs
 		// to do the thing the guide describes, so the role pills on the card are

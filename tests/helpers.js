@@ -221,6 +221,7 @@ const FEATURE_SECTIONS = {
   admin_bar: 'appearance',
   display_names: 'appearance',
   dashboard_widgets: 'appearance',
+  store_pages: 'store',
 };
 
 /**

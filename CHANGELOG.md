@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.87.0] - 2026-09-21
+
+### Added
+- **Store pages.** SureCart's checkout, thank-you and account pages now wear
+  the BlueWorx look, and the four pages SureCart needs are kept present and
+  published, with a one-button repair if one goes missing. On by default;
+  does nothing until SureCart is installed.
+- **Other BlueWorx plugins can add to the account page.** A plugin can add
+  its own panel, change what a panel shows, supply the site's logo and links,
+  or serve the account page at its own address. See docs/store-pages-api.md.
+
 ## [1.86.0] - 2026-09-14
 
 ### Changed
