@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.88.1] - 2026-09-22
+
+### Fixed
+- **The customer account page kept the shop's own layout.** A freshly made
+  account page carries SureCart's template, which it put back after ours had
+  been chosen, so the page came back wrapped in the site's header and footer
+  instead of the BlueWorx frame. Ours is now chosen last.
+
 ## [1.88.0] - 2026-09-22
 
 ### Added
