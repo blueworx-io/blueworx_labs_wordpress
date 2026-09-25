@@ -11,31 +11,70 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Closes comments on the front end for all post types.
+ * Post types that keep their own comment setting while comments are off.
  *
- * @param bool $open Whether comments are open.
- * @return bool Always false.
+ * SureDash runs its community on these: spaces, feed posts and lesson content.
+ * Its own "Allow Comments" switch decides there.
+ *
+ * @return string[] Post type names.
  */
-function blueworx_disable_comments_status( $open ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $open is required by the "comments_open"/"pings_open" filter callback signature; this implementation always returns false regardless of the incoming value.
-	return false;
-}
-if ( blueworx_feature_enabled( 'comments' ) ) {
-	add_filter( 'comments_open', 'blueworx_disable_comments_status', 20 );
-	add_filter( 'pings_open', 'blueworx_disable_comments_status', 20 );
+function blueworx_comments_allowed_post_types() {
+	/**
+	 * Filters the post types left alone by "Comments disabled".
+	 *
+	 * @param string[] $post_types Post type names.
+	 */
+	return (array) apply_filters( 'blueworx_comments_allowed_post_types', array( 'portal', 'community-post', 'community-content' ) );
 }
 
 /**
- * Returns an empty comments array to suppress existing comments from displaying.
+ * Whether a post keeps its own comment setting.
  *
- * @param array $comments Existing comments.
- * @return array Always empty.
+ * @param int|WP_Post|null $post Post ID or object.
+ * @return bool
  */
-function blueworx_disable_comments_hide_existing( $comments ) {
-	$comments = array();
-	return $comments;
+function blueworx_comments_allowed_for( $post ) {
+	$post_type = $post ? get_post_type( $post ) : false;
+	return $post_type && in_array( $post_type, blueworx_comments_allowed_post_types(), true );
+}
+
+/**
+ * Closes comments on the front end, except where they are left alone.
+ *
+ * @param bool             $open    Whether comments are open.
+ * @param int|WP_Post|null $post_id Post ID or object.
+ * @return bool
+ */
+function blueworx_disable_comments_status( $open, $post_id = null ) {
+	return blueworx_comments_allowed_for( $post_id ) ? $open : false;
+}
+
+/**
+ * Closes trackbacks and pingbacks everywhere.
+ *
+ * @param bool $open Whether pings are open.
+ * @return bool Always false.
+ */
+function blueworx_disable_comments_pings( $open ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $open is required by the "pings_open" filter callback signature.
+	return false;
 }
 if ( blueworx_feature_enabled( 'comments' ) ) {
-	add_filter( 'comments_array', 'blueworx_disable_comments_hide_existing', 10 );
+	add_filter( 'comments_open', 'blueworx_disable_comments_status', 20, 2 );
+	add_filter( 'pings_open', 'blueworx_disable_comments_pings', 20 );
+}
+
+/**
+ * Hides existing comments, except where comments are left alone.
+ *
+ * @param array $comments Existing comments.
+ * @param int   $post_id  Post ID.
+ * @return array
+ */
+function blueworx_disable_comments_hide_existing( $comments, $post_id = 0 ) {
+	return blueworx_comments_allowed_for( $post_id ) ? $comments : array();
+}
+if ( blueworx_feature_enabled( 'comments' ) ) {
+	add_filter( 'comments_array', 'blueworx_disable_comments_hide_existing', 10, 2 );
 }
 
 /**
@@ -107,12 +146,12 @@ if ( blueworx_feature_enabled( 'comments' ) ) {
 }
 
 /**
- * Removes comment support from all registered post types.
+ * Removes comment support from every post type except those left alone.
  *
  * @return void
  */
 function blueworx_disable_comments_post_types_support() {
-	$post_types = get_post_types();
+	$post_types = array_diff( get_post_types(), blueworx_comments_allowed_post_types() );
 	foreach ( $post_types as $post_type ) {
 		if ( post_type_supports( $post_type, 'comments' ) ) {
 			remove_post_type_support( $post_type, 'comments' );
