@@ -149,7 +149,7 @@ function blueworx_get_feature_definitions() {
 		),
 		'comments'              => array(
 			'label'       => __( 'Comments disabled', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Turns comments off and removes comment areas from the admin screens.', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Turns comments off and removes comment areas from the admin screens. SureDash spaces and posts keep their own Allow Comments setting.', 'blueworx-labs-wordpress' ),
 			'section'     => 'content',
 			'detail'      => null,
 			'guide'       => false,

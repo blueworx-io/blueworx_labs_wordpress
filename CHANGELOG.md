@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.88.2] - 2026-09-25
+
+### Fixed
+- **SureDash comments work again with "Comments disabled" on.** Comments stay
+  off across the rest of the site, but SureDash spaces and posts now follow
+  their own Allow Comments setting.
+
 ## [1.88.0] - 2026-09-22
 
 ### Added

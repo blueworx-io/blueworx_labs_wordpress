@@ -28,6 +28,7 @@ const SCRIPTS = [
   'app-screens-test.php',
   'readonly-access-test.php',
   'external-access-test.php',
+  'disable-comments-test.php',
 ];
 
 let phpAvailable = true;
