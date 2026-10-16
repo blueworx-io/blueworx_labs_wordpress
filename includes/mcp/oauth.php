@@ -841,15 +841,15 @@ function blueworx_mcp_request_params() {
  * in yet, and the MCP endpoint checks its own token. Every other address keeps
  * whatever Site Protection decided.
  *
- * @param bool $protected Whether Site Protection applies to this request.
+ * @param bool $applies Whether Site Protection applies to this request.
  * @return bool
  */
-function blueworx_mcp_exempt_from_site_protection( $protected ) {
-	if ( $protected && blueworx_feature_enabled( 'mcp' ) && '' !== blueworx_mcp_current_route() ) {
+function blueworx_mcp_exempt_from_site_protection( $applies ) {
+	if ( $applies && blueworx_feature_enabled( 'mcp' ) && '' !== blueworx_mcp_current_route() ) {
 		return false;
 	}
 
-	return $protected;
+	return $applies;
 }
 add_filter( 'blueworx_site_protection_applies', 'blueworx_mcp_exempt_from_site_protection' );
 
@@ -1191,7 +1191,15 @@ function blueworx_mcp_handle_authorize( $method ) {
 	$state  = isset( $params['state'] ) ? $params['state'] : '';
 
 	if ( null !== $check['error'] ) {
-		wp_redirect( blueworx_mcp_redirect_with( $params['redirect_uri'], array( 'error' => $check['error'], 'state' => $state ) ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- a registered client address, checked above.
+		wp_redirect( // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- a registered client address, checked above.
+			blueworx_mcp_redirect_with(
+				$params['redirect_uri'],
+				array(
+					'error' => $check['error'],
+					'state' => $state,
+				)
+			)
+		);
 		exit;
 	}
 
@@ -1216,7 +1224,15 @@ function blueworx_mcp_handle_authorize( $method ) {
 	check_admin_referer( 'blueworx_mcp_authorize_' . $client['client_id'] );
 
 	if ( empty( $_POST['blueworx_mcp_allow'] ) ) {
-		wp_redirect( blueworx_mcp_redirect_with( $params['redirect_uri'], array( 'error' => 'access_denied', 'state' => $state ) ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- a registered client address, checked above.
+		wp_redirect( // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- a registered client address, checked above.
+			blueworx_mcp_redirect_with(
+				$params['redirect_uri'],
+				array(
+					'error' => 'access_denied',
+					'state' => $state,
+				)
+			)
+		);
 		exit;
 	}
 
@@ -1235,7 +1251,15 @@ function blueworx_mcp_handle_authorize( $method ) {
 		BLUEWORX_MCP_CODE_TTL
 	);
 
-	wp_redirect( blueworx_mcp_redirect_with( $params['redirect_uri'], array( 'code' => $code, 'state' => $state ) ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- a registered client address, checked above.
+	wp_redirect( // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- a registered client address, checked above.
+		blueworx_mcp_redirect_with(
+			$params['redirect_uri'],
+			array(
+				'code'  => $code,
+				'state' => $state,
+			)
+		)
+	);
 	exit;
 }
 

@@ -208,7 +208,13 @@ function blueworx_mcp_handle_message( $message, $grant ) {
 function blueworx_mcp_content_types() {
 	$types = array();
 
-	foreach ( get_post_types( array( 'show_in_rest' => true, 'show_ui' => true ), 'objects' ) as $type ) {
+	foreach ( get_post_types(
+		array(
+			'show_in_rest' => true,
+			'show_ui'      => true,
+		),
+		'objects'
+	) as $type ) {
 		if ( 'attachment' === $type->name || ( 0 === strpos( $type->name, 'wp_' ) && 'wp_block' !== $type->name ) ) {
 			continue;
 		}
@@ -231,7 +237,13 @@ function blueworx_mcp_content_types() {
 function blueworx_mcp_taxonomies() {
 	$taxonomies = array();
 
-	foreach ( get_taxonomies( array( 'show_in_rest' => true, 'show_ui' => true ), 'objects' ) as $tax ) {
+	foreach ( get_taxonomies(
+		array(
+			'show_in_rest' => true,
+			'show_ui'      => true,
+		),
+		'objects'
+	) as $tax ) {
 		$taxonomies[ $tax->name ] = array(
 			'rest_base' => ! empty( $tax->rest_base ) ? $tax->rest_base : $tax->name,
 			'namespace' => ! empty( $tax->rest_namespace ) ? $tax->rest_namespace : 'wp/v2',
