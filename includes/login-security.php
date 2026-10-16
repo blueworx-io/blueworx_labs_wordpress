@@ -220,8 +220,11 @@ function blueworx_is_custom_login_request_path( $path ) {
 function blueworx_custom_login_url( $login_url, $redirect, $force_reauth ) {
 	$custom = home_url( '/' . blueworx_login_slug() . '/' );
 
+	// Encoded the way core's own wp_login_url() encodes it. Left raw, a return
+	// address carrying its own query string — the Connect Claude consent screen,
+	// a booking link — lost everything after its first "&".
 	if ( $redirect ) {
-		$custom = add_query_arg( 'redirect_to', $redirect, $custom );
+		$custom = add_query_arg( 'redirect_to', rawurlencode( $redirect ), $custom );
 	}
 	if ( $force_reauth ) {
 		$custom = add_query_arg( 'reauth', '1', $custom );

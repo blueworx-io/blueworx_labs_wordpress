@@ -29,6 +29,7 @@ const SCRIPTS = [
   'readonly-access-test.php',
   'external-access-test.php',
   'disable-comments-test.php',
+  'mcp-oauth-test.php',
 ];
 
 let phpAvailable = true;

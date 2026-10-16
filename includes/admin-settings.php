@@ -66,6 +66,17 @@ function blueworx_register_settings_page() {
 		'blueworx_render_support_page'
 	);
 
+	// Listed while the function is on, reachable but unlisted while it is off,
+	// the same as single sign-on, so the screen can explain itself.
+	add_submenu_page(
+		blueworx_feature_enabled( 'mcp' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Connect Claude', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Connect Claude', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-mcp',
+		'blueworx_render_mcp_page'
+	);
+
 	// Registered under the BlueWorx menu while the function is on, and under no
 	// parent while it is off — the same treatment single sign-on gets, and for
 	// the same reason: the address keeps working so the screen can explain
@@ -948,6 +959,16 @@ function blueworx_get_feature_detail_html( $key ) {
 				'label' => __( 'Open Support access page', 'blueworx-labs-wordpress' ),
 				'icon'  => 'key',
 				'href'  => admin_url( 'admin.php?page=blueworx-support' ),
+			)
+		);
+	}
+
+	if ( 'mcp' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Connect Claude page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'plug',
+				'href'  => admin_url( 'admin.php?page=blueworx-mcp' ),
 			)
 		);
 	}
