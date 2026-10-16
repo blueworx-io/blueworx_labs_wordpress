@@ -90,6 +90,14 @@ function blueworx_get_feature_definitions() {
 			'detail'      => null,
 			'default'     => '0',
 		),
+		'mcp'                   => array(
+			'label'       => __( 'Connect Claude', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Lets an administrator connect Claude to this site, so Claude can read and edit pages, posts and other content. Each connection is approved on this site and can be cut off at any time. Files, plugins, themes, settings and users stay out of reach.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => 'mcp',
+			'default'     => '0',
+			'guide'       => false,
+		),
 		'user_roles'            => array(
 			'label'       => __( 'Flexible user roles', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Lists roles alphabetically on the add-user and edit-user screens, and lets one user hold more than one role at a time.', 'blueworx-labs-wordpress' ),

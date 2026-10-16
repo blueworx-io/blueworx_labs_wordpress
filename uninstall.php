@@ -77,3 +77,10 @@ delete_metadata( 'user', 0, '_blueworx_external_invited_at', '', true );
 delete_metadata( 'user', 0, '_blueworx_external_expires_at', '', true );
 delete_metadata( 'user', 0, '_blueworx_external_note', '', true );
 delete_metadata( 'user', 0, '_blueworx_external_last_seen', '', true );
+
+// Connect Claude: every client registration, connection and log entry, and
+// the switch. The one-time codes are transients that expire within minutes.
+delete_option( 'blueworx_feature_mcp' );
+delete_option( 'blueworx_mcp_clients' );
+delete_option( 'blueworx_mcp_grants' );
+delete_option( 'blueworx_mcp_log' );

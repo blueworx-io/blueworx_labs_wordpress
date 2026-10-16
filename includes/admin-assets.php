@@ -48,6 +48,8 @@ function blueworx_admin_design_screens() {
 		'blueworx_page_blueworx-edit-menu',
 		'blueworx_page_blueworx-cache',
 		'blueworx_page_blueworx-support',
+		'blueworx_page_blueworx-mcp',
+		'admin_page_blueworx-mcp',
 		// Single sign-on and its log are each named twice on purpose: they hang
 		// off the BlueWorx menu while sign-on is on, and off no parent at all
 		// while it is off, and the hook suffix is different in each case. Named
@@ -209,6 +211,8 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 		'toplevel_page_blueworx-guides',
 		'blueworx_page_blueworx-support',
 		'blueworx_page_blueworx-sso',
+		'blueworx_page_blueworx-mcp',
+		'admin_page_blueworx-mcp',
 		'blueworx_page_blueworx-external',
 		'profile.php',
 		'user-edit.php',
@@ -384,7 +388,7 @@ function blueworx_enqueue_admin_assets( $hook_suffix ) {
 
 	// Support access and single sign-on both render a copy field on their own
 	// page now, not just inside the Enhancements panel.
-	if ( in_array( $hook_suffix, array( 'blueworx_page_blueworx-support', 'blueworx_page_blueworx-sso' ), true ) ) {
+	if ( in_array( $hook_suffix, array( 'blueworx_page_blueworx-support', 'blueworx_page_blueworx-sso', 'blueworx_page_blueworx-mcp', 'admin_page_blueworx-mcp' ), true ) ) {
 		wp_enqueue_script(
 			'blueworx-labs-wordpress-copy-field',
 			BLUEWORX_LABS_URL . 'assets/js/copy-field.js',

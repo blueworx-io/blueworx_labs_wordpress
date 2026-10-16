@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.90.0] - 2026-10-16
+
+### Added
+- **Connect Claude.** A new switch (off by default) under BlueWorx →
+  Connect Claude lets an administrator add the site to Claude as a custom
+  connector. Claude asks the administrator to sign in and approve it on the
+  site, then can read, create and edit pages, posts and other content, move
+  items to the bin, and add categories and tags. It cannot upload or delete
+  files, or touch plugins, themes, settings or users. Only administrators can
+  approve a connection; each one is listed with a Disconnect button, recent
+  changes made through it are shown on the same screen, and switching the
+  function off disconnects everyone. See docs/mcp-setup-guide.md.
+
+### Fixed
+- **Sign-in links keep their whole return address.** With the custom login
+  URL on, a link back to a page whose address had more than one setting in it
+  lost everything after the first one once you signed in.
+
 ## [1.89.0] - 2026-10-02
 
 ### Changed
