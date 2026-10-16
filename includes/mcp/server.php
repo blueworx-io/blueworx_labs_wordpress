@@ -77,7 +77,7 @@ function blueworx_mcp_handle_mcp_request( $method ) {
 	}
 
 	// A JSON array is a batch (allowed in 2025-03-26); an object is one message.
-	$is_batch  = array_is_list( $body ) && ! empty( $body );
+	$is_batch  = ! empty( $body ) && blueworx_mcp_is_list( $body );
 	$messages  = $is_batch ? $body : array( $body );
 	$responses = array();
 

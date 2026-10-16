@@ -2,7 +2,18 @@
 // that opts out of core's wp-admin view transitions.
 import { createHash, randomBytes } from 'node:crypto';
 
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, baseURL, login } from './helpers.js';
+import {
+  test,
+  expect,
+  isPlaceholder,
+  ADMIN_USER,
+  ADMIN_PASS,
+  baseURL,
+  login,
+  LOGIN_PATH,
+  setFeature,
+  saveEnhancements,
+} from './helpers.js';
 
 /**
  * Connect Claude: the whole journey an MCP client makes, end to end.
@@ -14,6 +25,7 @@ import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, baseURL, login } f
  */
 
 const SCREEN = '/wp-admin/admin.php?page=blueworx-mcp';
+const SETTINGS = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 const MCP = `${baseURL}/blueworx-mcp`;
 // A client address that resolves nowhere, so the test never leaves the machine.
 const REDIRECT = 'https://mcp-client.invalid/callback';
@@ -43,6 +55,101 @@ async function callTool(request, token, name, args) {
   return body.result;
 }
 
+/**
+ * Fetches a discovery document, or null where the test server cannot serve it.
+ *
+ * PHP's built-in server, which the local and CI test sites run on, answers any
+ * address under a dot-folder with its own 404 before WordPress sees it. Real
+ * hosts pass these addresses through. Only that exact refusal is excused, so a
+ * real 404 from the plugin still fails; tests/php/mcp-oauth-test.php checks the
+ * documents' content either way.
+ */
+async function wellKnown(request, name) {
+  const response = await request.get(`${baseURL}/.well-known/${name}`);
+  if (!response.ok() && (await response.text()).includes('was not found on this server')) {
+    return null;
+  }
+  expect(response.status()).toBe(200);
+  return response.json();
+}
+
+/**
+ * Registers once per run and reuses it. Registration is limited per address,
+ * so a spec that registered in every test would lock out its own reruns.
+ */
+let registered = null;
+
+async function register(request) {
+  if (!registered) {
+    const server = (await wellKnown(request, 'oauth-authorization-server')) || {
+      authorization_endpoint: `${baseURL}/blueworx-oauth/authorize`,
+      token_endpoint: `${baseURL}/blueworx-oauth/token`,
+      registration_endpoint: `${baseURL}/blueworx-oauth/register`,
+      code_challenge_methods_supported: ['S256'],
+    };
+    const registration = await request.post(server.registration_endpoint, {
+      data: { client_name: 'Claude', redirect_uris: [REDIRECT], token_endpoint_auth_method: 'none' },
+    });
+    expect(registration.status()).toBe(201);
+    registered = { server, clientId: (await registration.json()).client_id };
+  }
+  return registered;
+}
+
+function authorizeUrl(server, clientId, state) {
+  const verifier = b64url(randomBytes(40));
+  const challenge = b64url(createHash('sha256').update(verifier).digest());
+  const url = new URL(server.authorization_endpoint);
+  Object.entries({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: REDIRECT,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state,
+    resource: MCP,
+  }).forEach(([key, value]) => url.searchParams.set(key, value));
+  return { url: url.toString(), verifier, challenge };
+}
+
+/**
+ * The administrator approves on this site, and Claude swaps the code. Claude's
+ * own callback is not reachable from the test, so the redirect is caught
+ * rather than followed.
+ */
+async function approve(page, request, server, clientId) {
+  const { url, verifier } = authorizeUrl(server, clientId, 'test-state');
+
+  let callback = '';
+  const watch = (req) => {
+    if (req.url().startsWith(REDIRECT)) {
+      callback = req.url();
+    }
+  };
+  page.on('request', watch);
+
+  await page.goto(url);
+  await expect(page.getByRole('heading', { name: /Connect Claude to this site/ })).toBeVisible();
+  await page.locator('[data-testid="bw-mcp-allow"]').click();
+  await expect.poll(() => callback).toContain('code=');
+  page.off('request', watch);
+
+  const returned = new URL(callback);
+  expect(returned.searchParams.get('state')).toBe('test-state');
+
+  const tokenResponse = await request.post(server.token_endpoint, {
+    form: {
+      grant_type: 'authorization_code',
+      code: returned.searchParams.get('code'),
+      redirect_uri: REDIRECT,
+      client_id: clientId,
+      code_verifier: verifier,
+    },
+  });
+  expect(tokenResponse.status()).toBe(200);
+  return tokenResponse.json();
+}
+
 test.describe('Connect Claude', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
@@ -70,59 +177,22 @@ test.describe('Connect Claude', () => {
       expect(bare.status()).toBe(401);
       expect(bare.headers()['www-authenticate']).toContain('resource_metadata=');
 
-      const resource = await (await request.get(`${baseURL}/.well-known/oauth-protected-resource`)).json();
-      expect(resource.resource).toBe(MCP);
+      const resource = await wellKnown(request, 'oauth-protected-resource');
+      if (resource) {
+        expect(resource.resource).toBe(MCP);
+      }
 
-      const server = await (await request.get(`${baseURL}/.well-known/oauth-authorization-server`)).json();
+      const { server, clientId } = await register(request);
       expect(server.code_challenge_methods_supported).toEqual(['S256']);
 
-      const registration = await request.post(server.registration_endpoint, {
-        data: { client_name: 'Claude', redirect_uris: [REDIRECT], token_endpoint_auth_method: 'none' },
+      // An unknown client is told so in a way strict OAuth libraries accept.
+      const stranger = await request.post(server.token_endpoint, {
+        form: { grant_type: 'authorization_code', client_id: 'bwx_nobody', code: 'x' },
       });
-      expect(registration.status()).toBe(201);
-      const { client_id: clientId } = await registration.json();
+      expect(stranger.status()).toBe(401);
+      expect(stranger.headers()['www-authenticate']).toContain('Basic');
 
-      // The administrator approves on this site. Claude's own callback is not
-      // reachable from the test, so the redirect is caught rather than followed.
-      const verifier = b64url(randomBytes(40));
-      const challenge = b64url(createHash('sha256').update(verifier).digest());
-      const authorize = new URL(server.authorization_endpoint);
-      Object.entries({
-        response_type: 'code',
-        client_id: clientId,
-        redirect_uri: REDIRECT,
-        code_challenge: challenge,
-        code_challenge_method: 'S256',
-        state: 'test-state',
-        resource: MCP,
-      }).forEach(([key, value]) => authorize.searchParams.set(key, value));
-
-      let callback = '';
-      page.on('request', (req) => {
-        if (req.url().startsWith(REDIRECT)) {
-          callback = req.url();
-        }
-      });
-
-      await page.goto(authorize.toString());
-      await expect(page.getByRole('heading', { name: /Connect Claude to this site/ })).toBeVisible();
-      await page.locator('[data-testid="bw-mcp-allow"]').click();
-      await expect.poll(() => callback).toContain('code=');
-
-      const returned = new URL(callback);
-      expect(returned.searchParams.get('state')).toBe('test-state');
-
-      const tokenResponse = await request.post(server.token_endpoint, {
-        form: {
-          grant_type: 'authorization_code',
-          code: returned.searchParams.get('code'),
-          redirect_uri: REDIRECT,
-          client_id: clientId,
-          code_verifier: verifier,
-        },
-      });
-      expect(tokenResponse.status()).toBe(200);
-      const { access_token: token } = await tokenResponse.json();
+      const { access_token: token } = await approve(page, request, server, clientId);
 
       const init = await rpc(request, token, 'initialize', { protocolVersion: '2025-06-18', capabilities: {} });
       expect(init.body.result.serverInfo.name).toBe('blueworx-wordpress');
@@ -158,6 +228,59 @@ test.describe('Connect Claude', () => {
 
       expect((await rpc(request, token, 'ping')).status).toBe(401);
     } finally {
+      await setSwitch(page, false);
+    }
+  });
+
+  test('switching off from Enhancements disconnects everyone too', async ({ page, request }) => {
+    await login(page);
+    await setSwitch(page, true);
+
+    try {
+      const { server, clientId } = await register(request);
+      const { access_token: token } = await approve(page, request, server, clientId);
+      expect((await rpc(request, token, 'ping')).status).toBe(200);
+
+      await page.goto(SETTINGS);
+      await setFeature(page, 'mcp', false);
+      await saveEnhancements(page);
+
+      // Back on again: the old connection must not come back with it.
+      await setSwitch(page, true);
+      expect((await rpc(request, token, 'ping')).status).toBe(401);
+      await expect(page.getByText('Nothing connected yet')).toBeVisible();
+    } finally {
+      await setSwitch(page, false);
+    }
+  });
+
+  test('a signed-out administrator signs in and lands back on the consent screen', async ({ page, request, browser }) => {
+    await login(page);
+    await setSwitch(page, true);
+
+    // A browser with nobody signed in, as when Claude opens the site.
+    const context = await browser.newContext();
+
+    try {
+      const { server, clientId } = await register(request);
+      const { url, challenge } = authorizeUrl(server, clientId, 'signed-out-state');
+
+      const fresh = await context.newPage();
+      await fresh.goto(url);
+
+      // The custom login screen, which must carry the whole consent address:
+      // it used to keep only what came before the address's first "&".
+      expect(fresh.url()).toContain(LOGIN_PATH);
+      await fresh.fill('#user_login', ADMIN_USER);
+      await fresh.fill('#user_pass', ADMIN_PASS);
+      await fresh.click('#wp-submit');
+
+      await expect(fresh.getByRole('heading', { name: /Connect Claude to this site/ })).toBeVisible();
+      await expect(fresh.locator('input[name="state"]')).toHaveValue('signed-out-state');
+      await expect(fresh.locator('input[name="code_challenge"]')).toHaveValue(challenge);
+      await expect(fresh.locator('input[name="resource"]')).toHaveValue(MCP);
+    } finally {
+      await context.close();
       await setSwitch(page, false);
     }
   });

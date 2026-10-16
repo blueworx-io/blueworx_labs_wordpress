@@ -83,4 +83,6 @@ delete_metadata( 'user', 0, '_blueworx_external_last_seen', '', true );
 delete_option( 'blueworx_feature_mcp' );
 delete_option( 'blueworx_mcp_clients' );
 delete_option( 'blueworx_mcp_grants' );
+delete_option( 'blueworx_mcp_last_used' );
+delete_option( 'blueworx_mcp_revoked_at' );
 delete_option( 'blueworx_mcp_log' );

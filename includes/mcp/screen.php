@@ -17,7 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Saves the switch, and the revoke buttons.
  *
  * Switching the function off also removes every connection, so turning it
- * back on later never quietly revives an old one.
+ * back on later never quietly revives an old one. That happens in
+ * blueworx_mcp_revoke_on_switch_off(), whichever screen the switch is used on.
  *
  * @return void
  */
@@ -33,13 +34,7 @@ function blueworx_mcp_handle_screen_actions() {
 	$do = isset( $_POST['blueworx_mcp_do'] ) ? sanitize_key( wp_unslash( $_POST['blueworx_mcp_do'] ) ) : '';
 
 	if ( 'toggle' === $do ) {
-		$on = ! empty( $_POST['blueworx_mcp_feature'] );
-
-		blueworx_set_feature_enabled( 'mcp', $on );
-
-		if ( ! $on ) {
-			blueworx_mcp_revoke_all();
-		}
+		blueworx_set_feature_enabled( 'mcp', ! empty( $_POST['blueworx_mcp_feature'] ) );
 	} elseif ( 'revoke' === $do && isset( $_POST['blueworx_mcp_grant'] ) ) {
 		blueworx_mcp_revoke_grant( sanitize_text_field( wp_unslash( $_POST['blueworx_mcp_grant'] ) ) );
 	} elseif ( 'revoke_all' === $do ) {
@@ -54,6 +49,9 @@ add_action( 'admin_post_blueworx_mcp_screen', 'blueworx_mcp_handle_screen_action
 /**
  * Formats a stored UTC timestamp in the site's time.
  *
+ * Uses wp_date() rather than adding the site's offset by hand: the offset today
+ * is not the offset on the day, so a summer time showed an hour out in winter.
+ *
  * @param int $time Timestamp.
  * @return string Date and time, or a dash for never.
  */
@@ -62,7 +60,7 @@ function blueworx_mcp_format_time( $time ) {
 		return '—';
 	}
 
-	return date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $time + (int) ( (float) get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS ) );
+	return (string) wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $time );
 }
 
 /**
@@ -85,6 +83,7 @@ function blueworx_mcp_user_name( $user_id ) {
 function blueworx_render_mcp_page() {
 	$on     = blueworx_feature_enabled( 'mcp' );
 	$grants = $on ? blueworx_mcp_get_grants() : array();
+	$used   = blueworx_mcp_get_last_used();
 	$action = esc_url( admin_url( 'admin-post.php' ) );
 	$nonce  = wp_nonce_field( 'blueworx_mcp_screen', '_wpnonce', true, false );
 
@@ -209,7 +208,7 @@ function blueworx_render_mcp_page() {
 				)
 			) . '</span></td>';
 			echo '<td>' . esc_html( blueworx_mcp_user_name( $grant['user_id'] ) ) . '</td>';
-			echo '<td>' . esc_html( blueworx_mcp_format_time( $grant['last_used'] ?? 0 ) ) . '</td>';
+			echo '<td>' . esc_html( blueworx_mcp_format_time( $used[ $grant_id ] ?? 0 ) ) . '</td>';
 			echo '<td><form method="post" action="' . $action . '">' . $nonce; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above.
 			echo '<input type="hidden" name="action" value="blueworx_mcp_screen" /><input type="hidden" name="blueworx_mcp_do" value="revoke" />';
 			echo '<input type="hidden" name="blueworx_mcp_grant" value="' . esc_attr( $grant_id ) . '" />';

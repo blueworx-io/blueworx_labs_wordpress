@@ -51,11 +51,29 @@ const BLUEWORX_MCP_REFRESH_TTL = 2592000;
 const BLUEWORX_MCP_CODE_TTL = 600;
 
 /**
+ * How long a replaced refresh token still works, in seconds. A client whose
+ * refresh reply was lost on the way retries with the token it still holds;
+ * inside this window that is a retry, not a stolen copy.
+ */
+const BLUEWORX_MCP_REFRESH_GRACE = 60;
+
+/**
  * Most client registrations kept. Registration is open by design — the
  * specification has a client register itself before anybody has signed in —
  * so the list is capped and the oldest unused entries make room.
  */
 const BLUEWORX_MCP_MAX_CLIENTS = 50;
+
+/**
+ * How long a new registration is safe from being pruned, in seconds: long
+ * enough for an administrator to reach the consent screen and click Allow.
+ */
+const BLUEWORX_MCP_CLIENT_FRESH = 900;
+
+/**
+ * Most registrations one address may make in an hour.
+ */
+const BLUEWORX_MCP_REGISTER_LIMIT = 20;
 
 /**
  * The one scope this server issues.
@@ -71,6 +89,18 @@ const BLUEWORX_MCP_OPTION_CLIENTS = 'blueworx_mcp_clients';
  * Option: issued grants (one per approved connection).
  */
 const BLUEWORX_MCP_OPTION_GRANTS = 'blueworx_mcp_grants';
+
+/**
+ * Option: when each grant was last used, kept apart from the grants. See
+ * blueworx_mcp_touch_grant().
+ */
+const BLUEWORX_MCP_OPTION_LAST_USED = 'blueworx_mcp_last_used';
+
+/**
+ * Option: when everyone was last disconnected. A code approved before then
+ * is refused, so switching off and on again cannot revive one either.
+ */
+const BLUEWORX_MCP_OPTION_REVOKED_AT = 'blueworx_mcp_revoked_at';
 
 /**
  * Gets the site's own path, so addresses match on a site in a subfolder too.
@@ -125,11 +155,6 @@ function blueworx_mcp_route_for_path( $path ) {
 		if ( $path === $prefix || 0 === strpos( $path, $prefix . '/' ) ) {
 			return $route;
 		}
-	}
-
-	// A client that appends the well-known suffix to the issuer instead.
-	if ( '/blueworx-oauth/.well-known/openid-configuration' === $path || '/blueworx-oauth/.well-known/oauth-authorization-server' === $path ) {
-		return 'server_metadata';
 	}
 
 	$exact = array(
@@ -223,6 +248,19 @@ function blueworx_mcp_server_metadata() {
  */
 function blueworx_mcp_base64url( $bytes ) {
 	return rtrim( strtr( base64_encode( $bytes ), '+/', '-_' ), '=' ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- encoding a hash, not hiding code.
+}
+
+/**
+ * Whether an array is a plain list: keys 0, 1, 2 and so on, in order.
+ *
+ * Core's array_is_list() needs PHP 8.1, or WordPress 6.5 for its stand-in,
+ * and this plugin supports PHP 8.0 on older WordPress.
+ *
+ * @param array $value Array.
+ * @return bool True for a list, including an empty one.
+ */
+function blueworx_mcp_is_list( $value ) {
+	return array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 );
 }
 
 /**
@@ -366,7 +404,12 @@ function blueworx_mcp_register_client( $request ) {
 		'created'       => $now,
 	);
 
-	$clients               = blueworx_mcp_prune_clients( blueworx_mcp_get_clients() );
+	$clients = blueworx_mcp_prune_clients( blueworx_mcp_get_clients() );
+
+	if ( count( $clients ) >= BLUEWORX_MCP_MAX_CLIENTS ) {
+		return new WP_Error( 'temporarily_unavailable', 'Too many apps are waiting to be approved. Try again in a few minutes.' );
+	}
+
 	$clients[ $client_id ] = $client;
 
 	update_option( BLUEWORX_MCP_OPTION_CLIENTS, $clients, false );
@@ -394,7 +437,10 @@ function blueworx_mcp_register_client( $request ) {
  * Makes room in the client list before another registration.
  *
  * Only clients nobody has connected with are ever dropped, oldest first; a
- * client behind a live connection is never removed to make room.
+ * client behind a live connection is never removed to make room. Neither is
+ * one registered in the last few minutes: it is most likely an app whose
+ * administrator is on the consent screen right now, and dropping it would let
+ * a burst of registrations knock a real connection out before it was made.
  *
  * @param array $clients Clients keyed by client_id.
  * @return array Clients, at most BLUEWORX_MCP_MAX_CLIENTS - 1 long when possible.
@@ -417,17 +463,42 @@ function blueworx_mcp_prune_clients( $clients ) {
 		}
 	);
 
+	$fresh_since = time() - BLUEWORX_MCP_CLIENT_FRESH;
+
 	foreach ( $clients as $id => $client ) {
 		if ( count( $clients ) < BLUEWORX_MCP_MAX_CLIENTS ) {
 			break;
 		}
 
-		if ( empty( $in_use[ $id ] ) ) {
+		if ( empty( $in_use[ $id ] ) && (int) $client['created'] < $fresh_since ) {
 			unset( $clients[ $id ] );
 		}
 	}
 
 	return $clients;
+}
+
+/**
+ * Counts a registration against the caller's address, and says whether it
+ * is within the limit.
+ *
+ * REMOTE_ADDR only: a forwarded-for header is whatever the caller wrote, so
+ * counting by it would let anyone pick a fresh address for every request.
+ *
+ * @return bool True when this registration may go ahead.
+ */
+function blueworx_mcp_registration_allowed() {
+	$ip    = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+	$key   = 'blueworx_mcp_reg_' . md5( $ip );
+	$count = (int) get_transient( $key );
+
+	if ( $count >= BLUEWORX_MCP_REGISTER_LIMIT ) {
+		return false;
+	}
+
+	set_transient( $key, $count + 1, HOUR_IN_SECONDS );
+
+	return true;
 }
 
 /**
@@ -448,9 +519,18 @@ function blueworx_mcp_client_authenticates( $client, $secret ) {
 /**
  * Gets every issued grant.
  *
+ * Anything about to write the list back reads it fresh, straight past the
+ * object cache, so a Disconnect made while that request was running is not
+ * undone by saving a copy from before it.
+ *
+ * @param bool $fresh Skip the cached copy.
  * @return array Grants keyed by grant id.
  */
-function blueworx_mcp_get_grants() {
+function blueworx_mcp_get_grants( $fresh = false ) {
+	if ( $fresh ) {
+		wp_cache_delete( BLUEWORX_MCP_OPTION_GRANTS, 'options' );
+	}
+
 	$grants = get_option( BLUEWORX_MCP_OPTION_GRANTS, array() );
 
 	return is_array( $grants ) ? $grants : array();
@@ -502,6 +582,7 @@ function blueworx_mcp_mint_tokens( $grant_id, &$grant ) {
 	$grant['prev_refresh']    = isset( $grant['refresh_hash'] ) ? $grant['refresh_hash'] : '';
 	$grant['refresh_hash']    = blueworx_mcp_hash( $refresh );
 	$grant['refresh_expires'] = $now + BLUEWORX_MCP_REFRESH_TTL;
+	$grant['rotated_at']      = $now;
 
 	return array(
 		'access_token'  => 'bwx_at_' . $grant_id . '.' . $access,
@@ -566,15 +647,47 @@ function blueworx_mcp_verify_access_token( $token ) {
 		return null;
 	}
 
-	// Recorded at most every five minutes, so a busy session is not an option
-	// write on every single call.
-	if ( time() - (int) ( $grant['last_used'] ?? 0 ) > 300 ) {
-		$grant['last_used']    = time();
-		$grants[ $grant_id ] = $grant;
-		blueworx_mcp_save_grants( $grants );
-	}
+	blueworx_mcp_touch_grant( $grant_id, $grants );
 
 	return array( $grant_id, $grant );
+}
+
+/**
+ * Gets when each grant was last used.
+ *
+ * @return array Timestamps keyed by grant id.
+ */
+function blueworx_mcp_get_last_used() {
+	$used = get_option( BLUEWORX_MCP_OPTION_LAST_USED, array() );
+
+	return is_array( $used ) ? $used : array();
+}
+
+/**
+ * Records that a grant was just used.
+ *
+ * Kept in its own option rather than on the grant. This runs on every call
+ * Claude makes, and writing the grant list back from here could save a copy
+ * read a moment before an administrator's Disconnect, bringing the revoked
+ * connection back. A lost write here only costs a slightly stale time.
+ * Recorded at most every five minutes, so a busy session is not an option
+ * write on every call.
+ *
+ * @param string $grant_id Grant id.
+ * @param array  $grants   Current grants, so entries for removed ones are dropped.
+ * @return void
+ */
+function blueworx_mcp_touch_grant( $grant_id, $grants ) {
+	$used = blueworx_mcp_get_last_used();
+
+	if ( time() - (int) ( $used[ $grant_id ] ?? 0 ) <= 300 ) {
+		return;
+	}
+
+	$used              = array_intersect_key( $used, $grants );
+	$used[ $grant_id ] = time();
+
+	update_option( BLUEWORX_MCP_OPTION_LAST_USED, $used, false );
 }
 
 /**
@@ -584,7 +697,7 @@ function blueworx_mcp_verify_access_token( $token ) {
  * @return bool True when there was one to revoke.
  */
 function blueworx_mcp_revoke_grant( $grant_id ) {
-	$grants = blueworx_mcp_get_grants();
+	$grants = blueworx_mcp_get_grants( true );
 
 	if ( ! isset( $grants[ $grant_id ] ) ) {
 		return false;
@@ -603,7 +716,28 @@ function blueworx_mcp_revoke_grant( $grant_id ) {
  */
 function blueworx_mcp_revoke_all() {
 	blueworx_mcp_save_grants( array() );
+	update_option( BLUEWORX_MCP_OPTION_LAST_USED, array(), false );
+	update_option( BLUEWORX_MCP_OPTION_REVOKED_AT, time(), false );
 }
+
+/**
+ * Disconnects everyone whenever the function is switched off, from any screen.
+ *
+ * Hung off the option rather than a screen: the Connect Claude screen and
+ * Enhancements both have the switch, and only the first used to disconnect
+ * anyone. Switching off from Enhancements and back on later quietly revived
+ * every old connection.
+ *
+ * @param mixed $old_value Previous value.
+ * @param mixed $value     New value.
+ * @return void
+ */
+function blueworx_mcp_revoke_on_switch_off( $old_value, $value ) {
+	if ( '0' === (string) $value ) {
+		blueworx_mcp_revoke_all();
+	}
+}
+add_action( 'update_option_blueworx_feature_mcp', 'blueworx_mcp_revoke_on_switch_off', 10, 2 );
 
 /**
  * Gets the Authorization header's bearer token, wherever the server put it.
@@ -668,15 +802,17 @@ function blueworx_mcp_send_json( $data, $status = 200, $headers = array() ) {
  * @param string $code        OAuth error code.
  * @param string $description Human-readable reason.
  * @param int    $status      HTTP status.
+ * @param array  $headers     Extra headers, name => value.
  * @return void
  */
-function blueworx_mcp_oauth_error( $code, $description, $status = 400 ) {
+function blueworx_mcp_oauth_error( $code, $description, $status = 400, $headers = array() ) {
 	blueworx_mcp_send_json(
 		array(
 			'error'             => $code,
 			'error_description' => $description,
 		),
-		$status
+		$status,
+		$headers
 	);
 }
 
@@ -745,10 +881,14 @@ function blueworx_mcp_dispatch() {
 				blueworx_mcp_oauth_error( 'invalid_request', 'Use POST.', 405 );
 			}
 
+			if ( ! blueworx_mcp_registration_allowed() ) {
+				blueworx_mcp_oauth_error( 'temporarily_unavailable', 'Too many registrations from this address. Try again later.', 429, array( 'Retry-After' => (string) HOUR_IN_SECONDS ) );
+			}
+
 			$result = blueworx_mcp_register_client( json_decode( (string) file_get_contents( 'php://input' ), true ) );
 
 			if ( is_wp_error( $result ) ) {
-				blueworx_mcp_oauth_error( $result->get_error_code(), $result->get_error_message() );
+				blueworx_mcp_oauth_error( $result->get_error_code(), $result->get_error_message(), 'temporarily_unavailable' === $result->get_error_code() ? 429 : 400 );
 			}
 
 			blueworx_mcp_send_json( $result, 201 );
@@ -794,7 +934,9 @@ function blueworx_mcp_handle_token() {
 	$client = blueworx_mcp_get_client( $client_id );
 
 	if ( null === $client || ! blueworx_mcp_client_authenticates( $client, $secret ) ) {
-		blueworx_mcp_oauth_error( 'invalid_client', 'Unknown client, or wrong client secret.', 401 );
+		// RFC 6749 section 5.2: a 401 here names the scheme, or strict clients
+		// read it as a transport failure and never show the real reason.
+		blueworx_mcp_oauth_error( 'invalid_client', 'Unknown client, or wrong client secret.', 401, array( 'WWW-Authenticate' => 'Basic realm="blueworx-oauth"' ) );
 	}
 
 	if ( 'authorization_code' === $grant ) {
@@ -842,6 +984,10 @@ function blueworx_mcp_exchange_code( $client, $code, $redirect_uri, $verifier ) 
 		return new WP_Error( 'invalid_grant', 'The code is unknown, used or expired.' );
 	}
 
+	if ( (int) ( $stored['issued'] ?? 0 ) <= (int) get_option( BLUEWORX_MCP_OPTION_REVOKED_AT, 0 ) ) {
+		return new WP_Error( 'invalid_grant', 'Everyone was disconnected after this code was approved.' );
+	}
+
 	if ( $stored['client_id'] !== $client['client_id'] || $stored['redirect_uri'] !== $redirect_uri ) {
 		return new WP_Error( 'invalid_grant', 'The code was issued to a different client or address.' );
 	}
@@ -860,12 +1006,11 @@ function blueworx_mcp_exchange_code( $client, $code, $redirect_uri, $verifier ) 
 		'client_name' => $client['client_name'],
 		'user_id'     => (int) $stored['user_id'],
 		'created'     => time(),
-		'last_used'   => 0,
 	);
 
 	$response = blueworx_mcp_mint_tokens( $grant_id, $grant );
 
-	$grants              = blueworx_mcp_get_grants();
+	$grants              = blueworx_mcp_get_grants( true );
 	$grants[ $grant_id ] = $grant;
 	blueworx_mcp_save_grants( $grants );
 
@@ -877,8 +1022,10 @@ function blueworx_mcp_exchange_code( $client, $code, $redirect_uri, $verifier ) 
 /**
  * Swaps a refresh token for a new pair.
  *
- * Refresh tokens rotate: each one works once. A spent one presented again
- * means it was copied, so the whole connection is revoked rather than letting
+ * Refresh tokens rotate: each one works once. The one just replaced still
+ * works for BLUEWORX_MCP_REFRESH_GRACE seconds, because a client whose reply
+ * was lost on the way has no choice but to retry with it. Presented any later,
+ * it was copied, so the whole connection is revoked rather than letting
  * whoever holds the copy keep going.
  *
  * @param array  $client Authenticated client.
@@ -907,23 +1054,43 @@ function blueworx_mcp_refresh( $client, $token ) {
 		return new WP_Error( 'invalid_grant', 'The refresh token belongs to a different client.' );
 	}
 
-	if ( ! empty( $grant['prev_refresh'] ) && hash_equals( (string) $grant['prev_refresh'], $hash ) ) {
+	$is_retry = ! empty( $grant['prev_refresh'] ) && hash_equals( (string) $grant['prev_refresh'], $hash );
+
+	if ( $is_retry && time() - (int) ( $grant['rotated_at'] ?? 0 ) > BLUEWORX_MCP_REFRESH_GRACE ) {
 		blueworx_mcp_revoke_grant( $grant_id );
+		blueworx_mcp_log( (int) $grant['user_id'], $grant['client_name'], 'disconnected', 'an old sign-in token was used again' );
 		return new WP_Error( 'invalid_grant', 'This refresh token was already used, so the connection has been closed.' );
 	}
 
-	if ( ! hash_equals( (string) $grant['refresh_hash'], $hash ) || (int) $grant['refresh_expires'] < time() ) {
+	if ( ! $is_retry && ( ! hash_equals( (string) $grant['refresh_hash'], $hash ) || (int) $grant['refresh_expires'] < time() ) ) {
 		return new WP_Error( 'invalid_grant', 'The refresh token is unknown or expired.' );
 	}
 
 	if ( ! blueworx_mcp_user_may_connect( $grant['user_id'] ) ) {
 		blueworx_mcp_revoke_grant( $grant_id );
+		blueworx_mcp_log( (int) $grant['user_id'], $grant['client_name'], 'disconnected', 'the person who approved it is no longer an administrator' );
 		return new WP_Error( 'invalid_grant', 'The person who approved this is no longer an administrator.' );
 	}
 
-	$response            = blueworx_mcp_mint_tokens( $grant_id, $grant );
-	$grants[ $grant_id ] = $grant;
-	blueworx_mcp_save_grants( $grants );
+	$rotated_at = (int) ( $grant['rotated_at'] ?? 0 );
+	$response   = blueworx_mcp_mint_tokens( $grant_id, $grant );
+
+	// A retry leaves the replaced token, and the time it was replaced, as they
+	// were: a second lost reply can still be retried, but the window never
+	// stretches past the first swap.
+	if ( $is_retry ) {
+		$grant['prev_refresh'] = $hash;
+		$grant['rotated_at']   = $rotated_at;
+	}
+
+	$latest = blueworx_mcp_get_grants( true );
+
+	if ( ! isset( $latest[ $grant_id ] ) ) {
+		return new WP_Error( 'invalid_grant', 'This connection has been removed.' );
+	}
+
+	$latest[ $grant_id ] = $grant;
+	blueworx_mcp_save_grants( $latest );
 
 	return $response;
 }
@@ -1062,6 +1229,7 @@ function blueworx_mcp_handle_authorize( $method ) {
 			'redirect_uri'   => $params['redirect_uri'],
 			'code_challenge' => $params['code_challenge'],
 			'user_id'        => get_current_user_id(),
+			'issued'         => time(),
 			'expires'        => time() + BLUEWORX_MCP_CODE_TTL,
 		),
 		BLUEWORX_MCP_CODE_TTL
