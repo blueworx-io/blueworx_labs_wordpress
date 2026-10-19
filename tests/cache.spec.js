@@ -44,6 +44,37 @@ test.describe('BlueWorx cache screen', () => {
     await expect(form).toHaveAttribute('method', /post/i);
   });
 
+  test('a menu change refreshes the cache and the screen says so', async ({ page }) => {
+    // The automatic refresh used to fire only when a page or post was saved,
+    // so a changed menu stayed stale until the cache expired on its own. Any
+    // change purges now, and the screen records the last one so somebody can
+    // see it happening without reading server logs.
+    await login(page);
+
+    // Core answers this for any signed-in user; it is how the REST call below
+    // is authorised without a form to scrape a nonce from.
+    const nonce = (await (await page.request.get('/wp-admin/admin-ajax.php?action=rest-nonce')).text()).trim();
+    const name = `bw-cache-test-${Date.now()}`;
+    const created = await page.request.post('/wp-json/wp/v2/menus', {
+      headers: { 'X-WP-Nonce': nonce },
+      data: { name },
+    });
+    expect(created.ok(), await created.text()).toBe(true);
+    const menuId = (await created.json()).id;
+
+    try {
+      await page.goto(CACHE_PATH);
+
+      const row = page.locator('.bw-dl').filter({ hasText: /Last refreshed/i });
+      await expect(row).toContainText(/ago/i);
+      await expect(row).toContainText(/menu/i);
+    } finally {
+      await page.request.delete(`/wp-json/wp/v2/menus/${menuId}?force=true`, {
+        headers: { 'X-WP-Nonce': nonce },
+      });
+    }
+  });
+
   test('carries the design system, not the old form table', async ({ page }) => {
     await login(page);
     await page.goto(CACHE_PATH);

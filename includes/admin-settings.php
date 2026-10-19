@@ -66,6 +66,17 @@ function blueworx_register_settings_page() {
 		'blueworx_render_support_page'
 	);
 
+	// Listed while the function is on, reachable but unlisted while it is off,
+	// the same as single sign-on, so the screen can explain itself.
+	add_submenu_page(
+		blueworx_feature_enabled( 'mcp' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Connect Claude', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Connect Claude', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-mcp',
+		'blueworx_render_mcp_page'
+	);
+
 	// Registered under the BlueWorx menu while the function is on, and under no
 	// parent while it is off — the same treatment single sign-on gets, and for
 	// the same reason: the address keeps working so the screen can explain
@@ -952,6 +963,16 @@ function blueworx_get_feature_detail_html( $key ) {
 		);
 	}
 
+	if ( 'mcp' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Connect Claude page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'plug',
+				'href'  => admin_url( 'admin.php?page=blueworx-mcp' ),
+			)
+		);
+	}
+
 	if ( 'menu_editor' === $key ) {
 		return blueworx_ds_button(
 			array(
@@ -1258,8 +1279,8 @@ function blueworx_render_cache_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$cache_notice  = get_transient( 'blueworx_cache_refresh_notice' );
-	$breeze_active = blueworx_is_breeze_active();
+	$cache_notice = get_transient( 'blueworx_cache_refresh_notice' );
+	$last_purge   = blueworx_cache_last_purge();
 
 	if ( $cache_notice ) {
 		delete_transient( 'blueworx_cache_refresh_notice' );
@@ -1293,19 +1314,20 @@ function blueworx_render_cache_page() {
 	$rows = array(
 		__( 'Automatic refresh', 'blueworx-labs-wordpress' ) => blueworx_ds_badge( __( 'Enabled', 'blueworx-labs-wordpress' ), 'success', true )
 			. '<p class="bw-field__help">'
-			. esc_html__( 'When a page or post changes, this plugin refreshes the edited page, the homepage, and the listing pages it appears on.', 'blueworx-labs-wordpress' )
+			. esc_html__( 'Whenever anything changes — a page, a template, a menu, a theme setting, a plugin — every cached page is cleared, so visitors see the change straight away.', 'blueworx-labs-wordpress' )
 			. '</p>',
-		__( 'Breeze cache', 'blueworx-labs-wordpress' )      => blueworx_ds_badge(
-			$breeze_active
-				? __( 'Detected', 'blueworx-labs-wordpress' )
-				: __( 'Not detected', 'blueworx-labs-wordpress' ),
-			// Amber, not grey: a missing Breeze is not neutral information — it is
-			// the reason a refresh clears less than somebody expects it to.
-			$breeze_active ? 'success' : 'warning',
-			true
+		__( 'Last refreshed', 'blueworx-labs-wordpress' )    => esc_html(
+			$last_purge
+				? sprintf(
+					/* translators: 1: how long ago, e.g. "5 mins"; 2: what changed, e.g. "menu change". */
+					__( '%1$s ago — %2$s', 'blueworx-labs-wordpress' ),
+					human_time_diff( $last_purge['time'], time() ),
+					$last_purge['reason']
+				)
+				: __( 'Not yet', 'blueworx-labs-wordpress' )
 		)
 			. '<p class="bw-field__help">'
-			. esc_html__( 'Cloudways Breeze and Varnish are used where they are available. Where they are not, WordPress clears its own caches instead.', 'blueworx-labs-wordpress' )
+			. esc_html__( 'Cloudways Varnish is told to drop every page; Breeze is cleared too if it is still installed.', 'blueworx-labs-wordpress' )
 			. '</p>',
 	);
 
@@ -1335,7 +1357,7 @@ function blueworx_render_cache_page() {
 			? esc_html(
 				sprintf(
 					/* translators: %s: how long ago, e.g. "5 mins ago". */
-					__( 'Last refreshed %s', 'blueworx-labs-wordpress' ),
+					__( 'Last refreshed by hand %s', 'blueworx-labs-wordpress' ),
 					$last
 				)
 			)

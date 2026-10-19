@@ -90,6 +90,14 @@ function blueworx_get_feature_definitions() {
 			'detail'      => null,
 			'default'     => '0',
 		),
+		'mcp'                   => array(
+			'label'       => __( 'Connect Claude', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Lets an administrator connect Claude to this site, so Claude can read and edit pages, posts and other content. Each connection is approved on this site and can be cut off at any time. Files, plugins, themes, settings and users stay out of reach.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => 'mcp',
+			'default'     => '0',
+			'guide'       => false,
+		),
 		'user_roles'            => array(
 			'label'       => __( 'Flexible user roles', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Lists roles alphabetically on the add-user and edit-user screens, and lets one user hold more than one role at a time.', 'blueworx-labs-wordpress' ),
@@ -149,7 +157,7 @@ function blueworx_get_feature_definitions() {
 		),
 		'comments'              => array(
 			'label'       => __( 'Comments disabled', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Turns comments off and removes comment areas from the admin screens.', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Turns comments off and removes comment areas from the admin screens. SureDash spaces and posts keep their own Allow Comments setting.', 'blueworx-labs-wordpress' ),
 			'section'     => 'content',
 			'detail'      => null,
 			'guide'       => false,
@@ -209,7 +217,7 @@ function blueworx_get_feature_definitions() {
 		),
 		'cache_auto'            => array(
 			'label'       => __( 'Automatic cache refresh', 'blueworx-labs-wordpress' ),
-			'description' => __( 'Refreshes cache when pages or posts are changed.', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Clears every cached page whenever anything changes: pages, templates, menus, theme settings, plugin updates.', 'blueworx-labs-wordpress' ),
 			'section'     => 'performance',
 			'detail'      => null,
 		),

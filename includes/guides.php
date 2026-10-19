@@ -1747,14 +1747,14 @@ function blueworx_get_feature_guide_tasks() {
 		'cache_auto'      => array(
 			array(
 				'slug'  => '',
-				'title' => $t( 'What clears on its own when you publish' ),
+				'title' => $t( 'What clears on its own when you change something' ),
 				'body'  => blueworx_guide_body(
 					array(
-						'where' => $t( 'Any page or post' ),
+						'where' => $t( 'Any page, template, menu or setting' ),
 						'steps' => array(
 							$t( 'Press *Publish* or *Save* as normal.' ),
 						),
-						'then'  => $t( 'The cached copy of that page is thrown away for you, so what you just changed is what people see. You only need the Cache screen when something else changed — a menu, a theme setting, a plugin.' ),
+						'then'  => $t( 'Every cached page is thrown away for you, so what you just changed is what people see. BlueWorx > Cache shows when it last happened and why. You only need the button there if something still looks old.' ),
 					)
 				),
 			),

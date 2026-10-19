@@ -4,13 +4,68 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.88.1] - 2026-09-22
+## [1.92.1] - 2026-10-19
 
 ### Fixed
 - **The customer account page kept the shop's own layout.** A freshly made
   account page carries SureCart's template, which it put back after ours had
   been chosen, so the page came back wrapped in the site's header and footer
   instead of the BlueWorx frame. Ours is now chosen last.
+
+## [1.92.0] - 2026-10-19
+
+### Added
+- **Claude can get a new Forge task started.** It can now say where a task
+  came from and confirm its client, the two things Forge asks for (with a
+  reviewer) before a task leaves Future Idea. When a move is refused, Claude
+  is also told which of its options fixes each missing item.
+
+## [1.91.0] - 2026-10-19
+
+### Added
+- **Claude can work with Forge tasks.** On a site running Forge, Connect
+  Claude can now list projects and tasks, read one in full, create a task,
+  change its title, description, due date, assignee, reviewer or priority,
+  move its status, and comment on it. Forge's own permissions and workflow
+  rules apply: if a move is not allowed yet, Claude is told what is missing.
+  Sites without Forge are unchanged.
+
+## [1.90.0] - 2026-10-16
+
+### Added
+- **Connect Claude.** A new switch (off by default) under BlueWorx →
+  Connect Claude lets an administrator add the site to Claude as a custom
+  connector. Claude asks the administrator to sign in and approve it on the
+  site, then can read, create and edit pages, posts and other content, move
+  items to the bin, and add categories and tags. It cannot upload or delete
+  files, or touch plugins, themes, settings or users. Only administrators can
+  approve a connection; each one is listed with a Disconnect button, recent
+  changes made through it are shown on the same screen, and switching the
+  function off disconnects everyone. See docs/mcp-setup-guide.md.
+
+### Fixed
+- **Sign-in links keep their whole return address.** With the custom login
+  URL on, a link back to a page whose address had more than one setting in it
+  lost everything after the first one once you signed in.
+
+## [1.89.0] - 2026-10-02
+
+### Changed
+- **Any change now clears the whole page cache.** Saving a template, header,
+  footer, menu, theme setting or plugin update clears every cached page, not
+  just page and post saves. Stale pages no longer hang around until the cache
+  expires on its own. The Cache screen shows when it last happened and why.
+- **Saving a page no longer rebuilds every page's Elementor styles.** Only the
+  saved page's styles are regenerated; the manual button still clears them all.
+- **The Cache screen no longer warns when Breeze is missing.** Varnish is the
+  page cache; Breeze is cleared too only while it is still installed.
+
+## [1.88.2] - 2026-09-25
+
+### Fixed
+- **SureDash comments work again with "Comments disabled" on.** Comments stay
+  off across the rest of the site, but SureDash spaces and posts now follow
+  their own Allow Comments setting.
 
 ## [1.88.0] - 2026-09-22
 

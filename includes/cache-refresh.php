@@ -1,6 +1,16 @@
 <?php
 /**
- * Cloudways, Breeze, Varnish, and Elementor cache refresh behavior.
+ * Cloudways Varnish, Breeze, and Elementor cache refresh behavior.
+ *
+ * One rule: any change purges the whole site's page cache, once per request.
+ *
+ * The targeted version this replaced purged only the saved page, the homepage
+ * and its listing pages — and only when a page or post was saved. A changed
+ * menu, header, footer, Elementor template or theme setting purged nothing, so
+ * the old copy of every page stayed in Varnish (or Breeze) until it expired on
+ * its own, usually a day later. People worked around it with ?random=123 on
+ * the URL. A full purge is cheap on Varnish (one request, a pattern ban) and
+ * cannot miss a page that showed the changed thing.
  *
  * @package BlueWorxLabs
  */
@@ -33,6 +43,11 @@ function blueworx_is_breeze_active() {
 }
 
 /**
+ * Option holding the last purge: when it happened and what caused it.
+ */
+const BLUEWORX_CACHE_LAST_PURGE_OPTION = 'blueworx_cache_last_purge';
+
+/**
  * Option holding the time of the last manual refresh, as a Unix timestamp.
  */
 const BLUEWORX_CACHE_REFRESHED_OPTION = 'blueworx_cache_last_refreshed';
@@ -56,7 +71,7 @@ function blueworx_handle_manual_cache_refresh() {
 	// find out, and nothing was recording it.
 	update_option( BLUEWORX_CACHE_REFRESHED_OPTION, time(), false );
 
-	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Breeze full-cache clearing is used when available; otherwise the homepage and WordPress object cache are refreshed.', 'blueworx-labs-wordpress' ), 30 );
+	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Every cached page is cleared, along with Elementor\'s generated files and the WordPress object cache.', 'blueworx-labs-wordpress' ), 30 );
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-cache' ) );
 	exit;
 }
@@ -84,7 +99,113 @@ if ( blueworx_feature_enabled( 'cache_manual' ) ) {
 }
 
 /**
- * Refreshes cache after a real post or page change.
+ * The last purge, however it was triggered.
+ *
+ * @return array|null `time` (Unix timestamp) and `reason`, or null when there has never been one.
+ */
+function blueworx_cache_last_purge() {
+	$last = get_option( BLUEWORX_CACHE_LAST_PURGE_OPTION, null );
+
+	if ( ! is_array( $last ) || empty( $last['time'] ) ) {
+		return null;
+	}
+
+	return array(
+		'time'   => (int) $last['time'],
+		'reason' => isset( $last['reason'] ) ? (string) $last['reason'] : '',
+	);
+}
+
+/**
+ * Whether this request has already purged, optionally marking it as having done so.
+ *
+ * Elementor fires save_post several times for one click of Update, and a
+ * plugin update fires upgrader_process_complete once per plugin. Each would
+ * purge again, to no effect but the requests. The first purge in a request is
+ * the only one that does anything.
+ *
+ * @param bool|null $set True to mark this request as purged; null to only read.
+ * @return bool True once a purge has run in this request.
+ */
+function blueworx_cache_request_state( $set = null ) {
+	static $purged = false;
+
+	if ( null !== $set ) {
+		$purged = (bool) $set;
+	}
+
+	return $purged;
+}
+
+/**
+ * Forgets that this request has purged, so the next purge runs again.
+ *
+ * For tests, which exercise several requests' worth of saves in one process.
+ *
+ * @return void
+ */
+function blueworx_cache_reset_request_state() {
+	blueworx_cache_request_state( false );
+}
+
+/**
+ * Purges every cached page on the site, once per request, and records why.
+ *
+ * @param string $reason What changed, e.g. "menu change". Shown on the Cache screen.
+ * @return void
+ */
+function blueworx_purge_site_cache( $reason ) {
+	if ( blueworx_cache_request_state() ) {
+		return;
+	}
+
+	blueworx_cache_request_state( true );
+
+	blueworx_send_varnish_purge_all();
+	blueworx_do_breeze_clear_all_cache();
+
+	update_option(
+		BLUEWORX_CACHE_LAST_PURGE_OPTION,
+		array(
+			'time'   => time(),
+			'reason' => (string) $reason,
+		),
+		false
+	);
+}
+
+/**
+ * Whether a saved post is the kind of change a visitor could see.
+ *
+ * @param int          $post_id The post ID.
+ * @param WP_Post|null $post    The post object.
+ * @return bool True when the save should purge.
+ */
+function blueworx_should_refresh_post_cache( $post_id, $post ) {
+	if ( ! $post || empty( $post->post_type ) ) {
+		return false;
+	}
+
+	// Menus purge through their own hook; the rest never appear on a page.
+	if ( in_array( $post->post_type, array( 'revision', 'nav_menu_item', 'customize_changeset', 'oembed_cache', 'user_request' ), true ) ) {
+		return false;
+	}
+
+	if (
+		( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ||
+		( defined( 'DOING_CRON' ) && DOING_CRON ) ||
+		( defined( 'WP_IMPORTING' ) && WP_IMPORTING ) ||
+		wp_is_post_autosave( $post_id ) ||
+		wp_is_post_revision( $post_id )
+	) {
+		return false;
+	}
+
+	return in_array( get_post_status( $post_id ), array( 'publish', 'trash' ), true );
+}
+
+/**
+ * Refreshes cache after a real change to any kind of post.
  *
  * @param int     $post_id The post ID.
  * @param WP_Post $post    The post object.
@@ -124,32 +245,61 @@ if ( blueworx_feature_enabled( 'cache_auto' ) ) {
 }
 
 /**
- * Determines whether a post should trigger cache refresh.
+ * Refreshes cache after a change that is not a post: a menu, the Customiser,
+ * the theme, a plugin.
  *
- * @param int          $post_id The post ID.
- * @param WP_Post|null $post    The post object.
- * @return bool True when cache should refresh.
+ * @param string $reason What changed.
+ * @return void
  */
-function blueworx_should_refresh_post_cache( $post_id, $post ) {
-	if ( ! $post || ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
-		return false;
+function blueworx_refresh_cache_on_site_change( $reason ) {
+	blueworx_purge_site_cache( $reason );
+}
+if ( blueworx_feature_enabled( 'cache_auto' ) ) {
+	// Creating, editing and deleting a menu are three different hooks, and an
+	// item saved through the REST API fires a fourth without the menu's own.
+	foreach ( array( 'wp_create_nav_menu', 'wp_update_nav_menu', 'wp_delete_nav_menu', 'wp_update_nav_menu_item' ) as $blueworx_menu_hook ) {
+		add_action(
+			$blueworx_menu_hook,
+			static function () {
+				blueworx_refresh_cache_on_site_change( 'menu change' );
+			}
+		);
 	}
-
-	if (
-		( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ||
-		( defined( 'DOING_CRON' ) && DOING_CRON ) ||
-		( defined( 'WP_IMPORTING' ) && WP_IMPORTING ) ||
-		wp_is_post_autosave( $post_id ) ||
-		wp_is_post_revision( $post_id )
-	) {
-		return false;
-	}
-
-	return in_array( get_post_status( $post_id ), array( 'publish', 'trash' ), true );
+	unset( $blueworx_menu_hook );
+	add_action(
+		'customize_save_after',
+		static function () {
+			blueworx_refresh_cache_on_site_change( 'theme settings' );
+		}
+	);
+	add_action(
+		'switch_theme',
+		static function () {
+			blueworx_refresh_cache_on_site_change( 'theme change' );
+		}
+	);
+	add_action(
+		'upgrader_process_complete',
+		static function () {
+			blueworx_refresh_cache_on_site_change( 'update' );
+		}
+	);
+	add_action(
+		'activated_plugin',
+		static function () {
+			blueworx_refresh_cache_on_site_change( 'plugin change' );
+		}
+	);
+	add_action(
+		'deactivated_plugin',
+		static function () {
+			blueworx_refresh_cache_on_site_change( 'plugin change' );
+		}
+	);
 }
 
 /**
- * Refreshes the relevant cache for one post or page.
+ * Refreshes the relevant cache for one changed post of any type.
  *
  * @param int $post_id The post ID.
  * @return void
@@ -158,12 +308,17 @@ function blueworx_refresh_cache_for_post( $post_id ) {
 	clean_post_cache( $post_id );
 	wp_cache_delete( $post_id, 'posts' );
 
-	blueworx_refresh_elementor_cache();
+	blueworx_refresh_elementor_post_cache( $post_id );
 
-	$urls = blueworx_get_cache_refresh_urls( $post_id );
-	blueworx_send_varnish_purge_requests( $urls );
+	$post = get_post( $post_id );
 
-	blueworx_do_breeze_clear_post_cache( $post_id );
+	blueworx_purge_site_cache(
+		sprintf(
+			/* translators: %s: post type, e.g. "page". */
+			__( '%s change', 'blueworx-labs-wordpress' ),
+			$post && ! empty( $post->post_type ) ? $post->post_type : 'content'
+		)
+	);
 }
 
 /**
@@ -175,15 +330,36 @@ function blueworx_refresh_manual_cache() {
 	blueworx_refresh_elementor_cache();
 	wp_cache_flush();
 
-	if ( blueworx_do_breeze_clear_all_cache() ) {
+	blueworx_purge_site_cache( 'manual refresh' );
+}
+
+/**
+ * Throws away the generated Elementor styles of one post.
+ *
+ * Only that post's. This used to clear every post's generated CSS on every
+ * save, so one edit made every page on the site rebuild its styles on the
+ * next visit — on a shared server that was most of the cost of a save.
+ * Elementor regenerates the one file the next time the post is viewed.
+ *
+ * @param int $post_id The post ID.
+ * @return void
+ */
+function blueworx_refresh_elementor_post_cache( $post_id ) {
+	if ( ! class_exists( '\Elementor\Core\Files\CSS\Post' ) ) {
 		return;
 	}
 
-	blueworx_send_varnish_purge_requests( array( home_url( '/' ) ) );
+	$css = \Elementor\Core\Files\CSS\Post::create( (int) $post_id );
+
+	if ( is_callable( array( $css, 'delete' ) ) ) {
+		$css->delete();
+	}
 }
 
 /**
  * Clears Elementor's generated CSS cache when Elementor is available.
+ *
+ * The site-wide clear. Only the manual button uses it now.
  *
  * @return void
  */
@@ -208,23 +384,6 @@ function blueworx_has_breeze_clear_all_cache_action() {
 }
 
 /**
- * Runs Breeze's post cache clear action when available.
- *
- * @param int $post_id The post ID.
- * @return bool True when the Breeze action ran.
- */
-function blueworx_do_breeze_clear_post_cache( $post_id ) {
-	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This is a Breeze-owned hook.
-	if ( ! has_action( 'breeze_clear_post_cache' ) ) {
-		return false;
-	}
-
-	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This is a Breeze-owned hook.
-	do_action( 'breeze_clear_post_cache', $post_id );
-	return true;
-}
-
-/**
  * Runs Breeze's full cache clear action when available.
  *
  * @return bool True when the Breeze action ran.
@@ -240,81 +399,32 @@ function blueworx_do_breeze_clear_all_cache() {
 }
 
 /**
- * Builds the page URLs that should refresh after a content change.
+ * Asks Varnish to drop every cached page for this site.
  *
- * @param int $post_id The post ID.
- * @return array List of URLs.
- */
-function blueworx_get_cache_refresh_urls( $post_id ) {
-	$post = get_post( $post_id );
-	$urls = array( home_url( '/' ) );
-
-	if ( ! $post ) {
-		return $urls;
-	}
-
-	$permalink = get_permalink( $post_id );
-	if ( $permalink ) {
-		$urls[] = $permalink;
-	}
-
-	$archive_link = get_post_type_archive_link( $post->post_type );
-	if ( $archive_link ) {
-		$urls[] = $archive_link;
-	}
-
-	if ( 'post' === $post->post_type ) {
-		$urls[] = get_author_posts_url( (int) $post->post_author );
-
-		foreach ( wp_get_post_categories( $post_id ) as $term_id ) {
-			$term_link = get_category_link( $term_id );
-			if ( ! is_wp_error( $term_link ) ) {
-				$urls[] = $term_link;
-			}
-		}
-
-		foreach ( wp_get_post_tags( $post_id ) as $term ) {
-			$term_link = get_tag_link( $term->term_id );
-			if ( ! is_wp_error( $term_link ) ) {
-				$urls[] = $term_link;
-			}
-		}
-	}
-
-	if ( 'page' === $post->post_type && $post->post_parent ) {
-		$parent_link = get_permalink( $post->post_parent );
-		if ( $parent_link ) {
-			$urls[] = $parent_link;
-		}
-	}
-
-	return array_values( array_unique( array_filter( $urls ) ) );
-}
-
-/**
- * Sends targeted PURGE requests for Cloudways/Varnish-style page cache.
+ * One PURGE for the pattern `/.*`, which Cloudways' Varnish treats as a ban on
+ * everything under the host. Non-blocking: the save must not wait on the cache,
+ * and a cache that is not there to answer is not an error.
  *
- * @param array $urls URLs to purge.
  * @return void
  */
-function blueworx_send_varnish_purge_requests( $urls ) {
-	foreach ( $urls as $url ) {
-		$host = wp_parse_url( $url, PHP_URL_HOST );
+function blueworx_send_varnish_purge_all() {
+	$url  = home_url( '/.*' );
+	$host = wp_parse_url( $url, PHP_URL_HOST );
 
-		if ( ! $host ) {
-			continue;
-		}
-
-		wp_remote_request(
-			$url,
-			array(
-				'method'   => 'PURGE',
-				'timeout'  => 2,
-				'blocking' => false,
-				'headers'  => array(
-					'Host' => $host,
-				),
-			)
-		);
+	if ( ! $host ) {
+		return;
 	}
+
+	wp_remote_request(
+		$url,
+		array(
+			'method'   => 'PURGE',
+			'timeout'  => 2,
+			'blocking' => false,
+			'headers'  => array(
+				'Host'           => $host,
+				'X-Purge-Method' => 'regex',
+			),
+		)
+	);
 }
