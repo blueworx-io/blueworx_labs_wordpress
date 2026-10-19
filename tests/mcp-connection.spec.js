@@ -253,7 +253,11 @@ test.describe('Connect Claude', () => {
         return;
       }
 
-      expect(names).toEqual(expect.arrayContaining(['list_projects', 'list_tasks', 'create_task', 'update_task']));
+      expect(names).toEqual(expect.arrayContaining(['list_projects', 'list_tasks', 'create_task', 'update_task', 'get_team_capacity']));
+
+      const capacity = await callTool(request, token, 'get_team_capacity', {});
+      expect(capacity.isError, capacity.content[0].text).toBeFalsy();
+      expect(Array.isArray(capacity.structuredContent.people)).toBe(true);
 
       const projects = (await callTool(request, token, 'list_projects', {})).structuredContent.projects;
       test.skip(projects.length === 0, 'Forge has no projects on this site to add a task to.');
@@ -265,11 +269,13 @@ test.describe('Connect Claude', () => {
         description: 'Made by the Connect Claude test.',
         assignee: info.forge.people[0]?.id ?? '',
         due_date: '2030-01-31',
+        assignee_hours: 4,
       });
       expect(created.isError, created.content[0].text).toBeFalsy();
       const task = created.structuredContent;
       expect(task.status).toBe('future-idea');
       expect(task.parent_id).toBe(project.id);
+      expect(task.hours.assignee).toBe(4);
 
       const listed = (await callTool(request, token, 'list_tasks', { project_id: project.id, due_after: '2030-01-01' }))
         .structuredContent.tasks;

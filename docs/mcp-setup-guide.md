@@ -50,8 +50,13 @@ being an administrator, or if Claude is not used for 30 days.
 
 On a site running Forge, Claude can also list projects and tasks, read one in
 full, create a task, change its title, description, due date, assignee,
-reviewer or priority, say where it came from, confirm its client, move its
-status, and add a comment.
+reviewer or priority, set the planned hours and dates for each role, say
+where it came from, confirm its client, move its status, and add a comment.
+
+Claude can also read the team's capacity: each person's hours, week by
+week, after leave and the work already booked. Ask about one person to see
+the tasks taking up their time. Claude cannot change anyone's working week
+or leave; that stays in Forge.
 
 - Status changes follow Forge's workflow. If Forge is waiting on something
   first (a reviewer, say), Claude is told what is missing.

@@ -25,6 +25,10 @@ function sanitize_textarea_field( $value ) {
 	return trim( strip_tags( (string) $value ) );
 }
 
+function wp_date( $format ) {
+	return gmdate( $format );
+}
+
 function wp_get_current_user() {
 	return (object) array( 'display_name' => 'Luke McFarland' );
 }
@@ -113,6 +117,12 @@ function forge_reset() {
 					'primary_user_id' => 'usr_luke',
 					'reviewer_id'     => 'usr_sam',
 					'planned_due'     => '2026-11-10',
+					'hours_primary'   => 6,
+					'hours_designer'  => 0,
+					'hours_review'    => 1.2,
+					'hours_delivery'  => 0.6,
+					'review_target'   => '2026-11-12',
+					'release_target'  => '2026-11-14',
 				)
 			),
 			'wi_f2' => $item( 'wi_f2', 'Review copy', 'feature', 'cs_a', 'wi_m1', array( 'reviewer_id' => 'usr_luke' ) ),
@@ -267,6 +277,14 @@ function rest_do_request( $request ) {
 		);
 	}
 
+	if ( '/capacity' === $path ) {
+		return forge_capacity( $q );
+	}
+
+	if ( preg_match( '#^/capacity/person/([a-z_]+)$#', $path, $who ) ) {
+		return forge_capacity_person( $who[1], $q );
+	}
+
 	if ( 'GET' === $request->method && in_array( $path, array( '/work-items', '/work-items-all' ), true ) ) {
 		$items = array();
 
@@ -383,6 +401,10 @@ function rest_do_request( $request ) {
 	}
 
 	if ( 'PATCH' === $request->method ) {
+		if ( isset( $body['hours_primary'] ) && $body['hours_primary'] > 100 ) {
+			return forge_answer( 400, 'bwx_forge_invalid_work_item', 'That change could not be saved.', array( 'fields' => array( 'hours_primary' => 'At most 100 hours.' ) ) );
+		}
+
 		if ( isset( $body['planned_due'] ) && '2026-13-01' === $body['planned_due'] ) {
 			return forge_answer( 400, 'bwx_forge_invalid_work_item', 'That change could not be saved.', array( 'fields' => array( 'planned_due' => 'That is not a date. Use YYYY-MM-DD.' ) ) );
 		}
@@ -466,6 +488,95 @@ function rest_do_request( $request ) {
 	return forge_answer( 404, 'rest_no_route', 'No route was found matching the URL and request method.' );
 }
 
+/**
+ * Forge's capacity grid: Luke tight in the first week, Sam not set up.
+ */
+function forge_capacity( $q ) {
+	if ( ! empty( $GLOBALS['forge']['no_capacity'] ) ) {
+		return forge_answer( 403, 'bwx_forge_not_permitted', 'You cannot see staff capacity.' );
+	}
+
+	$cell = function ( $from, $to, $available, $committed, $completed, $band ) {
+		return array(
+			'from'      => $from,
+			'to'        => $to,
+			'available' => $available,
+			'committed' => $committed,
+			'completed' => $completed,
+			'remaining' => round( $available - $committed - $completed, 2 ),
+			'band'      => $band,
+		);
+	};
+
+	return new Fake_Response(
+		array(
+			'from'    => $q['from'],
+			'to'      => $q['to'],
+			'by'      => $q['by'],
+			'periods' => array(),
+			'people'  => array(
+				array(
+					'user_id'      => 'usr_luke',
+					'display_name' => 'Luke McFarland',
+					'periods'      => array(
+						$cell( '2026-11-09', '2026-11-15', 37.5, 30, 2, 'tight' ),
+						$cell( '2026-11-16', '2026-11-22', 37.5, 4, 0, 'clear' ),
+					),
+					'total'        => $cell( '2026-11-09', '2026-11-22', 75, 34, 2, 'clear' ),
+				),
+				array(
+					'user_id'      => 'usr_sam',
+					'display_name' => 'Sam Jones',
+					'periods'      => array(
+						$cell( '2026-11-09', '2026-11-15', 0, 1.2, 0, 'unrecorded' ),
+						$cell( '2026-11-16', '2026-11-22', 0, 0, 0, 'unrecorded' ),
+					),
+					'total'        => $cell( '2026-11-09', '2026-11-22', 0, 1.2, 0, 'unrecorded' ),
+				),
+			),
+			'only_me' => false,
+		)
+	);
+}
+
+/**
+ * One person's drill-down: a task of their own, and a review they are covering.
+ */
+function forge_capacity_person( $user_id, $q ) {
+	$allocation = function ( $item, $title, $role, $covering, $hours, $day, $status ) use ( $user_id ) {
+		return array(
+			'item_id'        => $item,
+			'title'          => $title,
+			'client_id'      => 'cl_acme',
+			'client_site_id' => 'cs_a',
+			'role'           => $role,
+			'user_id'        => $user_id,
+			'covering'       => $covering,
+			'hours'          => $hours,
+			'from'           => $day,
+			'to'             => $day,
+			'status'         => $status,
+		);
+	};
+
+	return new Fake_Response(
+		array(
+			'user_id'          => $user_id,
+			'display_name'     => 'Luke McFarland',
+			'from'             => $q['from'],
+			'to'               => $q['to'],
+			'days'             => array(),
+			'committed_by_day' => array(),
+			'completed_by_day' => array(),
+			'allocations'      => array(
+				$allocation( 'wi_f1', 'Build the header', 'primary', '', 6, '2026-11-10', 'committed' ),
+				$allocation( 'wi_f9', 'Check the footer', 'review', 'usr_sam', 1.5, '2026-11-11', 'completed' ),
+			),
+			'position'         => array(),
+		)
+	);
+}
+
 function last_call( $method, $path ) {
 	foreach ( array_reverse( $GLOBALS['forge']['calls'] ) as $call ) {
 		if ( $call[0] === $method && $call[1] === $path ) {
@@ -508,7 +619,7 @@ echo "\nWith Forge on\n";
 check(
 	'every Forge tool is listed',
 	array_column( blueworx_mcp_forge_tool_definitions(), 'name' ),
-	array( 'list_projects', 'get_project', 'list_tasks', 'get_task', 'create_task', 'update_task', 'add_task_comment' )
+	array( 'list_projects', 'get_project', 'list_tasks', 'get_task', 'create_task', 'update_task', 'add_task_comment', 'get_team_capacity' )
 );
 check( 'and every listed tool has a handler', array_keys( blueworx_mcp_forge_tool_handlers() ), array_column( blueworx_mcp_forge_tool_definitions(), 'name' ) );
 
@@ -714,5 +825,112 @@ $task = blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_f1' ) );
 check( 'a task shows its comments', count( $task['comments'] ), 2 );
 check( 'and what each next move still needs', $task['next_statuses'][0], array( 'status' => 'in-review', 'ready' => false, 'still_needed' => array( 'Test steps written (Write the steps to test it)' ) ) );
 check( 'a passed check is not something needed', $task['next_statuses'][1], array( 'status' => 'up-next', 'ready' => true, 'still_needed' => array() ) );
+
+echo "\nPlanned hours on tasks\n";
+
+forge_reset();
+
+$listed = blueworx_mcp_tool_forge_list_tasks( array() );
+check( 'a listed task shows each role\'s hours', $listed['tasks'][1]['hours'], array( 'assignee' => 6.0, 'designer' => 0.0, 'reviewer' => 1.2, 'deliverer' => 0.6 ) );
+
+$full = blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_f1' ) );
+check( 'a task in full shows the date each role\'s hours sit on', array( $full['design_by'], $full['due_date'], $full['review_by'], $full['release_by'] ), array( '', '2026-11-10', '2026-11-12', '2026-11-14' ) );
+
+blueworx_mcp_tool_forge_create_task(
+	array(
+		'title'          => 'Plan the launch',
+		'project_id'     => 'wi_p1',
+		'assignee_hours' => 5,
+		'review_by'      => '2026-11-21',
+	)
+);
+$sent = last_call( 'POST', '/work-items' )[3];
+check( 'hours and dates go in on a new task, in Forge\'s names', array( $sent['hours_primary'], $sent['review_target'] ), array( 5, '2026-11-21' ) );
+check( 'and a role not mentioned is left for Forge to fill in', array_key_exists( 'hours_review', $sent ), false );
+
+$planned = blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'              => 'wi_f2',
+		'reviewer_hours'  => '2.5',
+		'designer_hours'  => 0,
+		'deliverer_hours' => 1,
+		'design_by'       => '2026-11-18',
+		'release_by'      => '',
+	)
+);
+check(
+	'an update sets hours and dates per role',
+	last_call( 'PATCH', '/work-items/wi_f2' )[3],
+	array(
+		'design_target'  => '2026-11-18',
+		'release_target' => '',
+		'hours_designer' => 0,
+		'hours_review'   => 2.5,
+		'hours_delivery' => 1,
+		'record_version' => 1,
+	)
+);
+check( 'and says what changed in the tools\' names', $planned['changed'], array( 'design_by', 'release_by', 'designer_hours', 'reviewer_hours', 'deliverer_hours' ) );
+
+check( 'negative hours are refused', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee_hours' => -1 ) ) ), 'invalid_hours' );
+check( 'so are hours that are not a number', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee_hours' => 'lots' ) ) ), 'invalid_hours' );
+check( 'and a role date that does not exist', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'review_by' => '2026-11-31' ) ) ), 'invalid_date' );
+check( 'hours Forge refuses are named as the tool names them', message_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee_hours' => 500 ) ) ), 'That change could not be saved. assignee_hours: At most 100 hours.' );
+
+echo "\nTeam capacity\n";
+
+$team = blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-22' ) );
+check( 'it asks Forge for the whole team by the week', last_call( 'GET', '/capacity' )[2], array( 'from' => '2026-11-09', 'to' => '2026-11-22', 'by' => 'weeks' ) );
+check(
+	'each person gets a line per week',
+	$team['people'][0]['weeks'][0],
+	array(
+		'from'      => '2026-11-09',
+		'to'        => '2026-11-15',
+		'available' => 37.5,
+		'booked'    => 30.0,
+		'done'      => 2.0,
+		'left'      => 5.5,
+		'status'    => 'tight',
+	)
+);
+check( 'and a total for the range', array( $team['people'][0]['name'], $team['people'][0]['id'], $team['people'][0]['total']['left'] ), array( 'Luke McFarland', 'usr_luke', 39.0 ) );
+check( 'someone with no working week set is flagged as such', $team['people'][1]['total']['status'], 'not set up' );
+check( 'and nobody is listed with tasks unless asked', isset( $team['people'][0]['tasks'] ), false );
+
+blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-09', 'by' => 'days' ) );
+check( 'it can go day by day', last_call( 'GET', '/capacity' )[2]['by'], 'days' );
+check( 'which renames the lines', isset( blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-10', 'by' => 'days' ) )['people'][0]['days'] ), true );
+
+blueworx_mcp_tool_forge_get_team_capacity( array() );
+check( 'with no dates it reads the next four weeks', array_values( array_slice( last_call( 'GET', '/capacity' )[2], 0, 2 ) ), array( gmdate( 'Y-m-d' ), gmdate( 'Y-m-d', strtotime( '+27 days' ) ) ) );
+
+blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-12-01' ) );
+check( 'a start alone runs four weeks from it', last_call( 'GET', '/capacity' )[2]['to'], '2026-12-28' );
+
+$luke = blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-22', 'person' => 'luke' ) );
+check( 'naming a person narrows it to them', array_column( $luke['people'], 'id' ), array( 'usr_luke' ) );
+check( 'and lists the tasks taking up their time', last_call( 'GET', '/capacity/person/usr_luke' )[2], array( 'from' => '2026-11-09', 'to' => '2026-11-22' ) );
+check(
+	'each with its role, hours and date',
+	$luke['people'][0]['tasks'][0],
+	array(
+		'task_id' => 'wi_f1',
+		'title'   => 'Build the header',
+		'role'    => 'assignee',
+		'hours'   => 6.0,
+		'from'    => '2026-11-10',
+		'to'      => '2026-11-10',
+		'status'  => 'to do',
+	)
+);
+check( 'and who they are covering for', array( $luke['people'][0]['tasks'][1]['role'], $luke['people'][0]['tasks'][1]['covering_for'], $luke['people'][0]['tasks'][1]['status'] ), array( 'reviewer', 'Sam Jones', 'done' ) );
+
+check( 'dates in the wrong order are refused', error_of( blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-22', 'to' => '2026-11-09' ) ) ), 'invalid_range' );
+check( 'a date that does not exist is refused', error_of( blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-02-30' ) ) ), 'invalid_date' );
+check( 'an unknown person is refused', error_of( blueworx_mcp_tool_forge_get_team_capacity( array( 'person' => 'Nobody' ) ) ), 'unknown_person' );
+
+$GLOBALS['forge']['no_capacity'] = true;
+check( 'someone Forge will not show capacity to is told in Forge\'s words', message_of( blueworx_mcp_tool_forge_get_team_capacity( array() ) ), 'You cannot see staff capacity.' );
 
 finish();

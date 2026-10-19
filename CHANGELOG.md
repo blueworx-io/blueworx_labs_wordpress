@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.93.0] - 2026-10-19
+
+### Added
+- **Claude can plan around the team's time.** It can now see who has room,
+  week by week: each person's hours after leave, what is already booked, and
+  what is left. It can also read and set the planned hours and dates for each
+  role on a Forge task, so it can schedule work without over-booking anyone.
+
 ## [1.92.1] - 2026-10-19
 
 ### Fixed
