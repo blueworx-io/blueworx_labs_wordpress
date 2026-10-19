@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.91.0] - 2026-10-19
+
+### Added
+- **Claude can work with Forge tasks.** On a site running Forge, Connect
+  Claude can now list projects and tasks, read one in full, create a task,
+  change its title, description, due date, assignee, reviewer or priority,
+  move its status, and comment on it. Forge's own permissions and workflow
+  rules apply: if a move is not allowed yet, Claude is told what is missing.
+  Sites without Forge are unchanged.
+
 ## [1.90.0] - 2026-10-16
 
 ### Added

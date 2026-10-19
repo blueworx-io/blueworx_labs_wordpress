@@ -232,6 +232,77 @@ test.describe('Connect Claude', () => {
     }
   });
 
+  test('Claude works with Forge tasks where Forge runs, and is told plainly where it does not', async ({ page, request }) => {
+    await login(page);
+    await setSwitch(page, true);
+
+    try {
+      const { server, clientId } = await register(request);
+      const { access_token: token } = await approve(page, request, server, clientId);
+
+      const info = (await callTool(request, token, 'get_site_info', {})).structuredContent;
+      const names = (await rpc(request, token, 'tools/list')).body.result.tools.map((tool) => tool.name);
+
+      if (!info.forge.active) {
+        // CI's test site has no Forge: nothing is offered, and a call made
+        // anyway is refused in words rather than breaking.
+        expect(names).not.toContain('list_tasks');
+        const refused = await callTool(request, token, 'list_tasks', {});
+        expect(refused.isError).toBe(true);
+        expect(refused.content[0].text).toContain('Forge is not active');
+        return;
+      }
+
+      expect(names).toEqual(expect.arrayContaining(['list_projects', 'list_tasks', 'create_task', 'update_task']));
+
+      const projects = (await callTool(request, token, 'list_projects', {})).structuredContent.projects;
+      test.skip(projects.length === 0, 'Forge has no projects on this site to add a task to.');
+      const project = projects[0];
+
+      const created = await callTool(request, token, 'create_task', {
+        title: 'MCP test task',
+        project_id: project.id,
+        description: 'Made by the Connect Claude test.',
+        assignee: info.forge.people[0]?.id ?? '',
+        due_date: '2030-01-31',
+      });
+      expect(created.isError, created.content[0].text).toBeFalsy();
+      const task = created.structuredContent;
+      expect(task.status).toBe('future-idea');
+      expect(task.parent_id).toBe(project.id);
+
+      const listed = (await callTool(request, token, 'list_tasks', { project_id: project.id, due_after: '2030-01-01' }))
+        .structuredContent.tasks;
+      expect(listed.map((one) => one.id)).toContain(task.id);
+
+      // A move Forge allows goes through; one it does not comes back with why.
+      const full = (await callTool(request, token, 'get_task', { id: task.id })).structuredContent;
+      const ready = full.next_statuses.find((next) => next.ready);
+      const moved = await callTool(request, token, 'update_task', {
+        id: task.id,
+        title: 'MCP test task, edited',
+        status: ready ? ready.status : full.next_statuses[0].status,
+      });
+
+      if (ready) {
+        expect(moved.isError, moved.content[0].text).toBeFalsy();
+        expect(moved.structuredContent.status).toBe(ready.status);
+        expect(moved.structuredContent.changed).toEqual(['title', 'status']);
+      } else {
+        expect(moved.isError).toBe(true);
+        expect(moved.content[0].text).toContain('Saved the change to title');
+      }
+
+      const commented = await callTool(request, token, 'add_task_comment', { id: task.id, comment: 'From the Connect Claude test.' });
+      expect(commented.isError, commented.content[0].text).toBeFalsy();
+
+      await page.goto(SCREEN);
+      await expect(page.locator('[data-testid="bw-mcp-log"]')).toContainText('MCP test task, edited');
+    } finally {
+      await setSwitch(page, false);
+    }
+  });
+
   test('switching off from Enhancements disconnects everyone too', async ({ page, request }) => {
     await login(page);
     await setSwitch(page, true);
