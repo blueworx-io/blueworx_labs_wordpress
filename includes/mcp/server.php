@@ -13,7 +13,8 @@
  * ones the block editor goes through — the tools add no way into the site that
  * the administrator did not already have, and the "content, not files" limit is
  * kept by which routes the tools call: posts, pages, other content types and
- * terms. There is no tool that uploads, deletes permanently, or touches users,
+ * terms, plus Forge's projects and tasks where Forge runs (includes/mcp/forge.php).
+ * There is no tool that uploads, deletes permanently, or touches users,
  * plugins, themes or settings.
  *
  * @package BlueWorxLabs
@@ -167,7 +168,8 @@ function blueworx_mcp_handle_message( $message, $grant ) {
 						'title'   => get_bloginfo( 'name' ),
 						'version' => defined( 'BLUEWORX_LABS_VERSION' ) ? BLUEWORX_LABS_VERSION : '0',
 					),
-					'instructions'    => 'Tools for reading and editing the content of the WordPress site at ' . home_url() . '. New content is created as a draft unless you are asked to publish it. Files cannot be uploaded or deleted. Pages marked built_with_elementor keep their layout outside the content field, so editing content will not change what visitors see on them.',
+					'instructions'    => 'Tools for reading and editing the content of the WordPress site at ' . home_url() . '. New content is created as a draft unless you are asked to publish it. Files cannot be uploaded or deleted. Pages marked built_with_elementor keep their layout outside the content field, so editing content will not change what visitors see on them.'
+						. ( blueworx_mcp_forge_active() ? ' The site also runs Forge, a project tracker: the *_project and *_task tools read and change its projects and tasks, and get_site_info lists its sites, people and statuses.' : '' ),
 				)
 			);
 
@@ -320,7 +322,7 @@ function blueworx_mcp_tool_definitions() {
 		'openWorldHint' => false,
 	);
 
-	return array(
+	$tools = array(
 		array(
 			'name'        => 'get_site_info',
 			'title'       => 'Get site info',
@@ -500,6 +502,9 @@ function blueworx_mcp_tool_definitions() {
 			),
 		),
 	);
+
+	// Forge's project and task tools, listed only while Forge is running.
+	return array_merge( $tools, blueworx_mcp_forge_tool_definitions() );
 }
 
 /**
@@ -508,15 +513,18 @@ function blueworx_mcp_tool_definitions() {
  * @return array Callables keyed by tool name.
  */
 function blueworx_mcp_tool_handlers() {
-	return array(
-		'get_site_info'  => 'blueworx_mcp_tool_site_info',
-		'list_content'   => 'blueworx_mcp_tool_list_content',
-		'get_content'    => 'blueworx_mcp_tool_get_content',
-		'create_content' => 'blueworx_mcp_tool_create_content',
-		'update_content' => 'blueworx_mcp_tool_update_content',
-		'trash_content'  => 'blueworx_mcp_tool_trash_content',
-		'list_terms'     => 'blueworx_mcp_tool_list_terms',
-		'create_term'    => 'blueworx_mcp_tool_create_term',
+	return array_merge(
+		array(
+			'get_site_info'  => 'blueworx_mcp_tool_site_info',
+			'list_content'   => 'blueworx_mcp_tool_list_content',
+			'get_content'    => 'blueworx_mcp_tool_get_content',
+			'create_content' => 'blueworx_mcp_tool_create_content',
+			'update_content' => 'blueworx_mcp_tool_update_content',
+			'trash_content'  => 'blueworx_mcp_tool_trash_content',
+			'list_terms'     => 'blueworx_mcp_tool_list_terms',
+			'create_term'    => 'blueworx_mcp_tool_create_term',
+		),
+		blueworx_mcp_forge_tool_handlers()
 	);
 }
 
@@ -744,6 +752,7 @@ function blueworx_mcp_tool_site_info( $args ) {
 		'language'      => get_bloginfo( 'language' ),
 		'content_types' => $types,
 		'taxonomies'    => $taxonomies,
+		'forge'         => blueworx_mcp_forge_site_info(),
 	);
 }
 

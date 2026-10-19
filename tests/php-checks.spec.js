@@ -30,6 +30,7 @@ const SCRIPTS = [
   'external-access-test.php',
   'disable-comments-test.php',
   'mcp-oauth-test.php',
+  'mcp-forge-test.php',
 ];
 
 let phpAvailable = true;
