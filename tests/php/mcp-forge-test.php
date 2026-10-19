@@ -90,6 +90,8 @@ function forge_reset() {
 				'client_site_id'  => $site,
 				'record_version'  => 1,
 				'problem'         => '',
+				'client_confirmed_at' => 1,
+				'source'          => 'internal',
 			),
 			$extra
 		);
@@ -109,6 +111,7 @@ function forge_reset() {
 					'stage'           => 'in-development',
 					'stage_label'     => 'In Development',
 					'primary_user_id' => 'usr_luke',
+					'reviewer_id'     => 'usr_sam',
 					'planned_due'     => '2026-11-10',
 				)
 			),
@@ -119,6 +122,52 @@ function forge_reset() {
 		'calls'    => array(),
 		'comments' => array(),
 	);
+}
+
+function forge_source_question() {
+	return array(
+		'id'           => 'G-FUTURE-IDEA-3',
+		'label'        => 'Source',
+		'satisfied_by' => 'Choose where this came from.',
+		'by'           => 'record',
+		'fields'       => array(),
+		'options'      => array(
+			array(
+				'value' => 'client-request',
+				'label' => 'Client request',
+			),
+			array(
+				'value' => 'internal',
+				'label' => 'Internal',
+			),
+		),
+	);
+}
+
+function forge_up_next_unmet( $item ) {
+	$unmet = array();
+
+	if ( '' === $item['source'] ) {
+		$unmet[] = forge_source_question();
+	}
+
+	if ( empty( $item['client_confirmed_at'] ) ) {
+		$unmet[] = array(
+			'label'        => 'Client confirmed',
+			'satisfied_by' => 'Confirm the client, or change it, before triage.',
+			'fields'       => array( 'client_confirmed_at' ),
+		);
+	}
+
+	if ( '' === $item['reviewer_id'] ) {
+		$unmet[] = array(
+			'label'        => 'Reviewing it assigned',
+			'satisfied_by' => 'Say who is reviewing it.',
+			'fields'       => array( 'reviewer_id' ),
+		);
+	}
+
+	return $unmet;
 }
 
 function forge_answer( $status, $code, $message, $data = array() ) {
@@ -259,7 +308,7 @@ function rest_do_request( $request ) {
 		);
 	}
 
-	if ( ! preg_match( '#^/work-items/([a-z0-9_]+)(?:/([a-z]+))?$#', $path, $m ) ) {
+	if ( ! preg_match( '#^/work-items/([a-z0-9_]+)(?:/([a-z-]+))?$#', $path, $m ) ) {
 		return forge_answer( 404, 'rest_no_route', 'No route was found matching the URL and request method.' );
 	}
 
@@ -302,14 +351,25 @@ function rest_do_request( $request ) {
 						),
 					),
 					'up-next'   => array(
-						'unmet'  => array(),
+						'unmet'  => forge_up_next_unmet( $item ),
 						'checks' => array(),
+						'all'    => 'future-idea' === $item['stage'] ? array( forge_source_question() ) : array(),
 					),
 				),
 				'seat_names' => array( 'usr_gone' => 'Former Staff' ),
 				'comments'   => $forge['comments'],
 			)
 		);
+	}
+
+	if ( 'gate' === $sub ) {
+		if ( 'G-FUTURE-IDEA-3' !== $body['requirement'] ) {
+			return forge_answer( 400, 'bwx_forge_unknown_requirement', 'There is no such gate requirement.' );
+		}
+
+		$item['source'] = $body['value'];
+
+		return new Fake_Response( array( 'ok' => true ) );
 	}
 
 	if ( in_array( $request->method, array( 'PATCH', 'POST' ), true ) && 'comments' !== $sub ) {
@@ -334,7 +394,25 @@ function rest_do_request( $request ) {
 		return new Fake_Response( array( 'item' => $item ) );
 	}
 
+	if ( 'confirm-client' === $sub ) {
+		$item['client_confirmed_at'] = 1792400000;
+		++$item['record_version'];
+
+		return new Fake_Response( array( 'item' => $item ) );
+	}
+
 	if ( 'transition' === $sub ) {
+		if ( 'up-next' === $body['to'] && array() !== forge_up_next_unmet( $item ) ) {
+			return new Fake_Response(
+				array(
+					'ok'        => false,
+					'attempted' => 'up-next',
+					'unmet'     => forge_up_next_unmet( $item ),
+				),
+				409
+			);
+		}
+
 		if ( 'in-review' === $body['to'] ) {
 			return new Fake_Response(
 				array(
@@ -567,6 +645,49 @@ $stub_fields = blueworx_mcp_forge_error(
 );
 check( 'a field Forge rejects is named as the tool names it', $stub_fields->get_error_message(), 'That change could not be saved. due_date: That is not a date. Use YYYY-MM-DD.' );
 check( 'a missing Forge route reads as Forge being off', message_of( blueworx_mcp_forge_error( array( 'code' => 'rest_no_route' ) ) ), 'Forge is not answering on this site. Check that the Forge plugin is active.' );
+
+echo "\nGetting a new task out of Future Idea\n";
+
+$GLOBALS['forge']['items']['wi_new2'] = array_merge(
+	$GLOBALS['forge']['items']['wi_m1'],
+	array(
+		'id'                  => 'wi_new2',
+		'title'               => 'Fresh idea',
+		'level'               => 'feature',
+		'parent_id'           => 'wi_m1',
+		'source'              => '',
+		'client_confirmed_at' => 0,
+		'record_version'      => 1,
+	)
+);
+
+check(
+	'what is missing says which field gives it',
+	blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_new2' ) )['next_statuses'][1]['still_needed'],
+	array(
+		'Source (Choose where this came from) [update_task: source]',
+		'Client confirmed (Confirm the client, or change it, before triage) [update_task: confirm_client]',
+		'Reviewing it assigned (Say who is reviewing it) [update_task: reviewer]',
+	)
+);
+check( 'a source Forge does not offer lists the ones it does', message_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_new2', 'source' => 'rumour' ) ) ), 'source must be one of: Client request, Internal.' );
+
+$walked = blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'             => 'wi_new2',
+		'reviewer'       => 'Sam Jones',
+		'source'         => 'Client request',
+		'confirm_client' => true,
+		'status'         => 'Up Next',
+	)
+);
+check( 'reviewer, source, client and move all go in one call', error_of( $walked ) . ' ' . ( is_array( $walked ) ? implode( ',', $walked['changed'] ) : message_of( $walked ) ), 'no error reviewer,confirm_client,source,status' );
+check( 'the source is recorded as Forge\'s answer, by its value', last_call( 'POST', '/work-items/wi_new2/gate' )[3], array( 'requirement' => 'G-FUTURE-IDEA-3', 'value' => 'client-request', 'evidence' => '' ) );
+check( 'the client is confirmed against the version after the edit', last_call( 'POST', '/work-items/wi_new2/confirm-client' )[3], array( 'record_version' => 2 ) );
+check( 'and the move against the version after that', last_call( 'POST', '/work-items/wi_new2/transition' )[3], array( 'to' => 'up-next', 'record_version' => 3 ) );
+check( 'so the task leaves Future Idea', $GLOBALS['forge']['items']['wi_new2']['stage'], 'up-next' );
+
+check( 'a source is refused once Forge stops asking for one', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f1', 'source' => 'internal' ) ) ), 'source_not_asked' );
 
 echo "\nComments\n";
 

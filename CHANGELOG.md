@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.92.0] - 2026-10-19
+
+### Added
+- **Claude can get a new Forge task started.** It can now say where a task
+  came from and confirm its client, the two things Forge asks for (with a
+  reviewer) before a task leaves Future Idea. When a move is refused, Claude
+  is also told which of its options fixes each missing item.
+
 ## [1.91.0] - 2026-10-19
 
 ### Added

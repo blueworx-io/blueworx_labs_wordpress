@@ -50,15 +50,19 @@ being an administrator, or if Claude is not used for 30 days.
 
 On a site running Forge, Claude can also list projects and tasks, read one in
 full, create a task, change its title, description, due date, assignee,
-reviewer or priority, move its status, and add a comment.
+reviewer or priority, say where it came from, confirm its client, move its
+status, and add a comment.
 
 - Status changes follow Forge's workflow. If Forge is waiting on something
   first (a reviewer, say), Claude is told what is missing.
 - Sending work back to an earlier status needs a reason, as it does in Forge.
 - New tasks start at Future Idea. Claude needs a project or a client site to
   put them on.
-- Recording a gate answer (such as where the work came from) and confirming
-  the client are still done in Forge.
+- To move a new task on, Forge needs a reviewer, where the work came from,
+  and the client confirmed. Claude can give all three, and should only
+  confirm the client when it knows the client is right.
+- Other sign-offs Forge asks for later (approvals, review results) are still
+  done in Forge by the people it names.
 
 On a site without Forge, none of this is offered.
 

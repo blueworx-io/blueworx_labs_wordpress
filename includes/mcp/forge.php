@@ -254,37 +254,46 @@ function blueworx_mcp_forge_tool_definitions() {
 		array(
 			'name'        => 'update_task',
 			'title'       => 'Update a Forge task',
-			'description' => 'Changes a Forge task. Only the fields given change. A new status moves the task through Forge\'s workflow; if Forge refuses the move, the reason and what is still needed come back, and any other changes in the same call are still saved.',
+			'description' => 'Changes a Forge task. Only the fields given change. A new status moves the task through Forge\'s workflow; if Forge refuses the move, the reason and what is still needed come back, and any other changes in the same call are still saved. To get a new task out of Future Idea, set a reviewer, source and confirm_client (in the same call as the status if you like).',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => array(
-					'id'          => $item_id,
-					'status'      => $status,
-					'reason'      => array(
+					'id'             => $item_id,
+					'status'         => $status,
+					'reason'         => array(
 						'type'        => 'string',
 						'description' => 'Why, when sending work back to an earlier status. Required for that.',
 					),
-					'title'       => array(
+					'title'          => array(
 						'type'        => 'string',
 						'description' => 'Title.',
 					),
-					'description' => array(
+					'description'    => array(
 						'type'        => 'string',
 						'description' => 'What the work is.',
 					),
-					'due_date'    => array(
+					'due_date'       => array(
 						'type'        => 'string',
 						'description' => 'Date as YYYY-MM-DD, or "" to clear it.',
 					),
-					'assignee'    => array(
+					'assignee'       => array(
 						'type'        => 'string',
 						'description' => 'A Forge person by ID, name or "me", or "" to clear the seat.',
 					),
-					'reviewer'    => array(
+					'reviewer'       => array(
 						'type'        => 'string',
 						'description' => 'Who reviews it (someone other than the assignee), by ID, name or "me", or "" to clear.',
 					),
-					'priority'    => $priority,
+					'priority'       => $priority,
+					'source'         => array(
+						'type'        => 'string',
+						'enum'        => array( 'client-request', 'internal', 'bug-report', 'meeting' ),
+						'description' => 'Where the work came from. Forge asks for this before a task leaves Future Idea.',
+					),
+					'confirm_client' => array(
+						'type'        => 'boolean',
+						'description' => 'Confirm the task is for the client it is filed under. Forge asks for this before Triage. Only set it when you know the client is right.',
+					),
 				),
 				'required'   => array( 'id' ),
 			),
@@ -409,11 +418,20 @@ function blueworx_mcp_forge_error( $data ) {
 function blueworx_mcp_forge_still_needed( $gate ) {
 	$needed = array();
 
+	// The update_task argument that gives each thing Forge may ask for.
+	$tool = array_merge( blueworx_mcp_forge_field_names(), array( 'client_confirmed_at' => 'confirm_client' ) );
+
 	foreach ( (array) ( $gate['unmet'] ?? array() ) as $requirement ) {
 		$label = (string) ( $requirement['label'] ?? $requirement['id'] ?? '' );
 		$how   = rtrim( (string) ( $requirement['satisfied_by'] ?? '' ), '.' );
+		$line  = '' === $how ? $label : $label . ' (' . $how . ')';
+		$arg   = 'source' === blueworx_mcp_forge_slug( $label ) ? 'source' : '';
 
-		$needed[] = '' === $how ? $label : $label . ' (' . $how . ')';
+		foreach ( (array) ( $requirement['fields'] ?? array() ) as $field ) {
+			$arg = $tool[ $field ] ?? $arg;
+		}
+
+		$needed[] = '' === $arg ? $line : $line . ' [update_task: ' . $arg . ']';
 	}
 
 	foreach ( (array) ( $gate['checks'] ?? array() ) as $check ) {
@@ -1221,13 +1239,35 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 		}
 	}
 
-	if ( empty( $fields ) && '' === $move ) {
+	$source = null;
+
+	if ( isset( $args['source'] ) && is_scalar( $args['source'] ) && '' !== trim( (string) $args['source'] ) ) {
+		$source = blueworx_mcp_forge_resolve_source( (string) $args['source'], $view );
+
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
+	}
+
+	$confirm = ! empty( $args['confirm_client'] );
+
+	if ( empty( $fields ) && '' === $move && null === $source && ! $confirm ) {
 		return new WP_Error( 'nothing_to_change', 'No changes were given.' );
 	}
 
 	$item    = (array) $view['item'];
 	$id      = (string) $item['id'];
 	$changed = array();
+
+	// Once something is saved, a later step that fails says so rather than
+	// reading as though nothing happened.
+	$partly = function ( $error ) use ( &$changed ) {
+		if ( empty( $changed ) ) {
+			return $error;
+		}
+
+		return new WP_Error( $error->get_error_code(), 'Saved the change to ' . implode( ', ', $changed ) . ', but not the rest. ' . $error->get_error_message() );
+	};
 
 	if ( ! empty( $fields ) ) {
 		$answer = blueworx_mcp_forge_request(
@@ -1251,15 +1291,53 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 		);
 	}
 
+	if ( $confirm ) {
+		$answer = blueworx_mcp_forge_request( 'POST', '/work-items/' . $id . '/confirm-client', array(), array( 'record_version' => (int) $item['record_version'] ) );
+
+		if ( is_wp_error( $answer ) ) {
+			return $partly( $answer );
+		}
+
+		$item      = (array) $answer['item'];
+		$changed[] = 'confirm_client';
+	}
+
+	if ( null !== $source ) {
+		$answer = blueworx_mcp_forge_request(
+			'POST',
+			'/work-items/' . $id . '/gate',
+			array(),
+			array(
+				'requirement' => $source['requirement'],
+				'value'       => $source['value'],
+				'evidence'    => '',
+			)
+		);
+
+		if ( is_wp_error( $answer ) ) {
+			return $partly( $answer );
+		}
+
+		$changed[] = 'source';
+	}
+
 	if ( '' !== $move && (string) $item['stage'] !== $move ) {
+		// Read again after an answer or a confirmation: the moves on offer, and
+		// the version the move is made against, may both have changed.
+		if ( null !== $source || $confirm ) {
+			$view = blueworx_mcp_forge_show( array( 'id' => $id ) );
+
+			if ( is_wp_error( $view ) ) {
+				return $partly( $view );
+			}
+
+			$item = (array) $view['item'];
+		}
+
 		$moved = blueworx_mcp_forge_move( $item, $move, $view, $args );
 
 		if ( is_wp_error( $moved ) ) {
-			if ( empty( $changed ) ) {
-				return $moved;
-			}
-
-			return new WP_Error( $moved->get_error_code(), 'Saved the change to ' . implode( ', ', $changed ) . ', but the status did not change. ' . $moved->get_error_message() );
+			return empty( $changed ) ? $moved : new WP_Error( $moved->get_error_code(), 'Saved the change to ' . implode( ', ', $changed ) . ', but the status did not change. ' . $moved->get_error_message() );
 		}
 
 		$item      = $moved;
@@ -1271,6 +1349,51 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 	$out['_log']    = array( 'updated', 'Forge task ' . $out['id'] . ' ' . $out['title'] );
 
 	return $out;
+}
+
+/**
+ * Finds Forge's "Source" question for this task, and the answer given.
+ *
+ * Found by name among the requirements of the task's next moves, rather than
+ * by Forge's requirement ID, so a renumbered gate does not break it. Only this
+ * one question is answered from here: the other gate answers are approvals and
+ * sign-offs that belong to the people Forge names, not to Claude.
+ *
+ * @param string $given What was asked for, by value or label.
+ * @param array  $view  Forge's single-item view.
+ * @return array|WP_Error 'requirement' and 'value'.
+ */
+function blueworx_mcp_forge_resolve_source( $given, $view ) {
+	$question = null;
+
+	foreach ( (array) ( $view['readiness'] ?? array() ) as $readiness ) {
+		foreach ( array_merge( (array) ( $readiness['unmet'] ?? array() ), (array) ( $readiness['all'] ?? array() ) ) as $requirement ) {
+			if ( 'source' === blueworx_mcp_forge_slug( $requirement['label'] ?? '' ) && ! empty( $requirement['options'] ) ) {
+				$question = $requirement;
+				break 2;
+			}
+		}
+	}
+
+	if ( null === $question ) {
+		return new WP_Error( 'source_not_asked', 'Forge is not asking where this task came from at its current status, so there is nothing to answer.' );
+	}
+
+	$wanted = blueworx_mcp_forge_slug( $given );
+	$labels = array();
+
+	foreach ( (array) $question['options'] as $option ) {
+		if ( blueworx_mcp_forge_slug( $option['value'] ?? '' ) === $wanted || blueworx_mcp_forge_slug( $option['label'] ?? '' ) === $wanted ) {
+			return array(
+				'requirement' => (string) $question['id'],
+				'value'       => (string) $option['value'],
+			);
+		}
+
+		$labels[] = (string) ( $option['label'] ?? $option['value'] ?? '' );
+	}
+
+	return new WP_Error( 'unknown_source', 'source must be one of: ' . implode( ', ', $labels ) . '.' );
 }
 
 /**

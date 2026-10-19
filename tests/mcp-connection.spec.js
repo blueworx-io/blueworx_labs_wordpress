@@ -275,23 +275,24 @@ test.describe('Connect Claude', () => {
         .structuredContent.tasks;
       expect(listed.map((one) => one.id)).toContain(task.id);
 
-      // A move Forge allows goes through; one it does not comes back with why.
-      const full = (await callTool(request, token, 'get_task', { id: task.id })).structuredContent;
-      const ready = full.next_statuses.find((next) => next.ready);
+      // A move Forge is not ready for comes back with what is missing, and
+      // the edit made alongside it is kept.
+      const early = await callTool(request, token, 'update_task', { id: task.id, title: 'MCP test task, edited', status: 'Triage' });
+      expect(early.isError).toBe(true);
+      expect(early.content[0].text).toContain('Saved the change to title');
+      expect(early.content[0].text).toContain('[update_task: source]');
+
+      // Given what Forge asks for, the new task leaves Future Idea in one call.
+      const reviewer = info.forge.people.find((person) => person.id !== task.assignee_id) ?? info.forge.people[0];
       const moved = await callTool(request, token, 'update_task', {
         id: task.id,
-        title: 'MCP test task, edited',
-        status: ready ? ready.status : full.next_statuses[0].status,
+        reviewer: reviewer.id,
+        source: 'internal',
+        confirm_client: true,
+        status: 'Triage',
       });
-
-      if (ready) {
-        expect(moved.isError, moved.content[0].text).toBeFalsy();
-        expect(moved.structuredContent.status).toBe(ready.status);
-        expect(moved.structuredContent.changed).toEqual(['title', 'status']);
-      } else {
-        expect(moved.isError).toBe(true);
-        expect(moved.content[0].text).toContain('Saved the change to title');
-      }
+      expect(moved.isError, moved.content[0].text).toBeFalsy();
+      expect(moved.structuredContent.status).toBe('triage');
 
       const commented = await callTool(request, token, 'add_task_comment', { id: task.id, comment: 'From the Connect Claude test.' });
       expect(commented.isError, commented.content[0].text).toBeFalsy();
