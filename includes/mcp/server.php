@@ -169,7 +169,7 @@ function blueworx_mcp_handle_message( $message, $grant ) {
 						'version' => defined( 'BLUEWORX_LABS_VERSION' ) ? BLUEWORX_LABS_VERSION : '0',
 					),
 					'instructions'    => 'Tools for reading and editing the content of the WordPress site at ' . home_url() . '. New content is created as a draft unless you are asked to publish it. Files cannot be uploaded or deleted. Pages marked built_with_elementor keep their layout outside the content field, so editing content will not change what visitors see on them.'
-						. ( blueworx_mcp_forge_active() ? ' The site also runs Forge, a project tracker: the *_project and *_task tools read and change its projects and tasks, and get_site_info lists its sites, people and statuses.' : '' ),
+						. ( blueworx_mcp_forge_active() ? ' The site also runs Forge, a project tracker: the *_project and *_task tools read and change its projects and tasks, get_team_capacity shows who has room week by week, and get_site_info lists its sites, people and statuses.' : '' ),
 				)
 			);
 

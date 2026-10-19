@@ -16,6 +16,11 @@
  * through Forge's workflow, never by editing it, so a move Forge's gates
  * refuse comes back with what is still missing.
  *
+ * Planned hours are set per role on each task, and each role's hours sit on
+ * that role's own date. get_team_capacity reads Forge's capacity figures, which
+ * add those hours up against everyone's working week and leave, so Claude can
+ * see who has room before it books anything.
+ *
  * With Forge switched off none of this is listed, and a call made anyway is
  * answered with a plain refusal rather than an error from WordPress.
  *
@@ -60,13 +65,14 @@ function blueworx_mcp_forge_task_levels() {
  */
 function blueworx_mcp_forge_tool_handlers() {
 	return array(
-		'list_projects'    => 'blueworx_mcp_tool_forge_list_projects',
-		'get_project'      => 'blueworx_mcp_tool_forge_get_project',
-		'list_tasks'       => 'blueworx_mcp_tool_forge_list_tasks',
-		'get_task'         => 'blueworx_mcp_tool_forge_get_task',
-		'create_task'      => 'blueworx_mcp_tool_forge_create_task',
-		'update_task'      => 'blueworx_mcp_tool_forge_update_task',
-		'add_task_comment' => 'blueworx_mcp_tool_forge_add_comment',
+		'list_projects'     => 'blueworx_mcp_tool_forge_list_projects',
+		'get_project'       => 'blueworx_mcp_tool_forge_get_project',
+		'list_tasks'        => 'blueworx_mcp_tool_forge_list_tasks',
+		'get_task'          => 'blueworx_mcp_tool_forge_get_task',
+		'create_task'       => 'blueworx_mcp_tool_forge_create_task',
+		'update_task'       => 'blueworx_mcp_tool_forge_update_task',
+		'add_task_comment'  => 'blueworx_mcp_tool_forge_add_comment',
+		'get_team_capacity' => 'blueworx_mcp_tool_forge_get_team_capacity',
 	);
 }
 
@@ -104,6 +110,7 @@ function blueworx_mcp_forge_tool_definitions() {
 		'type' => 'string',
 		'enum' => array( 'low', 'normal', 'high', 'urgent' ),
 	);
+	$planning = blueworx_mcp_forge_planning_properties();
 	$readonly = array(
 		'readOnlyHint'  => true,
 		'openWorldHint' => false,
@@ -246,7 +253,7 @@ function blueworx_mcp_forge_tool_definitions() {
 					),
 					'due_date'       => $date,
 					'priority'       => $priority,
-				),
+				) + $planning,
 				'required'   => array( 'title' ),
 			),
 			'annotations' => $writes,
@@ -294,7 +301,7 @@ function blueworx_mcp_forge_tool_definitions() {
 						'type'        => 'boolean',
 						'description' => 'Confirm the task is for the client it is filed under. Forge asks for this before Triage. Only set it when you know the client is right.',
 					),
-				),
+				) + $planning,
 				'required'   => array( 'id' ),
 			),
 			'annotations' => array(
@@ -324,6 +331,92 @@ function blueworx_mcp_forge_tool_definitions() {
 			),
 			'annotations' => $writes,
 		),
+		array(
+			'name'        => 'get_team_capacity',
+			'title'       => 'Get team capacity',
+			'description' => 'Shows who has room, week by week: each person\'s available hours (their working week, less leave), hours booked on work still to do, hours used on finished work, and hours left. status is clear, tight (80% or more used), over-booked, or not set up (nobody has entered their working week). Only work from Up Next onwards books time, and each role\'s hours sit on that role\'s date. Name a person to also see the tasks taking up their time. Read this before setting hours or dates, so nobody is over-booked.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'from'   => array(
+						'type'        => 'string',
+						'description' => 'First day, YYYY-MM-DD (default today).',
+					),
+					'to'     => array(
+						'type'        => 'string',
+						'description' => 'Last day, YYYY-MM-DD (default four weeks from the first). At most a year.',
+					),
+					'by'     => array(
+						'type'        => 'string',
+						'enum'        => array( 'weeks', 'days' ),
+						'description' => 'One line per week (default) or per day.',
+					),
+					'person' => $person,
+				),
+			),
+			'annotations' => $readonly,
+		),
+	);
+}
+
+/**
+ * The hours and dates a task can be planned with, for create_task and
+ * update_task.
+ *
+ * @return array Input schema properties.
+ */
+function blueworx_mcp_forge_planning_properties() {
+	$properties = array();
+
+	foreach ( blueworx_mcp_forge_role_hours() as $arg => $column ) {
+		$properties[ $arg ] = array(
+			'type'        => 'number',
+			'minimum'     => 0,
+			'description' => 'Planned hours for the ' . substr( $arg, 0, -6 ) . '.'
+				. ( 'assignee_hours' === $arg ? ' Forge fills in reviewer and deliverer hours from this (20% and 10%) unless you give them.' : '' ),
+		);
+	}
+
+	$what = array(
+		'design_by'  => 'When design is due',
+		'review_by'  => 'When review is due',
+		'release_by' => 'When it is released',
+	);
+
+	foreach ( blueworx_mcp_forge_role_dates() as $arg => $column ) {
+		$properties[ $arg ] = array(
+			'type'        => 'string',
+			'description' => $what[ $arg ] . ', YYYY-MM-DD, or "" to clear. That role\'s hours are booked on this day. Dates run design_by, due_date, review_by, release_by.',
+		);
+	}
+
+	return $properties;
+}
+
+/**
+ * Each role's planned hours: the tool argument, and Forge's field.
+ *
+ * @return array Forge field keyed by argument.
+ */
+function blueworx_mcp_forge_role_hours() {
+	return array(
+		'assignee_hours'  => 'hours_primary',
+		'designer_hours'  => 'hours_designer',
+		'reviewer_hours'  => 'hours_review',
+		'deliverer_hours' => 'hours_delivery',
+	);
+}
+
+/**
+ * The role dates besides the due date: the tool argument, and Forge's field.
+ *
+ * @return array Forge field keyed by argument.
+ */
+function blueworx_mcp_forge_role_dates() {
+	return array(
+		'design_by'  => 'design_target',
+		'review_by'  => 'review_target',
+		'release_by' => 'release_target',
 	);
 }
 
@@ -456,7 +549,7 @@ function blueworx_mcp_forge_field_names() {
 		'reviewer_id'     => 'reviewer',
 		'parent_id'       => 'project_id',
 		'stage'           => 'status',
-	);
+	) + array_flip( blueworx_mcp_forge_role_dates() ) + array_flip( blueworx_mcp_forge_role_hours() );
 }
 
 /**
@@ -636,7 +729,12 @@ function blueworx_mcp_forge_shape( $item, $people ) {
 		'assignee_id'  => $assignee,
 		'due_date'     => (string) ( $item['planned_due'] ?? '' ),
 		'parent_id'    => (string) ( $item['parent_id'] ?? '' ),
+		'hours'        => array(),
 	);
+
+	foreach ( blueworx_mcp_forge_role_hours() as $arg => $column ) {
+		$out['hours'][ substr( $arg, 0, -6 ) ] = (float) ( $item[ $column ] ?? 0 );
+	}
 
 	foreach ( array(
 		'client_site_id' => 'client_site_id',
@@ -689,6 +787,10 @@ function blueworx_mcp_forge_shape_full( $view, $people ) {
 	$out['requirements']        = (string) ( $item['requirements'] ?? '' );
 	$out['acceptance_criteria'] = (string) ( $item['acceptance_criteria'] ?? '' );
 	$out['start_date']          = (string) ( $item['planned_start'] ?? '' );
+
+	foreach ( blueworx_mcp_forge_role_dates() as $arg => $column ) {
+		$out[ $arg ] = (string) ( $item[ $column ] ?? '' );
+	}
 
 	$out['people'] = array();
 
@@ -1097,6 +1199,36 @@ function blueworx_mcp_forge_write_fields( $args, $people ) {
 		$fields['priority'] = (string) $args['priority'];
 	}
 
+	foreach ( blueworx_mcp_forge_role_dates() as $arg => $column ) {
+		if ( ! isset( $args[ $arg ] ) || ! is_scalar( $args[ $arg ] ) ) {
+			continue;
+		}
+
+		$day = trim( (string) $args[ $arg ] );
+
+		if ( '' !== $day ) {
+			$valid = blueworx_mcp_forge_check_date( $day, $arg );
+
+			if ( is_wp_error( $valid ) ) {
+				return $valid;
+			}
+		}
+
+		$fields[ $column ] = $day;
+	}
+
+	foreach ( blueworx_mcp_forge_role_hours() as $arg => $column ) {
+		if ( ! isset( $args[ $arg ] ) ) {
+			continue;
+		}
+
+		if ( ! is_numeric( $args[ $arg ] ) || (float) $args[ $arg ] < 0 ) {
+			return new WP_Error( 'invalid_hours', $arg . ' must be a number of hours, 0 or more.' );
+		}
+
+		$fields[ $column ] = round( (float) $args[ $arg ], 2 );
+	}
+
 	return $fields;
 }
 
@@ -1503,6 +1635,196 @@ function blueworx_mcp_tool_forge_add_comment( $args ) {
 		'visibility' => (string) ( $answer['comment']['visibility'] ?? '' ),
 		'_log'       => array( 'commented on', 'Forge task ' . $id . ' ' . $title ),
 	);
+}
+
+/**
+ * Tool: get_team_capacity.
+ *
+ * Forge works the figures out (every client at once, so nobody looks free on
+ * one while full on another); this only picks the window and renames them.
+ * Naming a person adds Forge's drill-down: the work behind their figures.
+ *
+ * @param array $args Arguments.
+ * @return array|WP_Error Result.
+ */
+function blueworx_mcp_tool_forge_get_team_capacity( $args ) {
+	$off = blueworx_mcp_forge_unavailable();
+
+	if ( null !== $off ) {
+		return $off;
+	}
+
+	$window = array();
+
+	foreach ( array( 'from', 'to' ) as $end ) {
+		$window[ $end ] = isset( $args[ $end ] ) && is_scalar( $args[ $end ] ) ? trim( (string) $args[ $end ] ) : '';
+
+		if ( '' !== $window[ $end ] ) {
+			$valid = blueworx_mcp_forge_check_date( $window[ $end ], $end );
+
+			if ( is_wp_error( $valid ) ) {
+				return $valid;
+			}
+		}
+	}
+
+	$from = '' === $window['from'] ? (string) wp_date( 'Y-m-d' ) : $window['from'];
+	$to   = '' === $window['to'] ? gmdate( 'Y-m-d', (int) strtotime( $from . ' 00:00:00 UTC +27 days' ) ) : $window['to'];
+
+	if ( $to < $from ) {
+		return new WP_Error( 'invalid_range', 'to must be on or after from.' );
+	}
+
+	$by     = isset( $args['by'] ) && 'days' === $args['by'] ? 'days' : 'weeks';
+	$people = blueworx_mcp_forge_people();
+
+	if ( is_wp_error( $people ) ) {
+		return $people;
+	}
+
+	$who = '';
+
+	if ( isset( $args['person'] ) && is_scalar( $args['person'] ) && '' !== trim( (string) $args['person'] ) ) {
+		$who = blueworx_mcp_forge_resolve_person( (string) $args['person'], $people );
+
+		if ( is_wp_error( $who ) ) {
+			return $who;
+		}
+	}
+
+	$grid = blueworx_mcp_forge_request(
+		'GET',
+		'/capacity',
+		array(
+			'from' => $from,
+			'to'   => $to,
+			'by'   => $by,
+		)
+	);
+
+	if ( is_wp_error( $grid ) ) {
+		return $grid;
+	}
+
+	$rows = array();
+
+	foreach ( (array) ( $grid['people'] ?? array() ) as $row ) {
+		$id = (string) ( $row['user_id'] ?? '' );
+
+		if ( '' !== $who && $id !== $who ) {
+			continue;
+		}
+
+		$rows[] = array(
+			'id'    => $id,
+			'name'  => (string) ( $row['display_name'] ?? '' ),
+			$by     => array_map( 'blueworx_mcp_forge_capacity_cell', (array) ( $row['periods'] ?? array() ) ),
+			'total' => blueworx_mcp_forge_capacity_cell( (array) ( $row['total'] ?? array() ) ),
+		);
+	}
+
+	if ( '' !== $who && ! empty( $rows ) ) {
+		$detail = blueworx_mcp_forge_request(
+			'GET',
+			'/capacity/person/' . $who,
+			array(
+				'from' => $from,
+				'to'   => $to,
+			)
+		);
+
+		if ( is_wp_error( $detail ) ) {
+			return $detail;
+		}
+
+		$rows[0]['tasks'] = array_map(
+			function ( $allocation ) use ( $people ) {
+				return blueworx_mcp_forge_capacity_task( (array) $allocation, $people );
+			},
+			(array) ( $detail['allocations'] ?? array() )
+		);
+	}
+
+	$out = array(
+		'from'   => $from,
+		'to'     => $to,
+		'people' => $rows,
+	);
+
+	if ( ! empty( $grid['only_me'] ) ) {
+		$out['note'] = 'Forge only shows you your own capacity. An administrator sees everyone.';
+	}
+
+	return $out;
+}
+
+/**
+ * One period of Forge's capacity figures, in plain names.
+ *
+ * @param array $cell Forge's figures for a period.
+ * @return array Figures.
+ */
+function blueworx_mcp_forge_capacity_cell( $cell ) {
+	$out = array();
+
+	if ( isset( $cell['from'] ) ) {
+		$out['from'] = (string) $cell['from'];
+		$out['to']   = (string) ( $cell['to'] ?? $cell['from'] );
+	}
+
+	$band   = (string) ( $cell['band'] ?? '' );
+	$plain  = array(
+		'over'       => 'over-booked',
+		'unrecorded' => 'not set up',
+	);
+
+	return $out + array(
+		'available' => (float) ( $cell['available'] ?? 0 ),
+		'booked'    => (float) ( $cell['committed'] ?? 0 ),
+		'done'      => (float) ( $cell['completed'] ?? 0 ),
+		'left'      => (float) ( $cell['remaining'] ?? 0 ),
+		'status'    => $plain[ $band ] ?? $band,
+	);
+}
+
+/**
+ * One piece of work taking up a person's time, from Forge's drill-down.
+ *
+ * @param array $allocation Forge allocation.
+ * @param array $people     Name keyed by person ID.
+ * @return array Task line.
+ */
+function blueworx_mcp_forge_capacity_task( $allocation, $people ) {
+	$roles    = array(
+		'primary'  => 'assignee',
+		'design'   => 'designer',
+		'review'   => 'reviewer',
+		'delivery' => 'deliverer',
+	);
+	$statuses = array(
+		'committed'   => 'to do',
+		'completed'   => 'done',
+		'with-client' => 'with client',
+	);
+	$role     = (string) ( $allocation['role'] ?? '' );
+	$status   = (string) ( $allocation['status'] ?? '' );
+	$covering = (string) ( $allocation['covering'] ?? '' );
+
+	$out = array(
+		'task_id' => (string) ( $allocation['item_id'] ?? '' ),
+		'title'   => (string) ( $allocation['title'] ?? '' ),
+		'role'    => $roles[ $role ] ?? $role,
+		'hours'   => (float) ( $allocation['hours'] ?? 0 ),
+		'from'    => (string) ( $allocation['from'] ?? '' ),
+		'to'      => (string) ( $allocation['to'] ?? '' ),
+		'status'  => $statuses[ $status ] ?? $status,
+	);
+
+	if ( '' !== $covering ) {
+		$out['covering_for'] = $people[ $covering ] ?? $covering;
+	}
+
+	return $out;
 }
 
 /**
