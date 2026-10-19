@@ -1772,8 +1772,8 @@ function blueworx_mcp_forge_capacity_cell( $cell ) {
 		$out['to']   = (string) ( $cell['to'] ?? $cell['from'] );
 	}
 
-	$band   = (string) ( $cell['band'] ?? '' );
-	$plain  = array(
+	$band  = (string) ( $cell['band'] ?? '' );
+	$plain = array(
 		'over'       => 'over-booked',
 		'unrecorded' => 'not set up',
 	);
