@@ -24,6 +24,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'BLUEWORX_STORE_CONTENT_PRIORITY', 30 );
 
 /**
+ * After SureCart has put its own dashboard template back.
+ *
+ * SureCart stamps the page it seeds for the customer dashboard with its own
+ * page template, and reapplies that template on template_include at the
+ * default priority — after this plugin, whose files load first. At 10 the
+ * frame was chosen and then thrown away, and the dashboard came back inside
+ * the theme's document with SureCart's own dashboard wrapper in it. A site
+ * whose dashboard page predates that stamp never saw it, which is why this
+ * only showed up once the page was seeded again.
+ *
+ * Late enough to be after that, and deliberately nowhere near the 3100
+ * SureCart's router runs at: its own routed screens stay its own.
+ */
+define( 'BLUEWORX_STORE_TEMPLATE_PRIORITY', 20 );
+
+/**
  * Which template a page should be served with. Pure.
  *
  * @param string $page_key Empty for any page this plugin does not dress.
@@ -47,6 +63,9 @@ function blueworx_store_template_for( $page_key, $chosen, $ours ) {
  * The frame itself is untouched: template.php runs WordPress's ordinary
  * loop, blueworx_store_dress_content() is still a the_content filter, and it
  * still fires exactly where it did.
+ *
+ * Runs late — see BLUEWORX_STORE_TEMPLATE_PRIORITY — because SureCart puts
+ * its own dashboard template back after the default priority has run.
  *
  * @param string $template The template WordPress chose.
  * @return string
@@ -213,5 +232,5 @@ if ( function_exists( 'add_filter' ) && function_exists( 'blueworx_feature_enabl
 	add_filter( 'the_content', 'blueworx_store_dress_content', BLUEWORX_STORE_CONTENT_PRIORITY );
 	add_filter( 'render_block', 'blueworx_store_strip_post_title', 10, 3 );
 	// These pages serve their own document — see blueworx_store_serve_template().
-	add_filter( 'template_include', 'blueworx_store_serve_template' );
+	add_filter( 'template_include', 'blueworx_store_serve_template', BLUEWORX_STORE_TEMPLATE_PRIORITY );
 }
