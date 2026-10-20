@@ -300,6 +300,37 @@ test.describe('Connect Claude', () => {
       expect(moved.isError, moved.content[0].text).toBeFalsy();
       expect(moved.structuredContent.status).toBe('triage');
 
+      // From Triage, Forge's questions are answered and the people and plan
+      // set in one call, and the task walks on through Documentation to Up Next.
+      // Free work, so it books none of the test client's support hours.
+      const planned = await callTool(request, token, 'update_task', {
+        id: task.id,
+        priority: 'normal',
+        duplicate_check: 'none',
+        triage_outcome: 'proceed',
+        who_pays: 'free-general',
+        gate_answers: { 'Documentation approval': 'Approved' },
+        deliverer: info.forge.people[0].id,
+        assignee_hours: 4,
+        reviewer_hours: 1,
+        deliverer_hours: 1,
+        review_by: '2030-02-01',
+        release_by: '2030-02-02',
+        status: 'Up Next',
+      });
+      expect(planned.isError, planned.content[0].text).toBeFalsy();
+      expect(planned.structuredContent.status).toBe('up-next');
+
+      // And on through In Development to In Review, over-booking or not.
+      const review = await callTool(request, token, 'update_task', {
+        id: task.id,
+        how_to_test: 'Open the task in Forge.',
+        capacity_reason: 'Connect Claude test task.',
+        status: 'In Review',
+      });
+      expect(review.isError, review.content[0].text).toBeFalsy();
+      expect(review.structuredContent.status).toBe('in-review');
+
       const commented = await callTool(request, token, 'add_task_comment', { id: task.id, comment: 'From the Connect Claude test.' });
       expect(commented.isError, commented.content[0].text).toBeFalsy();
 

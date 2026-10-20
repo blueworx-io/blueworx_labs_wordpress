@@ -14,7 +14,10 @@
  * of four levels. "Projects" here are the top level; "tasks" are the other
  * three. A task's status is its Forge stage, and it changes by moving the item
  * through Forge's workflow, never by editing it, so a move Forge's gates
- * refuse comes back with what is still missing.
+ * refuse comes back with what is still missing. Everything those gates ask
+ * for on the way to In Review can be given through update_task, approvals
+ * included; the review approval and the release stay with the people Forge
+ * names.
  *
  * Planned hours are set per role on each task, and each role's hours sit on
  * that role's own date. get_team_capacity reads Forge's capacity figures, which
@@ -261,45 +264,83 @@ function blueworx_mcp_forge_tool_definitions() {
 		array(
 			'name'        => 'update_task',
 			'title'       => 'Update a Forge task',
-			'description' => 'Changes a Forge task. Only the fields given change. A new status moves the task through Forge\'s workflow; if Forge refuses the move, the reason and what is still needed come back, and any other changes in the same call are still saved. To get a new task out of Future Idea, set a reviewer, source and confirm_client (in the same call as the status if you like).',
+			'description' => 'Changes a Forge task. Only the fields given change. A new status moves the task through Forge\'s workflow, one stage at a time if it is several ahead (up to In Review); if Forge refuses a move, the reason and what is still needed come back, and the other changes in the same call are still saved. Everything Forge asks for before In Review can be given here: out of Future Idea a reviewer, source and confirm_client; out of Triage priority, duplicate_check, triage_outcome and who_pays; into work a deliverer, hours and dates; before review how_to_test; and any other gate answer through gate_answers. get_task says what each next move still needs.',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => array(
-					'id'             => $item_id,
-					'status'         => $status,
-					'reason'         => array(
+					'id'              => $item_id,
+					'status'          => array(
+						'type'        => 'string',
+						'description' => $status['description'] . ' Several stages ahead is fine: the task is moved one stage at a time until it gets there or Forge stops it.',
+					),
+					'reason'          => array(
 						'type'        => 'string',
 						'description' => 'Why, when sending work back to an earlier status. Required for that.',
 					),
-					'title'          => array(
+					'title'           => array(
 						'type'        => 'string',
 						'description' => 'Title.',
 					),
-					'description'    => array(
+					'description'     => array(
 						'type'        => 'string',
 						'description' => 'What the work is.',
 					),
-					'due_date'       => array(
+					'due_date'        => array(
 						'type'        => 'string',
 						'description' => 'Date as YYYY-MM-DD, or "" to clear it.',
 					),
-					'assignee'       => array(
+					'assignee'        => array(
 						'type'        => 'string',
 						'description' => 'A Forge person by ID, name or "me", or "" to clear the seat.',
 					),
-					'reviewer'       => array(
+					'reviewer'        => array(
 						'type'        => 'string',
 						'description' => 'Who reviews it (someone other than the assignee), by ID, name or "me", or "" to clear.',
 					),
-					'priority'       => $priority,
-					'source'         => array(
+					'priority'        => $priority,
+					'source'          => array(
 						'type'        => 'string',
 						'enum'        => array( 'client-request', 'internal', 'bug-report', 'meeting' ),
 						'description' => 'Where the work came from. Forge asks for this before a task leaves Future Idea.',
 					),
-					'confirm_client' => array(
+					'confirm_client'  => array(
 						'type'        => 'boolean',
 						'description' => 'Confirm the task is for the client it is filed under. Forge asks for this before Triage. Only set it when you know the client is right.',
+					),
+					'designer'        => array(
+						'type'        => 'string',
+						'description' => 'Who designs it, by ID, name or "me", or "" for no design (the task then skips Design).',
+					),
+					'deliverer'       => array(
+						'type'        => 'string',
+						'description' => 'Who releases it, by ID, name or "me", or "" to clear. Forge needs one before work starts.',
+					),
+					'who_pays'        => array(
+						'type'        => 'string',
+						'enum'        => array( 'chargeable', 'free-bug', 'free-general' ),
+						'description' => 'Who pays: chargeable (the client), free-bug (a bug we caused) or free-general (nobody). Forge asks for this before leaving Triage.',
+					),
+					'duplicate_check' => array(
+						'type'        => 'string',
+						'description' => '"none" when nothing duplicates this task, or the ID of the task it duplicates. Forge asks for this before leaving Triage.',
+					),
+					'triage_outcome'  => array(
+						'type'        => 'string',
+						'enum'        => array( 'proceed' ),
+						'description' => 'The triage decision. Forge asks for this before leaving Triage. Only proceed is given here: rejecting, deferring or closing as a duplicate ends the task, which is done in Forge.',
+					),
+					'how_to_test'     => array(
+						'type'        => 'string',
+						'description' => 'How to test it, for the reviewer. Forge asks for this before In Review.',
+					),
+					'gate_answers'    => array(
+						'type'                 => 'object',
+						'additionalProperties' => array( 'type' => 'string' ),
+						'description'          => 'Any other answer Forge asks for before In Review, keyed by its name as get_task shows it, e.g. {"Documentation approval": "Approved", "Bug classification": "Regression", "Responsive states": "Done"}. Give a choice by its name, or the text or number a box asks for. Recorded as the person who connected Claude.',
+					),
+					'capacity_reason' => array(
+						'type'        => 'string',
+						'description' => 'Why the move goes ahead although it over-books someone. Forge asks for this when leaving Up Next would put a person over their hours; read get_team_capacity first.',
 					),
 				) + $planning,
 				'required'   => array( 'id' ),
@@ -513,12 +554,20 @@ function blueworx_mcp_forge_still_needed( $gate ) {
 
 	// The update_task argument that gives each thing Forge may ask for.
 	$tool = array_merge( blueworx_mcp_forge_field_names(), array( 'client_confirmed_at' => 'confirm_client' ) );
+	$asks = blueworx_mcp_forge_answer_args() + array(
+		'planned-hours-per-role' => 'assignee_hours',
+		'capacity-check'         => 'capacity_reason',
+	);
 
 	foreach ( (array) ( $gate['unmet'] ?? array() ) as $requirement ) {
 		$label = (string) ( $requirement['label'] ?? $requirement['id'] ?? '' );
 		$how   = rtrim( (string) ( $requirement['satisfied_by'] ?? '' ), '.' );
 		$line  = '' === $how ? $label : $label . ' (' . $how . ')';
-		$arg   = 'source' === blueworx_mcp_forge_slug( $label ) ? 'source' : '';
+		$arg   = $asks[ blueworx_mcp_forge_slug( $label ) ] ?? '';
+
+		if ( '' === $arg && in_array( $requirement['control'] ?? '', array( 'pick', 'box' ), true ) ) {
+			$arg = 'gate_answers';
+		}
 
 		foreach ( (array) ( $requirement['fields'] ?? array() ) as $field ) {
 			$arg = $tool[ $field ] ?? $arg;
@@ -545,11 +594,40 @@ function blueworx_mcp_forge_field_names() {
 	return array(
 		'problem'         => 'description',
 		'planned_due'     => 'due_date',
-		'primary_user_id' => 'assignee',
-		'reviewer_id'     => 'reviewer',
-		'parent_id'       => 'project_id',
-		'stage'           => 'status',
+		'primary_user_id'  => 'assignee',
+		'reviewer_id'      => 'reviewer',
+		'designer_id'      => 'designer',
+		'deliverer_id'     => 'deliverer',
+		'commercial_class' => 'who_pays',
+		'test_description' => 'how_to_test',
+		'parent_id'        => 'project_id',
+		'stage'            => 'status',
 	) + array_flip( blueworx_mcp_forge_role_dates() ) + array_flip( blueworx_mcp_forge_role_hours() );
+}
+
+/**
+ * The gate answers update_task has an argument of its own for, keyed by the
+ * name Forge gives the question. Anything else answerable goes through
+ * gate_answers.
+ *
+ * @return array Argument keyed by the question's slug.
+ */
+function blueworx_mcp_forge_answer_args() {
+	return array(
+		'source'          => 'source',
+		'duplicate-check' => 'duplicate_check',
+		'triage-outcome'  => 'triage_outcome',
+	);
+}
+
+/**
+ * The gates whose answers Claude may give: every one a task passes on its way
+ * to In Review. Review approval and release stay with the people Forge names.
+ *
+ * @return string[] Gate names.
+ */
+function blueworx_mcp_forge_answerable_gates() {
+	return array( 'G-FUTURE-IDEA', 'G-TRIAGE', 'G-BUG-TRACKING', 'G-DOCUMENTATION', 'G-UP-NEXT', 'G-DESIGN', 'G-IN-DEVELOPMENT' );
 }
 
 /**
@@ -1170,9 +1248,23 @@ function blueworx_mcp_forge_write_fields( $args, $people ) {
 		$fields['planned_due'] = $due;
 	}
 
+	if ( isset( $args['how_to_test'] ) && is_scalar( $args['how_to_test'] ) ) {
+		$fields['test_description'] = sanitize_textarea_field( (string) $args['how_to_test'] );
+	}
+
+	if ( isset( $args['who_pays'] ) && is_scalar( $args['who_pays'] ) ) {
+		if ( ! in_array( $args['who_pays'], array( 'chargeable', 'free-bug', 'free-general' ), true ) ) {
+			return new WP_Error( 'invalid_who_pays', 'who_pays must be chargeable, free-bug or free-general.' );
+		}
+
+		$fields['commercial_class'] = (string) $args['who_pays'];
+	}
+
 	foreach ( array(
-		'assignee' => 'primary_user_id',
-		'reviewer' => 'reviewer_id',
+		'assignee'  => 'primary_user_id',
+		'reviewer'  => 'reviewer_id',
+		'designer'  => 'designer_id',
+		'deliverer' => 'deliverer_id',
 	) as $arg => $seat ) {
 		if ( ! isset( $args[ $arg ] ) || ! is_scalar( $args[ $arg ] ) ) {
 			continue;
@@ -1371,19 +1463,15 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 		}
 	}
 
-	$source = null;
+	$answers = blueworx_mcp_forge_resolve_answers( $args, $people );
 
-	if ( isset( $args['source'] ) && is_scalar( $args['source'] ) && '' !== trim( (string) $args['source'] ) ) {
-		$source = blueworx_mcp_forge_resolve_source( (string) $args['source'], $view );
-
-		if ( is_wp_error( $source ) ) {
-			return $source;
-		}
+	if ( is_wp_error( $answers ) ) {
+		return $answers;
 	}
 
 	$confirm = ! empty( $args['confirm_client'] );
 
-	if ( empty( $fields ) && '' === $move && null === $source && ! $confirm ) {
+	if ( empty( $fields ) && '' === $move && empty( $answers ) && ! $confirm ) {
 		return new WP_Error( 'nothing_to_change', 'No changes were given.' );
 	}
 
@@ -1434,14 +1522,14 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 		$changed[] = 'confirm_client';
 	}
 
-	if ( null !== $source ) {
+	foreach ( $answers as $given ) {
 		$answer = blueworx_mcp_forge_request(
 			'POST',
 			'/work-items/' . $id . '/gate',
 			array(),
 			array(
-				'requirement' => $source['requirement'],
-				'value'       => $source['value'],
+				'requirement' => $given['requirement'],
+				'value'       => $given['value'],
 				'evidence'    => '',
 			)
 		);
@@ -1450,13 +1538,13 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 			return $partly( $answer );
 		}
 
-		$changed[] = 'source';
+		$changed[] = $given['name'];
 	}
 
 	if ( '' !== $move && (string) $item['stage'] !== $move ) {
 		// Read again after an answer or a confirmation: the moves on offer, and
 		// the version the move is made against, may both have changed.
-		if ( null !== $source || $confirm ) {
+		if ( ! empty( $answers ) || $confirm ) {
 			$view = blueworx_mcp_forge_show( array( 'id' => $id ) );
 
 			if ( is_wp_error( $view ) ) {
@@ -1466,10 +1554,23 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 			$item = (array) $view['item'];
 		}
 
-		$moved = blueworx_mcp_forge_move( $item, $move, $view, $args );
+		$reached = '';
+		$moved   = blueworx_mcp_forge_walk( $item, $move, $view, $args, array_keys( $statuses ), $reached );
 
 		if ( is_wp_error( $moved ) ) {
-			return empty( $changed ) ? $moved : new WP_Error( $moved->get_error_code(), 'Saved the change to ' . implode( ', ', $changed ) . ', but the status did not change. ' . $moved->get_error_message() );
+			if ( empty( $changed ) && '' === $reached ) {
+				return $moved;
+			}
+
+			$saved = empty( $changed ) ? '' : 'Saved the change to ' . implode( ', ', $changed );
+
+			if ( '' === $reached ) {
+				$saved .= ', but the status did not change. ';
+			} else {
+				$saved = ( '' === $saved ? 'Moved it' : $saved . ' and moved it' ) . ' as far as "' . $reached . '", but no further. ';
+			}
+
+			return new WP_Error( $moved->get_error_code(), $saved . $moved->get_error_message() );
 		}
 
 		$item      = $moved;
@@ -1484,48 +1585,220 @@ function blueworx_mcp_tool_forge_update_task( $args ) {
 }
 
 /**
- * Finds Forge's "Source" question for this task, and the answer given.
+ * Finds the gate questions being answered, and checks each answer.
  *
- * Found by name among the requirements of the task's next moves, rather than
- * by Forge's requirement ID, so a renumbered gate does not break it. Only this
- * one question is answered from here: the other gate answers are approvals and
- * sign-offs that belong to the people Forge names, not to Claude.
+ * Questions are found by name in Forge's own gate registry rather than by
+ * requirement ID, so a renumbered gate does not break them. Claude may answer
+ * any question a task meets on its way to In Review, approvals included, as
+ * the person who connected it; the review approval and the release are left
+ * to the people Forge names. Everything is checked before anything is saved.
  *
- * @param string $given What was asked for, by value or label.
- * @param array  $view  Forge's single-item view.
- * @return array|WP_Error 'requirement' and 'value'.
+ * @param array $args   Tool arguments.
+ * @param array $people Name keyed by person ID.
+ * @return array|WP_Error Each answer: 'requirement', 'value', and 'name' (what it is reported as).
  */
-function blueworx_mcp_forge_resolve_source( $given, $view ) {
-	$question = null;
+function blueworx_mcp_forge_resolve_answers( $args, $people ) {
+	$asked = array();
 
-	foreach ( (array) ( $view['readiness'] ?? array() ) as $readiness ) {
-		foreach ( array_merge( (array) ( $readiness['unmet'] ?? array() ), (array) ( $readiness['all'] ?? array() ) ) as $requirement ) {
-			if ( 'source' === blueworx_mcp_forge_slug( $requirement['label'] ?? '' ) && ! empty( $requirement['options'] ) ) {
-				$question = $requirement;
-				break 2;
-			}
+	foreach ( blueworx_mcp_forge_answer_args() as $slug => $arg ) {
+		if ( isset( $args[ $arg ] ) && is_scalar( $args[ $arg ] ) && '' !== trim( (string) $args[ $arg ] ) ) {
+			$asked[] = array( $slug, trim( (string) $args[ $arg ] ), $arg );
 		}
 	}
 
-	if ( null === $question ) {
-		return new WP_Error( 'source_not_asked', 'Forge is not asking where this task came from at its current status, so there is nothing to answer.' );
+	if ( isset( $args['gate_answers'] ) ) {
+		if ( ! is_array( $args['gate_answers'] ) ) {
+			return new WP_Error( 'invalid_gate_answers', 'gate_answers must be an object of question names and answers, e.g. {"Documentation approval": "Approved"}.' );
+		}
+
+		foreach ( $args['gate_answers'] as $question => $given ) {
+			if ( ! is_scalar( $given ) || '' === trim( (string) $given ) ) {
+				return new WP_Error( 'missing_answer', '"' . $question . '" needs an answer.' );
+			}
+
+			$asked[] = array( blueworx_mcp_forge_slug( (string) $question ), trim( (string) $given ), '' );
+		}
+	}
+
+	if ( empty( $asked ) ) {
+		return array();
+	}
+
+	$registry = blueworx_mcp_forge_request( 'GET', '/gates' );
+
+	if ( is_wp_error( $registry ) ) {
+		return $registry;
+	}
+
+	$open   = array();
+	$later  = array();
+	$labels = array();
+
+	foreach ( (array) ( $registry['gates'] ?? array() ) as $gate => $requirements ) {
+		foreach ( (array) $requirements as $requirement ) {
+			// Only questions somebody answers: fields are set with their own
+			// arguments, and checks Forge runs for itself.
+			if ( 'record' !== ( $requirement['by'] ?? '' ) || ! in_array( $requirement['control'] ?? '', array( 'pick', 'box' ), true ) ) {
+				continue;
+			}
+
+			$names = array( blueworx_mcp_forge_slug( $requirement['label'] ?? '' ), blueworx_mcp_forge_slug( $requirement['id'] ?? '' ) );
+
+			if ( ! in_array( $gate, blueworx_mcp_forge_answerable_gates(), true ) ) {
+				$later += array_fill_keys( $names, true );
+				continue;
+			}
+
+			if ( ! isset( $open[ $names[0] ] ) ) {
+				$labels[] = (string) $requirement['label'];
+			}
+
+			$open += array_fill_keys( $names, $requirement );
+		}
+	}
+
+	$answers = array();
+
+	foreach ( $asked as list( $slug, $given, $arg ) ) {
+		if ( ! isset( $open[ $slug ] ) ) {
+			$name = '' === $arg ? '"' . $slug . '"' : $arg;
+
+			if ( isset( $later[ $slug ] ) ) {
+				return new WP_Error( 'answer_not_allowed', $name . ' is answered in Forge by the people it names. Claude takes a task as far as In Review.' );
+			}
+
+			return new WP_Error( 'unknown_question', 'Forge asks nothing called ' . $name . ' before In Review. It asks: ' . implode( ', ', $labels ) . '.' );
+		}
+
+		$requirement = $open[ $slug ];
+		$name        = '' === $arg ? (string) $requirement['label'] : $arg;
+		$value       = blueworx_mcp_forge_answer_value( $requirement, $given, '' === $arg ? '"' . $name . '"' : $arg, $people );
+
+		if ( is_wp_error( $value ) ) {
+			return $value;
+		}
+
+		$answers[] = array(
+			'requirement' => (string) $requirement['id'],
+			'value'       => $value,
+			'name'        => $name,
+		);
+	}
+
+	return $answers;
+}
+
+/**
+ * Checks one answer against what its question accepts.
+ *
+ * @param array  $requirement The question, from Forge's gate registry.
+ * @param string $given       The answer given.
+ * @param string $name        How the question is named in a refusal.
+ * @param array  $people      Name keyed by person ID.
+ * @return string|WP_Error The value Forge records.
+ */
+function blueworx_mcp_forge_answer_value( $requirement, $given, $name, $people ) {
+	if ( 'box' === $requirement['control'] ) {
+		$input = (string) ( $requirement['input'] ?? 'text' );
+
+		if ( 'number' === $input ) {
+			return is_numeric( $given ) ? (string) ( 0 + $given ) : new WP_Error( 'invalid_answer', $name . ' must be a number.' );
+		}
+
+		if ( 'date' === $input ) {
+			$valid = blueworx_mcp_forge_check_date( $given, $name );
+
+			return is_wp_error( $valid ) ? $valid : $given;
+		}
+
+		return sanitize_textarea_field( $given );
 	}
 
 	$wanted = blueworx_mcp_forge_slug( $given );
 	$labels = array();
 
-	foreach ( (array) $question['options'] as $option ) {
+	foreach ( (array) ( $requirement['options'] ?? array() ) as $option ) {
 		if ( blueworx_mcp_forge_slug( $option['value'] ?? '' ) === $wanted || blueworx_mcp_forge_slug( $option['label'] ?? '' ) === $wanted ) {
-			return array(
-				'requirement' => (string) $question['id'],
-				'value'       => (string) $option['value'],
-			);
+			// Any other outcome ends the task, which is Forge's End it, not a gate.
+			if ( 'triage-outcome' === blueworx_mcp_forge_slug( $requirement['label'] ) && 'proceed' !== $option['value'] ) {
+				return new WP_Error( 'outcome_ends_task', 'Only proceed is given from here. Rejecting, deferring or closing a task as a duplicate ends it, and is done in Forge.' );
+			}
+
+			return (string) $option['value'];
 		}
 
 		$labels[] = (string) ( $option['label'] ?? $option['value'] ?? '' );
 	}
 
-	return new WP_Error( 'unknown_source', 'source must be one of: ' . implode( ', ', $labels ) . '.' );
+	$source = (string) ( $requirement['source'] ?? '' );
+
+	if ( 'items' === $source ) {
+		$view = blueworx_mcp_forge_show( array( 'id' => $given ) );
+
+		if ( ! is_wp_error( $view ) ) {
+			return (string) $view['item']['id'];
+		}
+
+		$labels[] = 'or the ID of another task';
+	}
+
+	if ( 'people' === $source ) {
+		return blueworx_mcp_forge_resolve_person( $given, $people );
+	}
+
+	return new WP_Error( 'unknown_answer', $name . ' must be one of: ' . implode( ', ', $labels ) . '.' );
+}
+
+/**
+ * Moves an item towards a status, one stage at a time when it is further on
+ * than the next. Each step is a move Forge offers and gates as usual, so the
+ * walk stops at the first stage Forge will not let it leave.
+ *
+ * @param array  $item    The item as it stands now.
+ * @param string $to      Status ID.
+ * @param array  $view    Forge's single-item view, for the moves on offer.
+ * @param array  $args    Tool arguments, for a reason.
+ * @param array  $order   Status IDs, in Forge's order.
+ * @param string $reached Set to the last stage reached, when the walk stops short.
+ * @return array|WP_Error The moved item.
+ */
+function blueworx_mcp_forge_walk( $item, $to, $view, $args, $order, &$reached ) {
+	$target = array_search( $to, $order, true );
+
+	// One step per stage at most, so a move that goes nowhere cannot loop.
+	foreach ( $order as $unused ) {
+		$forward = array_map( 'strval', (array) ( $view['available'] ?? array() ) );
+		$from    = array_search( (string) $item['stage'], $order, true );
+		$step    = $to;
+
+		if ( ! in_array( $to, $forward, true ) && false !== $target && false !== $from ) {
+			foreach ( $forward as $option ) {
+				$at = array_search( $option, $order, true );
+
+				if ( false !== $at && $at > $from && $at < $target ) {
+					$step = $option;
+					break;
+				}
+			}
+		}
+
+		$moved = blueworx_mcp_forge_move( $item, $step, $view, $args );
+
+		if ( is_wp_error( $moved ) || $step === $to ) {
+			return $moved;
+		}
+
+		$reached = $step;
+		$view    = blueworx_mcp_forge_show( array( 'id' => $item['id'] ) );
+
+		if ( is_wp_error( $view ) ) {
+			return $view;
+		}
+
+		$item = (array) $view['item'];
+	}
+
+	return $item;
 }
 
 /**
@@ -1544,15 +1817,18 @@ function blueworx_mcp_forge_move( $item, $to, $view, $args ) {
 	$version = (int) $item['record_version'];
 
 	if ( in_array( $to, $forward, true ) ) {
-		$answer = blueworx_mcp_forge_request(
-			'POST',
-			$base . '/transition',
-			array(),
-			array(
-				'to'             => $to,
-				'record_version' => $version,
-			)
+		$body = array(
+			'to'             => $to,
+			'record_version' => $version,
 		);
+
+		// Only sent when given: Forge refuses a reason from anybody who may not
+		// over-book people, even on a move that over-books nobody.
+		if ( isset( $args['capacity_reason'] ) && is_scalar( $args['capacity_reason'] ) && '' !== trim( (string) $args['capacity_reason'] ) ) {
+			$body['capacity_reason'] = sanitize_text_field( (string) $args['capacity_reason'] );
+		}
+
+		$answer = blueworx_mcp_forge_request( 'POST', $base . '/transition', array(), $body );
 	} elseif ( in_array( $to, $back, true ) ) {
 		$reason = isset( $args['reason'] ) && is_scalar( $args['reason'] ) ? sanitize_text_field( (string) $args['reason'] ) : '';
 

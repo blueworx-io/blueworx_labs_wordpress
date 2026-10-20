@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.94.0] - 2026-10-20
+
+### Added
+- **Claude can take a Forge task all the way to In Review.** It can now
+  answer everything Forge asks along the way: the duplicate check, the triage
+  outcome and who pays at Triage, the documentation and design sign-offs, the
+  designer and deliverer, how to test it, and a reason when the move
+  over-books someone. Asking for a status several stages ahead now moves the
+  task one stage at a time until it gets there, or says where it stopped and
+  why. Approving the review and releasing the work stay with people in Forge.
+
 ## [1.93.0] - 2026-10-19
 
 ### Added
