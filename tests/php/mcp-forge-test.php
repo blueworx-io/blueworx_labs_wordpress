@@ -80,22 +80,22 @@ function forge_reset() {
 	$item = function ( $id, $title, $level, $site, $parent = '', $extra = array() ) {
 		return array_merge(
 			array(
-				'id'              => $id,
-				'title'           => $title,
-				'level'           => $level,
-				'work_type'       => 'task',
-				'stage'           => 'future-idea',
-				'stage_label'     => 'Future Idea',
-				'priority'        => 'normal',
-				'primary_user_id' => '',
-				'reviewer_id'     => '',
-				'planned_due'     => '',
-				'parent_id'       => $parent,
-				'client_site_id'  => $site,
-				'record_version'  => 1,
-				'problem'         => '',
+				'id'                  => $id,
+				'title'               => $title,
+				'level'               => $level,
+				'work_type'           => 'task',
+				'stage'               => 'future-idea',
+				'stage_label'         => 'Future Idea',
+				'priority'            => 'normal',
+				'primary_user_id'     => '',
+				'reviewer_id'         => '',
+				'planned_due'         => '',
+				'parent_id'           => $parent,
+				'client_site_id'      => $site,
+				'record_version'      => 1,
+				'problem'             => '',
 				'client_confirmed_at' => 1,
-				'source'          => 'internal',
+				'source'              => 'internal',
 			),
 			$extra
 		);
@@ -131,6 +131,7 @@ function forge_reset() {
 		),
 		'calls'    => array(),
 		'comments' => array(),
+		'records'  => array(),
 	);
 }
 
@@ -149,6 +150,89 @@ function forge_source_question() {
 			array(
 				'value' => 'internal',
 				'label' => 'Internal',
+			),
+		),
+	);
+}
+
+/**
+ * Where each stage goes next, on the stand-in's short path.
+ */
+function forge_next( $stage ) {
+	$next = array(
+		'future-idea'    => array( 'up-next' ),
+		'up-next'        => array( 'in-development' ),
+		'in-development' => array( 'in-review' ),
+	);
+
+	return $next[ $stage ] ?? array();
+}
+
+/**
+ * Forge's gate registry, cut down to a question of each kind.
+ */
+function forge_gates() {
+	$pick = function ( $id, $label, $options, $source = '' ) {
+		return array(
+			'id'      => $id,
+			'label'   => $label,
+			'by'      => 'record',
+			'control' => 'pick',
+			'source'  => $source,
+			'options' => array_map(
+				function ( $value, $label ) {
+					return array(
+						'value' => $value,
+						'label' => $label,
+					);
+				},
+				array_keys( $options ),
+				$options
+			),
+		);
+	};
+	$box  = function ( $id, $label, $input ) {
+		return array(
+			'id'      => $id,
+			'label'   => $label,
+			'by'      => 'record',
+			'control' => 'box',
+			'input'   => $input,
+			'options' => array(),
+		);
+	};
+
+	return array(
+		'ok'    => true,
+		'gates' => array(
+			'G-FUTURE-IDEA'   => array(
+				array(
+					'id'     => 'G-FUTURE-IDEA-1',
+					'label'  => 'Item description',
+					'by'     => 'field',
+					'fields' => array( 'problem' ),
+				),
+				forge_source_question() + array(
+					'control' => 'pick',
+					'source'  => '',
+				),
+			),
+			'G-TRIAGE'        => array(
+				$pick( 'G-TRIAGE-6', 'Duplicate check', array( 'none' => 'No duplicate found' ), 'items' ),
+				$pick(
+					'G-TRIAGE-7',
+					'Triage outcome',
+					array(
+						'proceed'  => 'Proceed',
+						'rejected' => 'Rejected',
+					)
+				),
+			),
+			'G-BUG-TRACKING'  => array( $box( 'G-BUG-TRACKING-3', 'Reproduction steps', 'text' ) ),
+			'G-DOCUMENTATION' => array( $pick( 'G-DOCUMENTATION-9', 'Documentation approval', array( 'approved' => 'Approved' ) ) ),
+			'G-IN-REVIEW'     => array(
+				$pick( 'G-IN-REVIEW-4', 'Review approval', array( 'approved' => 'Approved' ) ),
+				$box( 'G-IN-REVIEW-5', 'Post-review hours adjustment', 'number' ),
 			),
 		),
 	);
@@ -263,6 +347,10 @@ function rest_do_request( $request ) {
 		);
 	}
 
+	if ( '/gates' === $path ) {
+		return new Fake_Response( forge_gates() );
+	}
+
 	if ( '/client-sites' === $path ) {
 		return new Fake_Response(
 			array(
@@ -351,8 +439,8 @@ function rest_do_request( $request ) {
 			array(
 				'item'       => $item,
 				'children'   => $children,
-				'available'  => 'in-development' === $item['stage'] ? array( 'in-review' ) : array( 'up-next' ),
-				'returns'    => 'in-development' === $item['stage'] ? array( 'up-next', 'future-idea' ) : array(),
+				'available'  => forge_next( $item['stage'] ),
+				'returns'    => 'in-development' === $item['stage'] ? array( 'up-next' ) : array(),
 				'readiness'  => array(
 					'in-review' => array(
 						'unmet'  => array(
@@ -381,11 +469,15 @@ function rest_do_request( $request ) {
 	}
 
 	if ( 'gate' === $sub ) {
-		if ( 'G-FUTURE-IDEA-3' !== $body['requirement'] ) {
+		if ( ! in_array( $body['requirement'], array( 'G-FUTURE-IDEA-3', 'G-TRIAGE-6', 'G-TRIAGE-7', 'G-BUG-TRACKING-3', 'G-DOCUMENTATION-9' ), true ) ) {
 			return forge_answer( 400, 'bwx_forge_unknown_requirement', 'There is no such gate requirement.' );
 		}
 
-		$item['source'] = $body['value'];
+		if ( 'G-FUTURE-IDEA-3' === $body['requirement'] ) {
+			$item['source'] = $body['value'];
+		}
+
+		$forge['records'][] = array( $body['requirement'], $body['value'] );
 
 		return new Fake_Response( array( 'ok' => true ) );
 	}
@@ -621,13 +713,38 @@ check(
 	array_column( blueworx_mcp_forge_tool_definitions(), 'name' ),
 	array( 'list_projects', 'get_project', 'list_tasks', 'get_task', 'create_task', 'update_task', 'add_task_comment', 'get_team_capacity' )
 );
+
+$asks = array( 'designer', 'deliverer', 'who_pays', 'duplicate_check', 'triage_outcome', 'how_to_test', 'gate_answers', 'capacity_reason' );
+check( 'update_task takes everything Forge asks for before In Review', array_values( array_intersect( $asks, array_keys( blueworx_mcp_forge_tool_definitions()[5]['inputSchema']['properties'] ) ) ), $asks );
 check( 'and every listed tool has a handler', array_keys( blueworx_mcp_forge_tool_handlers() ), array_column( blueworx_mcp_forge_tool_definitions(), 'name' ) );
 
 $info = blueworx_mcp_forge_site_info();
 check( 'site info names the Forge version', $info['version'], '2.192.0' );
-check( 'and lists the sites', $info['sites'][0], array( 'id' => 'cs_a', 'name' => 'acme.com', 'client' => 'Acme' ) );
-check( 'and the people', $info['people'][1], array( 'id' => 'usr_sam', 'name' => 'Sam Jones' ) );
-check( 'and the statuses', $info['statuses'][2], array( 'id' => 'in-development', 'label' => 'In Development' ) );
+check(
+	'and lists the sites',
+	$info['sites'][0],
+	array(
+		'id'     => 'cs_a',
+		'name'   => 'acme.com',
+		'client' => 'Acme',
+	)
+);
+check(
+	'and the people',
+	$info['people'][1],
+	array(
+		'id'   => 'usr_sam',
+		'name' => 'Sam Jones',
+	)
+);
+check(
+	'and the statuses',
+	$info['statuses'][2],
+	array(
+		'id'    => 'in-development',
+		'label' => 'In Development',
+	)
+);
 
 echo "\nProjects\n";
 
@@ -691,8 +808,31 @@ check( 'and is logged on the Connect Claude screen', $created['_log'], array( 'c
 
 check( 'a title is needed', error_of( blueworx_mcp_tool_forge_create_task( array( 'project_id' => 'wi_p1' ) ) ), 'missing_title' );
 check( 'and somewhere to put it', error_of( blueworx_mcp_tool_forge_create_task( array( 'title' => 'Loose' ) ) ), 'missing_site' );
-check( 'a site that disagrees with the project is refused', error_of( blueworx_mcp_tool_forge_create_task( array( 'title' => 'X', 'project_id' => 'wi_p1', 'client_site_id' => 'cs_b' ) ) ), 'site_mismatch' );
-check( 'Forge\'s own refusal comes back in its words', message_of( blueworx_mcp_tool_forge_create_task( array( 'title' => 'X', 'client_site_id' => 'cs_closed' ) ) ), 'That site is closed; reactivate it before adding work.' );
+check(
+	'a site that disagrees with the project is refused',
+	error_of(
+		blueworx_mcp_tool_forge_create_task(
+			array(
+				'title'          => 'X',
+				'project_id'     => 'wi_p1',
+				'client_site_id' => 'cs_b',
+			)
+		)
+	),
+	'site_mismatch'
+);
+check(
+	'Forge\'s own refusal comes back in its words',
+	message_of(
+		blueworx_mcp_tool_forge_create_task(
+			array(
+				'title'          => 'X',
+				'client_site_id' => 'cs_closed',
+			)
+		)
+	),
+	'That site is closed; reactivate it before adding work.'
+);
 
 echo "\nUpdating\n";
 
@@ -705,8 +845,22 @@ $updated = blueworx_mcp_tool_forge_update_task(
 		'status' => 'Up Next',
 	)
 );
-check( 'the edit is made against the version read', last_call( 'PATCH', '/work-items/wi_f2' )[3], array( 'title' => 'Review the copy', 'record_version' => 1 ) );
-check( 'and the move against the version after it', last_call( 'POST', '/work-items/wi_f2/transition' )[3], array( 'to' => 'up-next', 'record_version' => 2 ) );
+check(
+	'the edit is made against the version read',
+	last_call( 'PATCH', '/work-items/wi_f2' )[3],
+	array(
+		'title'          => 'Review the copy',
+		'record_version' => 1,
+	)
+);
+check(
+	'and the move against the version after it',
+	last_call( 'POST', '/work-items/wi_f2/transition' )[3],
+	array(
+		'to'             => 'up-next',
+		'record_version' => 2,
+	)
+);
 check( 'both are reported', array( $updated['status'], $updated['changed'] ), array( 'up-next', array( 'title', 'status' ) ) );
 
 $gate = blueworx_mcp_tool_forge_update_task(
@@ -727,7 +881,18 @@ $half = blueworx_mcp_tool_forge_update_task(
 check( 'an edit saved before a refused move is owned up to', 0 === strpos( message_of( $half ), 'Saved the change to due_date, but the status did not change.' ), true );
 check( 'and really was saved', $GLOBALS['forge']['items']['wi_f1']['planned_due'], '2026-12-01' );
 
-check( 'sending back needs a reason', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f1', 'status' => 'up-next' ) ) ), 'reason_required' );
+check(
+	'sending back needs a reason',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'     => 'wi_f1',
+				'status' => 'up-next',
+			)
+		)
+	),
+	'reason_required'
+);
 
 $back = blueworx_mcp_tool_forge_update_task(
 	array(
@@ -739,13 +904,54 @@ $back = blueworx_mcp_tool_forge_update_task(
 check( 'with one it goes through Forge\'s send-back', last_call( 'POST', '/work-items/wi_f1/return' )[3]['reason'], 'Needs a design first' );
 check( 'and lands there', $back['status'], 'up-next' );
 
-check( 'a move Forge does not offer lists the ones it does', message_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_m1', 'status' => 'in-review' ) ) ), 'From "future-idea" this cannot go straight to "in-review". It can move to: up-next.' );
-check( 'several fields change in one call', message_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'priority' => 'high', 'description' => 'x', 'due_date' => '2026-12-31', 'assignee' => '' ) ) ) === 'no error', true );
+check(
+	'a move Forge does not offer lists the ones it does',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'     => 'wi_f1',
+				'status' => 'future-idea',
+			)
+		)
+	),
+	'From "up-next" this cannot go straight to "future-idea". It can move to: in-development.'
+);
+check(
+	'several fields change in one call',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'          => 'wi_f2',
+				'priority'    => 'high',
+				'description' => 'x',
+				'due_date'    => '2026-12-31',
+				'assignee'    => '',
+			)
+		)
+	) === 'no error',
+	true
+);
 check( 'a cleared seat is sent empty', $GLOBALS['forge']['items']['wi_f2']['primary_user_id'], '' );
-blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'reviewer' => 'Sam Jones' ) );
+blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'       => 'wi_f2',
+		'reviewer' => 'Sam Jones',
+	)
+);
 check( 'a reviewer goes in Forge\'s reviewer seat', $GLOBALS['forge']['items']['wi_f2']['reviewer_id'], 'usr_sam' );
 check( 'nothing to change is refused', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2' ) ) ), 'nothing_to_change' );
-check( 'an unknown priority is refused', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'priority' => 'asap' ) ) ), 'invalid_priority' );
+check(
+	'an unknown priority is refused',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'       => 'wi_f2',
+				'priority' => 'asap',
+			)
+		)
+	),
+	'invalid_priority'
+);
 
 $stub_fields = blueworx_mcp_forge_error(
 	array(
@@ -781,7 +987,18 @@ check(
 		'Reviewing it assigned (Say who is reviewing it) [update_task: reviewer]',
 	)
 );
-check( 'a source Forge does not offer lists the ones it does', message_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_new2', 'source' => 'rumour' ) ) ), 'source must be one of: Client request, Internal.' );
+check(
+	'a source Forge does not offer lists the ones it does',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'     => 'wi_new2',
+				'source' => 'rumour',
+			)
+		)
+	),
+	'source must be one of: Client request, Internal.'
+);
 
 $walked = blueworx_mcp_tool_forge_update_task(
 	array(
@@ -793,12 +1010,310 @@ $walked = blueworx_mcp_tool_forge_update_task(
 	)
 );
 check( 'reviewer, source, client and move all go in one call', error_of( $walked ) . ' ' . ( is_array( $walked ) ? implode( ',', $walked['changed'] ) : message_of( $walked ) ), 'no error reviewer,confirm_client,source,status' );
-check( 'the source is recorded as Forge\'s answer, by its value', last_call( 'POST', '/work-items/wi_new2/gate' )[3], array( 'requirement' => 'G-FUTURE-IDEA-3', 'value' => 'client-request', 'evidence' => '' ) );
+check(
+	'the source is recorded as Forge\'s answer, by its value',
+	last_call( 'POST', '/work-items/wi_new2/gate' )[3],
+	array(
+		'requirement' => 'G-FUTURE-IDEA-3',
+		'value'       => 'client-request',
+		'evidence'    => '',
+	)
+);
 check( 'the client is confirmed against the version after the edit', last_call( 'POST', '/work-items/wi_new2/confirm-client' )[3], array( 'record_version' => 2 ) );
-check( 'and the move against the version after that', last_call( 'POST', '/work-items/wi_new2/transition' )[3], array( 'to' => 'up-next', 'record_version' => 3 ) );
+check(
+	'and the move against the version after that',
+	last_call( 'POST', '/work-items/wi_new2/transition' )[3],
+	array(
+		'to'             => 'up-next',
+		'record_version' => 3,
+	)
+);
 check( 'so the task leaves Future Idea', $GLOBALS['forge']['items']['wi_new2']['stage'], 'up-next' );
 
-check( 'a source is refused once Forge stops asking for one', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f1', 'source' => 'internal' ) ) ), 'source_not_asked' );
+echo "\nEverything Forge asks for on the way to In Review\n";
+
+forge_reset();
+
+$triaged = blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'              => 'wi_f2',
+		'who_pays'        => 'chargeable',
+		'deliverer'       => 'Sam Jones',
+		'designer'        => '',
+		'how_to_test'     => 'Open the <b>page</b>',
+		'duplicate_check' => 'none',
+		'triage_outcome'  => 'Proceed',
+		'gate_answers'    => array(
+			'Documentation approval' => 'Approved',
+			'reproduction steps'     => 'Click the button',
+		),
+	)
+);
+check(
+	'who pays, how to test and the seats go in Forge\'s fields',
+	last_call( 'PATCH', '/work-items/wi_f2' )[3],
+	array(
+		'test_description' => 'Open the page',
+		'commercial_class' => 'chargeable',
+		'designer_id'      => '',
+		'deliverer_id'     => 'usr_sam',
+		'record_version'   => 1,
+	)
+);
+check(
+	'each answer is recorded as Forge\'s value',
+	$GLOBALS['forge']['records'],
+	array(
+		array( 'G-TRIAGE-6', 'none' ),
+		array( 'G-TRIAGE-7', 'proceed' ),
+		array( 'G-DOCUMENTATION-9', 'approved' ),
+		array( 'G-BUG-TRACKING-3', 'Click the button' ),
+	)
+);
+check( 'and reported by the name it was given', $triaged['changed'], array( 'how_to_test', 'who_pays', 'designer', 'deliverer', 'duplicate_check', 'triage_outcome', 'Documentation approval', 'Reproduction steps' ) );
+
+blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'              => 'wi_f2',
+		'duplicate_check' => 'wi_f3',
+	)
+);
+check( 'a duplicate is named by the task it duplicates', end( $GLOBALS['forge']['records'] ), array( 'G-TRIAGE-6', 'wi_f3' ) );
+
+$calls = count( $GLOBALS['forge']['calls'] );
+check(
+	'a task that does not exist is not a duplicate',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'              => 'wi_f2',
+				'title'           => 'Kept?',
+				'duplicate_check' => 'wi_nope',
+			)
+		)
+	),
+	'duplicate_check must be one of: No duplicate found, or the ID of another task.'
+);
+check(
+	'an outcome that ends the task is left to Forge',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'           => 'wi_f2',
+				'gate_answers' => array( 'Triage outcome' => 'Rejected' ),
+			)
+		)
+	),
+	'outcome_ends_task'
+);
+check(
+	'the review approval stays with the reviewer',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'           => 'wi_f2',
+				'gate_answers' => array( 'Review approval' => 'Approved' ),
+			)
+		)
+	),
+	'answer_not_allowed'
+);
+check(
+	'a question Forge does not ask lists the ones it does',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'           => 'wi_f2',
+				'gate_answers' => array( 'Vibe check' => 'Yes' ),
+			)
+		)
+	),
+	'Forge asks nothing called "vibe-check" before In Review. It asks: Source, Duplicate check, Triage outcome, Reproduction steps, Documentation approval.'
+);
+check(
+	'an answer Forge does not offer lists the ones it does',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'           => 'wi_f2',
+				'gate_answers' => array( 'Documentation approval' => 'Maybe' ),
+			)
+		)
+	),
+	'"Documentation approval" must be one of: Approved.'
+);
+check(
+	'an empty answer is refused',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'           => 'wi_f2',
+				'gate_answers' => array( 'Documentation approval' => ' ' ),
+			)
+		)
+	),
+	'missing_answer'
+);
+check(
+	'gate_answers must be a set of answers',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'           => 'wi_f2',
+				'gate_answers' => 'Approved',
+			)
+		)
+	),
+	'invalid_gate_answers'
+);
+check(
+	'who pays outside Forge\'s three is refused',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'       => 'wi_f2',
+				'who_pays' => 'the client',
+			)
+		)
+	),
+	'invalid_who_pays'
+);
+check(
+	'and a refused answer saves nothing else in the same call',
+	array_filter(
+		array_slice( $GLOBALS['forge']['calls'], $calls ),
+		function ( $call ) {
+			return 'GET' !== $call[0];
+		}
+	),
+	array()
+);
+
+check(
+	'a missing answer says which argument gives it',
+	blueworx_mcp_forge_still_needed(
+		array(
+			'unmet' => array(
+				array(
+					'label'   => 'Duplicate check',
+					'control' => 'pick',
+				),
+				array(
+					'label'   => 'Documentation approval',
+					'control' => 'pick',
+				),
+				array(
+					'label'  => 'Who pays',
+					'fields' => array( 'commercial_class' ),
+				),
+				array(
+					'label'  => 'Deliverer assigned',
+					'fields' => array( 'deliverer_id' ),
+				),
+				array( 'label' => 'Planned hours per role' ),
+				array( 'label' => 'Capacity check' ),
+				array(
+					'label'  => 'How to test it',
+					'fields' => array( 'test_description' ),
+				),
+			),
+		)
+	),
+	array(
+		'Duplicate check [update_task: duplicate_check]',
+		'Documentation approval [update_task: gate_answers]',
+		'Who pays [update_task: who_pays]',
+		'Deliverer assigned [update_task: deliverer]',
+		'Planned hours per role [update_task: assignee_hours]',
+		'Capacity check [update_task: capacity_reason]',
+		'How to test it [update_task: how_to_test]',
+	)
+);
+
+echo "\nMoving several stages at once\n";
+
+forge_reset();
+
+$far = blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'              => 'wi_f2',
+		'status'          => 'In Development',
+		'capacity_reason' => 'Agreed with the client',
+	)
+);
+check(
+	'it goes one stage at a time',
+	array_values(
+		array_column(
+			array_filter(
+				$GLOBALS['forge']['calls'],
+				function ( $call ) {
+					return '/work-items/wi_f2/transition' === $call[1];
+				}
+			),
+			3
+		)
+	),
+	array(
+		array(
+			'to'              => 'up-next',
+			'record_version'  => 1,
+			'capacity_reason' => 'Agreed with the client',
+		),
+		array(
+			'to'              => 'in-development',
+			'record_version'  => 2,
+			'capacity_reason' => 'Agreed with the client',
+		),
+	)
+);
+check( 'and gets there', array( $far['status'], $far['changed'] ), array( 'in-development', array( 'status' ) ) );
+
+$GLOBALS['forge']['items']['wi_f3']['reviewer_id'] = 'usr_sam';
+
+$short = blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'     => 'wi_f3',
+		'status' => 'In Review',
+	)
+);
+check( 'a move Forge stops part-way says how far it got', message_of( $short ), 'Moved it as far as "in-development", but no further. Forge will not move this to "in-review" yet. Still needed: Test steps written (Write the steps to test it); Hours available.' );
+check( 'and really got that far', $GLOBALS['forge']['items']['wi_f3']['stage'], 'in-development' );
+
+$GLOBALS['forge']['items']['wi_f3']['stage'] = 'future-idea';
+check(
+	'an edit alongside is owned up to as well',
+	0 === strpos(
+		message_of(
+			blueworx_mcp_tool_forge_update_task(
+				array(
+					'id'     => 'wi_f3',
+					'title'  => 'Listing',
+					'status' => 'In Review',
+				)
+			)
+		),
+		'Saved the change to title and moved it as far as "in-development", but no further.'
+	),
+	true
+);
+
+check(
+	'a gate on the first step stops it where it is',
+	0 === strpos(
+		message_of(
+			blueworx_mcp_tool_forge_update_task(
+				array(
+					'id'     => 'wi_m1',
+					'status' => 'In Review',
+				)
+			)
+		),
+		'Forge will not move this to "up-next" yet.'
+	),
+	true
+);
+check( 'without a capacity reason none is sent', array_key_exists( 'capacity_reason', last_call( 'POST', '/work-items/wi_m1/transition' )[3] ), false );
 
 echo "\nComments\n";
 
@@ -808,7 +1323,14 @@ $comment = blueworx_mcp_tool_forge_add_comment(
 		'comment' => 'Header done, needs review.',
 	)
 );
-check( 'comments are internal unless asked', last_call( 'POST', '/work-items/wi_f1/comments' )[3], array( 'body' => 'Header done, needs review.', 'visibility' => 'internal' ) );
+check(
+	'comments are internal unless asked',
+	last_call( 'POST', '/work-items/wi_f1/comments' )[3],
+	array(
+		'body'       => 'Header done, needs review.',
+		'visibility' => 'internal',
+	)
+);
 check( 'and logged', $comment['_log'][0], 'commented on' );
 
 blueworx_mcp_tool_forge_add_comment(
@@ -819,19 +1341,55 @@ blueworx_mcp_tool_forge_add_comment(
 	)
 );
 check( 'or shared with the client', last_call( 'POST', '/work-items/wi_f1/comments' )[3]['visibility'], 'client' );
-check( 'an empty comment is refused', error_of( blueworx_mcp_tool_forge_add_comment( array( 'id' => 'wi_f1', 'comment' => '  ' ) ) ), 'missing_comment' );
+check(
+	'an empty comment is refused',
+	error_of(
+		blueworx_mcp_tool_forge_add_comment(
+			array(
+				'id'      => 'wi_f1',
+				'comment' => '  ',
+			)
+		)
+	),
+	'missing_comment'
+);
 
 $task = blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_f1' ) );
 check( 'a task shows its comments', count( $task['comments'] ), 2 );
-check( 'and what each next move still needs', $task['next_statuses'][0], array( 'status' => 'in-review', 'ready' => false, 'still_needed' => array( 'Test steps written (Write the steps to test it)' ) ) );
-check( 'a passed check is not something needed', $task['next_statuses'][1], array( 'status' => 'up-next', 'ready' => true, 'still_needed' => array() ) );
+check(
+	'and what each next move still needs',
+	$task['next_statuses'][0],
+	array(
+		'status'       => 'in-review',
+		'ready'        => false,
+		'still_needed' => array( 'Test steps written (Write the steps to test it)' ),
+	)
+);
+check(
+	'a passed check is not something needed',
+	$task['next_statuses'][1],
+	array(
+		'status'       => 'up-next',
+		'ready'        => true,
+		'still_needed' => array(),
+	)
+);
 
 echo "\nPlanned hours on tasks\n";
 
 forge_reset();
 
 $listed = blueworx_mcp_tool_forge_list_tasks( array() );
-check( 'a listed task shows each role\'s hours', $listed['tasks'][1]['hours'], array( 'assignee' => 6.0, 'designer' => 0.0, 'reviewer' => 1.2, 'deliverer' => 0.6 ) );
+check(
+	'a listed task shows each role\'s hours',
+	$listed['tasks'][1]['hours'],
+	array(
+		'assignee'  => 6.0,
+		'designer'  => 0.0,
+		'reviewer'  => 1.2,
+		'deliverer' => 0.6,
+	)
+);
 
 $full = blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_f1' ) );
 check( 'a task in full shows the date each role\'s hours sit on', array( $full['design_by'], $full['due_date'], $full['review_by'], $full['release_by'] ), array( '', '2026-11-10', '2026-11-12', '2026-11-14' ) );
@@ -872,15 +1430,72 @@ check(
 );
 check( 'and says what changed in the tools\' names', $planned['changed'], array( 'design_by', 'release_by', 'designer_hours', 'reviewer_hours', 'deliverer_hours' ) );
 
-check( 'negative hours are refused', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee_hours' => -1 ) ) ), 'invalid_hours' );
-check( 'so are hours that are not a number', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee_hours' => 'lots' ) ) ), 'invalid_hours' );
-check( 'and a role date that does not exist', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'review_by' => '2026-11-31' ) ) ), 'invalid_date' );
-check( 'hours Forge refuses are named as the tool names them', message_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee_hours' => 500 ) ) ), 'That change could not be saved. assignee_hours: At most 100 hours.' );
+check(
+	'negative hours are refused',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'             => 'wi_f2',
+				'assignee_hours' => -1,
+			)
+		)
+	),
+	'invalid_hours'
+);
+check(
+	'so are hours that are not a number',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'             => 'wi_f2',
+				'assignee_hours' => 'lots',
+			)
+		)
+	),
+	'invalid_hours'
+);
+check(
+	'and a role date that does not exist',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'        => 'wi_f2',
+				'review_by' => '2026-11-31',
+			)
+		)
+	),
+	'invalid_date'
+);
+check(
+	'hours Forge refuses are named as the tool names them',
+	message_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'             => 'wi_f2',
+				'assignee_hours' => 500,
+			)
+		)
+	),
+	'That change could not be saved. assignee_hours: At most 100 hours.'
+);
 
 echo "\nTeam capacity\n";
 
-$team = blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-22' ) );
-check( 'it asks Forge for the whole team by the week', last_call( 'GET', '/capacity' )[2], array( 'from' => '2026-11-09', 'to' => '2026-11-22', 'by' => 'weeks' ) );
+$team = blueworx_mcp_tool_forge_get_team_capacity(
+	array(
+		'from' => '2026-11-09',
+		'to'   => '2026-11-22',
+	)
+);
+check(
+	'it asks Forge for the whole team by the week',
+	last_call( 'GET', '/capacity' )[2],
+	array(
+		'from' => '2026-11-09',
+		'to'   => '2026-11-22',
+		'by'   => 'weeks',
+	)
+);
 check(
 	'each person gets a line per week',
 	$team['people'][0]['weeks'][0],
@@ -898,9 +1513,27 @@ check( 'and a total for the range', array( $team['people'][0]['name'], $team['pe
 check( 'someone with no working week set is flagged as such', $team['people'][1]['total']['status'], 'not set up' );
 check( 'and nobody is listed with tasks unless asked', isset( $team['people'][0]['tasks'] ), false );
 
-blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-09', 'by' => 'days' ) );
+blueworx_mcp_tool_forge_get_team_capacity(
+	array(
+		'from' => '2026-11-09',
+		'to'   => '2026-11-09',
+		'by'   => 'days',
+	)
+);
 check( 'it can go day by day', last_call( 'GET', '/capacity' )[2]['by'], 'days' );
-check( 'which renames the lines', isset( blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-10', 'by' => 'days' ) )['people'][0]['days'] ), true );
+check(
+	'which renames the lines',
+	isset(
+		blueworx_mcp_tool_forge_get_team_capacity(
+			array(
+				'from' => '2026-11-09',
+				'to'   => '2026-11-10',
+				'by'   => 'days',
+			)
+		)['people'][0]['days']
+	),
+	true
+);
 
 blueworx_mcp_tool_forge_get_team_capacity( array() );
 check( 'with no dates it reads the next four weeks', array_values( array_slice( last_call( 'GET', '/capacity' )[2], 0, 2 ) ), array( gmdate( 'Y-m-d' ), gmdate( 'Y-m-d', strtotime( '+27 days' ) ) ) );
@@ -908,9 +1541,22 @@ check( 'with no dates it reads the next four weeks', array_values( array_slice( 
 blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-12-01' ) );
 check( 'a start alone runs four weeks from it', last_call( 'GET', '/capacity' )[2]['to'], '2026-12-28' );
 
-$luke = blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-09', 'to' => '2026-11-22', 'person' => 'luke' ) );
+$luke = blueworx_mcp_tool_forge_get_team_capacity(
+	array(
+		'from'   => '2026-11-09',
+		'to'     => '2026-11-22',
+		'person' => 'luke',
+	)
+);
 check( 'naming a person narrows it to them', array_column( $luke['people'], 'id' ), array( 'usr_luke' ) );
-check( 'and lists the tasks taking up their time', last_call( 'GET', '/capacity/person/usr_luke' )[2], array( 'from' => '2026-11-09', 'to' => '2026-11-22' ) );
+check(
+	'and lists the tasks taking up their time',
+	last_call( 'GET', '/capacity/person/usr_luke' )[2],
+	array(
+		'from' => '2026-11-09',
+		'to'   => '2026-11-22',
+	)
+);
 check(
 	'each with its role, hours and date',
 	$luke['people'][0]['tasks'][0],
@@ -926,7 +1572,18 @@ check(
 );
 check( 'and who they are covering for', array( $luke['people'][0]['tasks'][1]['role'], $luke['people'][0]['tasks'][1]['covering_for'], $luke['people'][0]['tasks'][1]['status'] ), array( 'reviewer', 'Sam Jones', 'done' ) );
 
-check( 'dates in the wrong order are refused', error_of( blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-11-22', 'to' => '2026-11-09' ) ) ), 'invalid_range' );
+check(
+	'dates in the wrong order are refused',
+	error_of(
+		blueworx_mcp_tool_forge_get_team_capacity(
+			array(
+				'from' => '2026-11-22',
+				'to'   => '2026-11-09',
+			)
+		)
+	),
+	'invalid_range'
+);
 check( 'a date that does not exist is refused', error_of( blueworx_mcp_tool_forge_get_team_capacity( array( 'from' => '2026-02-30' ) ) ), 'invalid_date' );
 check( 'an unknown person is refused', error_of( blueworx_mcp_tool_forge_get_team_capacity( array( 'person' => 'Nobody' ) ) ), 'unknown_person' );
 
