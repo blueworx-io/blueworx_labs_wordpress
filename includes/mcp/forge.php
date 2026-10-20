@@ -592,8 +592,8 @@ function blueworx_mcp_forge_still_needed( $gate ) {
  */
 function blueworx_mcp_forge_field_names() {
 	return array(
-		'problem'         => 'description',
-		'planned_due'     => 'due_date',
+		'problem'          => 'description',
+		'planned_due'      => 'due_date',
 		'primary_user_id'  => 'assignee',
 		'reviewer_id'      => 'reviewer',
 		'designer_id'      => 'designer',
