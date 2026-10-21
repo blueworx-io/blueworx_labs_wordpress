@@ -251,3 +251,510 @@ function blueworx_mcp_surecart_admin_link( $type, $id = '' ) {
 	}
 	return admin_url( $path );
 }
+
+/**
+ * Asks SureCart's own REST layer, inside this request. Only ever reads.
+ *
+ * There is no method parameter and the caller never picks a route: it passes a
+ * path under /surecart/v1 that this file built from a fixed list.
+ *
+ * @param string $route Route under /surecart/v1, e.g. /products.
+ * @param array  $query Query parameters.
+ * @return array|WP_Error array( 'data' => mixed, 'total' => int|null ), or why SureCart refused.
+ */
+function blueworx_mcp_surecart_request( $route, $query = array() ) {
+	$request = new WP_REST_Request( 'GET', '/surecart/v1' . $route );
+
+	if ( ! empty( $query ) ) {
+		$request->set_query_params( $query );
+	}
+
+	$response = rest_do_request( $request );
+	$data     = $response->get_data();
+
+	if ( $response->is_error() ) {
+		$code    = is_array( $data ) && isset( $data['code'] ) ? (string) $data['code'] : 'surecart_error';
+		$message = is_array( $data ) && isset( $data['message'] ) ? wp_strip_all_tags( (string) $data['message'] ) : '';
+
+		if ( 'rest_no_route' === $code ) {
+			return new WP_Error( $code, 'SureCart is not answering on this site. Check that the SureCart plugin is active.' );
+		}
+
+		return new WP_Error( $code, '' === $message ? 'SureCart refused that.' : $message );
+	}
+
+	$headers = method_exists( $response, 'get_headers' ) ? (array) $response->get_headers() : array();
+	$total   = null;
+
+	foreach ( $headers as $name => $value ) {
+		if ( 'x-wp-total' === strtolower( (string) $name ) ) {
+			$total = (int) $value;
+		}
+	}
+
+	return array(
+		'data'  => $data,
+		'total' => $total,
+	);
+}
+
+/**
+ * The sales reports the store answers (/stats/<id>).
+ *
+ * @return string[]
+ */
+function blueworx_mcp_surecart_reports() {
+	return array( 'orders' );
+}
+
+/**
+ * Which record types take each filter, beyond search and dates (which all do).
+ *
+ * @return array[] Types keyed by filter name.
+ */
+function blueworx_mcp_surecart_filter_types() {
+	return array(
+		'status'       => array( 'products', 'coupons', 'orders', 'checkouts', 'invoices', 'charges', 'refunds', 'subscriptions', 'purchases', 'licenses', 'fulfillments', 'shipments', 'return_requests', 'reviews', 'affiliations', 'referrals', 'payouts' ),
+		'customer_ids' => array( 'orders', 'checkouts', 'abandoned_checkouts', 'invoices', 'charges', 'refunds', 'subscriptions', 'purchases', 'payment_methods', 'licenses', 'reviews', 'return_requests', 'fulfillments', 'shipments' ),
+		'product_ids'  => array( 'prices', 'variants', 'variant_options', 'product_medias', 'purchases', 'subscriptions', 'licenses', 'reviews', 'bumps', 'upsells' ),
+	);
+}
+
+/**
+ * Checks a Y-m-d date.
+ *
+ * @param mixed  $value A date.
+ * @param string $name  Argument name, for the message.
+ * @return true|WP_Error
+ */
+function blueworx_mcp_surecart_check_date( $value, $name ) {
+	$value = is_scalar( $value ) ? (string) $value : '';
+	if ( 1 === preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m ) && checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+		return true;
+	}
+	return new WP_Error( 'invalid_date', $name . ' must be a real date as YYYY-MM-DD, e.g. 2026-11-01.' );
+}
+
+/**
+ * Describes the SureCart tools, for tools/list. Always listed, so a call made
+ * while the shop is off is told why.
+ *
+ * @return array Tool definitions.
+ */
+function blueworx_mcp_surecart_tool_definitions() {
+	$annotations = array(
+		'readOnlyHint'  => true,
+		'openWorldHint' => false,
+	);
+	$types       = array_keys( blueworx_mcp_surecart_types() );
+	$date        = array(
+		'type'        => 'string',
+		'description' => 'Date as YYYY-MM-DD.',
+	);
+
+	return array(
+		array(
+			'name'        => 'get_store_settings',
+			'title'       => 'Get the store settings',
+			'description' => 'Reads the SureCart shop\'s settings: the brand (colours, dark colour, theme, logo), the account (name, currency, connection, plan), the store settings, and links to those screens. This is where the store\'s look lives. Read only.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => new stdClass(),
+			),
+			'annotations' => $annotations,
+		),
+		array(
+			'name'        => 'list_store_records',
+			'title'       => 'List store records',
+			'description' => 'Lists one kind of SureCart record (products, orders, customers, coupons and so on), a page at a time, with a link to each in the WordPress admin. Read only. Customer details are withheld on read-only accounts that have data access off.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'type'        => array(
+						'type'        => 'string',
+						'enum'        => $types,
+						'description' => 'The kind of record.',
+					),
+					'search'      => array(
+						'type'        => 'string',
+						'description' => 'Words to search for.',
+					),
+					'status'      => array(
+						'type'        => 'string',
+						'description' => 'Only records with this status.',
+					),
+					'customer_id' => array(
+						'type'        => 'string',
+						'description' => 'Only records for this customer.',
+					),
+					'product_id'  => array(
+						'type'        => 'string',
+						'description' => 'Only records for this product.',
+					),
+					'from'        => $date,
+					'to'          => $date,
+					'page'        => array(
+						'type'        => 'integer',
+						'minimum'     => 1,
+						'description' => 'Page number (default 1).',
+					),
+					'per_page'    => array(
+						'type'        => 'integer',
+						'minimum'     => 1,
+						'maximum'     => 100,
+						'description' => 'Records per page (default 20, most 100).',
+					),
+				),
+				'required'   => array( 'type' ),
+			),
+			'annotations' => $annotations,
+		),
+		array(
+			'name'        => 'get_store_record',
+			'title'       => 'Get a store record',
+			'description' => 'Gets one SureCart record in full, with a link to it in the WordPress admin. Read only.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'type' => array(
+						'type'        => 'string',
+						'enum'        => $types,
+						'description' => 'The kind of record.',
+					),
+					'id'   => array(
+						'type'        => 'string',
+						'description' => 'The record ID.',
+					),
+				),
+				'required'   => array( 'type', 'id' ),
+			),
+			'annotations' => $annotations,
+		),
+		array(
+			'name'        => 'get_store_sales',
+			'title'       => 'Get store sales',
+			'description' => 'Sales over time from SureCart, one row per day, week, month or year, with amounts, averages and counts, and the totals. No customer details. Read only.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'report'   => array(
+						'type'        => 'string',
+						'enum'        => blueworx_mcp_surecart_reports(),
+						'description' => 'Which report (default orders).',
+					),
+					'from'     => $date,
+					'to'       => $date,
+					'interval' => array(
+						'type'        => 'string',
+						'enum'        => array( 'day', 'week', 'month', 'year' ),
+						'description' => 'Row size (default month).',
+					),
+				),
+				'required'   => array( 'from', 'to' ),
+			),
+			'annotations' => $annotations,
+		),
+	);
+}
+
+/**
+ * Maps the SureCart tool names to the functions that run them.
+ *
+ * @return array Callables keyed by tool name.
+ */
+function blueworx_mcp_surecart_tool_handlers() {
+	return array(
+		'get_store_settings' => 'blueworx_mcp_tool_surecart_get_settings',
+		'list_store_records' => 'blueworx_mcp_tool_surecart_list_records',
+		'get_store_record'   => 'blueworx_mcp_tool_surecart_get_record',
+		'get_store_sales'    => 'blueworx_mcp_tool_surecart_get_sales',
+	);
+}
+
+/**
+ * What get_site_info says about the shop.
+ *
+ * @return array
+ */
+function blueworx_mcp_surecart_site_info() {
+	return array(
+		'active'       => blueworx_mcp_surecart_active(),
+		'record_types' => array_keys( blueworx_mcp_surecart_types() ),
+	);
+}
+
+/**
+ * Checks a type argument, and that the account may see that kind of record.
+ *
+ * @param array $args Tool arguments.
+ * @return string|WP_Error The type name.
+ */
+function blueworx_mcp_surecart_resolve_type( $args ) {
+	$type  = isset( $args['type'] ) && is_scalar( $args['type'] ) ? (string) $args['type'] : '';
+	$types = blueworx_mcp_surecart_types();
+
+	if ( ! isset( $types[ $type ] ) ) {
+		return new WP_Error( 'unknown_type', 'Unknown record type "' . $type . '". The types are: ' . implode( ', ', array_keys( $types ) ) . '.' );
+	}
+
+	if ( blueworx_mcp_surecart_is_personal( $type ) && blueworx_mcp_surecart_personal_blocked() ) {
+		return new WP_Error( 'personal_data_withheld', 'Customer details are switched off for this account, so ' . strtolower( $types[ $type ]['label'] ) . ' cannot be shown.' );
+	}
+
+	return $type;
+}
+
+/**
+ * Tool: get_store_settings.
+ *
+ * @param array $args Arguments.
+ * @return array|WP_Error Result.
+ */
+function blueworx_mcp_tool_surecart_get_settings( $args ) {
+	$off = blueworx_mcp_surecart_unavailable();
+	if ( null !== $off ) {
+		return $off;
+	}
+
+	$answers = array();
+	foreach ( array( 'brand', 'account', 'settings' ) as $part ) {
+		$answer = blueworx_mcp_surecart_request( '/' . $part );
+		if ( is_wp_error( $answer ) ) {
+			return $answer;
+		}
+		$answers[ $part ] = is_array( $answer['data'] ) ? $answer['data'] : array();
+	}
+
+	$brand   = $answers['brand'];
+	$account = $answers['account'];
+
+	$out_brand = array();
+	foreach ( array( 'color', 'dark_color', 'theme', 'logo_url' ) as $key ) {
+		$out_brand[ $key ] = isset( $brand[ $key ] ) ? $brand[ $key ] : null;
+	}
+
+	$out_account = array();
+	foreach ( array( 'name', 'slug', 'url', 'currency', 'locale', 'time_zone', 'live_mode', 'is_connected', 'claimed' ) as $key ) {
+		if ( isset( $account[ $key ] ) ) {
+			$out_account[ $key ] = $account[ $key ];
+		}
+	}
+	if ( isset( $account['plan']['name'] ) ) {
+		$out_account['plan'] = $account['plan']['name'];
+	}
+
+	return array(
+		'brand'    => $out_brand,
+		'account'  => blueworx_mcp_surecart_scrub( $out_account ),
+		'settings' => blueworx_mcp_surecart_shape( $answers['settings'] ),
+		'links'    => array(
+			'settings' => admin_url( 'admin.php?page=sc-settings' ),
+			'brand'    => admin_url( 'admin.php?page=sc-settings&tab=brand' ),
+			'checkout' => admin_url( 'admin.php?page=sc-settings&tab=order' ),
+		),
+	);
+}
+
+/**
+ * Tool: list_store_records.
+ *
+ * @param array $args Arguments.
+ * @return array|WP_Error Result.
+ */
+function blueworx_mcp_tool_surecart_list_records( $args ) {
+	$off = blueworx_mcp_surecart_unavailable();
+	if ( null !== $off ) {
+		return $off;
+	}
+
+	$type = blueworx_mcp_surecart_resolve_type( $args );
+	if ( is_wp_error( $type ) ) {
+		return $type;
+	}
+
+	$page     = isset( $args['page'] ) ? max( 1, (int) $args['page'] ) : 1;
+	$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, (int) $args['per_page'] ) ) : 20;
+	$query    = array(
+		'page'     => $page,
+		'per_page' => $per_page,
+	);
+
+	$text = function ( $key ) use ( $args ) {
+		return isset( $args[ $key ] ) && is_scalar( $args[ $key ] ) ? trim( sanitize_text_field( (string) $args[ $key ] ) ) : '';
+	};
+
+	if ( '' !== $text( 'search' ) ) {
+		$query['query'] = $text( 'search' );
+	}
+
+	$takes = blueworx_mcp_surecart_filter_types();
+	if ( '' !== $text( 'status' ) && in_array( $type, $takes['status'], true ) ) {
+		$query['status'] = array( $text( 'status' ) );
+	}
+	if ( '' !== $text( 'customer_id' ) && in_array( $type, $takes['customer_ids'], true ) ) {
+		$query['customer_ids'] = array( $text( 'customer_id' ) );
+	}
+	if ( '' !== $text( 'product_id' ) && in_array( $type, $takes['product_ids'], true ) ) {
+		$query['product_ids'] = array( $text( 'product_id' ) );
+	}
+
+	$range = array();
+	foreach ( array(
+		'from' => 'gte',
+		'to'   => 'lte',
+	) as $arg => $op ) {
+		if ( '' === $text( $arg ) ) {
+			continue;
+		}
+		$valid = blueworx_mcp_surecart_check_date( $text( $arg ), $arg );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+		$range[ $op ] = strtotime( $text( $arg ) . ( 'gte' === $op ? ' 00:00:00' : ' 23:59:59' ) . ' UTC' );
+	}
+	if ( ! empty( $range ) ) {
+		$query['created_at'] = $range;
+	}
+
+	$types  = blueworx_mcp_surecart_types();
+	$answer = blueworx_mcp_surecart_request( substr( $types[ $type ]['route'], strlen( '/surecart/v1' ) ), $query );
+	if ( is_wp_error( $answer ) ) {
+		return $answer;
+	}
+
+	$records = array();
+	foreach ( (array) $answer['data'] as $record ) {
+		if ( ! is_array( $record ) ) {
+			continue;
+		}
+		$shaped               = blueworx_mcp_surecart_shape( $record );
+		$shaped['admin_link'] = blueworx_mcp_surecart_admin_link( $type, isset( $record['id'] ) ? (string) $record['id'] : '' );
+		$records[]            = $shaped;
+	}
+
+	return array(
+		'type'       => $type,
+		'page'       => $page,
+		'per_page'   => $per_page,
+		'total'      => $answer['total'],
+		'records'    => $records,
+		'admin_link' => blueworx_mcp_surecart_admin_link( $type ),
+	);
+}
+
+/**
+ * Tool: get_store_record.
+ *
+ * @param array $args Arguments.
+ * @return array|WP_Error Result.
+ */
+function blueworx_mcp_tool_surecart_get_record( $args ) {
+	$off = blueworx_mcp_surecart_unavailable();
+	if ( null !== $off ) {
+		return $off;
+	}
+
+	$type = blueworx_mcp_surecart_resolve_type( $args );
+	if ( is_wp_error( $type ) ) {
+		return $type;
+	}
+
+	$id = isset( $args['id'] ) && is_scalar( $args['id'] ) ? trim( (string) $args['id'] ) : '';
+	if ( 1 !== preg_match( '/^[A-Za-z0-9_-]+$/', $id ) ) {
+		return new WP_Error( 'invalid_id', 'Give the record ID, using only letters, numbers, dashes and underscores.' );
+	}
+
+	$types  = blueworx_mcp_surecart_types();
+	$answer = blueworx_mcp_surecart_request( substr( $types[ $type ]['route'], strlen( '/surecart/v1' ) ) . '/' . $id );
+	if ( is_wp_error( $answer ) ) {
+		return $answer;
+	}
+
+	$shaped               = blueworx_mcp_surecart_shape( is_array( $answer['data'] ) ? $answer['data'] : array() );
+	$shaped['admin_link'] = blueworx_mcp_surecart_admin_link( $type, $id );
+	return $shaped;
+}
+
+/**
+ * Tool: get_store_sales.
+ *
+ * @param array $args Arguments.
+ * @return array|WP_Error Result.
+ */
+function blueworx_mcp_tool_surecart_get_sales( $args ) {
+	$off = blueworx_mcp_surecart_unavailable();
+	if ( null !== $off ) {
+		return $off;
+	}
+
+	$report = isset( $args['report'] ) && is_scalar( $args['report'] ) ? (string) $args['report'] : 'orders';
+	if ( ! in_array( $report, blueworx_mcp_surecart_reports(), true ) ) {
+		return new WP_Error( 'unknown_report', 'Unknown report "' . $report . '". The reports are: ' . implode( ', ', blueworx_mcp_surecart_reports() ) . '.' );
+	}
+
+	foreach ( array( 'from', 'to' ) as $name ) {
+		$valid = blueworx_mcp_surecart_check_date( isset( $args[ $name ] ) ? $args[ $name ] : '', $name );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+	}
+	if ( (string) $args['from'] > (string) $args['to'] ) {
+		return new WP_Error( 'invalid_range', 'from must be on or before to.' );
+	}
+
+	$interval = isset( $args['interval'] ) && is_scalar( $args['interval'] ) ? (string) $args['interval'] : 'month';
+	if ( ! in_array( $interval, array( 'day', 'week', 'month', 'year' ), true ) ) {
+		return new WP_Error( 'invalid_interval', 'interval must be day, week, month or year.' );
+	}
+
+	$answer = blueworx_mcp_surecart_request(
+		'/stats/' . $report,
+		array(
+			'start_at' => (string) $args['from'],
+			'end_at'   => (string) $args['to'],
+			'interval' => $interval,
+		)
+	);
+	if ( is_wp_error( $answer ) ) {
+		return $answer;
+	}
+
+	$data     = is_array( $answer['data'] ) ? $answer['data'] : array();
+	$currency = isset( $data['query']['currency'] ) ? (string) $data['query']['currency'] : '';
+	$rows     = array();
+	$amount   = 0;
+	$count    = 0;
+
+	foreach ( (array) ( $data['data'] ?? array() ) as $row ) {
+		$row     = (array) $row;
+		$row_amt = (int) ( $row['amount'] ?? 0 );
+		$row_avg = (int) ( $row['average_amount'] ?? 0 );
+		$row_cnt = (int) ( $row['count'] ?? 0 );
+		$amount += $row_amt;
+		$count  += $row_cnt;
+		$rows[]  = array(
+			'interval_at'            => wp_date( 'Y-m-d', (int) ( $row['interval_at'] ?? 0 ) ),
+			'amount'                 => $row_amt,
+			'amount_display'         => blueworx_mcp_surecart_money( $row_amt, $currency ),
+			'average_amount'         => $row_avg,
+			'average_amount_display' => blueworx_mcp_surecart_money( $row_avg, $currency ),
+			'count'                  => $row_cnt,
+		);
+	}
+
+	$average = $count > 0 ? (int) round( $amount / $count ) : 0;
+
+	return array(
+		'report'   => $report,
+		'interval' => $interval,
+		'currency' => $currency,
+		'rows'     => $rows,
+		'totals'   => array(
+			'amount'                 => $amount,
+			'amount_display'         => blueworx_mcp_surecart_money( $amount, $currency ),
+			'average_amount'         => $average,
+			'average_amount_display' => blueworx_mcp_surecart_money( $average, $currency ),
+			'count'                  => $count,
+		),
+	);
+}
