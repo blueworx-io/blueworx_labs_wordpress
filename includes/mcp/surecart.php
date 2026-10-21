@@ -50,7 +50,26 @@ function blueworx_mcp_surecart_unavailable() {
  *
  * Keyed by the public name. Each entry has the SureCart REST route, whether the
  * type holds customers' personal details, the admin page that shows it (empty
- * where SureCart has no screen for it) and a plain label.
+ * where SureCart has no screen for it), whether that screen has a list view,
+ * whether the type can only be listed (no route for one record), the related
+ * records always asked for alongside it (expand), and a plain label.
+ *
+ * Expands are fixed here, never chosen by the caller, and only ever set on
+ * personal types: expanding a customer onto a type that is not personal would
+ * hand customer details to an account that has them withheld. Each list is
+ * taken from what SureCart's own admin asks for:
+ * - orders: app/src/Controllers/Admin/Orders/OrdersListTable.php and
+ *   ShippingLabelsListTable.php, app/src/Abilities/Abilities/GetOrder.php.
+ * - subscriptions: app/src/Controllers/Admin/Subscriptions/SubscriptionsListTable.php.
+ * - abandoned_checkouts: app/src/Abilities/Abilities/ListAbandonedCheckouts.php.
+ * - licenses: app/src/Controllers/Admin/Licenses/LicensesListTable.php.
+ * - refunds: app/src/Abilities/Abilities/GetRefund.php and the order screen's refunds query.
+ * - charges, purchases: the order and customer screens' queries (SureCart's admin scripts).
+ * - cancellation_acts: app/src/Controllers/Admin/CancellationInsights/CancellationInsightsListTable.php.
+ * Invoices need none: SureCart's own InvoicesController always expands them.
+ *
+ * List-only types come from SureCart's REST providers (app/src/Rest/*): only
+ * return_reasons registers an index route without a single-record one.
  *
  * @return array[]
  */
@@ -115,12 +134,33 @@ function blueworx_mcp_surecart_types() {
 		'balance_transactions'   => array( true, '' ),
 	);
 
+	// Related records asked for alongside each personal type. See the doc block.
+	$expand = array(
+		'orders'              => array( 'checkout', 'checkout.customer', 'checkout.charge', 'checkout.line_items', 'line_item.price', 'price.product' ),
+		'subscriptions'       => array( 'customer', 'price', 'price.product', 'current_period' ),
+		'abandoned_checkouts' => array( 'checkout', 'customer', 'recovered_checkout' ),
+		'licenses'            => array( 'purchase', 'purchase.customer', 'purchase.product' ),
+		'charges'             => array( 'checkout', 'checkout.order' ),
+		'refunds'             => array( 'charge', 'refund_items', 'refund_item.line_item' ),
+		'purchases'           => array( 'product', 'variant', 'price' ),
+		'cancellation_acts'   => array( 'subscription', 'subscription.customer', 'cancellation_reason' ),
+	);
+
+	// Types SureCart answers as a list only.
+	$list_only = array( 'return_reasons' );
+
+	// Types whose screen edits one record but has no list of them.
+	$no_list_view = array( 'checkouts' );
+
 	$types = array();
 	foreach ( $list as $name => $info ) {
 		$types[ $name ] = array(
 			'route'      => '/surecart/v1/' . $name,
 			'personal'   => $info[0],
 			'admin_page' => $info[1],
+			'list_view'  => '' !== $info[1] && ! in_array( $name, $no_list_view, true ),
+			'list_only'  => in_array( $name, $list_only, true ),
+			'expand'     => $info[0] && isset( $expand[ $name ] ) ? $expand[ $name ] : array(),
 			'label'      => ucfirst( str_replace( '_', ' ', $name ) ),
 		);
 	}
@@ -245,11 +285,70 @@ function blueworx_mcp_surecart_admin_link( $type, $id = '' ) {
 	if ( ! isset( $types[ $type ] ) || '' === $types[ $type ]['admin_page'] ) {
 		return '';
 	}
+	if ( '' === $id && ! $types[ $type ]['list_view'] ) {
+		return '';
+	}
 	$path = 'admin.php?page=' . $types[ $type ]['admin_page'];
 	if ( '' !== $id ) {
 		$path .= '&action=edit&id=' . rawurlencode( $id );
 	}
 	return admin_url( $path );
+}
+
+/**
+ * The id of a related record, whether SureCart sent it as an id or expanded it.
+ *
+ * @param array    $record A SureCart record, as an array.
+ * @param string[] $path   Keys to walk, e.g. array( 'checkout', 'order' ).
+ * @return string The id, or an empty string.
+ */
+function blueworx_mcp_surecart_related_id( $record, $path ) {
+	$value = $record;
+	foreach ( $path as $key ) {
+		if ( ! is_array( $value ) || ! isset( $value[ $key ] ) ) {
+			return '';
+		}
+		$value = $value[ $key ];
+	}
+	if ( is_array( $value ) ) {
+		$value = isset( $value['id'] ) ? $value['id'] : '';
+	}
+	return is_string( $value ) && 1 === preg_match( '/^[A-Za-z0-9_-]+$/', $value ) ? $value : '';
+}
+
+/**
+ * The admin screen for one record.
+ *
+ * Most types link to their own edit screen. Prices and variants have none, so
+ * they link to their product's. Charges and refunds have none either, so they
+ * link to the order they belong to when the record carries it. Otherwise the
+ * link is empty rather than a guess.
+ *
+ * @param string $type   A public type name.
+ * @param array  $record The record, as an array.
+ * @return string URL, or an empty string.
+ */
+function blueworx_mcp_surecart_record_link( $type, $record ) {
+	// Type => the paths to a related record, and that record's type.
+	$via = array(
+		'prices'   => array( 'products', array( array( 'product' ) ) ),
+		'variants' => array( 'products', array( array( 'product' ) ) ),
+		'charges'  => array( 'orders', array( array( 'order' ), array( 'checkout', 'order' ) ) ),
+		'refunds'  => array( 'orders', array( array( 'charge', 'order' ), array( 'charge', 'checkout', 'order' ) ) ),
+	);
+
+	if ( ! isset( $via[ $type ] ) ) {
+		$id = is_array( $record ) && isset( $record['id'] ) && is_scalar( $record['id'] ) ? (string) $record['id'] : '';
+		return '' === $id ? '' : blueworx_mcp_surecart_admin_link( $type, $id );
+	}
+
+	foreach ( $via[ $type ][1] as $path ) {
+		$related = blueworx_mcp_surecart_related_id( $record, $path );
+		if ( '' !== $related ) {
+			return blueworx_mcp_surecart_admin_link( $via[ $type ][0], $related );
+		}
+	}
+	return '';
 }
 
 /**
@@ -270,7 +369,12 @@ function blueworx_mcp_surecart_request( $route, $query = array() ) {
 	}
 
 	$response = rest_do_request( $request );
-	$data     = $response->get_data();
+
+	// In-process, SureCart hands most types back as model objects with more
+	// objects nested inside. Encoding and decoding gives the same plain arrays
+	// an HTTP caller would see, so nothing is skipped and the scrub reaches
+	// every level.
+	$data = json_decode( wp_json_encode( $response->get_data() ), true );
 
 	if ( $response->is_error() ) {
 		$code    = is_array( $data ) && isset( $data['code'] ) ? (string) $data['code'] : 'surecart_error';
@@ -296,6 +400,18 @@ function blueworx_mcp_surecart_request( $route, $query = array() ) {
 		'data'  => $data,
 		'total' => $total,
 	);
+}
+
+/**
+ * The core store settings SureCart keeps, each a read-only GET route of its own
+ * (app/src/Rest/*ProtocolRestServiceProvider.php): tax, shipping, orders,
+ * subscriptions, customer emails, the customer portal, abandoned checkouts,
+ * affiliates, reviews and automatic fees.
+ *
+ * @return string[] Route names under /surecart/v1.
+ */
+function blueworx_mcp_surecart_protocols() {
+	return array( 'tax_protocol', 'shipping_protocol', 'order_protocol', 'subscription_protocol', 'customer_notification_protocol', 'customer_portal_protocol', 'abandoned_checkout_protocol', 'affiliation_protocol', 'review_protocol', 'auto_fee_protocol' );
 }
 
 /**
@@ -363,7 +479,7 @@ function blueworx_mcp_surecart_tool_definitions() {
 		array(
 			'name'        => 'get_store_settings',
 			'title'       => 'Get the store settings',
-			'description' => 'Reads the SureCart shop\'s settings: the brand (colours, dark colour, theme, logo), the account (name, currency, connection, plan), the store settings, and links to those screens. This is where the store\'s look lives. Read only.',
+			'description' => 'Reads the SureCart shop\'s settings: the brand (colours, dark colour, theme, logo), the account (name, currency, connection, plan), the store settings, the setup for tax, shipping, orders, subscriptions, customer emails, the customer portal, abandoned checkouts, affiliates, reviews and automatic fees (a part the store cannot read says unavailable), and links to those screens. This is where the store\'s look lives. Read only.',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => new stdClass(),
@@ -373,7 +489,7 @@ function blueworx_mcp_surecart_tool_definitions() {
 		array(
 			'name'        => 'list_store_records',
 			'title'       => 'List store records',
-			'description' => 'Lists one kind of SureCart record (products, orders, customers, coupons and so on), a page at a time, with a link to each in the WordPress admin. Filters: search, status, customer_id and product_id, each only on the record types that take it; a filter that does not apply is named in ignored_filters. There is no date filter; use get_store_sales for sales over a period. Read only. Customer details are withheld on read-only accounts that have data access off.',
+			'description' => 'Lists one kind of SureCart record (products, orders, customers, coupons and so on), a page at a time, with a link to each in the WordPress admin where SureCart has a screen for it (admin_link is empty where it has none). Filters: search, status, customer_id and product_id, each only on the record types that take it; a filter that does not apply is named in ignored_filters. There is no date filter; use get_store_sales for sales over a period. Read only. Customer details are withheld on read-only accounts that have data access off.',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => array(
@@ -417,7 +533,7 @@ function blueworx_mcp_surecart_tool_definitions() {
 		array(
 			'name'        => 'get_store_record',
 			'title'       => 'Get a store record',
-			'description' => 'Gets one SureCart record in full, with a link to it in the WordPress admin. Read only.',
+			'description' => 'Gets one SureCart record in full, with a link to it in the WordPress admin where SureCart has a screen for it. A few types (return_reasons) can only be listed. Read only.',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => array(
@@ -511,6 +627,37 @@ function blueworx_mcp_surecart_locked_error( $name, $label ) {
 }
 
 /**
+ * The refusal for a change to one of SureCart's own pages (checkout, shop,
+ * customer dashboard), or null for any other post.
+ *
+ * Those are ordinary pages, but changing or binning one breaks the live shop.
+ * SureCart keeps their IDs in options named surecart_<name>_page_id
+ * (app/src/WordPress/Pages/PageService.php getOptionName(), and the list it
+ * removes on uninstall in app/src/Activation/ActivationService.php).
+ *
+ * @param int $id Post ID.
+ * @return WP_Error|null
+ */
+function blueworx_mcp_surecart_page_locked_error( $id ) {
+	$id = (int) $id;
+	if ( $id <= 0 ) {
+		return null;
+	}
+	$pages = array(
+		'checkout'           => 'SureCart\'s checkout page',
+		'shop'               => 'SureCart\'s shop page',
+		'dashboard'          => 'SureCart\'s customer dashboard page',
+		'order-confirmation' => 'SureCart\'s order confirmation page',
+	);
+	foreach ( $pages as $name => $label ) {
+		if ( (int) get_option( 'surecart_' . $name . '_page_id' ) === $id ) {
+			return new WP_Error( 'surecart_read_only', 'This is ' . $label . ', which Claude can only read, because changing it could break the live shop. Change it in SureCart: ' . admin_url( 'admin.php?page=sc-settings' ) );
+		}
+	}
+	return null;
+}
+
+/**
  * What get_site_info says about the shop.
  *
  * @return array
@@ -582,11 +729,25 @@ function blueworx_mcp_tool_surecart_get_settings( $args ) {
 		$out_account['plan'] = $account['plan']['name'];
 	}
 
+	// The core store setup, one part at a time: a part the store's plan does not
+	// include, or the account cannot read, is reported in its place rather than
+	// failing the whole answer.
+	$protocols = array();
+	foreach ( blueworx_mcp_surecart_protocols() as $part ) {
+		$answer = blueworx_mcp_surecart_request( '/' . $part );
+		if ( is_wp_error( $answer ) ) {
+			$protocols[ $part ] = array( 'unavailable' => $answer->get_error_message() );
+			continue;
+		}
+		$protocols[ $part ] = blueworx_mcp_surecart_shape( is_array( $answer['data'] ) ? $answer['data'] : array() );
+	}
+
 	return array(
-		'brand'    => $out_brand,
-		'account'  => blueworx_mcp_surecart_scrub( $out_account ),
-		'settings' => blueworx_mcp_surecart_shape( $answers['settings'] ),
-		'links'    => array(
+		'brand'     => $out_brand,
+		'account'   => blueworx_mcp_surecart_scrub( $out_account ),
+		'settings'  => blueworx_mcp_surecart_shape( $answers['settings'] ),
+		'protocols' => $protocols,
+		'links'     => array(
 			'settings' => admin_url( 'admin.php?page=sc-settings' ),
 			'brand'    => admin_url( 'admin.php?page=sc-settings&tab=brand' ),
 			'checkout' => admin_url( 'admin.php?page=sc-forms' ),
@@ -641,7 +802,11 @@ function blueworx_mcp_tool_surecart_list_records( $args ) {
 		$query[ $map[0] ] = $map[1] ? array( $text( $arg ) ) : $text( $arg );
 	}
 
-	$types  = blueworx_mcp_surecart_types();
+	$types = blueworx_mcp_surecart_types();
+	if ( ! empty( $types[ $type ]['expand'] ) ) {
+		$query['expand'] = $types[ $type ]['expand'];
+	}
+
 	$answer = blueworx_mcp_surecart_request( substr( $types[ $type ]['route'], strlen( '/surecart/v1' ) ), $query );
 	if ( is_wp_error( $answer ) ) {
 		return $answer;
@@ -653,7 +818,7 @@ function blueworx_mcp_tool_surecart_list_records( $args ) {
 			continue;
 		}
 		$shaped               = blueworx_mcp_surecart_shape( $record );
-		$shaped['admin_link'] = blueworx_mcp_surecart_admin_link( $type, isset( $record['id'] ) ? (string) $record['id'] : '' );
+		$shaped['admin_link'] = blueworx_mcp_surecart_record_link( $type, $record );
 		$records[]            = $shaped;
 	}
 
@@ -691,19 +856,29 @@ function blueworx_mcp_tool_surecart_get_record( $args ) {
 		return $type;
 	}
 
+	$types = blueworx_mcp_surecart_types();
+	if ( $types[ $type ]['list_only'] ) {
+		return new WP_Error( 'list_only', 'SureCart only gives ' . strtolower( $types[ $type ]['label'] ) . ' as a list, not one at a time. Use list_store_records with type "' . $type . '" instead.' );
+	}
+
 	$id = isset( $args['id'] ) && is_scalar( $args['id'] ) ? trim( (string) $args['id'] ) : '';
 	if ( 1 !== preg_match( '/^[A-Za-z0-9_-]+$/', $id ) ) {
 		return new WP_Error( 'invalid_id', 'Give the record ID, using only letters, numbers, dashes and underscores.' );
 	}
 
-	$types  = blueworx_mcp_surecart_types();
-	$answer = blueworx_mcp_surecart_request( substr( $types[ $type ]['route'], strlen( '/surecart/v1' ) ) . '/' . $id );
+	$query = array();
+	if ( ! empty( $types[ $type ]['expand'] ) ) {
+		$query['expand'] = $types[ $type ]['expand'];
+	}
+
+	$answer = blueworx_mcp_surecart_request( substr( $types[ $type ]['route'], strlen( '/surecart/v1' ) ) . '/' . $id, $query );
 	if ( is_wp_error( $answer ) ) {
 		return $answer;
 	}
 
-	$shaped               = blueworx_mcp_surecart_shape( is_array( $answer['data'] ) ? $answer['data'] : array() );
-	$shaped['admin_link'] = blueworx_mcp_surecart_admin_link( $type, $id );
+	$record               = is_array( $answer['data'] ) ? $answer['data'] : array();
+	$shaped               = blueworx_mcp_surecart_shape( $record );
+	$shaped['admin_link'] = blueworx_mcp_surecart_record_link( $type, array_merge( array( 'id' => $id ), $record ) );
 	return $shaped;
 }
 

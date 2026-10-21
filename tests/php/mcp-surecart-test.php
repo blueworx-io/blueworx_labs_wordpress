@@ -74,6 +74,23 @@ class Fake_Response {
 	}
 }
 
+/**
+ * What SureCart's REST layer hands back in-process for most types: a model
+ * object that only becomes an array when it is JSON-encoded.
+ */
+class Fake_Model implements JsonSerializable {
+	private $attributes;
+
+	public function __construct( $attributes ) {
+		$this->attributes = $attributes;
+	}
+
+	#[\ReturnTypeWillChange]
+	public function jsonSerialize() {
+		return $this->attributes;
+	}
+}
+
 $GLOBALS['sc'] = array( 'calls' => array(), 'routes' => array() );
 
 function rest_do_request( $request ) {
@@ -195,10 +212,95 @@ check( 'sales need both dates', error_of( blueworx_mcp_tool_surecart_get_sales( 
 check( 'an unknown report is refused', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'x', 'from' => '2026-01-01', 'to' => '2026-02-01' ) ) ), 'unknown_report' );
 $GLOBALS['sc']['routes']['/surecart/v1/products'] = array( 400, array( 'code' => 'missing_token', 'message' => '<p>Please connect your site to SureCart.</p>' ), array() );
 check( 'a store with no connection says so in SureCart\'s words', message_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) ) ), 'Please connect your site to SureCart.' );
+// In-process, SureCart hands most types back as model objects, not arrays.
+$GLOBALS['sc']['routes']['/surecart/v1/orders']    = array( 200, array( new Fake_Model( array( 'id' => 'o2', 'currency' => 'gbp', 'amount_due' => 1500, 'checkout' => (object) array( 'id' => 'ch1', 'customer' => (object) array( 'name' => 'Ann', 'api_token' => 'x' ) ) ) ) ), array( 'X-WP-Total' => '1' ) );
+$GLOBALS['sc']['routes']['/surecart/v1/orders/o2'] = array( 200, new Fake_Model( array( 'id' => 'o2', 'currency' => 'gbp', 'amount_due' => 1500, 'checkout' => (object) array( 'id' => 'ch1', 'webhook_signing_secret' => 'wh' ) ) ), array() );
+$objects = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'orders' ) );
+check( 'a list of model objects still returns its records', count( $objects['records'] ), 1 );
+check( 'and each reads as money', $objects['records'][0]['amount_due_display'] ?? null, '£15.00' );
+check( 'and a nested object is cleaned too', isset( $objects['records'][0]['checkout']['customer']['api_token'] ), false );
+check( 'and keeps what is safe', $objects['records'][0]['checkout']['customer']['name'] ?? null, 'Ann' );
+check( 'the orders list asks for the checkout and its customer', array_intersect( array( 'checkout', 'checkout.customer', 'checkout.line_items' ), (array) ( last_call()[2]['expand'] ?? array() ) ), array( 'checkout', 'checkout.customer', 'checkout.line_items' ) );
+$one = blueworx_mcp_tool_surecart_get_record( array( 'type' => 'orders', 'id' => 'o2' ) );
+check( 'a single model object comes back as a record', $one['amount_due_display'] ?? null, '£15.00' );
+check( 'and is cleaned', isset( $one['checkout']['webhook_signing_secret'] ), false );
+check( 'a single order asks for the same detail', in_array( 'checkout.customer', (array) ( last_call()[2]['expand'] ?? array() ), true ), true );
+blueworx_mcp_tool_surecart_list_records( array( 'type' => 'subscriptions' ) );
+check( 'subscriptions ask for the customer and the product', array_intersect( array( 'customer', 'price', 'price.product' ), (array) ( last_call()[2]['expand'] ?? array() ) ), array( 'customer', 'price', 'price.product' ) );
+blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) );
+check( 'a product list asks for no extra detail', isset( last_call()[2]['expand'] ), false );
+check( 'no type without personal details expands anything', array_keys( array_filter( blueworx_mcp_surecart_types(), function ( $t ) { return ! $t['personal'] && ! empty( $t['expand'] ); } ) ), array() );
+check( 'the caller cannot ask for an expand', isset( blueworx_mcp_surecart_tool_definitions()[1]['inputSchema']['properties']['expand'] ) || isset( blueworx_mcp_surecart_tool_definitions()[2]['inputSchema']['properties']['expand'] ), false );
+blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'expand' => array( 'customer' ) ) );
+check( 'and one passed anyway is not sent', isset( last_call()[2]['expand'] ), false );
+
+// Prices and variants have no screen of their own, so they link to their product.
+$GLOBALS['sc']['routes']['/surecart/v1/prices']   = array( 200, array( new Fake_Model( array( 'id' => 'pr1', 'product' => 'p1' ) ), new Fake_Model( array( 'id' => 'pr2' ) ) ), array( 'X-WP-Total' => '2' ) );
+$GLOBALS['sc']['routes']['/surecart/v1/variants'] = array( 200, array( new Fake_Model( array( 'id' => 'v1', 'product' => (object) array( 'id' => 'p7', 'name' => 'Hoodie' ) ) ) ), array( 'X-WP-Total' => '1' ) );
+$prices = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'prices' ) );
+check( 'a price links to its product', $prices['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1' );
+check( 'a price with no product has no link', $prices['records'][1]['admin_link'], '' );
+check( 'a variant links to its product, expanded or not', blueworx_mcp_tool_surecart_list_records( array( 'type' => 'variants' ) )['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p7' );
+$GLOBALS['sc']['routes']['/surecart/v1/prices/pr1'] = array( 200, new Fake_Model( array( 'id' => 'pr1', 'product' => 'p1' ) ), array() );
+check( 'and so does a single price', blueworx_mcp_tool_surecart_get_record( array( 'type' => 'prices', 'id' => 'pr1' ) )['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1' );
+
+// Charges and refunds have no screen; they link to their order when they carry one.
+$GLOBALS['sc']['routes']['/surecart/v1/charges'] = array( 200, array( new Fake_Model( array( 'id' => 'c1', 'checkout' => (object) array( 'id' => 'ch1', 'order' => (object) array( 'id' => 'o9' ) ) ) ), new Fake_Model( array( 'id' => 'c2', 'checkout' => 'ch2' ) ) ), array( 'X-WP-Total' => '2' ) );
+$GLOBALS['sc']['routes']['/surecart/v1/refunds'] = array( 200, array( new Fake_Model( array( 'id' => 'r1', 'charge' => (object) array( 'id' => 'c1', 'checkout' => (object) array( 'order' => 'o9' ) ) ) ), new Fake_Model( array( 'id' => 'r2', 'charge' => 'c1' ) ) ), array( 'X-WP-Total' => '2' ) );
+$charges = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'charges' ) );
+check( 'charges ask for their checkout and its order', array_intersect( array( 'checkout', 'checkout.order' ), (array) ( last_call()[2]['expand'] ?? array() ) ), array( 'checkout', 'checkout.order' ) );
+check( 'a charge links to its order', $charges['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-orders&action=edit&id=o9' );
+check( 'a charge without its order has no link', $charges['records'][1]['admin_link'], '' );
+$refunds = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'refunds' ) );
+check( 'refunds ask for their charge', in_array( 'charge', (array) ( last_call()[2]['expand'] ?? array() ), true ), true );
+check( 'a refund links to its order when its charge carries one', $refunds['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-orders&action=edit&id=o9' );
+check( 'and has no link when it does not', $refunds['records'][1]['admin_link'], '' );
+
+// Checkouts have an edit screen but no list screen.
+$GLOBALS['sc']['routes']['/surecart/v1/checkouts'] = array( 200, array( array( 'id' => 'ch1' ) ), array( 'X-WP-Total' => '1' ) );
+$checkouts = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'checkouts' ) );
+check( 'the checkouts list has no list link', $checkouts['admin_link'], '' );
+check( 'but each checkout keeps its own', $checkouts['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-checkouts&action=edit&id=ch1' );
+
+// Some types can only be listed.
+$before = count( $GLOBALS['sc']['calls'] );
+$reason = blueworx_mcp_tool_surecart_get_record( array( 'type' => 'return_reasons', 'id' => 'rr1' ) );
+check( 'a get on a list-only type is refused up front', error_of( $reason ), 'list_only' );
+check( 'with a plain way forward', strpos( message_of( $reason ), 'list_store_records' ) !== false, true );
+check( 'and SureCart is not asked', count( $GLOBALS['sc']['calls'] ), $before );
+check( 'return reasons are list-only', blueworx_mcp_surecart_types()['return_reasons']['list_only'], true );
+check( 'orders are not', blueworx_mcp_surecart_types()['orders']['list_only'], false );
+
+// The core store settings, each read on its own so one refusal does not sink the rest.
+$GLOBALS['sc']['routes']['/surecart/v1/tax_protocol']    = array( 200, new Fake_Model( array( 'object' => 'tax_protocol', 'tax_enabled' => true, 'eu_vat' => (object) array( 'api_key' => 'k', 'required' => true ) ) ), array() );
+$GLOBALS['sc']['routes']['/surecart/v1/order_protocol']  = array( 200, array( 'object' => 'order_protocol', 'number_prefix' => 'SC' ), array() );
+$GLOBALS['sc']['routes']['/surecart/v1/review_protocol'] = array( 403, array( 'code' => 'plan_required', 'message' => 'Reviews need a higher plan.' ), array() );
+$settings = blueworx_mcp_tool_surecart_get_settings( array() );
+check( 'settings still come back when one part is refused', error_of( $settings ), 'no error' );
+check( 'the tax setup comes back', $settings['protocols']['tax_protocol']['tax_enabled'] ?? null, true );
+check( 'without its keys', isset( $settings['protocols']['tax_protocol']['eu_vat']['api_key'] ), false );
+check( 'but with the rest of it', $settings['protocols']['tax_protocol']['eu_vat']['required'] ?? null, true );
+check( 'the order setup comes back', $settings['protocols']['order_protocol']['number_prefix'] ?? null, 'SC' );
+check( 'a refused part says it is unavailable', $settings['protocols']['review_protocol']['unavailable'] ?? null, 'Reviews need a higher plan.' );
+check( 'every core settings part is asked for', array_keys( $settings['protocols'] ), array( 'tax_protocol', 'shipping_protocol', 'order_protocol', 'subscription_protocol', 'customer_notification_protocol', 'customer_portal_protocol', 'abandoned_checkout_protocol', 'affiliation_protocol', 'review_protocol', 'auto_fee_protocol' ) );
+
+// SureCart's own checkout, shop and account pages are locked against change.
+$GLOBALS['options']['surecart_checkout_page_id']  = '41';
+$GLOBALS['options']['surecart_shop_page_id']      = 42;
+$GLOBALS['options']['surecart_dashboard_page_id'] = '43';
+check( 'the checkout page is locked', error_of( blueworx_mcp_surecart_page_locked_error( 41 ) ), 'surecart_read_only' );
+check( 'the shop page too', error_of( blueworx_mcp_surecart_page_locked_error( 42 ) ), 'surecart_read_only' );
+check( 'and the customer dashboard', error_of( blueworx_mcp_surecart_page_locked_error( 43 ) ), 'surecart_read_only' );
+check( 'and the refusal points at SureCart\'s settings', strpos( message_of( blueworx_mcp_surecart_page_locked_error( 41 ) ), 'page=sc-settings' ) !== false, true );
+check( 'an ordinary page is not', blueworx_mcp_surecart_page_locked_error( 7 ), null );
+check( 'and nor is a missing ID', blueworx_mcp_surecart_page_locked_error( 0 ), null );
+
 $GLOBALS['readonly_user'] = (object) array( 'ID' => 9 );
 $GLOBALS['data_open']     = false;
+$before                   = count( $GLOBALS['sc']['calls'] );
 check( 'orders are withheld from a read-only account', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'subscriptions' ) ) ), 'personal_data_withheld' );
 check( 'and a single one too', error_of( blueworx_mcp_tool_surecart_get_record( array( 'type' => 'orders', 'id' => 'o1' ) ) ), 'personal_data_withheld' );
+check( 'and SureCart was never asked for them', count( $GLOBALS['sc']['calls'] ), $before );
 $GLOBALS['sc']['routes']['/surecart/v1/products'] = array( 200, array( $product ), array( 'X-WP-Total' => '11' ) );
 check( 'products are not', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) ) ), 'no error' );
 check( 'nor sales totals', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01', 'to' => '2026-10-21' ) ) ), 'no error' );
