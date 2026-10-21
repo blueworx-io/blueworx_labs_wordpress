@@ -71,6 +71,10 @@ or leave; that stays in Forge.
 
 On a site without Forge, none of this is offered.
 
+## SureCart shop
+
+On a site running SureCart, Claude can read products, prices, orders, subscriptions, customers, coupons, store settings, the store's look and sales totals over time. Each record links to the SureCart screen where it can be changed, so Claude can tell you where to go. Claude cannot change anything in the shop, and it can no longer edit SureCart's product pages, checkout forms or collections through the page tools. Accounts set up without access to customer details (such as support and External viewer accounts) still can't see them.
+
 ## Good to know
 
 - Everything Claude changes is listed under **Recent changes by Claude**.
