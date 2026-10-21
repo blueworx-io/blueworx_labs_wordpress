@@ -341,6 +341,30 @@ test.describe('Connect Claude', () => {
     }
   });
 
+  test('Claude is offered the SureCart tools, and told plainly where SureCart is off', async ({ page, request }) => {
+    await login(page);
+    await setSwitch(page, true);
+
+    try {
+      const { server, clientId } = await register(request);
+      const { access_token: token } = await approve(page, request, server, clientId);
+
+      const names = (await rpc(request, token, 'tools/list')).body.result.tools.map((tool) => tool.name);
+      expect(names).toEqual(expect.arrayContaining(['get_store_settings', 'list_store_records', 'get_store_record', 'get_store_sales']));
+
+      const info = (await callTool(request, token, 'get_site_info', {})).structuredContent;
+      expect(typeof info.surecart.active).toBe('boolean');
+
+      if (!info.surecart.active) {
+        const refused = await callTool(request, token, 'list_store_records', { type: 'products' });
+        expect(refused.isError).toBe(true);
+        expect(refused.content[0].text).toContain('SureCart is not active on this site');
+      }
+    } finally {
+      await setSwitch(page, false);
+    }
+  });
+
   test('switching off from Enhancements disconnects everyone too', async ({ page, request }) => {
     await login(page);
     await setSwitch(page, true);

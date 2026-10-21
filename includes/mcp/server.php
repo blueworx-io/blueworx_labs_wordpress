@@ -169,6 +169,7 @@ function blueworx_mcp_handle_message( $message, $grant ) {
 						'version' => defined( 'BLUEWORX_LABS_VERSION' ) ? BLUEWORX_LABS_VERSION : '0',
 					),
 					'instructions'    => 'Tools for reading and editing the content of the WordPress site at ' . home_url() . '. New content is created as a draft unless you are asked to publish it. Files cannot be uploaded or deleted. Pages marked built_with_elementor keep their layout outside the content field, so editing content will not change what visitors see on them.'
+						. ( blueworx_mcp_surecart_active() ? ' The site also runs SureCart, its shop: get_store_settings, list_store_records, get_store_record and get_store_sales read products, prices, orders, subscriptions, customers, settings, the store\'s look and sales. These tools cannot change the shop, and SureCart\'s own checkout, shop and account pages are locked against changes too; when asked for a change, say which SureCart screen to open (most records have an admin_link) and what to change there.' : '' )
 						. ( blueworx_mcp_forge_active() ? ' The site also runs Forge, a project tracker: the *_project and *_task tools read and change its projects and tasks, get_team_capacity shows who has room week by week, and get_site_info lists its sites, people and statuses.' : '' ),
 				)
 			);
@@ -504,7 +505,7 @@ function blueworx_mcp_tool_definitions() {
 	);
 
 	// Forge's project and task tools, listed only while Forge is running.
-	return array_merge( $tools, blueworx_mcp_forge_tool_definitions() );
+	return array_merge( $tools, blueworx_mcp_forge_tool_definitions(), blueworx_mcp_surecart_tool_definitions() );
 }
 
 /**
@@ -524,7 +525,8 @@ function blueworx_mcp_tool_handlers() {
 			'list_terms'     => 'blueworx_mcp_tool_list_terms',
 			'create_term'    => 'blueworx_mcp_tool_create_term',
 		),
-		blueworx_mcp_forge_tool_handlers()
+		blueworx_mcp_forge_tool_handlers(),
+		blueworx_mcp_surecart_tool_handlers()
 	);
 }
 
@@ -728,20 +730,32 @@ function blueworx_mcp_tool_site_info( $args ) {
 	$types = array();
 
 	foreach ( blueworx_mcp_content_types() as $name => $info ) {
-		$types[] = array(
+		$entry = array(
 			'type'  => $name,
 			'label' => $info['label'],
 		);
+
+		if ( blueworx_mcp_surecart_locked( $name ) ) {
+			$entry['read_only'] = true;
+		}
+
+		$types[] = $entry;
 	}
 
 	$taxonomies = array();
 
 	foreach ( blueworx_mcp_taxonomies() as $name => $info ) {
-		$taxonomies[] = array(
+		$entry = array(
 			'taxonomy'  => $name,
 			'rest_base' => $info['rest_base'],
 			'label'     => $info['label'],
 		);
+
+		if ( blueworx_mcp_surecart_locked( $name ) ) {
+			$entry['read_only'] = true;
+		}
+
+		$taxonomies[] = $entry;
 	}
 
 	return array(
@@ -753,6 +767,7 @@ function blueworx_mcp_tool_site_info( $args ) {
 		'content_types' => $types,
 		'taxonomies'    => $taxonomies,
 		'forge'         => blueworx_mcp_forge_site_info(),
+		'surecart'      => blueworx_mcp_surecart_site_info(),
 	);
 }
 
@@ -838,6 +853,12 @@ function blueworx_mcp_tool_create_content( $args ) {
 		return $type;
 	}
 
+	$locked = blueworx_mcp_surecart_locked_error( $type['name'], $type['label'] );
+
+	if ( $locked ) {
+		return $locked;
+	}
+
 	$params = blueworx_mcp_write_params( $args );
 
 	if ( ! isset( $params['status'] ) ) {
@@ -870,6 +891,16 @@ function blueworx_mcp_tool_update_content( $args ) {
 	}
 
 	$id     = absint( $args['id'] ?? 0 );
+	$locked = blueworx_mcp_surecart_locked_error( $type['name'], $type['label'] );
+
+	if ( ! $locked ) {
+		$locked = blueworx_mcp_surecart_page_locked_error( $id );
+	}
+
+	if ( $locked ) {
+		return $locked;
+	}
+
 	$params = blueworx_mcp_write_params( $args );
 
 	if ( empty( $params ) ) {
@@ -906,7 +937,16 @@ function blueworx_mcp_tool_trash_content( $args ) {
 		return $type;
 	}
 
-	$id = absint( $args['id'] ?? 0 );
+	$id     = absint( $args['id'] ?? 0 );
+	$locked = blueworx_mcp_surecart_locked_error( $type['name'], $type['label'] );
+
+	if ( ! $locked ) {
+		$locked = blueworx_mcp_surecart_page_locked_error( $id );
+	}
+
+	if ( $locked ) {
+		return $locked;
+	}
 
 	if ( ! EMPTY_TRASH_DAYS ) {
 		return new WP_Error( 'no_trash', 'This site has the bin switched off, so moving to the bin would delete permanently. Not done.' );
@@ -952,6 +992,7 @@ function blueworx_mcp_resolve_taxonomy( $args ) {
 		return new WP_Error( 'unknown_taxonomy', 'Unknown taxonomy "' . $name . '". Available: ' . implode( ', ', array_keys( $taxonomies ) ) . '.' );
 	}
 
+	$taxonomies[ $name ]['name']  = $name;
 	$taxonomies[ $name ]['route'] = '/' . $taxonomies[ $name ]['namespace'] . '/' . $taxonomies[ $name ]['rest_base'];
 
 	return $taxonomies[ $name ];
@@ -1015,6 +1056,12 @@ function blueworx_mcp_tool_create_term( $args ) {
 
 	if ( is_wp_error( $tax ) ) {
 		return $tax;
+	}
+
+	$locked = blueworx_mcp_surecart_locked_error( $tax['name'], $tax['label'] );
+
+	if ( $locked ) {
+		return $locked;
 	}
 
 	$params = array( 'name' => (string) ( $args['name'] ?? '' ) );

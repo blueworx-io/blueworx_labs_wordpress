@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.95.0] - 2026-10-21
+
+### Added
+- **Claude can look round the shop.** On sites running SureCart, it can read
+  products, prices, orders, subscriptions, customers, coupons, store settings,
+  the store's look and sales totals over time. Most records link to the screen
+  where they can be changed, but Claude can't change anything in the shop,
+  including SureCart's checkout, shop and account pages. Lists can't be
+  filtered by date, but sales totals can. Accounts without access to customer
+  details still can't see them.
+
 ## [1.94.0] - 2026-10-20
 
 ### Added

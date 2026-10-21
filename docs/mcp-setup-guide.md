@@ -71,6 +71,10 @@ or leave; that stays in Forge.
 
 On a site without Forge, none of this is offered.
 
+## SureCart shop
+
+On a site running SureCart, Claude can read products, prices, orders, subscriptions, customers, coupons, store settings, the store's look and sales totals over time. Most records link to the SureCart screen where they can be changed, so Claude can tell you where to go. Lists can't be filtered by date, but sales totals can. Claude cannot change anything in the shop, including SureCart's product pages, checkout forms, collections, and its checkout, shop and account pages. Accounts without access to customer details still can't see them.
+
 ## Good to know
 
 - Everything Claude changes is listed under **Recent changes by Claude**.
