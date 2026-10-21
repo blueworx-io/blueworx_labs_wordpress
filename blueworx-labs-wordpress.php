@@ -130,6 +130,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/external-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/oauth.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/server.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/forge.php';
+require_once BLUEWORX_LABS_PATH . 'includes/mcp/surecart.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/screen.php';
 require_once BLUEWORX_LABS_PATH . 'includes/auto-updates.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-app-screens.php';

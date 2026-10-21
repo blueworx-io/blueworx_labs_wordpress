@@ -477,6 +477,40 @@ function blueworx_mcp_surecart_tool_handlers() {
 }
 
 /**
+ * Whether a post type or taxonomy is SureCart's own (they all start sc_).
+ *
+ * @param string $name Post type or taxonomy name.
+ * @return bool
+ */
+function blueworx_mcp_surecart_locked( $name ) {
+	return 0 === strpos( (string) $name, 'sc_' );
+}
+
+/**
+ * The refusal for a write to one of SureCart's own records, or null when the
+ * type is not SureCart's.
+ *
+ * @param string $name  Post type or taxonomy name.
+ * @param string $label Its plain label.
+ * @return WP_Error|null
+ */
+function blueworx_mcp_surecart_locked_error( $name, $label ) {
+	if ( ! blueworx_mcp_surecart_locked( $name ) ) {
+		return null;
+	}
+	$screens = array(
+		'sc_product'    => blueworx_mcp_surecart_admin_link( 'products' ),
+		'sc_collection' => blueworx_mcp_surecart_admin_link( 'product_collections' ),
+		'sc_form'       => admin_url( 'admin.php?page=sc-forms' ),
+	);
+	$message = $label . ' belongs to SureCart, which Claude can only read. Change it in SureCart.';
+	if ( ! empty( $screens[ $name ] ) ) {
+		$message = $label . ' belongs to SureCart, which Claude can only read. Change it in SureCart: ' . $screens[ $name ];
+	}
+	return new WP_Error( 'surecart_read_only', $message );
+}
+
+/**
  * What get_site_info says about the shop.
  *
  * @return array

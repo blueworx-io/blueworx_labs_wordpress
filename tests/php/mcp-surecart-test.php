@@ -204,4 +204,13 @@ check( 'products are not', error_of( blueworx_mcp_tool_surecart_list_records( ar
 check( 'nor sales totals', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01', 'to' => '2026-10-21' ) ) ), 'no error' );
 check( 'nothing but GET was ever sent', array_values( array_unique( array_column( $GLOBALS['sc']['calls'], 0 ) ) ), array( 'GET' ) );
 
+check( 'SureCart products are locked', blueworx_mcp_surecart_locked( 'sc_product' ), true );
+check( 'collections too', blueworx_mcp_surecart_locked( 'sc_collection' ), true );
+check( 'pages are not', blueworx_mcp_surecart_locked( 'page' ), false );
+$locked = blueworx_mcp_surecart_locked_error( 'sc_product', 'Product' );
+check( 'a locked write is refused', error_of( $locked ), 'surecart_read_only' );
+check( 'and points at the products screen', strpos( message_of( $locked ), 'page=sc-products' ) !== false, true );
+check( 'a locked type with no screen has no link', strpos( message_of( blueworx_mcp_surecart_locked_error( 'sc_cart', 'Cart' ) ), 'http' ), false );
+check( 'an open type gives no error', blueworx_mcp_surecart_locked_error( 'page', 'Page' ), null );
+
 finish();
