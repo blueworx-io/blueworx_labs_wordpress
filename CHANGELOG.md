@@ -9,11 +9,11 @@ versioning.
 ### Added
 - **Claude can look round the shop.** On sites running SureCart, it can read
   products, prices, orders, subscriptions, customers, coupons, store settings,
-  the store's look and sales totals over time. It links you to the screen
-  where anything can be changed, but it can't change anything in the shop. It
-  can no longer edit SureCart's product pages, checkout forms or collections
-  through the page tools. Accounts without access to customer details still
-  can't see them.
+  the store's look and sales totals over time. Most records link to the screen
+  where they can be changed, but Claude can't change anything in the shop,
+  including SureCart's checkout, shop and account pages. Lists can't be
+  filtered by date, but sales totals can. Accounts without access to customer
+  details still can't see them.
 
 ## [1.94.0] - 2026-10-20
 
