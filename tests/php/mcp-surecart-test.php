@@ -19,7 +19,8 @@ function admin_url( $path = '' ) {
 }
 
 function wp_date( $format, $time = null ) {
-	return gmdate( $format, $time );
+	// A site behind UTC: shifts instants, so a bucket read in site time shows the day before.
+	return gmdate( $format, $time + (int) ( $GLOBALS['tz_offset'] ?? 0 ) );
 }
 
 function blueworx_readonly_current_user() {
@@ -157,15 +158,18 @@ check( 'the list links to its screen', $list['admin_link'], 'https://shop.test/w
 check( 'records are cleaned', isset( $list['records'][0]['post'] ) || isset( $list['records'][0]['image_srcset'] ), false );
 blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) );
 check( 'per_page defaults to 20', last_call()[2]['per_page'], 20 );
-blueworx_mcp_tool_surecart_list_records( array( 'type' => 'orders', 'search' => 'smith', 'status' => 'paid', 'customer_id' => 'c1', 'from' => '2026-01-01', 'to' => '2026-02-01' ) );
+blueworx_mcp_tool_surecart_list_records( array( 'type' => 'orders', 'search' => 'smith', 'status' => 'paid', 'customer_id' => 'c1' ) );
 $q = last_call()[2];
 check( 'search maps to query', $q['query'], 'smith' );
 check( 'status maps to status[]', $q['status'], array( 'paid' ) );
 check( 'customer maps to customer_ids', $q['customer_ids'], array( 'c1' ) );
-check( 'dates map to a created_at range', isset( $q['created_at'] ), true );
+check( 'no date filter is sent, as none is confirmed', isset( $q['created_at'] ), false );
 blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'customer_id' => 'c1' ) );
 check( 'a filter a type does not take is dropped', isset( last_call()[2]['customer_ids'] ), false );
-check( 'a bad date is refused', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'from' => 'soon' ) ) ), 'invalid_date' );
+check( 'a filter a type does not take is named as ignored', blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'customer_id' => 'c1' ) )['ignored_filters'], array( 'customer_id' ) );
+check( 'a filter that applies is not named', isset( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'search' => 'x' ) )['ignored_filters'] ), false );
+check( 'list has no date arguments', array_intersect( array( 'from', 'to' ), array_keys( blueworx_mcp_surecart_tool_definitions()[1]['inputSchema']['properties'] ) ), array() );
+$GLOBALS['tz_offset'] = 0;
 check( 'a get returns the record with its link', blueworx_mcp_tool_surecart_get_record( array( 'type' => 'products', 'id' => 'p1' ) )['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1' );
 check( 'and asks for that record', last_call()[1], '/surecart/v1/products/p1' );
 check( 'money in a record reads as money', blueworx_mcp_tool_surecart_get_record( array( 'type' => 'products', 'id' => 'p1' ) )['metrics']['max_price_amount_display'], '£24.00' );
@@ -178,17 +182,19 @@ check( 'the brand colours come back', array( $settings['brand']['color'], $setti
 check( 'the account name and currency come back', array( $settings['account']['name'], $settings['account']['currency'] ), array( 'Demo', 'gbp' ) );
 check( 'the account has no cache keys or tokens', array_intersect( array( 'cache_keys', 'public_token' ), array_keys( $settings['account'] ) ), array() );
 check( 'settings link to the screens', array_keys( $settings['links'] ), array( 'settings', 'brand', 'checkout' ) );
+$GLOBALS['tz_offset'] = -18000;
 $sales = blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01', 'to' => '2026-10-21' ) );
 check( 'sales ask for a month by default', last_call()[2]['interval'], 'month' );
 check( 'sales ask the stats route', last_call()[1], '/surecart/v1/stats/orders' );
 check( 'sales rows read as money', $sales['rows'][0]['amount_display'], '£48.00' );
 check( 'and as an average', $sales['rows'][0]['average_amount_display'], '£24.00' );
+check( 'and a UTC-midnight bucket keeps its day on a site behind UTC', $sales['rows'][1]['interval_at'], '2026-02-01' );
 check( 'and as a date', $sales['rows'][0]['interval_at'], '2026-01-01' );
 check( 'sales add up', array( $sales['totals']['count'], $sales['totals']['amount_display'] ), array( 2, '£48.00' ) );
 check( 'sales need both dates', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01' ) ) ), 'invalid_date' );
 check( 'an unknown report is refused', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'x', 'from' => '2026-01-01', 'to' => '2026-02-01' ) ) ), 'unknown_report' );
-$GLOBALS['sc']['routes']['/surecart/v1/products'] = array( 400, array( 'code' => 'missing_api_token', 'message' => '<p>Your store is not connected to SureCart.</p>' ), array() );
-check( 'a store with no connection says so in SureCart\'s words', message_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) ) ), 'Your store is not connected to SureCart.' );
+$GLOBALS['sc']['routes']['/surecart/v1/products'] = array( 400, array( 'code' => 'missing_token', 'message' => '<p>Please connect your site to SureCart.</p>' ), array() );
+check( 'a store with no connection says so in SureCart\'s words', message_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) ) ), 'Please connect your site to SureCart.' );
 $GLOBALS['readonly_user'] = (object) array( 'ID' => 9 );
 $GLOBALS['data_open']     = false;
 check( 'orders are withheld from a read-only account', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'subscriptions' ) ) ), 'personal_data_withheld' );

@@ -63,11 +63,11 @@ function blueworx_mcp_surecart_types() {
 	// Public name => array( personal, admin page ).
 	$list = array(
 		'products'               => array( false, 'sc-products' ),
-		'prices'                 => array( false, 'sc-products' ),
-		'variants'               => array( false, 'sc-products' ),
+		'prices'                 => array( false, '' ),
+		'variants'               => array( false, '' ),
 		'variant_options'        => array( false, '' ),
 		'product_collections'    => array( false, 'sc-product-collections' ),
-		'product_groups'         => array( false, '' ),
+		'product_groups'         => array( false, 'sc-product-groups' ),
 		'product_medias'         => array( false, '' ),
 		'bundle_items'           => array( false, '' ),
 		'coupons'                => array( false, 'sc-coupons' ),
@@ -75,7 +75,7 @@ function blueworx_mcp_surecart_types() {
 		'bumps'                  => array( false, 'sc-bumps' ),
 		'upsells'                => array( false, '' ),
 		'upsell_funnels'         => array( false, 'sc-upsell-funnels' ),
-		'auto_fees'              => array( false, '' ),
+		'auto_fees'              => array( false, 'sc-auto-fees' ),
 		'tax_zones'              => array( false, '' ),
 		'tax_registrations'      => array( false, '' ),
 		'tax_overrides'          => array( false, '' ),
@@ -91,7 +91,7 @@ function blueworx_mcp_surecart_types() {
 		'return_reasons'         => array( false, '' ),
 		'customers'              => array( true, 'sc-customers' ),
 		'orders'                 => array( true, 'sc-orders' ),
-		'checkouts'              => array( true, '' ),
+		'checkouts'              => array( true, 'sc-checkouts' ),
 		'abandoned_checkouts'    => array( true, 'sc-abandoned-checkouts' ),
 		'invoices'               => array( true, 'sc-invoices' ),
 		'charges'                => array( true, '' ),
@@ -105,11 +105,11 @@ function blueworx_mcp_surecart_types() {
 		'fulfillments'           => array( true, '' ),
 		'shipments'              => array( true, '' ),
 		'return_requests'        => array( true, '' ),
-		'reviews'                => array( true, '' ),
+		'reviews'                => array( true, 'sc-reviews' ),
 		'affiliations'           => array( true, 'sc-affiliates' ),
-		'affiliation_requests'   => array( true, '' ),
-		'referrals'              => array( true, '' ),
-		'payouts'                => array( true, '' ),
+		'affiliation_requests'   => array( true, 'sc-affiliate-requests' ),
+		'referrals'              => array( true, 'sc-affiliate-referrals' ),
+		'payouts'                => array( true, 'sc-affiliate-payouts' ),
 		'clicks'                 => array( true, '' ),
 		'cancellation_acts'      => array( true, '' ),
 		'balance_transactions'   => array( true, '' ),
@@ -308,15 +308,22 @@ function blueworx_mcp_surecart_reports() {
 }
 
 /**
- * Which record types take each filter, beyond search and dates (which all do).
+ * Which record types take each list filter.
+ *
+ * Read from how SureCart's own admin list screens and its Abilities
+ * (app/src/Controllers/Admin/*ListTable.php, app/src/Abilities/Abilities/List*.php)
+ * call its API. SureCart's REST layer passes the query straight to its API, so
+ * only filters seen in use are listed; a filter on any other type is reported
+ * back as ignored. There is no confirmed date filter, so there is none here.
  *
  * @return array[] Types keyed by filter name.
  */
 function blueworx_mcp_surecart_filter_types() {
 	return array(
-		'status'       => array( 'products', 'coupons', 'orders', 'checkouts', 'invoices', 'charges', 'refunds', 'subscriptions', 'purchases', 'licenses', 'fulfillments', 'shipments', 'return_requests', 'reviews', 'affiliations', 'referrals', 'payouts' ),
-		'customer_ids' => array( 'orders', 'checkouts', 'abandoned_checkouts', 'invoices', 'charges', 'refunds', 'subscriptions', 'purchases', 'payment_methods', 'licenses', 'reviews', 'return_requests', 'fulfillments', 'shipments' ),
-		'product_ids'  => array( 'prices', 'variants', 'variant_options', 'product_medias', 'purchases', 'subscriptions', 'licenses', 'reviews', 'bumps', 'upsells' ),
+		'search'       => array( 'products', 'orders', 'customers', 'coupons', 'invoices', 'licenses', 'subscriptions', 'bumps', 'auto_fees', 'upsell_funnels', 'product_collections', 'reviews', 'affiliations', 'affiliation_requests', 'referrals', 'payouts', 'clicks' ),
+		'status'       => array( 'products', 'orders', 'invoices', 'subscriptions', 'abandoned_checkouts', 'bumps', 'auto_fees', 'upsell_funnels', 'reviews', 'product_groups', 'affiliations', 'affiliation_requests', 'referrals', 'payouts' ),
+		'customer_ids' => array( 'orders', 'abandoned_checkouts', 'invoices', 'refunds', 'subscriptions', 'licenses' ),
+		'product_ids'  => array( 'prices', 'reviews', 'licenses' ),
 	);
 }
 
@@ -366,7 +373,7 @@ function blueworx_mcp_surecart_tool_definitions() {
 		array(
 			'name'        => 'list_store_records',
 			'title'       => 'List store records',
-			'description' => 'Lists one kind of SureCart record (products, orders, customers, coupons and so on), a page at a time, with a link to each in the WordPress admin. Read only. Customer details are withheld on read-only accounts that have data access off.',
+			'description' => 'Lists one kind of SureCart record (products, orders, customers, coupons and so on), a page at a time, with a link to each in the WordPress admin. Filters: search, status, customer_id and product_id, each only on the record types that take it; a filter that does not apply is named in ignored_filters. There is no date filter; use get_store_sales for sales over a period. Read only. Customer details are withheld on read-only accounts that have data access off.',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => array(
@@ -391,8 +398,6 @@ function blueworx_mcp_surecart_tool_definitions() {
 						'type'        => 'string',
 						'description' => 'Only records for this product.',
 					),
-					'from'        => $date,
-					'to'          => $date,
 					'page'        => array(
 						'type'        => 'integer',
 						'minimum'     => 1,
@@ -550,7 +555,7 @@ function blueworx_mcp_tool_surecart_get_settings( $args ) {
 		'links'    => array(
 			'settings' => admin_url( 'admin.php?page=sc-settings' ),
 			'brand'    => admin_url( 'admin.php?page=sc-settings&tab=brand' ),
-			'checkout' => admin_url( 'admin.php?page=sc-settings&tab=order' ),
+			'checkout' => admin_url( 'admin.php?page=sc-forms' ),
 		),
 	);
 }
@@ -583,37 +588,23 @@ function blueworx_mcp_tool_surecart_list_records( $args ) {
 		return isset( $args[ $key ] ) && is_scalar( $args[ $key ] ) ? trim( sanitize_text_field( (string) $args[ $key ] ) ) : '';
 	};
 
-	if ( '' !== $text( 'search' ) ) {
-		$query['query'] = $text( 'search' );
-	}
-
-	$takes = blueworx_mcp_surecart_filter_types();
-	if ( '' !== $text( 'status' ) && in_array( $type, $takes['status'], true ) ) {
-		$query['status'] = array( $text( 'status' ) );
-	}
-	if ( '' !== $text( 'customer_id' ) && in_array( $type, $takes['customer_ids'], true ) ) {
-		$query['customer_ids'] = array( $text( 'customer_id' ) );
-	}
-	if ( '' !== $text( 'product_id' ) && in_array( $type, $takes['product_ids'], true ) ) {
-		$query['product_ids'] = array( $text( 'product_id' ) );
-	}
-
-	$range = array();
+	// Argument => array( SureCart query name, takes a list, filter table key ).
+	$takes   = blueworx_mcp_surecart_filter_types();
+	$ignored = array();
 	foreach ( array(
-		'from' => 'gte',
-		'to'   => 'lte',
-	) as $arg => $op ) {
+		'search'      => array( 'query', false, 'search' ),
+		'status'      => array( 'status', true, 'status' ),
+		'customer_id' => array( 'customer_ids', true, 'customer_ids' ),
+		'product_id'  => array( 'product_ids', true, 'product_ids' ),
+	) as $arg => $map ) {
 		if ( '' === $text( $arg ) ) {
 			continue;
 		}
-		$valid = blueworx_mcp_surecart_check_date( $text( $arg ), $arg );
-		if ( is_wp_error( $valid ) ) {
-			return $valid;
+		if ( ! in_array( $type, $takes[ $map[2] ], true ) ) {
+			$ignored[] = $arg;
+			continue;
 		}
-		$range[ $op ] = strtotime( $text( $arg ) . ( 'gte' === $op ? ' 00:00:00' : ' 23:59:59' ) . ' UTC' );
-	}
-	if ( ! empty( $range ) ) {
-		$query['created_at'] = $range;
+		$query[ $map[0] ] = $map[1] ? array( $text( $arg ) ) : $text( $arg );
 	}
 
 	$types  = blueworx_mcp_surecart_types();
@@ -632,7 +623,7 @@ function blueworx_mcp_tool_surecart_list_records( $args ) {
 		$records[]            = $shaped;
 	}
 
-	return array(
+	$out = array(
 		'type'       => $type,
 		'page'       => $page,
 		'per_page'   => $per_page,
@@ -640,6 +631,13 @@ function blueworx_mcp_tool_surecart_list_records( $args ) {
 		'records'    => $records,
 		'admin_link' => blueworx_mcp_surecart_admin_link( $type ),
 	);
+
+	// Say so when a filter was not applied, so an unfiltered list never reads as filtered.
+	if ( ! empty( $ignored ) ) {
+		$out['ignored_filters'] = $ignored;
+	}
+
+	return $out;
 }
 
 /**
@@ -707,6 +705,7 @@ function blueworx_mcp_tool_surecart_get_sales( $args ) {
 		return new WP_Error( 'invalid_interval', 'interval must be day, week, month or year.' );
 	}
 
+	// A bare date as end_at runs to the end of that day (SureCart echoes 23:59:59 UTC), so "to" is inclusive.
 	$answer = blueworx_mcp_surecart_request(
 		'/stats/' . $report,
 		array(
@@ -733,7 +732,8 @@ function blueworx_mcp_tool_surecart_get_sales( $args ) {
 		$amount += $row_amt;
 		$count  += $row_cnt;
 		$rows[]  = array(
-			'interval_at'            => wp_date( 'Y-m-d', (int) ( $row['interval_at'] ?? 0 ) ),
+			// SureCart buckets in UTC (its query echoes UTC-midnight stamps), so read them as UTC, not the site's zone.
+			'interval_at'            => gmdate( 'Y-m-d', (int) ( $row['interval_at'] ?? 0 ) ),
 			'amount'                 => $row_amt,
 			'amount_display'         => blueworx_mcp_surecart_money( $row_amt, $currency ),
 			'average_amount'         => $row_avg,
