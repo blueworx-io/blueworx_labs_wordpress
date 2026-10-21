@@ -49,6 +49,9 @@ check( 'an unknown type gives no link', blueworx_mcp_surecart_admin_link( 'nope'
 check( 'every type says if it is personal', count( array_filter( blueworx_mcp_surecart_types(), function ( $t ) { return ! is_bool( $t['personal'] ); } ) ), 0 );
 check( 'customers are personal', blueworx_mcp_surecart_types()['customers']['personal'], true );
 check( 'products are not', blueworx_mcp_surecart_types()['products']['personal'], false );
+check( 'an unknown type counts as personal', blueworx_mcp_surecart_is_personal( 'nope' ), true );
+check( 'orders count as personal', blueworx_mcp_surecart_is_personal( 'orders' ), true );
+check( 'products do not', blueworx_mcp_surecart_is_personal( 'products' ), false );
 check( 'routes sit under surecart/v1', blueworx_mcp_surecart_types()['orders']['route'], '/surecart/v1/orders' );
 $GLOBALS['readonly_user'] = (object) array( 'ID' => 9 ); $GLOBALS['data_open'] = false;
 check( 'a read-only account with data closed is blocked', blueworx_mcp_surecart_personal_blocked(), true );

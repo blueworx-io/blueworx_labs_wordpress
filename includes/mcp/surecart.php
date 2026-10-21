@@ -128,6 +128,17 @@ function blueworx_mcp_surecart_types() {
 }
 
 /**
+ * Whether a record type holds personal details. Unknown types do.
+ *
+ * @param string $type A public type name.
+ * @return bool
+ */
+function blueworx_mcp_surecart_is_personal( $type ) {
+	$types = blueworx_mcp_surecart_types();
+	return ! isset( $types[ $type ] ) || ! empty( $types[ $type ]['personal'] );
+}
+
+/**
  * Whether the signed-in read-only account is barred from personal data.
  *
  * Administrators, and anyone who is not on a read-only account, are never
