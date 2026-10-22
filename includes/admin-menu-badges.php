@@ -14,6 +14,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Counts the plugins running on this site.
+ *
+ * On a network that includes the ones switched on for every site, which are
+ * kept in a network option rather than the site's own list. A plugin that
+ * somehow appears in both is counted once.
+ *
+ * @return int Number of active plugins.
+ */
+function blueworx_count_active_plugins() {
+	$active = (array) get_option( 'active_plugins', array() );
+
+	if ( is_multisite() ) {
+		// Keyed by plugin file. Not cast with (array): a stored false would
+		// become one plugin that is not there.
+		$network = get_site_option( 'active_sitewide_plugins', array() );
+		$network = is_array( $network ) ? array_keys( $network ) : array();
+		$active  = array_unique( array_merge( $active, $network ) );
+	}
+
+	return count( $active );
+}
+
+/**
  * Gets the badge count for every badgeable menu slug.
  *
  * Statically cached: called once per request even if read repeatedly.
@@ -64,7 +87,7 @@ function blueworx_get_admin_menu_badge_counts() {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 	}
 
-	$active = count( (array) get_option( 'active_plugins', array() ) );
+	$active = blueworx_count_active_plugins();
 	if ( $active > 0 ) {
 		$counts['plugins.php'] = $active;
 	}
