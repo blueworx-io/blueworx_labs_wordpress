@@ -28,6 +28,10 @@ delete_option( 'blueworx_translate_audience' );
 delete_option( 'blueworx_translate_roles' );
 delete_option( 'blueworx_translate_admin_only' );
 
+delete_option( 'blueworx_tracking_gtm' );
+delete_option( 'blueworx_tracking_ga' );
+delete_option( 'blueworx_tracking_meta' );
+
 // BlueWorx Support Access: remove the managed account, the role, and every
 // option the feature created. blueworx_support_remove_account() is required
 // from includes/support-access.php rather than reimplemented here because it

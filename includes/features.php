@@ -24,6 +24,7 @@ function blueworx_get_feature_sections() {
 	return array(
 		'security'      => __( 'Security & Access', 'blueworx-labs-wordpress' ),
 		'content'       => __( 'Content', 'blueworx-labs-wordpress' ),
+		'tracking'      => __( 'Analytics & Tracking', 'blueworx-labs-wordpress' ),
 		'media'         => __( 'Media', 'blueworx-labs-wordpress' ),
 		'translation'   => __( 'Translation', 'blueworx-labs-wordpress' ),
 		'notifications' => __( 'Notifications & Cleanup', 'blueworx-labs-wordpress' ),
@@ -186,6 +187,14 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Lets you edit the file that tells search engines which parts of the site to crawl. Off by default so an existing file, or your SEO plugin, stays in charge.', 'blueworx-labs-wordpress' ),
 			'section'     => 'content',
 			'detail'      => 'robots_txt',
+			'default'     => '0',
+			'guide'       => false,
+		),
+		'tracking_codes'        => array(
+			'label'       => __( 'Tracking codes', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Adds Google Tag Manager, Google Analytics and the Meta pixel to every page, from IDs entered on a Tracking codes page. Off by default.', 'blueworx-labs-wordpress' ),
+			'section'     => 'tracking',
+			'detail'      => 'tracking_codes',
 			'default'     => '0',
 			'guide'       => false,
 		),
