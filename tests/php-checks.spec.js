@@ -33,6 +33,11 @@ const SCRIPTS = [
   'mcp-forge-test.php',
   'tracking-codes-test.php',
   'topbar-sites-test.php',
+  'login-security-multisite-test.php',
+  'multisite-accounts-test.php',
+  'admin-menu-badges-test.php',
+  'robots-txt-test.php',
+  'cache-purge-test.php',
 ];
 
 let phpAvailable = true;
