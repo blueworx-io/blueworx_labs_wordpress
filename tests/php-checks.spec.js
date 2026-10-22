@@ -32,6 +32,7 @@ const SCRIPTS = [
   'mcp-oauth-test.php',
   'mcp-forge-test.php',
   'tracking-codes-test.php',
+  'topbar-sites-test.php',
 ];
 
 let phpAvailable = true;

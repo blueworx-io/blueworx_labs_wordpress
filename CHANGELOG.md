@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.1] - 2026-10-22
+
+### Fixed
+- **My Sites is back on multisite networks.** The BlueWorx top bar hid
+  WordPress's own toolbar, and with it the only way to switch sites or reach
+  Network Admin. A My Sites menu in the top bar now does both. Single sites
+  don't see it.
+
 ## [1.96.0] - 2026-10-22
 
 ### Added

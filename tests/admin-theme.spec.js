@@ -125,6 +125,10 @@ test.describe('BlueWorx admin theme', () => {
     // The user menu is a native <details> — opening it reveals profile + logout.
     await page.locator('.bw-user-summary').click();
     await expect(page.locator('.bw-user-menu a', { hasText: 'Log Out' })).toBeVisible();
+
+    // My Sites stands in for core's toolbar menu on a network only. Who sees it
+    // there, and where it links, is covered by tests/php/topbar-sites-test.php.
+    await expect(page.locator('.blueworx-sites')).toHaveCount(0);
   });
 
   test('the breadcrumb keeps its divider on a WordPress screen', async ({ page }) => {
