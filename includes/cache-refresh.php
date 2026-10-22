@@ -71,9 +71,25 @@ function blueworx_handle_manual_cache_refresh() {
 	// find out, and nothing was recording it.
 	update_option( BLUEWORX_CACHE_REFRESHED_OPTION, time(), false );
 
-	set_transient( 'blueworx_cache_refresh_notice', __( 'Cache refresh requested. Every cached page is cleared, along with Elementor\'s generated files and the WordPress object cache.', 'blueworx-labs-wordpress' ), 30 );
+	set_transient( 'blueworx_cache_refresh_notice', blueworx_cache_refresh_notice_text(), 30 );
 	wp_safe_redirect( admin_url( 'admin.php?page=blueworx-cache' ) );
 	exit;
+}
+
+/**
+ * What the Cache screen says after the manual button.
+ *
+ * On a network it says the object cache went for every site, because it did:
+ * see blueworx_refresh_manual_cache().
+ *
+ * @return string Notice text.
+ */
+function blueworx_cache_refresh_notice_text() {
+	if ( is_multisite() ) {
+		return __( 'Cache refresh requested. Every cached page on this site is cleared, along with its Elementor files. The WordPress object cache is shared by the whole network, so it was emptied for every site on the network.', 'blueworx-labs-wordpress' );
+	}
+
+	return __( 'Cache refresh requested. Every cached page is cleared, along with Elementor\'s generated files and the WordPress object cache.', 'blueworx-labs-wordpress' );
 }
 
 /**
@@ -117,24 +133,35 @@ function blueworx_cache_last_purge() {
 }
 
 /**
- * Whether this request has already purged, optionally marking it as having done so.
+ * Whether this request has already purged the current site, optionally marking it.
  *
  * Elementor fires save_post several times for one click of Update, and a
  * plugin update fires upgrader_process_complete once per plugin. Each would
  * purge again, to no effect but the requests. The first purge in a request is
  * the only one that does anything.
  *
- * @param bool|null $set True to mark this request as purged; null to only read.
- * @return bool True once a purge has run in this request.
+ * Kept per site, so a purge that visits every site on a network is not stopped
+ * at the second site by the first. A single site only ever has the one.
+ *
+ * @param bool|null $set   True to mark the current site as purged; null to only read.
+ * @param bool      $reset True to forget every site's purge.
+ * @return bool True once a purge has run for the current site in this request.
  */
-function blueworx_cache_request_state( $set = null ) {
-	static $purged = false;
+function blueworx_cache_request_state( $set = null, $reset = false ) {
+	static $purged = array();
 
-	if ( null !== $set ) {
-		$purged = (bool) $set;
+	if ( $reset ) {
+		$purged = array();
+		return false;
 	}
 
-	return $purged;
+	$site = is_multisite() ? (int) get_current_blog_id() : 0;
+
+	if ( null !== $set ) {
+		$purged[ $site ] = (bool) $set;
+	}
+
+	return ! empty( $purged[ $site ] );
 }
 
 /**
@@ -145,7 +172,7 @@ function blueworx_cache_request_state( $set = null ) {
  * @return void
  */
 function blueworx_cache_reset_request_state() {
-	blueworx_cache_request_state( false );
+	blueworx_cache_request_state( null, true );
 }
 
 /**
@@ -172,6 +199,45 @@ function blueworx_purge_site_cache( $reason ) {
 		),
 		false
 	);
+}
+
+/**
+ * Purges every site on the network, or just this one when there is no network.
+ *
+ * For changes to the code every site runs: a plugin, theme or WordPress update,
+ * or a plugin switched on or off for the whole network. Purging only the site
+ * the change happened to be made from left every other site serving pages built
+ * by the old code. A site that has switched the automatic refresh off is left
+ * alone, as it would be for its own changes.
+ *
+ * @param string $reason What changed. Recorded on each site.
+ * @return void
+ */
+function blueworx_purge_network_cache( $reason ) {
+	if ( ! is_multisite() ) {
+		blueworx_purge_site_cache( $reason );
+		return;
+	}
+
+	$site_ids = get_sites(
+		array(
+			'fields'   => 'ids',
+			'number'   => 0,
+			'archived' => 0,
+			'spam'     => 0,
+			'deleted'  => 0,
+		)
+	);
+
+	foreach ( $site_ids as $site_id ) {
+		switch_to_blog( (int) $site_id );
+
+		if ( blueworx_feature_enabled( 'cache_auto' ) ) {
+			blueworx_purge_site_cache( $reason );
+		}
+
+		restore_current_blog();
+	}
 }
 
 /**
@@ -280,22 +346,37 @@ if ( blueworx_feature_enabled( 'cache_auto' ) ) {
 	);
 	add_action(
 		'upgrader_process_complete',
-		static function () {
+		static function ( $upgrader = null, $hook_extra = array() ) {
+			// On a network, updated code is shared by every site. An install
+			// changes nothing a visitor sees until it is switched on, which has
+			// its own hook, so it stays with this site as before.
+			if ( is_multisite() && isset( $hook_extra['action'] ) && 'update' === $hook_extra['action'] ) {
+				blueworx_purge_network_cache( 'update' );
+				return;
+			}
+
 			blueworx_refresh_cache_on_site_change( 'update' );
-		}
+		},
+		10,
+		2
 	);
-	add_action(
-		'activated_plugin',
-		static function () {
-			blueworx_refresh_cache_on_site_change( 'plugin change' );
-		}
-	);
-	add_action(
-		'deactivated_plugin',
-		static function () {
-			blueworx_refresh_cache_on_site_change( 'plugin change' );
-		}
-	);
+	foreach ( array( 'activated_plugin', 'deactivated_plugin' ) as $blueworx_plugin_hook ) {
+		add_action(
+			$blueworx_plugin_hook,
+			static function ( $plugin = '', $network_wide = false ) {
+				// Switched on or off for the whole network: every site runs it.
+				if ( $network_wide ) {
+					blueworx_purge_network_cache( 'plugin change' );
+					return;
+				}
+
+				blueworx_refresh_cache_on_site_change( 'plugin change' );
+			},
+			10,
+			2
+		);
+	}
+	unset( $blueworx_plugin_hook );
 }
 
 /**
@@ -328,6 +409,14 @@ function blueworx_refresh_cache_for_post( $post_id ) {
  */
 function blueworx_refresh_manual_cache() {
 	blueworx_refresh_elementor_cache();
+
+	// On a network this empties the object cache for every site, not just this
+	// one. WordPress has no way to empty one site's share of it: wp_cache_flush()
+	// is all or nothing, and flushing by group does not help because every site
+	// shares the same groups. It costs the other sites a slower page or two while
+	// the cache refills, and loses nothing. A cache plugin that can limit a flush
+	// to one site does that on its own inside wp_cache_flush(). The page cache
+	// below is purged for this site only.
 	wp_cache_flush();
 
 	blueworx_purge_site_cache( 'manual refresh' );
