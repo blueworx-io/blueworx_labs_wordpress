@@ -260,7 +260,89 @@ function blueworx_support_ensure_account() {
 }
 
 /**
+ * Deletes an account this plugin created: the support account or a guest
+ * viewer.
+ *
+ * On a single site this is wp_delete_user(), exactly as before. On a network,
+ * wp_delete_user() only takes the account off the current site and leaves a
+ * working network login behind, which also blocks inviting the same email
+ * again. So once the account belongs to no site at all it is deleted from the
+ * network too. One still on another site is only taken off this one, because
+ * that site is still using it.
+ *
+ * Lives here rather than in external-access.php because uninstall.php loads
+ * this file and no other, and both kinds of account go through it.
+ *
+ * @param int $user_id Account to delete.
+ * @return bool True when the account was taken off this site.
+ */
+function blueworx_delete_owned_account( $user_id ) {
+	$user_id = (int) $user_id;
+
+	if ( ! function_exists( 'wp_delete_user' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+	}
+
+	$removed = (bool) wp_delete_user( $user_id );
+
+	if ( ! $removed || ! is_multisite() ) {
+		return $removed;
+	}
+
+	if ( ! function_exists( 'wpmu_delete_user' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/ms.php';
+	}
+
+	if ( empty( get_blogs_of_user( $user_id ) ) ) {
+		wpmu_delete_user( $user_id );
+	}
+
+	return true;
+}
+
+/**
+ * Runs a callback on every site of a network, or just this one.
+ *
+ * Every site when this is a network and $every_site is true; otherwise once,
+ * on the current site, with nothing switched. The current site is always put
+ * back afterwards, even when the callback fails part way through, so a broken
+ * site cannot leave the rest of the request running against the wrong one.
+ *
+ * Lives here for the same reason as blueworx_delete_owned_account(): both
+ * deactivation and uninstall.php need it, and uninstall loads only this file.
+ *
+ * @param callable $callback   Work to do on each site.
+ * @param bool     $every_site Whether to cover the whole network.
+ * @return void
+ */
+function blueworx_for_each_site( $callback, $every_site ) {
+	if ( ! is_multisite() || ! $every_site ) {
+		call_user_func( $callback );
+		return;
+	}
+
+	foreach ( get_sites(
+		array(
+			'fields' => 'ids',
+			'number' => 0,
+		)
+	) as $site_id ) {
+		switch_to_blog( (int) $site_id );
+
+		try {
+			call_user_func( $callback );
+		} finally {
+			restore_current_blog();
+		}
+	}
+}
+
+/**
  * Deletes the support user and role.
+ *
+ * On a network the one support account is shared by every site that uses
+ * support access, so this only deletes it outright once no site still has it.
+ * See blueworx_delete_owned_account().
  *
  * @return void
  */
@@ -268,11 +350,7 @@ function blueworx_support_remove_account() {
 	$user = get_user_by( 'login', 'blueworx_support' );
 
 	if ( $user instanceof WP_User ) {
-		if ( ! function_exists( 'wp_delete_user' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/user.php';
-		}
-
-		wp_delete_user( $user->ID );
+		blueworx_delete_owned_account( $user->ID );
 	}
 
 	remove_role( blueworx_support_role_slug() );
@@ -543,10 +621,57 @@ function blueworx_support_get_log() {
 }
 
 /**
+ * Whether another site on the network still has its support window open.
+ *
+ * Only the sites the support account belongs to are checked, since only those
+ * can have provisioned it. Always false on a single site.
+ *
+ * @return bool True when some other site is still open.
+ */
+function blueworx_support_open_elsewhere() {
+	if ( ! is_multisite() ) {
+		return false;
+	}
+
+	$user = blueworx_support_get_user();
+
+	if ( ! $user instanceof WP_User ) {
+		return false;
+	}
+
+	$here = (int) get_current_blog_id();
+
+	foreach ( array_keys( (array) get_blogs_of_user( $user->ID ) ) as $site_id ) {
+		if ( (int) $site_id === $here ) {
+			continue;
+		}
+
+		switch_to_blog( (int) $site_id );
+
+		try {
+			$open = blueworx_support_access_open();
+		} finally {
+			restore_current_blog();
+		}
+
+		if ( $open ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Ends any support session once the window is shut or lapsed.
  *
  * The toggle would otherwise only bar new logins, leaving an already-open
  * session running for as long as its cookie lasted.
+ *
+ * On a network the one support account, its session and often its cookie are
+ * shared by every site. While another site's window is still open, this site
+ * refuses the request but leaves the session alone: ending it here would also
+ * sign support out of the site that is still open.
  *
  * @return void
  */
@@ -555,8 +680,11 @@ function blueworx_support_enforce_window() {
 		return;
 	}
 
-	wp_destroy_current_session();
-	wp_clear_auth_cookie();
+	if ( ! blueworx_support_open_elsewhere() ) {
+		wp_destroy_current_session();
+		wp_clear_auth_cookie();
+	}
+
 	wp_set_current_user( 0 );
 	blueworx_support_log_event( 'access_expired' );
 
