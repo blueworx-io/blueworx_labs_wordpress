@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.0] - 2026-10-22
+
+### Added
+- **Tracking codes.** A new Tracking codes page under BlueWorx adds Google Tag
+  Manager, Google Analytics and the Meta pixel to every page of the site, shop
+  and checkout included. Enter each ID and the plugin adds the right code; a
+  mistyped ID is refused and the old one kept. Off until it's switched on under
+  Enhancements. The codes don't wait for cookie consent yet.
+
 ## [1.95.0] - 2026-10-21
 
 ### Added

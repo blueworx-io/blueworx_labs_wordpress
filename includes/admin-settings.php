@@ -57,6 +57,17 @@ function blueworx_register_settings_page() {
 		);
 	}
 
+	// Listed while the function is on, reachable but unlisted while it is off,
+	// the same as single sign-on, so the screen can explain itself.
+	add_submenu_page(
+		blueworx_feature_enabled( 'tracking_codes' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Tracking codes', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Tracking codes', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-tracking',
+		'blueworx_render_tracking_page'
+	);
+
 	add_submenu_page(
 		'blueworx-labs-wordpress',
 		esc_html__( 'Support access', 'blueworx-labs-wordpress' ),
@@ -949,6 +960,16 @@ function blueworx_get_feature_detail_html( $key ) {
 				'label' => __( 'Open Single sign-on page', 'blueworx-labs-wordpress' ),
 				'icon'  => 'lock',
 				'href'  => admin_url( 'admin.php?page=blueworx-sso' ),
+			)
+		);
+	}
+
+	if ( 'tracking_codes' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Tracking codes page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'chart-line',
+				'href'  => admin_url( 'admin.php?page=blueworx-tracking' ),
 			)
 		);
 	}

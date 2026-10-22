@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.95.0
+ * Version:           1.96.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -63,7 +63,7 @@ if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN )
 $blueworx_update_checker->getVcsApi()->enableReleaseAssets();
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.95.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.96.0' );
 }
 
 // The main plugin file's own path. Two things need it by name rather than by
@@ -139,6 +139,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/admin-bar.php';
 require_once BLUEWORX_LABS_PATH . 'includes/dashboard-widgets.php';
 require_once BLUEWORX_LABS_PATH . 'includes/security-hardening.php';
 require_once BLUEWORX_LABS_PATH . 'includes/robots-txt.php';
+require_once BLUEWORX_LABS_PATH . 'includes/tracking-codes.php';
 require_once BLUEWORX_LABS_PATH . 'includes/media-tools.php';
 require_once BLUEWORX_LABS_PATH . 'includes/content-tools.php';
 require_once BLUEWORX_LABS_PATH . 'includes/revisions.php';

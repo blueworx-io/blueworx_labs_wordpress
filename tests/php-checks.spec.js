@@ -31,6 +31,7 @@ const SCRIPTS = [
   'disable-comments-test.php',
   'mcp-oauth-test.php',
   'mcp-forge-test.php',
+  'tracking-codes-test.php',
 ];
 
 let phpAvailable = true;

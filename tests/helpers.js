@@ -211,6 +211,7 @@ const FEATURE_SECTIONS = {
   content_tools: 'content',
   revisions: 'content',
   robots_txt: 'content',
+  tracking_codes: 'tracking',
   media_tools: 'media',
   translate: 'translation',
   emails: 'notifications',
