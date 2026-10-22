@@ -132,6 +132,19 @@ function blueworx_mcp_relative_path( $uri, $home_path ) {
 }
 
 /**
+ * The well-known documents this function answers, by address.
+ *
+ * @return array Path prefix => route name.
+ */
+function blueworx_mcp_well_known_routes() {
+	return array(
+		'/.well-known/oauth-protected-resource'   => 'resource_metadata',
+		'/.well-known/oauth-authorization-server' => 'server_metadata',
+		'/.well-known/openid-configuration'       => 'server_metadata',
+	);
+}
+
+/**
  * Works out which of this function's addresses a path is, if any.
  *
  * The well-known documents are matched on a prefix: a client is allowed to ask
@@ -145,13 +158,7 @@ function blueworx_mcp_relative_path( $uri, $home_path ) {
 function blueworx_mcp_route_for_path( $path ) {
 	$path = strtolower( (string) $path );
 
-	$prefixes = array(
-		'/.well-known/oauth-protected-resource'   => 'resource_metadata',
-		'/.well-known/oauth-authorization-server' => 'server_metadata',
-		'/.well-known/openid-configuration'       => 'server_metadata',
-	);
-
-	foreach ( $prefixes as $prefix => $route ) {
+	foreach ( blueworx_mcp_well_known_routes() as $prefix => $route ) {
 		if ( $path === $prefix || 0 === strpos( $path, $prefix . '/' ) ) {
 			return $route;
 		}
@@ -173,9 +180,129 @@ function blueworx_mcp_route_for_path( $path ) {
  * @return string Route name, or ''.
  */
 function blueworx_mcp_current_route() {
+	return blueworx_mcp_route_for_path( blueworx_mcp_current_path() );
+}
+
+/**
+ * Gets the current request's path within this site.
+ *
+ * @return string Path from blueworx_mcp_relative_path().
+ */
+function blueworx_mcp_current_path() {
 	$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- only parsed for its path, never echoed.
 
-	return blueworx_mcp_route_for_path( blueworx_mcp_relative_path( $uri, blueworx_mcp_home_path() ) );
+	return blueworx_mcp_relative_path( $uri, blueworx_mcp_home_path() );
+}
+
+/**
+ * Works out which other site on a folder-style network a document request is for.
+ *
+ * A site at example.com/site2 signs Claude in as https://example.com/site2.
+ * The standards (RFC 8414 and RFC 9728) have a client look for that site's
+ * documents at the domain root, with the site's path moved to the end:
+ *
+ *   /.well-known/oauth-authorization-server/site2
+ *   /.well-known/openid-configuration/site2
+ *   /.well-known/oauth-protected-resource/site2/blueworx-mcp
+ *
+ * The domain root is the main site's, so those requests arrive there. Left
+ * alone the main site would answer with its own documents, the client would
+ * see the wrong issuer, and connecting to the subsite would fail. This finds
+ * the site the trailing path names, the same way WordPress picks a site for
+ * any other request, so the main site can answer for it instead.
+ *
+ * Only a folder-style network has this problem. A single site, or a network
+ * where every site has its own domain, always gets 0.
+ *
+ * @param string $path Path from blueworx_mcp_relative_path().
+ * @return int The other site's ID, or 0 when the request is this site's own.
+ */
+function blueworx_mcp_network_site_for_path( $path ) {
+	if ( ! is_multisite() || is_subdomain_install() ) {
+		return 0;
+	}
+
+	$path   = strtolower( (string) $path );
+	$suffix = '';
+
+	foreach ( array_keys( blueworx_mcp_well_known_routes() ) as $prefix ) {
+		if ( 0 === strpos( $path, $prefix . '/' ) ) {
+			$suffix = substr( $path, strlen( $prefix ) );
+			break;
+		}
+	}
+
+	if ( '' === trim( $suffix, '/' ) ) {
+		return 0;
+	}
+
+	$current = get_site();
+	$network = get_network();
+
+	if ( ! $current || ! $network ) {
+		return 0;
+	}
+
+	// The network's path plus one folder: the same lookup WordPress makes when
+	// it decides which site a request belongs to.
+	$site = get_site_by_path( $current->domain, rtrim( $suffix, '/' ) . '/', substr_count( $network->path, '/' ) );
+
+	if ( ! $site || get_current_blog_id() === (int) $site->blog_id ) {
+		return 0;
+	}
+
+	return (int) $site->blog_id;
+}
+
+/**
+ * Builds another site's well-known document, for the main site to answer with.
+ *
+ * Built on that site, so it carries that site's issuer and addresses, and
+ * only when that site really offers Connect Claude: an address that does not
+ * work is worse than none, because a client stops at the first document it
+ * finds.
+ *
+ * @param int    $site_id Site from blueworx_mcp_network_site_for_path().
+ * @param string $route   'resource_metadata' or 'server_metadata'.
+ * @return array|null The document, or null when that site does not offer one.
+ */
+function blueworx_mcp_network_metadata( $site_id, $route ) {
+	$site = get_site( $site_id );
+
+	if ( ! $site || '1' === (string) $site->archived || '1' === (string) $site->spam || '1' === (string) $site->deleted ) {
+		return null;
+	}
+
+	switch_to_blog( (int) $site_id );
+
+	$document = null;
+
+	if ( blueworx_mcp_plugin_active_here() && blueworx_feature_enabled( 'mcp' ) ) {
+		$document = 'server_metadata' === $route ? blueworx_mcp_server_metadata() : blueworx_mcp_resource_metadata();
+	}
+
+	restore_current_blog();
+
+	return $document;
+}
+
+/**
+ * Whether this plugin is running on the current site.
+ *
+ * Asked after switching to another site, where the code being run is the main
+ * site's copy and says nothing about whether that site has the plugin at all.
+ *
+ * @return bool True when it is switched on for this site or the whole network.
+ */
+function blueworx_mcp_plugin_active_here() {
+	$basename = plugin_basename( BLUEWORX_LABS_PLUGIN_FILE );
+	$network  = get_site_option( 'active_sitewide_plugins', array() );
+
+	if ( is_array( $network ) && isset( $network[ $basename ] ) ) {
+		return true;
+	}
+
+	return in_array( $basename, (array) get_option( 'active_plugins', array() ), true );
 }
 
 /**
@@ -845,7 +972,13 @@ function blueworx_mcp_request_params() {
  * @return bool
  */
 function blueworx_mcp_exempt_from_site_protection( $applies ) {
-	if ( $applies && blueworx_feature_enabled( 'mcp' ) && '' !== blueworx_mcp_current_route() ) {
+	if ( ! $applies || '' === blueworx_mcp_current_route() ) {
+		return $applies;
+	}
+
+	// A document answered for another site on the network is that site's to
+	// offer, whatever this site has switched on.
+	if ( blueworx_feature_enabled( 'mcp' ) || 0 !== blueworx_mcp_network_site_for_path( blueworx_mcp_current_path() ) ) {
 		return false;
 	}
 
@@ -861,7 +994,26 @@ add_filter( 'blueworx_site_protection_applies', 'blueworx_mcp_exempt_from_site_p
 function blueworx_mcp_dispatch() {
 	$route = blueworx_mcp_current_route();
 
-	if ( '' === $route || ! blueworx_feature_enabled( 'mcp' ) ) {
+	if ( '' === $route ) {
+		return;
+	}
+
+	// On a folder-style network, a subsite's documents are asked for at the
+	// main site's address. Answer for the subsite, or say there is nothing
+	// there so the client moves on to the next address it knows to try.
+	$other_site = blueworx_mcp_network_site_for_path( blueworx_mcp_current_path() );
+
+	if ( 0 !== $other_site ) {
+		$document = blueworx_mcp_network_metadata( $other_site, $route );
+
+		if ( null === $document ) {
+			blueworx_mcp_send_json( array( 'error' => 'not_found' ), 404 );
+		}
+
+		blueworx_mcp_send_json( $document );
+	}
+
+	if ( ! blueworx_feature_enabled( 'mcp' ) ) {
 		return;
 	}
 
