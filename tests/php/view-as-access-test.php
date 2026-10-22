@@ -78,6 +78,13 @@ function wp_get_current_user() {
 
 	return new class( $role, $GLOBALS['roles'][ $role ]['capabilities'] ) {
 		/**
+		 * User ID.
+		 *
+		 * @var int
+		 */
+		public $ID;
+
+		/**
 		 * Roles held.
 		 *
 		 * @var array
@@ -92,6 +99,7 @@ function wp_get_current_user() {
 		public $allcaps;
 
 		public function __construct( $role, $caps ) {
+			$this->ID      = get_current_user_id();
 			$this->roles   = array( $role );
 			$this->allcaps = $caps;
 		}
@@ -142,18 +150,64 @@ function esc_attr__( $text, $domain = '' ) {
 }
 
 function get_current_user_id() {
-	return 1;
+	return isset( $GLOBALS['user_id'] ) ? $GLOBALS['user_id'] : 1;
 }
 
+// User meta, per user and per key, the way the usermeta table holds it.
+$GLOBALS['usermeta'] = array();
+
 function get_user_meta( $user_id, $key, $single = false ) {
-	return isset( $GLOBALS['meta'][ $key ] ) ? $GLOBALS['meta'][ $key ] : '';
+	return isset( $GLOBALS['usermeta'][ $user_id ][ $key ] ) ? $GLOBALS['usermeta'][ $user_id ][ $key ] : '';
+}
+
+function update_user_meta( $user_id, $key, $value ) {
+	$GLOBALS['usermeta'][ $user_id ][ $key ] = $value;
+
+	return true;
+}
+
+function delete_user_meta( $user_id, $key ) {
+	unset( $GLOBALS['usermeta'][ $user_id ][ $key ] );
+
+	return true;
+}
+
+function update_user_option( $user_id, $option, $value, $is_global = false ) {
+	// Core's user options: user meta whose key carries the site's table prefix.
+	return update_user_meta( $user_id, ( $is_global ? '' : $GLOBALS['wpdb']->get_blog_prefix() ) . $option, $value );
+}
+
+function delete_user_option( $user_id, $option, $is_global = false ) {
+	return delete_user_meta( $user_id, ( $is_global ? '' : $GLOBALS['wpdb']->get_blog_prefix() ) . $option );
+}
+
+// The database handle, for the one thing read off it: which site's prefix is in play.
+$GLOBALS['blog_prefix'] = 'wp_';
+$GLOBALS['wpdb']        = new class() { // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Stands in for core's handle; WordPress is never loaded here.
+	public function get_blog_prefix() {
+		return $GLOBALS['blog_prefix'];
+	}
+};
+
+function is_multisite() {
+	return ! empty( $GLOBALS['multisite'] );
+}
+
+function is_super_admin( $user_id = false ) {
+	return ! empty( $GLOBALS['super_admin'] );
+}
+
+function is_network_admin() {
+	return ! empty( $GLOBALS['network_admin'] );
 }
 
 function get_role( $slug ) {
 	return isset( $GLOBALS['roles'][ $slug ] ) ? (object) $GLOBALS['roles'][ $slug ] : null;
 }
 
-function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
+function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {
+	$GLOBALS['hooks'][ $hook ][] = $callback;
+}
 
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
 
@@ -231,7 +285,7 @@ echo "\nA preview cannot widen what the person could already do\n";
 // The list is worked out from the real user's own capabilities, which is why a
 // preview already in progress does not change what is on offer: the menu is the
 // way out as well as the way in.
-$GLOBALS['meta'][ BLUEWORX_VIEW_AS_META ] = 'subscriber';
+blueworx_view_as_store_role( 1, 'subscriber' );
 
 check(
 	'the menu still offers the whole way back up',
@@ -252,7 +306,7 @@ check( 'but wp-admin still opens', ! empty( $capped['read'] ), true );
 
 // Nothing the role grants and the person lacks may appear: the filter is an
 // intersection, and a subscriber previewing anything gains nothing at all.
-$GLOBALS['meta'][ BLUEWORX_VIEW_AS_META ] = 'editor';
+blueworx_view_as_store_role( 1, 'editor' );
 $widened = blueworx_view_as_filter_caps( $GLOBALS['roles']['subscriber']['capabilities'] );
 
 check( 'and previewing a role above you grants nothing', empty( $widened['edit_posts'] ), true );
@@ -271,5 +325,147 @@ $unstyled = blueworx_view_as_filter_caps( $GLOBALS['roles']['administrator']['ca
 check( 'with the admin theme off, nothing is narrowed', ! empty( $unstyled['manage_options'] ), true );
 
 unset( $GLOBALS['theme_off'] );
+blueworx_view_as_store_role( 1, '' );
+
+/**
+ * What a capability check needs once the super-admin hook has seen it.
+ *
+ * @param array  $caps What core says the capability needs.
+ * @param string $cap  The capability asked for.
+ * @return array What the hook leaves it needing.
+ */
+function blueworx_super_admin_needs( $caps, $cap ) {
+	return blueworx_view_as_super_admin_caps( $caps, $cap, get_current_user_id() );
+}
+
+echo "\nOn a single site the preview is kept against the site, not the person\n";
+
+blueworx_view_as_store_role( 1, 'subscriber' );
+
+check( 'it is saved under the site\'s own key', get_user_meta( 1, 'wp_' . BLUEWORX_VIEW_AS_META, true ), 'subscriber' );
+check( 'and not under the old account-wide one', get_user_meta( 1, BLUEWORX_VIEW_AS_META, true ), '' );
+check( 'and it is still the preview in force', blueworx_view_as_current_role(), 'subscriber' );
+
+blueworx_view_as_store_role( 1, '' );
+
+check( 'ending it clears the site\'s key', get_user_meta( 1, 'wp_' . BLUEWORX_VIEW_AS_META, true ), '' );
+check( 'and leaves no preview behind', blueworx_view_as_current_role(), '' );
+
+echo "\nOn a network, a preview stays on the site it was started on\n";
+
+$GLOBALS['multisite']   = true;
+$GLOBALS['blog_prefix'] = 'wp_2_';
+
+blueworx_view_as_store_role( 1, 'subscriber' );
+
+check( 'previewing on one site takes effect there', blueworx_view_as_current_role(), 'subscriber' );
+
+$GLOBALS['blog_prefix'] = 'wp_3_';
+
+check( 'and has no effect on another site', blueworx_view_as_current_role(), '' );
+
+blueworx_view_as_store_role( 1, 'editor' );
+$GLOBALS['blog_prefix'] = 'wp_2_';
+
+check( 'a second preview elsewhere leaves the first alone', blueworx_view_as_current_role(), 'subscriber' );
+
+blueworx_view_as_store_role( 1, '' );
+
+check( 'ending one ends only that one', blueworx_view_as_current_role(), '' );
+
+$GLOBALS['blog_prefix'] = 'wp_3_';
+
+check( 'the other site\'s preview is still running', blueworx_view_as_current_role(), 'editor' );
+
+$GLOBALS['network_admin'] = true;
+
+check( 'and the network admin, which is no one site, is never previewed', blueworx_view_as_current_role(), '' );
+
+unset( $GLOBALS['network_admin'] );
+blueworx_view_as_store_role( 1, '' );
+
+echo "\nA preview saved by an older version is picked up once, not left behind\n";
+
+// Before the per-site key, the preview lived on the account itself. Nobody may
+// be left inside a preview with no control that shows it.
+unset( $GLOBALS['multisite'] );
+$GLOBALS['blog_prefix'] = 'wp_';
+$GLOBALS['user_id']     = 2;
+$GLOBALS['usermeta'][2] = array( BLUEWORX_VIEW_AS_META => 'author' );
+
+check( 'on a single site the preview carries on', blueworx_view_as_current_role(), 'author' );
+check( 'now saved under the site\'s key', get_user_meta( 2, 'wp_' . BLUEWORX_VIEW_AS_META, true ), 'author' );
+check( 'with the old key gone', get_user_meta( 2, BLUEWORX_VIEW_AS_META, true ), '' );
+
+// On a network there is no telling which site the old preview was started on,
+// so it is ended rather than guessed at.
+$GLOBALS['multisite']   = true;
+$GLOBALS['blog_prefix'] = 'wp_2_';
+$GLOBALS['user_id']     = 3;
+$GLOBALS['usermeta'][3] = array( BLUEWORX_VIEW_AS_META => 'author' );
+
+check( 'on a network the old preview is ended', blueworx_view_as_current_role(), '' );
+check( 'and its key removed', get_user_meta( 3, BLUEWORX_VIEW_AS_META, true ), '' );
+check( 'without moving it onto whichever site came first', get_user_meta( 3, 'wp_2_' . BLUEWORX_VIEW_AS_META, true ), '' );
+
+$GLOBALS['user_id'] = 1;
+
+echo "\nA super admin previewing a role really is held to it\n";
+
+// Core answers yes to a super admin before the user_has_cap filter ever runs,
+// so the narrowing has to happen earlier, at map_meta_cap.
+check( 'the hook is in place', in_array( 'blueworx_view_as_super_admin_caps', isset( $GLOBALS['hooks']['map_meta_cap'] ) ? $GLOBALS['hooks']['map_meta_cap'] : array(), true ), true );
+
+$GLOBALS['super_admin'] = true;
+blueworx_view_as_store_role( 1, 'subscriber' );
+
+check( 'a super admin previewing a subscriber loses the settings', blueworx_super_admin_needs( array( 'manage_options' ), 'manage_options' ), array( 'do_not_allow' ) );
+check( 'and network management', blueworx_super_admin_needs( array( 'manage_network' ), 'manage_network' ), array( 'do_not_allow' ) );
+check( 'but can still open wp-admin', blueworx_super_admin_needs( array( 'read' ), 'read' ), array( 'read' ) );
+
+blueworx_view_as_store_role( 1, 'author' );
+
+check( 'previewing an author keeps what an author can do', blueworx_super_admin_needs( array( 'edit_posts', 'upload_files' ), 'upload_files' ), array( 'edit_posts', 'upload_files' ) );
+check( 'and nothing more', blueworx_super_admin_needs( array( 'edit_posts', 'edit_others' ), 'edit_others_posts' ), array( 'do_not_allow' ) );
+
+$GLOBALS['user_id'] = 4;
+
+check( 'other people\'s checks are left alone', blueworx_view_as_super_admin_caps( array( 'manage_options' ), 'manage_options', 1 ), array( 'manage_options' ) );
+
+$GLOBALS['user_id'] = 1;
+
+echo "\nAnd can always get back out\n";
+
+// The way out is gated on what the real person can do. A super admin can do
+// everything, even on a site where they hold no role of their own.
+$GLOBALS['reader'] = 'subscriber';
+blueworx_view_as_store_role( 1, 'contributor' );
+
+check( 'the control is still there mid-preview', blueworx_view_as_available(), true );
+check( 'offering every role but administrator', array_keys( blueworx_view_as_role_choices() ), array( 'author', 'contributor', 'editor' ) );
+
+blueworx_view_as_store_role( 1, '' );
+
+check( 'with no preview running, nothing is touched', blueworx_super_admin_needs( array( 'manage_options' ), 'manage_options' ), array( 'manage_options' ) );
+
+echo "\nWhile nobody else's checks change\n";
+
+unset( $GLOBALS['super_admin'] );
+$GLOBALS['reader'] = 'administrator';
+blueworx_view_as_store_role( 1, 'subscriber' );
+
+check( 'a site administrator is left to the usual filter', blueworx_super_admin_needs( array( 'manage_options' ), 'manage_options' ), array( 'manage_options' ) );
+
+blueworx_view_as_store_role( 1, '' );
+unset( $GLOBALS['multisite'] );
+$GLOBALS['blog_prefix'] = 'wp_';
+$GLOBALS['super_admin'] = true;
+blueworx_view_as_store_role( 1, 'subscriber' );
+
+check( 'and a single site, where nobody is a super admin, is untouched', blueworx_super_admin_needs( array( 'manage_options' ), 'manage_options' ), array( 'manage_options' ) );
+check( 'leaving its own filter to do the narrowing', empty( blueworx_view_as_filter_caps( $GLOBALS['roles']['administrator']['capabilities'] )['manage_options'] ), true );
+
+unset( $GLOBALS['super_admin'] );
+blueworx_view_as_store_role( 1, '' );
 
 finish();
