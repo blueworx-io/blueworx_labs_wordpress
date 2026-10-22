@@ -77,7 +77,7 @@ function blueworx_intercept_requests() {
 		blueworx_redirect_home();
 	}
 
-	if ( 0 === strpos( $path, '/wp-admin' ) ) {
+	if ( 0 === strpos( blueworx_path_within_site( $path ), '/wp-admin' ) ) {
 		if ( ! is_user_logged_in() ) {
 			if ( $sp_backend ) {
 				blueworx_site_protection_die( __( 'Please log in to view this site.', 'blueworx-labs-wordpress' ) );
@@ -152,6 +152,13 @@ function blueworx_get_site_protection_allowed_roles( $area ) {
 function blueworx_current_user_has_site_protection_role( $area ) {
 	$user = wp_get_current_user();
 
+	// A super admin often holds no role on a site at all, and the network
+	// admin sits behind the main site's backend gate, so a role check here
+	// would lock them out of the whole network.
+	if ( $user && is_multisite() && is_super_admin( $user->ID ) ) {
+		return true;
+	}
+
 	if ( ! $user || empty( $user->roles ) ) {
 		return false;
 	}
@@ -179,6 +186,39 @@ function blueworx_current_user_has_site_protection_role( $area ) {
  */
 function blueworx_site_protection_die( $message ) {
 	wp_die( esc_html( $message ), esc_html__( 'Site Protection', 'blueworx-labs-wordpress' ), array( 'response' => 403 ) );
+}
+
+/**
+ * Gives a request path as seen from inside the current site.
+ *
+ * On a network where sites sit in folders, a subsite's admin arrives as
+ * /site2/wp-admin. Dropping the site's own folder lets it be matched the same
+ * way as /wp-admin on the main site. A single site is never rewritten.
+ *
+ * @param string $path Normalized request path.
+ * @return string The path without the current site's folder in front.
+ */
+function blueworx_path_within_site( $path ) {
+	if ( ! is_multisite() ) {
+		return $path;
+	}
+
+	$site      = get_site();
+	$site_path = $site ? '/' . trim( strtolower( (string) $site->path ), '/' ) : '/';
+
+	if ( '/' === $site_path ) {
+		return $path;
+	}
+
+	if ( $path === $site_path ) {
+		return '/';
+	}
+
+	if ( 0 === strpos( $path, $site_path . '/' ) ) {
+		return substr( $path, strlen( $site_path ) );
+	}
+
+	return $path;
 }
 
 /**
@@ -256,6 +296,61 @@ function blueworx_replace_generated_login_url( $url, $path ) {
 	}
 
 	return $custom;
+}
+
+/**
+ * Gets a network site's custom login address, if it has one.
+ *
+ * Switches to that site so its own login slug and switches are read, not the
+ * site that happens to be sending the email.
+ *
+ * @param int $blog_id Site ID.
+ * @return string The custom login URL, or '' when that site uses the normal login.
+ */
+function blueworx_site_custom_login_url( $blog_id ) {
+	$basename = plugin_basename( BLUEWORX_LABS_PLUGIN_FILE );
+
+	switch_to_blog( (int) $blog_id );
+
+	$network_plugins = (array) get_site_option( 'active_sitewide_plugins', array() );
+	$site_plugins    = (array) get_option( 'active_plugins', array() );
+	$plugin_running  = isset( $network_plugins[ $basename ] ) || in_array( $basename, $site_plugins, true );
+	$url             = '';
+
+	if ( $plugin_running && blueworx_feature_enabled( 'login' ) ) {
+		$url = home_url( '/' . blueworx_login_slug() . '/' );
+	}
+
+	restore_current_blog();
+
+	return $url;
+}
+
+/**
+ * Points the new-site welcome email at that site's custom login.
+ *
+ * Core writes the link as the site address plus "wp-login.php" by hand, so it
+ * never passes through the login_url or site_url filters, and the plugin then
+ * sends whoever clicks it to the home page.
+ *
+ * @param string $welcome_email Email body.
+ * @param int    $blog_id       The new site's ID.
+ * @return string The email body with the login link fixed.
+ */
+function blueworx_welcome_email_login_link( $welcome_email, $blog_id ) {
+	$custom = blueworx_site_custom_login_url( $blog_id );
+
+	if ( '' === $custom ) {
+		return $welcome_email;
+	}
+
+	return str_replace( get_blogaddress_by_id( $blog_id ) . 'wp-login.php', $custom, (string) $welcome_email );
+}
+
+// The new-user welcome email builds its link with wp_login_url(), which the
+// login_url filter below already covers. Only the new-site email needs this.
+if ( is_multisite() ) {
+	add_filter( 'update_welcome_email', 'blueworx_welcome_email_login_link', 10, 2 );
 }
 
 /**
