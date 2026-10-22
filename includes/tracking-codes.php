@@ -110,10 +110,10 @@ function blueworx_tracking_save( $posted ) {
 	$refused = array();
 
 	foreach ( array_keys( blueworx_tracking_services() ) as $service ) {
-		$field = 'blueworx_tracking_' . $service;
 		// Not sanitize_text_field(): it strips a pasted <script> block down to
 		// nothing, and nothing reads as an emptied box, which would wipe a working
 		// ID instead of refusing the paste. The format check is the sanitizing.
+		$field = 'blueworx_tracking_' . $service;
 		$raw   = isset( $posted[ $field ] ) ? (string) wp_unslash( $posted[ $field ] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Checked against a strict pattern on the next line.
 		$id    = blueworx_tracking_normalize_id( $service, $raw );
 

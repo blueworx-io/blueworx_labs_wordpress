@@ -12,6 +12,10 @@
  * @package BlueWorxLabs
  */
 
+// A command-line script WordPress never loads: its stubs have to carry core's
+// own unprefixed names, and its working variables are never seen by a site.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
+
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['hooks']   = array();
@@ -20,7 +24,7 @@ $GLOBALS['admin']   = false;
 
 // phpcs:disable Squiz.Commenting.FunctionComment.Missing -- Test stubs mirror core signatures.
 
-function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
+function add_action( $hook, $callback, $priority = 10 ) {
 	$GLOBALS['hooks'][ $hook ] = array(
 		'callback' => $callback,
 		'priority' => $priority,
@@ -123,6 +127,7 @@ $GLOBALS['options']['blueworx_tracking_meta'] = '123456789012345';
 
 $head = blueworx_test_capture( 'blueworx_tracking_print_head' );
 
+// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- The expected output, not a script this file loads.
 check( 'the Analytics loader', false !== strpos( $head, '<script async src="https://www.googletagmanager.com/gtag/js?id=G-AB12CD34EF"></script>' ), true );
 check( 'and its config', false !== strpos( $head, "gtag('config', 'G-AB12CD34EF');" ), true );
 check( 'the Meta pixel', false !== strpos( $head, "fbq('init', '123456789012345');" ), true );
