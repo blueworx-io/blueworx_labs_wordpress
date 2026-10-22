@@ -433,7 +433,7 @@ function blueworx_save_dashboard_widget_settings() {
  * @return void
  */
 function blueworx_save_robots_txt_settings() {
-	if ( ! isset( $_POST['blueworx_robots_txt'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	if ( ! isset( $_POST['blueworx_robots_txt'] ) || blueworx_robots_txt_only_on_main_site() ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
 		return;
 	}
 
@@ -1120,6 +1120,12 @@ function blueworx_get_feature_detail_html( $key ) {
 	}
 
 	if ( 'robots_txt' === $key ) {
+		// A subsite on a folder-style network is never asked for its own
+		// robots.txt, so the editor is swapped for a note saying so.
+		if ( blueworx_robots_txt_only_on_main_site() ) {
+			return blueworx_detail_stack( blueworx_robots_txt_main_site_notice() );
+		}
+
 		$fields = '';
 
 		if ( blueworx_robots_txt_file_exists() ) {
