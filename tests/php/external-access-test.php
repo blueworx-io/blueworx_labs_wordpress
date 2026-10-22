@@ -237,8 +237,16 @@ function date_i18n( $f, $t ) {
 	return gmdate( 'j F Y', (int) $t );
 }
 
+// A single site. tests/php/multisite-accounts-test.php covers the network.
+function is_multisite() {
+	return false;
+}
+
 // --- end local stubs ---
 
+// Deleting an invited account goes through blueworx_delete_owned_account(),
+// which lives in the support access file.
+require __DIR__ . '/../../includes/support-access.php';
 require __DIR__ . '/../../includes/external-access.php';
 
 echo "What an external viewer is not given\n";
