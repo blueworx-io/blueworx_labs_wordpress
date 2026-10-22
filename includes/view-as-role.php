@@ -10,7 +10,8 @@
  * capabilities. It never grants one. The switch is applied by filtering
  * `user_has_cap` down to the target role's own capability map, so a
  * capability the real user does not hold cannot appear no matter what the
- * target role says.
+ * target role says. A network's super admin skips that filter altogether, so
+ * for them the same narrowing is applied a step earlier, at `map_meta_cap`.
  *
  * @package BlueWorxLabs
  */
@@ -21,9 +22,84 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The user meta key holding the role currently being viewed as.
+ * The user option holding the role currently being viewed as.
+ *
+ * Saved as a user option, so the key on disk carries the site's table prefix
+ * and a preview started on one site of a network stays on that site. Versions
+ * before that saved it under this bare name, on the account itself — see
+ * blueworx_view_as_migrate_legacy().
  */
 const BLUEWORX_VIEW_AS_META = '_blueworx_view_as_role';
+
+/**
+ * The user meta key this site's preview is saved under.
+ *
+ * The same key update_user_option() writes: the option name with the current
+ * site's table prefix in front.
+ *
+ * @return string Meta key.
+ */
+function blueworx_view_as_site_key() {
+	global $wpdb;
+
+	return $wpdb->get_blog_prefix() . BLUEWORX_VIEW_AS_META;
+}
+
+/**
+ * Starts or ends a preview on the current site.
+ *
+ * @param int    $user_id User ID.
+ * @param string $role    Role slug to preview, or an empty string to end it.
+ * @return void
+ */
+function blueworx_view_as_store_role( $user_id, $role ) {
+	if ( '' === $role ) {
+		delete_user_option( $user_id, BLUEWORX_VIEW_AS_META );
+		return;
+	}
+
+	update_user_option( $user_id, BLUEWORX_VIEW_AS_META, $role );
+}
+
+/**
+ * Picks up a preview saved by an older version, once.
+ *
+ * Older versions kept the preview on the account rather than the site, under
+ * the bare option name. On a single site there is only one place it can have
+ * been started, so it is moved onto that site's key and carries on. On a
+ * network there is no telling which site it belonged to, so it is ended rather
+ * than guessed at — a preview that turned up on the wrong site is the bug this
+ * storage exists to fix. Either way the old key is removed, which also stops
+ * get_user_option() falling back to it on every site.
+ *
+ * @param int $user_id User ID.
+ * @return void
+ */
+function blueworx_view_as_migrate_legacy( $user_id ) {
+	// Writing user meta fires hooks, and anything on them that asks a
+	// permission question would land back here before the old key is gone.
+	static $busy = false;
+
+	if ( $busy ) {
+		return;
+	}
+
+	$legacy = (string) get_user_meta( $user_id, BLUEWORX_VIEW_AS_META, true );
+
+	if ( '' === $legacy ) {
+		return;
+	}
+
+	$busy = true;
+
+	delete_user_meta( $user_id, BLUEWORX_VIEW_AS_META );
+
+	if ( ! is_multisite() && '' === (string) get_user_meta( $user_id, blueworx_view_as_site_key(), true ) ) {
+		blueworx_view_as_store_role( $user_id, $legacy );
+	}
+
+	$busy = false;
+}
 
 /**
  * What the real person can do, before a preview narrows anything.
@@ -34,6 +110,11 @@ const BLUEWORX_VIEW_AS_META = '_blueworx_view_as_role';
  * that cannot do whatever the control is gated on — the trap that used to force
  * this feature to be administrators-only.
  *
+ * A network's super admin can do everything on every site, whether or not they
+ * hold a role there, so every role's capabilities count as theirs. Without that
+ * the control would be missing on any site where they hold no role — and on a
+ * site where they lost theirs mid-preview, so would the way out.
+ *
  * @return array Capabilities the real user holds, keyed by name.
  */
 function blueworx_view_as_real_caps() {
@@ -43,7 +124,17 @@ function blueworx_view_as_real_caps() {
 		return array();
 	}
 
-	return (array) $user->allcaps;
+	$caps = (array) $user->allcaps;
+
+	// is_multisite() first: on a single site is_super_admin() asks has_cap(),
+	// which is the filter this file narrows.
+	if ( is_multisite() && is_super_admin( $user->ID ) ) {
+		foreach ( wp_roles()->roles as $role ) {
+			$caps = array_merge( $caps, array_filter( (array) $role['capabilities'] ) );
+		}
+	}
+
+	return $caps;
 }
 
 /**
@@ -136,13 +227,23 @@ function blueworx_view_as_current_role() {
 		return '';
 	}
 
+	// The network admin belongs to no one site, so no site's preview applies.
+	if ( is_multisite() && is_network_admin() ) {
+		return '';
+	}
+
 	$user_id = get_current_user_id();
 
 	if ( ! $user_id ) {
 		return '';
 	}
 
-	$role = (string) get_user_meta( $user_id, BLUEWORX_VIEW_AS_META, true );
+	blueworx_view_as_migrate_legacy( $user_id );
+
+	// Read straight from this site's key rather than through get_user_option().
+	// That builds a fresh user object on every call, and this runs on every
+	// permission check; it would also fall back to the old account-wide key.
+	$role = (string) get_user_meta( $user_id, blueworx_view_as_site_key(), true );
 
 	if ( '' === $role || 'administrator' === $role || ! get_role( $role ) ) {
 		return '';
@@ -198,6 +299,55 @@ function blueworx_view_as_filter_caps( $allcaps ) {
 }
 
 /**
+ * Holds a previewing super admin to the previewed role.
+ *
+ * WP_User::has_cap() answers yes to a network's super admin before the
+ * `user_has_cap` filter runs, so blueworx_view_as_filter_caps() never sees
+ * them. The one thing that shortcut still honours is `do_not_allow` coming out
+ * of map_meta_cap(), so that is where the narrowing happens for them: any check
+ * needing a capability the previewed role does not hold is refused.
+ *
+ * `read` and `exist` always pass, for the same reason `read` survives the other
+ * filter: without them wp-admin will not open, and the sidebar control that ends
+ * the preview lives there. Ending it is gated on the real user's capabilities,
+ * not on this, so it stays reachable whatever is being previewed.
+ *
+ * @param array  $caps    Primitive capabilities the check needs.
+ * @param string $cap     Capability being checked.
+ * @param int    $user_id User being checked.
+ * @return array The same list, or `do_not_allow`.
+ */
+function blueworx_view_as_super_admin_caps( $caps, $cap, $user_id ) {
+	if ( ! is_multisite() || get_current_user_id() !== (int) $user_id ) {
+		return $caps;
+	}
+
+	$role_slug = blueworx_view_as_current_role();
+
+	if ( '' === $role_slug || ! is_super_admin( $user_id ) ) {
+		return $caps;
+	}
+
+	$role = get_role( $role_slug );
+
+	if ( ! $role ) {
+		return $caps;
+	}
+
+	foreach ( (array) $caps as $needed ) {
+		if ( 'read' === $needed || 'exist' === $needed ) {
+			continue;
+		}
+
+		if ( empty( $role->capabilities[ $needed ] ) ) {
+			return array( 'do_not_allow' );
+		}
+	}
+
+	return $caps;
+}
+
+/**
  * Applies or clears the switch from a toolbar link.
  *
  * @return void
@@ -214,7 +364,7 @@ function blueworx_view_as_handle() {
 	$role = isset( $_POST['blueworx_view_as_role'] ) ? sanitize_key( wp_unslash( $_POST['blueworx_view_as_role'] ) ) : '';
 
 	if ( '' === $role || ! isset( blueworx_view_as_role_choices()[ $role ] ) ) {
-		delete_user_meta( get_current_user_id(), BLUEWORX_VIEW_AS_META );
+		blueworx_view_as_store_role( get_current_user_id(), '' );
 
 		// Leaving a preview gives every capability back, so the screen they were
 		// on is theirs to return to.
@@ -224,7 +374,7 @@ function blueworx_view_as_handle() {
 		exit;
 	}
 
-	update_user_meta( get_current_user_id(), BLUEWORX_VIEW_AS_META, $role );
+	blueworx_view_as_store_role( get_current_user_id(), $role );
 
 	// Entering one goes to the dashboard rather than back where they were. The
 	// screen they started from is very often one the previewed role cannot open,
@@ -355,6 +505,7 @@ function blueworx_view_as_print_sidebar_control() {
 
 if ( blueworx_feature_enabled( 'view_as_role' ) ) {
 	add_filter( 'user_has_cap', 'blueworx_view_as_filter_caps' );
+	add_filter( 'map_meta_cap', 'blueworx_view_as_super_admin_caps', 10, 3 );
 	add_action( 'admin_post_blueworx_view_as', 'blueworx_view_as_handle' );
 
 	if ( function_exists( 'blueworx_admin_theme_enabled' ) && blueworx_admin_theme_enabled() ) {
