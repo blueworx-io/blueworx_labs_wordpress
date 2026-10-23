@@ -39,6 +39,8 @@ const SCRIPTS = [
   'robots-txt-test.php',
   'cache-purge-test.php',
   'network-menu-icons-test.php',
+  'application-passwords-test.php',
+  'feature-defaults-test.php',
 ];
 
 let phpAvailable = true;
