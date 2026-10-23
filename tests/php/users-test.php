@@ -24,6 +24,14 @@ $GLOBALS['inserted'] = array();
 $GLOBALS['actions']  = array();
 $GLOBALS['roles']    = array( 'subscriber', 'editor', 'author', 'administrator', 'sc_customer' );
 
+// A single site unless a check below says otherwise.
+$GLOBALS['multisite']         = false;
+$GLOBALS['members']           = array();
+$GLOBALS['network_admins']    = array();
+$GLOBALS['added']             = array();
+$GLOBALS['refuse_add']        = false;
+$GLOBALS['membership_checks'] = array();
+
 /**
  * A WP_User stand-in.
  */
@@ -107,8 +115,42 @@ function get_user_meta( $user_id, $key, $single = false ) {
 	return isset( $GLOBALS['meta'][ $user_id ][ $key ] ) ? $GLOBALS['meta'][ $user_id ][ $key ] : '';
 }
 
+function is_multisite() {
+	return ! empty( $GLOBALS['multisite'] );
+}
+
+function get_current_blog_id() {
+	return 2;
+}
+
+function is_super_admin( $user_id = false ) {
+	$GLOBALS['membership_checks'][] = 'is_super_admin';
+	return in_array( (int) $user_id, $GLOBALS['network_admins'], true );
+}
+
+function is_user_member_of_blog( $user_id = 0, $blog_id = 0 ) {
+	$GLOBALS['membership_checks'][] = 'is_user_member_of_blog';
+	$blog_id                        = $blog_id ? (int) $blog_id : get_current_blog_id();
+
+	return ! is_multisite() || in_array( (int) $user_id, isset( $GLOBALS['members'][ $blog_id ] ) ? $GLOBALS['members'][ $blog_id ] : array(), true );
+}
+
+function add_user_to_blog( $blog_id, $user_id, $role ) {
+	if ( ! empty( $GLOBALS['refuse_add'] ) ) {
+		return new WP_Error( 'user_cannot_be_added', 'User cannot be added to this site.' );
+	}
+
+	$GLOBALS['added'][]               = array( $blog_id, $user_id, $role );
+	$GLOBALS['members'][ $blog_id ][] = (int) $user_id;
+
+	return true;
+}
+
 function get_users( $args ) {
-	$wanted = array();
+	// As core does: on a network the query covers the current site's members
+	// unless it is told otherwise.
+	$blog_id = array_key_exists( 'blog_id', $args ) ? (int) $args['blog_id'] : get_current_blog_id();
+	$wanted  = array();
 
 	foreach ( $args['meta_query'] as $clause ) {
 		if ( is_array( $clause ) && isset( $clause['key'] ) ) {
@@ -121,6 +163,10 @@ function get_users( $args ) {
 	foreach ( $GLOBALS['users'] as $user ) {
 		$meta  = isset( $GLOBALS['meta'][ $user->ID ] ) ? $GLOBALS['meta'][ $user->ID ] : array();
 		$match = true;
+
+		if ( is_multisite() && $blog_id && ! in_array( (int) $user->ID, isset( $GLOBALS['members'][ $blog_id ] ) ? $GLOBALS['members'][ $blog_id ] : array(), true ) ) {
+			$match = false;
+		}
 
 		foreach ( $wanted as $key => $value ) {
 			if ( ! isset( $meta[ $key ] ) || $meta[ $key ] !== $value ) {
@@ -479,5 +525,170 @@ check(
 
 $GLOBALS['options']['blueworx_sso_allowed_domains'] = '';
 $GLOBALS['options']['blueworx_sso_auto_register']   = '0';
+
+// Everything above ran as a single site, and must have done so without asking
+// anything about networks.
+check( 'a single site never asks who belongs to which site', $GLOBALS['membership_checks'], array() );
+check( 'and never adds anyone to a site', $GLOBALS['added'], array() );
+
+echo '
+On a network, an account is shared but a site is not
+';
+
+$GLOBALS['multisite'] = true;
+
+// Everybody created above belongs to this site, as they would on a real network.
+foreach ( $GLOBALS['users'] as $network_user ) {
+	$GLOBALS['members'][2][] = (int) $network_user->ID;
+}
+
+// Somebody with an account on the network, but only on another of its sites.
+$GLOBALS['users'][]    = new WP_User( 200, 'elsewhere', 'elsewhere@example.test', array() );
+$GLOBALS['members'][1] = array( 200 );
+
+check(
+	'a network user who is not on this site is refused when joining is off',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-elsewhere',
+				'email' => 'elsewhere@example.test',
+			)
+		),
+		'login'
+	),
+	'blueworx_sso_no_account'
+);
+check( 'and is not linked by the refusal', isset( $GLOBALS['meta'][200] ), false );
+check( 'nor added to this site', $GLOBALS['added'], array() );
+
+$GLOBALS['options']['blueworx_sso_auto_register'] = '1';
+$GLOBALS['options']['blueworx_sso_default_role']  = 'author';
+$before = count( $GLOBALS['inserted'] );
+
+check(
+	'with joining on, they are let in',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-elsewhere',
+				'email' => 'elsewhere@example.test',
+			)
+		),
+		'login'
+	),
+	'user:elsewhere'
+);
+check( 'on the role a newcomer would get, on this site', $GLOBALS['added'], array( array( 2, 200, 'author' ) ) );
+check( 'and linked as usual', $GLOBALS['meta'][200]['blueworx_sso_subject'], 'subject-elsewhere' );
+check( 'without creating a second account', count( $GLOBALS['inserted'] ), $before );
+
+// Already linked on another site, and their email has since changed at the
+// provider — so only the subject can find them.
+$GLOBALS['users'][]                              = new WP_User( 201, 'moved-on', 'moved-on@example.test', array() );
+$GLOBALS['members'][1][]                         = 201;
+$GLOBALS['meta'][201]['blueworx_sso_subject']    = 'subject-moved-on';
+$GLOBALS['meta'][201]['blueworx_sso_issuer']     = 'https://idp.test';
+$GLOBALS['added']                                = array();
+$GLOBALS['options']['blueworx_sso_default_role'] = 'administrator';
+
+check(
+	'a network user linked elsewhere is found by their subject',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-moved-on',
+				'email' => 'new-address@example.test',
+			)
+		),
+		'login'
+	),
+	'user:moved-on'
+);
+check( 'and added, never as an administrator', $GLOBALS['added'], array( array( 2, 201, 'subscriber' ) ) );
+
+$GLOBALS['options']['blueworx_sso_default_role'] = 'subscriber';
+
+// Being added to a site is getting in, so the site's email list has a say.
+$GLOBALS['users'][]                                 = new WP_User( 202, 'outside-list', 'outside@gone.test', array() );
+$GLOBALS['members'][1][]                            = 202;
+$GLOBALS['meta'][202]['blueworx_sso_subject']       = 'subject-outside';
+$GLOBALS['meta'][202]['blueworx_sso_issuer']        = 'https://idp.test';
+$GLOBALS['options']['blueworx_sso_allowed_domains'] = 'allowed.test';
+$GLOBALS['added']                                   = array();
+
+check(
+	'a network user outside the email list is not added',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-outside',
+				'email' => 'outside@gone.test',
+			)
+		),
+		'login'
+	),
+	'blueworx_sso_domain_not_allowed'
+);
+check( 'and nothing changed on this site', $GLOBALS['added'], array() );
+
+$GLOBALS['options']['blueworx_sso_allowed_domains'] = '';
+
+// When the network will not take them, the sign-in stops rather than going on
+// into a site they have no place on.
+$GLOBALS['refuse_add'] = true;
+check(
+	'a refused addition refuses the sign-in',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-outside',
+				'email' => 'outside@gone.test',
+			)
+		),
+		'login'
+	),
+	'blueworx_sso_add_failed'
+);
+$GLOBALS['refuse_add'] = false;
+
+// A super admin can already reach every site, so they sign in as before.
+$GLOBALS['options']['blueworx_sso_auto_register'] = '0';
+$GLOBALS['users'][]                               = new WP_User( 203, 'network-admin', 'network-admin@example.test', array() );
+$GLOBALS['members'][1][]                          = 203;
+$GLOBALS['network_admins']                        = array( 203 );
+
+check(
+	'a super admin signs in without being on this site',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-network-admin',
+				'email' => 'network-admin@example.test',
+			)
+		),
+		'login'
+	),
+	'user:network-admin'
+);
+check( 'and is not added to it', $GLOBALS['added'], array() );
+
+// And somebody who already belongs here signs in exactly as on a single site.
+check(
+	'a member of this site signs in as before',
+	resolve(
+		claims(
+			array(
+				'sub'   => 'subject-insider',
+				'email' => 'insider@allowed.test',
+			)
+		),
+		'login'
+	),
+	'user:insider'
+);
+check( 'without being added again', $GLOBALS['added'], array() );
+
+$GLOBALS['multisite'] = false;
 
 finish();

@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.96.0
+ * Version:           1.96.1
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -63,7 +63,7 @@ if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN )
 $blueworx_update_checker->getVcsApi()->enableReleaseAssets();
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.96.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.96.1' );
 }
 
 // The main plugin file's own path. Two things need it by name rather than by
@@ -98,6 +98,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/upgrade.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-design.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-assets.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-theme.php';
+require_once BLUEWORX_LABS_PATH . 'includes/admin-topbar-sites.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-groups.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-icons.php';
 require_once BLUEWORX_LABS_PATH . 'includes/admin-menu-badges.php';
@@ -171,9 +172,22 @@ register_activation_hook( __FILE__, 'blueworx_labs_on_activate' );
  * the request-layer block in includes/readonly-access.php. With the plugin off
  * that block does not run, so the accounts must not be left standing.
  *
+ * Switched off for a whole network, the plugin stops running on every site at
+ * once, so every site is cleaned up, not just the main one.
+ *
+ * @param bool $network_wide Whether the plugin is being switched off for the whole network.
  * @return void
  */
-function blueworx_labs_on_deactivate() {
+function blueworx_labs_on_deactivate( $network_wide = false ) {
+	blueworx_for_each_site( 'blueworx_labs_deactivate_site', (bool) $network_wide );
+}
+
+/**
+ * Removes the guest viewer and support accounts from the current site.
+ *
+ * @return void
+ */
+function blueworx_labs_deactivate_site() {
 	blueworx_support_on_deactivate();
 	blueworx_external_on_deactivate();
 }

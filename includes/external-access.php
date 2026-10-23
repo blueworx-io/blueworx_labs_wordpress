@@ -487,12 +487,8 @@ function blueworx_external_invitations() {
  * @return void
  */
 function blueworx_external_on_deactivate() {
-	if ( ! function_exists( 'wp_delete_user' ) ) {
-		require_once ABSPATH . 'wp-admin/includes/user.php';
-	}
-
 	foreach ( blueworx_external_invitations() as $user ) {
-		wp_delete_user( $user->ID );
+		blueworx_delete_owned_account( $user->ID );
 	}
 
 	blueworx_external_remove_role();
@@ -614,7 +610,18 @@ function blueworx_external_invite( $args ) {
 		);
 	}
 
-	if ( email_exists( $email ) ) {
+	$existing = (int) email_exists( $email );
+
+	// On a network, accounts are shared by every site, so the address may
+	// belong to somebody who is simply not on this one yet. They are added here
+	// as a viewer rather than refused. Not a super admin, though: the role
+	// would put the read-only guard on the network's own administrator.
+	$join = $existing > 0
+		&& is_multisite()
+		&& ! is_user_member_of_blog( $existing, get_current_blog_id() )
+		&& ! is_super_admin( $existing );
+
+	if ( $existing > 0 && ! $join ) {
 		// Named rather than silent: an administrator who cannot see why nothing
 		// happened will invite the same person again, and again.
 		return new WP_Error(
@@ -627,15 +634,20 @@ function blueworx_external_invite( $args ) {
 		$name = $email;
 	}
 
-	$user_id = wp_insert_user(
-		array(
-			'user_login'   => blueworx_external_unique_username( blueworx_external_username_from_email( $email ) ),
-			'user_email'   => $email,
-			'user_pass'    => wp_generate_password( 64, true, true ),
-			'display_name' => $name,
-			'role'         => blueworx_external_role_slug(),
-		)
-	);
+	if ( $join ) {
+		$user_id = add_user_to_blog( get_current_blog_id(), $existing, blueworx_external_role_slug() );
+		$user_id = is_wp_error( $user_id ) ? $user_id : $existing;
+	} else {
+		$user_id = wp_insert_user(
+			array(
+				'user_login'   => blueworx_external_unique_username( blueworx_external_username_from_email( $email ) ),
+				'user_email'   => $email,
+				'user_pass'    => wp_generate_password( 64, true, true ),
+				'display_name' => $name,
+				'role'         => blueworx_external_role_slug(),
+			)
+		);
+	}
 
 	if ( is_wp_error( $user_id ) ) {
 		return $user_id;
@@ -851,6 +863,10 @@ function blueworx_external_extend( $user_id, $days ) {
  * Nothing is reassigned, because there is nothing to reassign: an external
  * account cannot write, so it cannot have authored anything.
  *
+ * On a network the account is deleted outright once no site still has it, so
+ * it cannot sign in anywhere and the same email can be invited again. See
+ * blueworx_delete_owned_account().
+ *
  * @param int $user_id Invited account.
  * @return bool True when the account was removed.
  */
@@ -861,11 +877,7 @@ function blueworx_external_revoke( $user_id ) {
 		return false;
 	}
 
-	if ( ! function_exists( 'wp_delete_user' ) ) {
-		require_once ABSPATH . 'wp-admin/includes/user.php';
-	}
-
-	return (bool) wp_delete_user( (int) $user_id );
+	return blueworx_delete_owned_account( (int) $user_id );
 }
 
 /**

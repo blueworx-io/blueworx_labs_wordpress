@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.1] - 2026-10-22
+
+### Fixed
+- **My Sites is back on multisite networks.** The BlueWorx top bar hid
+  WordPress's own toolbar, and with it the only way to switch sites or reach
+  Network Admin. A My Sites menu in the top bar now does both. Single sites
+  don't see it.
+- **Multisite networks work properly.** Nothing changes on a single site.
+  - Switching the plugin off or deleting it from a network now removes its
+    guest and support accounts and settings on every site, not just the main
+    one. Deleting a guest viewer removes them from the network once no site
+    has them, and they can be invited again.
+  - Super admins can always get past Site Protection.
+  - New-site welcome emails link to the site's own login page.
+  - On networks where sites sit in folders, a site's admin area is protected
+    the same as the main site's, and Claude can connect to each site.
+  - Single sign-on no longer signs in network users who aren't on the site.
+    With auto-register on, it adds them on the default role.
+  - View as role works for super admins, and a preview stays on the site it
+    was started on.
+  - Updates clear the page cache on every site. Closing support access on one
+    site no longer signs support out of the others. The plugins badge counts
+    network-wide plugins. robots.txt settings on folder-style subsites now say
+    they only work on the main site.
+
 ## [1.96.0] - 2026-10-22
 
 ### Added

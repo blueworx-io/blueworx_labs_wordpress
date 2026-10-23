@@ -671,7 +671,8 @@ function blueworx_render_admin_topbar() {
 			<?php
 			// Viewing as another role is a control in the sidebar now, not a
 			// pill here — see includes/view-as-role.php. What is left in this
-			// bar is View site and who you are.
+			// bar is My Sites (multisite only), View site and who you are.
+			blueworx_render_topbar_sites();
 			?>
 			<a class="bw-topbar-site" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener noreferrer">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="15" height="15" aria-hidden="true" focusable="false">

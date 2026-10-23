@@ -95,6 +95,43 @@ function blueworx_robots_txt_file_exists() {
 }
 
 /**
+ * Whether this site's robots.txt settings can only ever do anything on the main site.
+ *
+ * On a network whose sites live in folders (example.com/shop/), search engines
+ * only ever ask for /robots.txt at the root of the domain, which is the main
+ * site. Nothing asks for example.com/shop/robots.txt, so a subsite's settings
+ * are never served. No code can change that: it is where crawlers look. A
+ * network of subdomains gives every site its own root, so it is not affected.
+ *
+ * @return bool True on a subsite of a folder-style network.
+ */
+function blueworx_robots_txt_only_on_main_site() {
+	return is_multisite() && ! is_subdomain_install() && ! is_main_site();
+}
+
+/**
+ * The note that replaces the robots.txt settings where they would do nothing.
+ *
+ * @return string Notice HTML, or an empty string where the settings work.
+ */
+function blueworx_robots_txt_main_site_notice() {
+	if ( ! blueworx_robots_txt_only_on_main_site() ) {
+		return '';
+	}
+
+	return blueworx_ds_notice(
+		array(
+			'tone' => 'info',
+			'text' => sprintf(
+				/* translators: %s: the main site's robots.txt address. */
+				__( 'These settings only take effect on the main site. Sites on this network share one address, and search engines only read the robots.txt at its root, %s, so anything saved here would never be seen. Change the rules from the main site instead.', 'blueworx-labs-wordpress' ),
+				get_home_url( get_main_site_id(), '/robots.txt' )
+			),
+		)
+	);
+}
+
+/**
  * Serves the saved content in place of the generated robots.txt.
  *
  * Returns the saved value outright rather than appending to core's output. Two

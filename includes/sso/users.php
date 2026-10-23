@@ -88,6 +88,14 @@ function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 					return new WP_Error( 'blueworx_sso_already_linked', __( 'That account is already connected to a different sign-in.', 'blueworx-labs-wordpress' ) );
 				}
 
+				// Checked before linking, so somebody turned away from this site is
+				// not left tied to the identity anyway.
+				$admitted = blueworx_sso_admit_to_site( $existing, $email );
+
+				if ( is_wp_error( $admitted ) ) {
+					return $admitted;
+				}
+
 				// From here the subject is the key, so a later email change at either
 				// end cannot detach or hijack the account.
 				blueworx_sso_link( $existing->ID, $subject, $issuer );
@@ -118,6 +126,12 @@ function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 
 		blueworx_sso_link( $user->ID, $subject, $issuer );
 		$is_new = true;
+	} else {
+		$admitted = blueworx_sso_admit_to_site( $user, $email );
+
+		if ( is_wp_error( $admitted ) ) {
+			return $admitted;
+		}
 	}
 
 	/**
@@ -134,6 +148,49 @@ function blueworx_sso_resolve_user( $claims, $intent = 'login' ) {
 	do_action( 'blueworx_sso_user_authenticated', $user->ID, $claims, $is_new, $intent );
 
 	return $user;
+}
+
+/**
+ * Makes sure somebody with an account on the network also belongs to this site.
+ *
+ * On a network, accounts are shared but sites are not: an account found by its
+ * email or subject may belong only to another site, and signing it in here
+ * would leave it with no role at all. Such a person is let in only on the terms
+ * a newcomer would be — joining switched on, an email domain the site accepts —
+ * and then on the role a newcomer would get. Otherwise they are refused exactly
+ * as somebody with no account is.
+ *
+ * A single site has no other sites, so nothing here applies to one.
+ *
+ * @param WP_User $user  The account found.
+ * @param string  $email Email address from the verified claims.
+ * @return true|WP_Error True when they may carry on.
+ */
+function blueworx_sso_admit_to_site( $user, $email ) {
+	if ( ! is_multisite() ) {
+		return true;
+	}
+
+	// A super admin can already reach every site on the network.
+	if ( is_super_admin( $user->ID ) || is_user_member_of_blog( $user->ID, get_current_blog_id() ) ) {
+		return true;
+	}
+
+	if ( ! blueworx_sso_email_domain_allowed( $email ) ) {
+		return new WP_Error( 'blueworx_sso_domain_not_allowed', __( 'That email address cannot be given an account here.', 'blueworx-labs-wordpress' ) );
+	}
+
+	if ( '1' !== blueworx_sso_option( 'auto_register', '0' ) ) {
+		return new WP_Error( 'blueworx_sso_no_account', __( 'There is no account here for that sign-in.', 'blueworx-labs-wordpress' ) );
+	}
+
+	$added = add_user_to_blog( get_current_blog_id(), $user->ID, blueworx_sso_safe_role( blueworx_sso_option( 'default_role', 'subscriber' ) ) );
+
+	if ( is_wp_error( $added ) ) {
+		return new WP_Error( 'blueworx_sso_add_failed', __( 'The account could not be added to this site.', 'blueworx-labs-wordpress' ) );
+	}
+
+	return true;
 }
 
 /**
@@ -220,22 +277,30 @@ function blueworx_sso_claim_is_true( $value ) {
  * @return WP_User|null
  */
 function blueworx_sso_find_by_subject( $subject, $issuer ) {
-	$users = get_users(
-		array(
-			'number'     => 2,
-			'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Both keys are indexed by WordPress and this runs once per sign-in.
-				'relation' => 'AND',
-				array(
-					'key'   => 'blueworx_sso_subject',
-					'value' => $subject,
-				),
-				array(
-					'key'   => 'blueworx_sso_issuer',
-					'value' => $issuer,
-				),
+	$args = array(
+		'number'     => 2,
+		'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Both keys are indexed by WordPress and this runs once per sign-in.
+			'relation' => 'AND',
+			array(
+				'key'   => 'blueworx_sso_subject',
+				'value' => $subject,
 			),
-		)
+			array(
+				'key'   => 'blueworx_sso_issuer',
+				'value' => $issuer,
+			),
+		),
 	);
+
+	// On a network the link lives on the shared account, so look across the
+	// whole network. Left to itself the query only sees this site's members,
+	// and somebody linked on another site would slip past to the email lookup.
+	// Whether they belong here is decided afterwards, in one place.
+	if ( is_multisite() ) {
+		$args['blog_id'] = 0;
+	}
+
+	$users = get_users( $args );
 
 	// More than one match means the meta has been tampered with or hand-edited.
 	// Refusing is the only safe answer; guessing would sign someone into whichever
