@@ -38,6 +38,7 @@ const SCRIPTS = [
   'admin-menu-badges-test.php',
   'robots-txt-test.php',
   'cache-purge-test.php',
+  'network-menu-icons-test.php',
 ];
 
 let phpAvailable = true;

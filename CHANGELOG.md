@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.2] - 2026-10-23
+
+### Fixed
+- **Network admin menu icons.** Items in the network admin sidebar showed two
+  icons each. They now show one, and Sites and Settings get icons in the
+  BlueWorx style too.
+
 ## [1.96.1] - 2026-10-22
 
 ### Fixed
