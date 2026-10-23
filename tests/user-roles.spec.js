@@ -57,6 +57,14 @@ test.describe('BlueWorx user roles — the role control', () => {
     await expect(page.locator('select#role')).toBeDisabled();
     // The site's default role starts ticked, exactly as the dropdown did.
     await expect(page.locator(`${ROLE_BOX}:checked`)).toHaveCount(1);
+
+    // Each box is a checkbox, not a bar: core sizes every input in this form
+    // by id, which once stretched them across the row and squeezed every role
+    // name into a column one word wide (#239).
+    const box = await page.locator(ROLE_BOX).first().boundingBox();
+    expect(box.width).toBeLessThan(24);
+    const name = await page.locator('.blueworx-role-choice').first().boundingBox();
+    expect(name.height).toBeLessThan(40);
   });
 
   test('roles are listed alphabetically', async ({ page }) => {
