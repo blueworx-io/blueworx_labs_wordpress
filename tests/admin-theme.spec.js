@@ -725,6 +725,11 @@ test.describe('BlueWorx admin theme', () => {
     const posts = page.locator('#menu-posts');
     await posts.hover();
 
+    // WordPress's hover handling opens it a moment after the pointer settles,
+    // by adding `opensub`. Until then a closed fly-out still counts as visible
+    // to Playwright (it is only parked off-screen), so wait for the real thing.
+    await expect(posts).toHaveClass(/\bopensub\b/);
+
     const submenu = posts.locator('.wp-submenu');
     await expect(submenu).toBeVisible();
 
@@ -769,6 +774,8 @@ test.describe('BlueWorx admin theme', () => {
 
     const lastItem = page.locator('#adminmenu > li.menu-top.wp-not-current-submenu').last();
     await lastItem.hover();
+    // Opened by WordPress's hover handling, a moment after the pointer settles.
+    await expect(lastItem).toHaveClass(/\bopensub\b/);
 
     const submenu = lastItem.locator('.wp-submenu');
     await expect(submenu).toBeVisible();
