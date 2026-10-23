@@ -209,6 +209,9 @@ function blueworx_get_feature_definitions() {
 			'description' => __( 'Adds a floating language button that translates the page on the visitor\'s own device. Chrome and Edge only; no effect on search engines.', 'blueworx-labs-wordpress' ),
 			'section'     => 'translation',
 			'detail'      => 'translate',
+			// Off until a site owner chooses it: the button is visible to every
+			// visitor, so it should never appear on a site by surprise.
+			'default'     => '0',
 		),
 		'emails'                => array(
 			'label'       => __( 'Email notifications reduced', 'blueworx-labs-wordpress' ),

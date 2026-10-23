@@ -467,7 +467,17 @@ body.wp-admin #wpwrap {
      2. The current item renders its submenu inline, inside the same li, so the
         li's background also floods the rows beneath it.
    Together that reads as "hovering the top item highlights the whole section".
-   State belongs to the anchor and nothing else; strip the li right back. */
+   State belongs to the anchor and nothing else; strip the li right back.
+
+   The idle li is stripped too, not only its hover states. WordPress gives each
+   menu li the same class as the body of that plugin's screen (for SureDash, both
+   are .toplevel_page_portal), so a plugin that colours its own screen through
+   that class paints our sidebar row as well. SureDash's near-white page
+   background did exactly that: on its own screens its open menu turned white
+   with unreadable grey items, then went dark again the moment the pointer was
+   over it, because only the hover state was being stripped. The id in this
+   selector outranks any such class-only rule. */
+#adminmenu li.menu-top,
 #adminmenu li.menu-top:hover,
 #adminmenu li.menu-top.opensub,
 #adminmenu li.menu-top:focus-within {
@@ -484,7 +494,8 @@ body.wp-admin #wpwrap {
 }
 
 #adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:hover div.wp-menu-name,
-#adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:focus div.wp-menu-name {
+#adminmenu li.menu-top:not(.current):not(.wp-has-current-submenu) > a.menu-top:focus div.wp-menu-name,
+#adminmenu li.opensub:not(.current) > a.menu-top div.wp-menu-name {
 	color: var(--bw-white);
 }
 
@@ -1189,10 +1200,46 @@ div.error {
 	   positioned fly-out (that is the bug this replaces), and plain overflow does
 	   not clip fixed descendants. The vertical offset is supplied per item by
 	   assets/js/admin-menu-flyout.js, which is the one thing fixed positioning
-	   cannot work out for itself. */
+	   cannot work out for itself.
+
+	   margin-top is pinned because WordPress writes its own correction for a
+	   fly-out near the foot of the page straight onto the element as an inline
+	   style, worked out for an absolutely-positioned fly-out and the page's
+	   height. Added on top of our measured offset it shoved the fly-out up the
+	   screen by a different amount each time, which is the jump. An inline
+	   style can only be outranked with !important; the script already allows
+	   for the foot of the screen itself. */
 	body:not(.folded) #adminmenu .wp-not-current-submenu .wp-submenu {
 		position: fixed;
 		left: var(--bwt-sidebar-w);
+		margin-top: 0 !important;
+	}
+
+	/* Where an open fly-out sits. Core shows a fly-out by moving it from
+	   top:-1000em to top:-1px, which only means "beside the item" for an
+	   absolutely-positioned one; on a fixed one it means the top of the window,
+	   under the top bar. So the open states read the script's measurement
+	   instead, and a closed fly-out keeps core's off-screen value whatever was
+	   last measured for it. The open states are core's own: `opensub`, which
+	   its hover handling and keyboard focus add, and a focused top-level link. */
+	body:not(.folded) #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu,
+	body:not(.folded) #adminmenu li.wp-not-current-submenu > a.menu-top:focus + .wp-submenu {
+		top: var(--blueworx-flyout-top, var(--bwt-topbar-h));
+	}
+
+	/* A pointer bridge across the gap between the item and its fly-out. The item
+	   stops 8px short of the sidebar's edge (its margin) and the fly-out starts
+	   at the edge, so on the way across the pointer was briefly over neither and
+	   WordPress began closing the menu. This invisible strip belongs to the
+	   fly-out, so the pointer never leaves the item on the way. It only exists
+	   while the fly-out is on screen, and is never painted. */
+	body:not(.folded) #adminmenu .wp-not-current-submenu .wp-submenu::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		right: 100%;
+		width: calc(var(--bw-space-4) + 8px);
 	}
 
 	body:not(.folded) .bw-brand {

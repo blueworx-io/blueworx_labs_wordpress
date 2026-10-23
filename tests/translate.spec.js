@@ -11,7 +11,40 @@ import {
   login,
   restoreAll,
   openSectionFor,
+  setFeature,
 } from './helpers.js';
+
+/**
+ * Switches on-page translation on or off and saves.
+ *
+ * It is off by default (#238), so every test here needs it switched on first.
+ *
+ * @param {import('@playwright/test').Browser} browser Playwright browser.
+ * @param {boolean} on Whether it should end up on.
+ * @return {Promise<void>} Resolves once the save has landed.
+ */
+async function setTranslate(browser, on) {
+  const page = await browser.newPage();
+  // browser.newPage() bypasses the page fixture's reduced-motion opt-out, and
+  // without it headless Chromium stops painting after the save. See helpers.js.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await login(page);
+  await page.goto('/wp-admin/admin.php?page=blueworx-labs-wordpress&section=translation');
+  await setFeature(page, 'translate', on);
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
+  await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
+  await page.close();
+}
+
+test.beforeAll(async ({ browser }) => {
+  test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No test site configured.');
+  await setTranslate(browser, true);
+});
+
+test.afterAll(async ({ browser }) => {
+  test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No test site configured.');
+  await setTranslate(browser, false);
+});
 
 // The section nav opens whichever section the URL names, so every navigation
 // in this spec lands with the Translation panel already open.

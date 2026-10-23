@@ -271,10 +271,21 @@ function blueworx_view_as_current_role() {
  * it, it is not granted here. A leftover meta value on a non-administrator
  * therefore narrows their access and cannot widen it.
  *
- * @param array $allcaps Capabilities the user holds.
+ * Only the person previewing is narrowed. The filter also runs when a screen
+ * checks somebody else — "can this author edit this post?" — and that answer
+ * must stay the other person's own (#236).
+ *
+ * @param array        $allcaps Capabilities the user holds.
+ * @param array        $caps    Primitive capabilities being checked.
+ * @param array        $args    The original check's arguments.
+ * @param WP_User|null $user    The user being checked.
  * @return array Filtered capabilities.
  */
-function blueworx_view_as_filter_caps( $allcaps ) {
+function blueworx_view_as_filter_caps( $allcaps, $caps = array(), $args = array(), $user = null ) {
+	if ( $user && get_current_user_id() !== (int) $user->ID ) {
+		return $allcaps;
+	}
+
 	$role_slug = blueworx_view_as_current_role();
 
 	if ( '' === $role_slug ) {
@@ -504,7 +515,7 @@ function blueworx_view_as_print_sidebar_control() {
 }
 
 if ( blueworx_feature_enabled( 'view_as_role' ) ) {
-	add_filter( 'user_has_cap', 'blueworx_view_as_filter_caps' );
+	add_filter( 'user_has_cap', 'blueworx_view_as_filter_caps', 10, 4 );
 	add_filter( 'map_meta_cap', 'blueworx_view_as_super_admin_caps', 10, 3 );
 	add_action( 'admin_post_blueworx_view_as', 'blueworx_view_as_handle' );
 
