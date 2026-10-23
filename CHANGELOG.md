@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.3] - 2026-10-23
+
+### Changed
+- **On-page translation is off by default.** Sites that never chose it no
+  longer show the language button. Switch it on under Enhancements to bring it
+  back. Sites that switched it on keep it.
+
+### Fixed
+- **Signing in with an application password no longer crashes the site.**
+- **Sidebar hover menus behave.** They open beside their item, stay open while
+  you move onto them, and every item can be clicked. The SureDash menu keeps
+  the sidebar's colours.
+- **Role checkboxes on the Add User screen are normal checkboxes again**, with
+  each role name on one line.
+- **Previewing a role only changes your own permissions**, not anyone else's.
+
 ## [1.96.2] - 2026-10-23
 
 ### Fixed
