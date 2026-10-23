@@ -10,8 +10,19 @@
  * fly-out fixed and this script supplies the one thing fixed positioning loses:
  * the vertical offset, which must be read from the item's live bounding rect.
  *
- * Hover and focus are handled together: a fly-out reachable only by mouse is not
- * reachable at all for keyboard users.
+ * This script only MEASURES. It never opens or closes anything. WordPress's own
+ * hover handling (hoverIntent in wp-admin/js/common.js) decides when a fly-out
+ * opens and closes, by adding and removing `opensub` on the item. An earlier
+ * version opened the fly-out itself, on the first mouseover, and shut it on the
+ * first mouseout. That threw away core's grace period: moving the pointer from
+ * an item towards its fly-out, the slightest diagonal crossed the neighbouring
+ * item and swapped menus, and crossing the gap beside the item shut it outright.
+ * Writing the offset as an inline `top` also made core believe every fly-out was
+ * already open, so core stopped managing them at all.
+ *
+ * The offset goes into a custom property, --blueworx-flyout-top, which the
+ * stylesheet only reads while the item is actually open. So a measurement left
+ * behind on a closed item can never hold its fly-out on the screen.
  */
 ( function () {
 	var menu = document.getElementById( 'adminmenu' );
@@ -20,114 +31,94 @@
 		return;
 	}
 
+	var wrap = document.getElementById( 'adminmenuwrap' );
+
 	/**
-	 * Positions an item's fly-out beside it, flipping up near the viewport foot.
+	 * Measures where an item's fly-out should sit and hands that to the CSS.
 	 *
-	 * @param {HTMLElement} item Menu list item.
+	 * @param {HTMLElement} item Top-level menu list item.
 	 */
 	function place( item ) {
-		if ( document.body.classList.contains( 'folded' ) ) {
+		var submenu = item.querySelector( ':scope > .wp-submenu' );
+
+		// Only the expanded sidebar's fly-outs are fixed. Folded, auto-folded
+		// (783px to 960px) and the phone drawer all leave core's own positioning
+		// in charge, and an offset measured against the viewport would throw an
+		// absolutely-positioned fly-out far down the page. Asking the element
+		// covers every one of those states at once.
+		if ( ! submenu || 'fixed' !== window.getComputedStyle( submenu ).position ) {
 			return;
 		}
 
-		var submenu = item.querySelector( '.wp-submenu' );
-
-		if ( ! submenu || ! item.classList.contains( 'wp-not-current-submenu' ) ) {
-			return;
-		}
-
-		var rect = item.getBoundingClientRect();
-
-		// Measure before deciding: the height is only known once it is laid out.
-		submenu.style.top = rect.top + 'px';
-
+		// Line up with the item's link, not the list item. The first item of each
+		// group carries that group's heading ("CONTENT", "SITE") as a ::before
+		// inside its list item, so the list item starts a heading's height above
+		// the row you are pointing at, and the fly-out opened beside the heading.
+		var anchor = item.querySelector( ':scope > a.menu-top' ) || item;
+		var top = anchor.getBoundingClientRect().top;
 		var height = submenu.offsetHeight;
 
-		if ( rect.top + height > window.innerHeight ) {
-			submenu.style.top = Math.max( 0, window.innerHeight - height ) + 'px';
+		// Near the foot of the screen, lift it so its last item stays on screen.
+		if ( top + height > window.innerHeight ) {
+			top = window.innerHeight - height;
 		}
+
+		// But never above the foot of the top bar. The bar is fixed and paints
+		// over the fly-out, so a fly-out lifted to the top of the window opened
+		// with its first items underneath the bar, visible round the edges but
+		// impossible to click.
+		var floor = wrap ? wrap.getBoundingClientRect().top : 0;
+
+		top = Math.max( floor, top );
+
+		submenu.style.setProperty( '--blueworx-flyout-top', Math.round( top ) + 'px' );
 	}
 
 	/**
-	 * Clears an inline offset so the item returns to its stylesheet position.
-	 *
-	 * @param {HTMLElement} item Menu list item.
+	 * Re-measures every fly-out that is open now.
 	 */
-	function clear( item ) {
-		var submenu = item.querySelector( '.wp-submenu' );
+	function placeOpen() {
+		var open = menu.querySelectorAll( ':scope > li.menu-top.opensub, :scope > li.menu-top:focus-within' );
 
-		if ( submenu ) {
-			submenu.style.top = '';
-		}
+		Array.prototype.forEach.call( open, place );
 	}
 
-	/**
-	 * Resolves the menu item an event happened inside.
-	 *
-	 * @param {Event} event DOM event.
-	 * @return {HTMLElement|null} The item, or null.
-	 */
-	function itemFor( event ) {
-		return event.target && event.target.closest
-			? event.target.closest( '#adminmenu > li.menu-top' )
-			: null;
-	}
+	// Core opens a fly-out by adding `opensub` to its item. Measure at that
+	// moment: the observer runs before the browser paints, so the fly-out never
+	// shows at the wrong height first.
+	if ( 'MutationObserver' in window ) {
+		new window.MutationObserver( function ( records ) {
+			records.forEach( function ( record ) {
+				var item = record.target;
 
-	menu.addEventListener( 'mouseover', function ( event ) {
-		var item = itemFor( event );
-
-		if ( item ) {
-			place( item );
-		}
-	} );
-
-	menu.addEventListener( 'mouseout', function ( event ) {
-		var item = itemFor( event );
-
-		if ( item && ! item.contains( event.relatedTarget ) ) {
-			clear( item );
-		}
-	} );
-
-	menu.addEventListener( 'focusin', function ( event ) {
-		var item = itemFor( event );
-
-		if ( item ) {
-			place( item );
-		}
-	} );
-
-	menu.addEventListener( 'focusout', function ( event ) {
-		var item = itemFor( event );
-
-		if ( item && ! item.contains( event.relatedTarget ) ) {
-			clear( item );
-		}
-	} );
-
-	/**
-	 * Re-places the currently open fly-out when the sidebar scrolls.
-	 *
-	 * The fly-out is `position: fixed`, so it does not move with #adminmenuwrap's
-	 * own scroll the way an absolutely-positioned fly-out would. Without this,
-	 * scrolling the sidebar while hovering a parent leaves the fly-out floating
-	 * over whatever is now at its old screen position instead of tracking the
-	 * item it belongs to.
-	 */
-	var adminmenuwrap = document.getElementById( 'adminmenuwrap' );
-
-	if ( adminmenuwrap ) {
-		adminmenuwrap.addEventListener(
-			'scroll',
-			function () {
-				var current = menu.querySelector( '#adminmenu > li.menu-top .wp-submenu[style*="top"]' );
-				var item = current ? current.closest( '#adminmenu > li.menu-top' ) : null;
-
-				if ( item ) {
+				if ( item.parentNode === menu && item.classList.contains( 'opensub' ) ) {
 					place( item );
 				}
-			},
-			{ passive: true }
-		);
+			} );
+		} ).observe( menu, { subtree: true, attributes: true, attributeFilter: [ 'class' ] } );
 	}
+
+	// A focused top-level link shows its fly-out through CSS alone, with no
+	// `opensub`, so keyboard focus is measured separately. A fly-out reachable
+	// only by mouse is not reachable at all for keyboard users.
+	menu.addEventListener( 'focusin', function ( event ) {
+		var item = event.target && event.target.closest
+			? event.target.closest( '#adminmenu > li.menu-top' )
+			: null;
+
+		if ( item ) {
+			place( item );
+		}
+	} );
+
+	// The fly-out is `position: fixed`, so it does not move with #adminmenuwrap's
+	// own scroll the way an absolutely-positioned fly-out would. Without this,
+	// scrolling the sidebar while hovering a parent leaves the fly-out floating
+	// over whatever is now at its old screen position instead of tracking the
+	// item it belongs to.
+	if ( wrap ) {
+		wrap.addEventListener( 'scroll', placeOpen, { passive: true } );
+	}
+
+	window.addEventListener( 'resize', placeOpen, { passive: true } );
 }() );
