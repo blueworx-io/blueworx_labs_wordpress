@@ -31,7 +31,12 @@ function blueworx_filter_application_passwords_available( $available, $user ) {
 		return false;
 	}
 
-	if ( ! current_user_can( 'manage_options' ) || ! user_can( $user, 'manage_options' ) ) {
+	// Decide from the user being checked only. WordPress runs this filter
+	// while it is still working out who is signed in with an application
+	// password, so asking current_user_can() here asks again, and again,
+	// until PHP runs out of stack (#211). Who may manage another person's
+	// passwords is already WordPress's own edit_user check.
+	if ( ! user_can( $user, 'manage_options' ) ) {
 		return false;
 	}
 
