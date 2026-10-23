@@ -468,4 +468,19 @@ check( 'leaving its own filter to do the narrowing', empty( blueworx_view_as_fil
 unset( $GLOBALS['super_admin'] );
 blueworx_view_as_store_role( 1, '' );
 
+echo "\nA preview only narrows the person previewing (#236)\n";
+
+// A screen asking "can this author edit this post?" checks somebody else.
+// Their answer must be their own, not the previewed role's.
+$GLOBALS['reader'] = 'administrator';
+blueworx_view_as_store_role( 1, 'subscriber' );
+
+$other = blueworx_view_as_filter_caps( $GLOBALS['roles']['administrator']['capabilities'], array(), array(), (object) array( 'ID' => 2 ) );
+$self  = blueworx_view_as_filter_caps( $GLOBALS['roles']['administrator']['capabilities'], array(), array(), (object) array( 'ID' => 1 ) );
+
+check( 'another user keeps their own permissions', ! empty( $other['manage_options'] ), true );
+check( 'while the previewer is still held to the role', empty( $self['manage_options'] ), true );
+
+blueworx_view_as_store_role( 1, '' );
+
 finish();
