@@ -1022,6 +1022,9 @@ function blueworx_swap_admin_menu_icons() {
 }
 if ( blueworx_feature_enabled( 'admin_theme' ) ) {
 	add_action( 'admin_menu', 'blueworx_swap_admin_menu_icons', 997 );
+	// The network admin builds its menu on its own hook. Without this its rows
+	// keep core's icon and gain ours beside it.
+	add_action( 'network_admin_menu', 'blueworx_swap_admin_menu_icons', 997 );
 }
 
 /**
