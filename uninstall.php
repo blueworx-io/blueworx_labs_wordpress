@@ -34,15 +34,32 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 // references executes here except the functions called explicitly below.
 require_once __DIR__ . '/includes/support-access.php';
 
-blueworx_for_each_site( 'blueworx_uninstall_site', true );
+// A site on the BlueWorx theme still uses every setting and account below, so
+// deleting the old plugin after moving to the theme leaves that site alone.
+$blueworx_theme_in_use = false;
+
+blueworx_for_each_site(
+	function () use ( &$blueworx_theme_in_use ) {
+		if ( blueworx_labs_theme_takes_over() ) {
+			$blueworx_theme_in_use = true;
+			return;
+		}
+
+		blueworx_uninstall_site();
+	},
+	true
+);
 
 // The per-user meta the invitations wrote. User meta belongs to the whole
-// network rather than to one site, so this runs once, not per site.
-delete_metadata( 'user', 0, '_blueworx_external_invited_by', '', true );
-delete_metadata( 'user', 0, '_blueworx_external_invited_at', '', true );
-delete_metadata( 'user', 0, '_blueworx_external_expires_at', '', true );
-delete_metadata( 'user', 0, '_blueworx_external_note', '', true );
-delete_metadata( 'user', 0, '_blueworx_external_last_seen', '', true );
+// network rather than to one site, so this runs once, not per site, and not
+// at all while a site on the theme may still have guest viewers.
+if ( ! $blueworx_theme_in_use ) {
+	delete_metadata( 'user', 0, '_blueworx_external_invited_by', '', true );
+	delete_metadata( 'user', 0, '_blueworx_external_invited_at', '', true );
+	delete_metadata( 'user', 0, '_blueworx_external_expires_at', '', true );
+	delete_metadata( 'user', 0, '_blueworx_external_note', '', true );
+	delete_metadata( 'user', 0, '_blueworx_external_last_seen', '', true );
+}
 
 /**
  * Removes the plugin's settings, role and accounts from the current site.

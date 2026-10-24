@@ -338,6 +338,42 @@ function blueworx_for_each_site( $callback, $every_site ) {
 }
 
 /**
+ * Whether the current site runs the BlueWorx theme, which takes over from here.
+ *
+ * The 2.0 theme is this plugin moved into a theme, with the same accounts,
+ * roles and settings. Once it runs, the guest viewer and support accounts are
+ * still kept read-only and the settings are still in use, so neither switching
+ * this plugin off nor deleting it may clear them. The theme shares this
+ * plugin's text domain, which no other theme has.
+ *
+ * Lives here so uninstall.php can ask too.
+ *
+ * @return bool
+ */
+function blueworx_labs_theme_takes_over() {
+	$theme = wp_get_theme( (string) get_option( 'template' ) );
+
+	return $theme->exists() && 'blueworx-labs-wordpress' === $theme->get( 'TextDomain' );
+}
+
+/**
+ * Removes the guest viewer and support accounts from the current site.
+ *
+ * Left alone on a site that runs the BlueWorx theme, so moving from this
+ * plugin to the theme keeps guests and the support key.
+ *
+ * @return void
+ */
+function blueworx_labs_deactivate_site() {
+	if ( blueworx_labs_theme_takes_over() ) {
+		return;
+	}
+
+	blueworx_support_on_deactivate();
+	blueworx_external_on_deactivate();
+}
+
+/**
  * Deletes the support user and role.
  *
  * On a network the one support account is shared by every site that uses

@@ -468,6 +468,34 @@ function date_i18n( $format, $time ) {
 	return gmdate( 'j F Y', (int) $time );
 }
 
+/**
+ * A theme, by folder. Only "blueworx" carries the plugin's text domain.
+ */
+class Test_Theme {
+	/**
+	 * The theme's folder.
+	 *
+	 * @var string
+	 */
+	private $folder;
+
+	public function __construct( $folder ) {
+		$this->folder = $folder;
+	}
+
+	public function exists() {
+		return '' !== $this->folder;
+	}
+
+	public function get( $header ) {
+		return 'TextDomain' === $header && 'blueworx' === $this->folder ? 'blueworx-labs-wordpress' : '';
+	}
+}
+
+function wp_get_theme( $stylesheet = '' ) {
+	return new Test_Theme( $stylesheet );
+}
+
 require_once __DIR__ . '/../../includes/support-access.php';
 require_once __DIR__ . '/../../includes/external-access.php';
 
@@ -739,6 +767,42 @@ check( 'support stays for site 2', sites_of( $support ), array( 2 ) );
 check( 'and so does site 2\'s viewer', sites_of( $elsewhere ), array( 2 ) );
 
 // -----------------------------------------------------------------------------
+echo "\nA site already on the BlueWorx theme keeps its accounts\n";
+
+reset_network( false );
+update_option( 'template', 'blueworx' );
+
+$support = give_support( 1, false );
+$viewer  = invite_viewer( 'kept@example.com' );
+
+blueworx_labs_test_deactivate( false );
+
+check( 'deactivating keeps the support account', account_exists( $support ), true );
+check( 'and its key', blueworx_support_has_key(), true );
+check( 'and the viewer', account_exists( $viewer ), true );
+
+update_option( 'template', 'twentytwentyfive' );
+blueworx_labs_test_deactivate( false );
+
+check( 'any other theme still has them removed', array( account_exists( $support ), account_exists( $viewer ) ), array( false, false ) );
+
+reset_network( true );
+
+$viewer_one = invite_viewer( 'one@example.com' );
+$viewer_two = on_site(
+	2,
+	function () {
+		update_option( 'template', 'blueworx' );
+		return invite_viewer( 'two@example.com' );
+	}
+);
+
+blueworx_labs_test_deactivate( true );
+
+check( 'on a network, a site on the theme keeps its viewer', account_exists( $viewer_two ), true );
+check( 'while a site without it loses theirs', account_exists( $viewer_one ), false );
+
+// -----------------------------------------------------------------------------
 echo "\nDeleting the plugin from a network cleans every site (#234)\n";
 
 reset_network( true );
@@ -755,8 +819,23 @@ $left_behind = on_site(
 	}
 );
 
+// A fourth site has already moved to the theme, which still uses all of it.
+$GLOBALS['sites'] = array( 1, 2, 3, 4 );
+$on_theme         = on_site(
+	4,
+	function () {
+		update_option( 'template', 'blueworx' );
+		update_option( 'blueworx_tracking_ga', 'G-456' );
+		return invite_viewer( 'theme@example.com' );
+	}
+);
+
 define( 'WP_UNINSTALL_PLUGIN', 'blueworx-labs-wordpress/blueworx-labs-wordpress.php' );
 require __DIR__ . '/../../uninstall.php';
+
+check( 'a site on the theme keeps its settings', option_on( 4, 'blueworx_tracking_ga' ), 'G-456' );
+check( 'and its viewer', account_exists( $on_theme ), true );
+check( 'and the viewer keeps their expiry', blueworx_external_expires_at( $on_theme ) > time(), true );
 
 check( 'the support account is deleted from the network', account_exists( $support ), false );
 check( 'site 2\'s support key is gone', on_site( 2, 'blueworx_support_has_key' ), false );
@@ -779,11 +858,5 @@ finish();
  * @return void
  */
 function blueworx_labs_test_deactivate( $network_wide ) {
-	blueworx_for_each_site(
-		function () {
-			blueworx_support_on_deactivate();
-			blueworx_external_on_deactivate();
-		},
-		$network_wide
-	);
+	blueworx_for_each_site( 'blueworx_labs_deactivate_site', $network_wide );
 }

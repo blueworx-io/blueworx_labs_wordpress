@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.4] - 2026-10-24
+
+### Fixed
+- **Moving to the BlueWorx theme keeps guest viewers and the support key.**
+  Switching this plugin off, or deleting it, on a site already using the
+  BlueWorx theme no longer removes guest viewers, the support account or any
+  settings, since the theme carries on using them. Every other site is cleaned
+  up as before.
+
 ## [1.96.3] - 2026-10-23
 
 ### Changed
