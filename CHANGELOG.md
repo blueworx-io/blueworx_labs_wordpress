@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.6] - 2026-10-25
+
+### Fixed
+- **Claude now sees who did a Forge chore or reminder, and how long it took.**
+  These showed no person and no hours, so audits couldn't count the time.
+  Listing someone's tasks now includes their chores and reminders too.
+
 ## [1.96.5] - 2026-10-25
 
 ### Fixed
