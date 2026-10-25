@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.5] - 2026-10-25
+
+### Fixed
+- **The plugin can be deleted once a site is on the BlueWorx theme.** Deleting
+  it there stopped with "There has been a critical error". It now deletes
+  cleanly and the site keeps its settings, guest viewers and support key.
+
 ## [1.96.4] - 2026-10-24
 
 ### Fixed
