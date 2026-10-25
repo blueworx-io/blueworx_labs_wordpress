@@ -282,7 +282,10 @@ function forge_matches( $item, $q ) {
 		}
 	}
 
-	if ( isset( $q['person'] ) && ! array_intersect( (array) $q['person'], array( $item['primary_user_id'], $item['reviewer_id'] ) ) ) {
+	$assignees = $item['assignees'] ?? array();
+	$assignees = is_string( $assignees ) ? (array) json_decode( $assignees, true ) : (array) $assignees;
+
+	if ( isset( $q['person'] ) && ! array_intersect( (array) $q['person'], array_merge( array( $item['primary_user_id'], $item['reviewer_id'] ), $assignees ) ) ) {
 		return false;
 	}
 
@@ -1478,6 +1481,54 @@ check(
 	),
 	'That change could not be saved. assignee_hours: At most 100 hours.'
 );
+
+echo "\nPeople and hours on chores and reminders\n";
+
+// Forge keeps a chore's or reminder's people in a list and each person's time
+// in hours_each, not in the assignee seat. Its REST answers send the list
+// decoded; a raw row would still hold it as JSON, so both are tried.
+forge_reset();
+$GLOBALS['forge']['items']['wi_c1'] = array_merge(
+	$GLOBALS['forge']['items']['wi_f2'],
+	array(
+		'id'          => 'wi_c1',
+		'title'       => 'Weekly backups check',
+		'parent_id'   => '',
+		'reviewer_id' => '',
+		'assignees'   => array( 'usr_sam' ),
+		'hours_each'  => 0.75,
+	)
+);
+$GLOBALS['forge']['items']['wi_c2'] = array_merge(
+	$GLOBALS['forge']['items']['wi_c1'],
+	array(
+		'id'         => 'wi_c2',
+		'title'      => 'Renew the domain',
+		'assignees'  => '["usr_luke"]',
+		'hours_each' => '0.5',
+	)
+);
+
+$listed = blueworx_mcp_tool_forge_list_tasks( array() );
+$chores = array_values(
+	array_filter(
+		$listed['tasks'],
+		function ( $task ) {
+			return in_array( $task['id'], array( 'wi_c1', 'wi_c2' ), true );
+		}
+	)
+);
+check( 'a chore shows its person by name', array( $chores[0]['assignee'], $chores[0]['assignee_id'] ), array( 'Sam Jones', 'usr_sam' ) );
+check( 'and their time as the assignee\'s hours', $chores[0]['hours']['assignee'], 0.75 );
+check( 'a list still held as JSON is read too', array( $chores[1]['assignee'], $chores[1]['hours']['assignee'] ), array( 'Luke McFarland', 0.5 ) );
+check( 'a normal task keeps its own assignee and hours', array( $listed['tasks'][1]['assignee'], $listed['tasks'][1]['hours']['assignee'] ), array( 'Luke McFarland', 6.0 ) );
+
+$chore = blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_c1' ) );
+check( 'a chore in full shows its person and hours', array( $chore['assignee'], $chore['hours']['assignee'] ), array( 'Sam Jones', 0.75 ) );
+
+check( 'listing by assignee finds their chores', ids_of( blueworx_mcp_tool_forge_list_tasks( array( 'assignee' => 'Sam Jones' ) )['tasks'] ), array( 'wi_c1' ) );
+
+forge_reset();
 
 echo "\nTeam capacity\n";
 

@@ -786,6 +786,21 @@ function blueworx_mcp_forge_check_date( $value, $name ) {
 }
 
 /**
+ * The people on a recurring chore or reminder copy. Forge keeps them in a
+ * list rather than the assignee seat; its REST answers send the list decoded,
+ * a raw row still holds it as JSON.
+ *
+ * @param array $item Forge work item.
+ * @return string[] Person IDs.
+ */
+function blueworx_mcp_forge_assignees( $item ) {
+	$list = $item['assignees'] ?? array();
+	$list = is_string( $list ) ? json_decode( $list, true ) : $list;
+
+	return is_array( $list ) ? array_values( array_filter( array_map( 'strval', $list ) ) ) : array();
+}
+
+/**
  * Trims a Forge work item down to what is useful in a list.
  *
  * @param array $item   Forge work item.
@@ -794,6 +809,11 @@ function blueworx_mcp_forge_check_date( $value, $name ) {
  */
 function blueworx_mcp_forge_shape( $item, $people ) {
 	$assignee = (string) ( $item['primary_user_id'] ?? '' );
+	$chore    = blueworx_mcp_forge_assignees( $item );
+
+	if ( '' === $assignee && ! empty( $chore ) ) {
+		$assignee = $chore[0];
+	}
 
 	$out = array(
 		'id'           => (string) ( $item['id'] ?? '' ),
@@ -812,6 +832,11 @@ function blueworx_mcp_forge_shape( $item, $people ) {
 
 	foreach ( blueworx_mcp_forge_role_hours() as $arg => $column ) {
 		$out['hours'][ substr( $arg, 0, -6 ) ] = (float) ( $item[ $column ] ?? 0 );
+	}
+
+	// A chore's or reminder's time is each person's, in hours_each.
+	if ( 0.0 === $out['hours']['assignee'] && ! empty( $chore ) ) {
+		$out['hours']['assignee'] = (float) ( $item['hours_each'] ?? 0 );
 	}
 
 	foreach ( array(
@@ -1129,7 +1154,11 @@ function blueworx_mcp_tool_forge_list_tasks( $args ) {
 			continue;
 		}
 
-		if ( '' !== $assignee && (string) ( $item['primary_user_id'] ?? '' ) !== $assignee ) {
+		// A chore or reminder has no main seat; anyone on its list is assigned.
+		$main   = (string) ( $item['primary_user_id'] ?? '' );
+		$theirs = '' !== $main ? $main === $assignee : in_array( $assignee, blueworx_mcp_forge_assignees( $item ), true );
+
+		if ( '' !== $assignee && ! $theirs ) {
 			continue;
 		}
 
