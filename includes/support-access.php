@@ -15,6 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/site-helpers.php';
+
 /**
  * Length of the access window opened by the console toggle, in seconds.
  */
@@ -298,62 +300,6 @@ function blueworx_delete_owned_account( $user_id ) {
 	}
 
 	return true;
-}
-
-/**
- * Runs a callback on every site of a network, or just this one.
- *
- * Every site when this is a network and $every_site is true; otherwise once,
- * on the current site, with nothing switched. The current site is always put
- * back afterwards, even when the callback fails part way through, so a broken
- * site cannot leave the rest of the request running against the wrong one.
- *
- * Lives here for the same reason as blueworx_delete_owned_account(): both
- * deactivation and uninstall.php need it, and uninstall loads only this file.
- *
- * @param callable $callback   Work to do on each site.
- * @param bool     $every_site Whether to cover the whole network.
- * @return void
- */
-function blueworx_for_each_site( $callback, $every_site ) {
-	if ( ! is_multisite() || ! $every_site ) {
-		call_user_func( $callback );
-		return;
-	}
-
-	foreach ( get_sites(
-		array(
-			'fields' => 'ids',
-			'number' => 0,
-		)
-	) as $site_id ) {
-		switch_to_blog( (int) $site_id );
-
-		try {
-			call_user_func( $callback );
-		} finally {
-			restore_current_blog();
-		}
-	}
-}
-
-/**
- * Whether the current site runs the BlueWorx theme, which takes over from here.
- *
- * The 2.0 theme is this plugin moved into a theme, with the same accounts,
- * roles and settings. Once it runs, the guest viewer and support accounts are
- * still kept read-only and the settings are still in use, so neither switching
- * this plugin off nor deleting it may clear them. The theme shares this
- * plugin's text domain, which no other theme has.
- *
- * Lives here so uninstall.php can ask too.
- *
- * @return bool
- */
-function blueworx_labs_theme_takes_over() {
-	$theme = wp_get_theme( (string) get_option( 'template' ) );
-
-	return $theme->exists() && 'blueworx-labs-wordpress' === $theme->get( 'TextDomain' );
 }
 
 /**

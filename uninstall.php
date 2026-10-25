@@ -27,12 +27,20 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 // includes/support-access.php rather than reimplemented here because it
 // already knows the account's login and how to tear it down safely, and the
 // account itself (not just a role definition) must not survive uninstall.
-// blueworx_for_each_site() and blueworx_delete_owned_account() come from the
-// same file. Requiring it is safe in this context: at the top level it only
+// blueworx_delete_owned_account() comes from the same file, and
+// blueworx_for_each_site() from includes/site-helpers.php. Requiring it is safe in this context: at the top level it only
 // defines constants and functions and registers hooks that never fire during
 // uninstall (no admin_init, init or REST request is in flight), so nothing it
 // references executes here except the functions called explicitly below.
-require_once __DIR__ . '/includes/support-access.php';
+//
+// Not when the BlueWorx theme is the active theme: it has already loaded its
+// own copy of these functions, and loading this one too stops PHP with
+// "cannot redeclare", so the delete fails. The theme's copy does the same job.
+if ( ! function_exists( 'blueworx_support_remove_account' ) ) {
+	require_once __DIR__ . '/includes/support-access.php';
+}
+
+require_once __DIR__ . '/includes/site-helpers.php';
 
 // A site on the BlueWorx theme still uses every setting and account below, so
 // deleting the old plugin after moving to the theme leaves that site alone.
