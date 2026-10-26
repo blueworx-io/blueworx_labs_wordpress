@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.7] - 2026-10-26
+
+### Fixed
+- **Claude can now see when Forge work was added.** Each task shows the day it
+  was added and last changed, and Claude can list work added before a date,
+  oldest first, to find items that have sat too long.
+- **Claude can make the client a Forge task's reviewer.** Before, it could only
+  pick a staff member.
+
 ## [1.96.6] - 2026-10-25
 
 ### Fixed
