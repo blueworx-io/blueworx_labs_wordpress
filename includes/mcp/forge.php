@@ -182,6 +182,18 @@ function blueworx_mcp_forge_tool_definitions() {
 						'type'        => 'string',
 						'description' => 'Only work due on or before this date (YYYY-MM-DD).',
 					),
+					'created_after'    => array(
+						'type'        => 'string',
+						'description' => 'Only work added on or after this date (YYYY-MM-DD).',
+					),
+					'created_before'   => array(
+						'type'        => 'string',
+						'description' => 'Only work added on or before this date (YYYY-MM-DD). Use with oldest_first to find work that has sat for a while.',
+					),
+					'oldest_first'     => array(
+						'type'        => 'boolean',
+						'description' => 'Sort by when the work was added, oldest first (default newest first).',
+					),
 					'level'            => array(
 						'type'        => 'array',
 						'items'       => array(
@@ -801,6 +813,18 @@ function blueworx_mcp_forge_assignees( $item ) {
 }
 
 /**
+ * A Forge time as a day.
+ *
+ * @param mixed $time Unix time.
+ * @return string YYYY-MM-DD, or '' when Forge has none.
+ */
+function blueworx_mcp_forge_day( $time ) {
+	$time = (int) $time;
+
+	return $time > 0 ? gmdate( 'Y-m-d', $time ) : '';
+}
+
+/**
  * Trims a Forge work item down to what is useful in a list.
  *
  * @param array $item   Forge work item.
@@ -826,6 +850,8 @@ function blueworx_mcp_forge_shape( $item, $people ) {
 		'assignee'     => '' === $assignee ? '' : ( $people[ $assignee ] ?? $assignee ),
 		'assignee_id'  => $assignee,
 		'due_date'     => (string) ( $item['planned_due'] ?? '' ),
+		'created_date' => blueworx_mcp_forge_day( $item['created_at'] ?? 0 ),
+		'updated_date' => blueworx_mcp_forge_day( $item['updated_at'] ?? 0 ),
 		'parent_id'    => (string) ( $item['parent_id'] ?? '' ),
 		'hours'        => array(),
 	);
@@ -1089,6 +1115,21 @@ function blueworx_mcp_tool_forge_list_tasks( $args ) {
 		}
 	}
 
+	// Forge has no filter on when work was added, so these are applied here.
+	$added = array();
+
+	foreach ( array( 'created_after', 'created_before' ) as $arg ) {
+		if ( isset( $args[ $arg ] ) && '' !== $args[ $arg ] ) {
+			$valid = blueworx_mcp_forge_check_date( $args[ $arg ], $arg );
+
+			if ( is_wp_error( $valid ) ) {
+				return $valid;
+			}
+
+			$added[ $arg ] = (string) $args[ $arg ];
+		}
+	}
+
 	if ( isset( $args['search'] ) && is_scalar( $args['search'] ) && '' !== trim( (string) $args['search'] ) ) {
 		$query['search'] = sanitize_text_field( (string) $args['search'] );
 	}
@@ -1162,7 +1203,26 @@ function blueworx_mcp_tool_forge_list_tasks( $args ) {
 			continue;
 		}
 
+		$day = blueworx_mcp_forge_day( $item['created_at'] ?? 0 );
+
+		if ( ! empty( $added ) && ( '' === $day || $day < ( $added['created_after'] ?? '' ) || $day > ( $added['created_before'] ?? '9999-12-31' ) ) ) {
+			continue;
+		}
+
 		$tasks[] = blueworx_mcp_forge_shape( $item, $people );
+	}
+
+	if ( ! empty( $args['oldest_first'] ) ) {
+		// Work Forge has no date for goes last; usort keeps ties in Forge's order.
+		usort(
+			$tasks,
+			function ( $a, $b ) {
+				$first  = '' === $a['created_date'] ? '9999-12-31' : $a['created_date'];
+				$second = '' === $b['created_date'] ? '9999-12-31' : $b['created_date'];
+
+				return $first <=> $second;
+			}
+		);
 	}
 
 	$limit = isset( $args['limit'] ) ? max( 1, min( 200, (int) $args['limit'] ) ) : 50;

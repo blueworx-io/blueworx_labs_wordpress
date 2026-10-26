@@ -1530,6 +1530,29 @@ check( 'listing by assignee finds their chores', ids_of( blueworx_mcp_tool_forge
 
 forge_reset();
 
+echo "\nWhen work was added\n";
+
+// Forge keeps when each item was added and last changed, as Unix times.
+foreach ( array(
+	'wi_m1' => array( 1767225600, 1767225600 ), // 2026-01-01.
+	'wi_f1' => array( 1780272000, 1782864000 ), // 2026-06-01, changed 2026-07-01.
+	'wi_f2' => array( 1772323200, 1772323200 ), // 2026-03-01.
+) as $id => $times ) {
+	$GLOBALS['forge']['items'][ $id ]['created_at'] = $times[0];
+	$GLOBALS['forge']['items'][ $id ]['updated_at'] = $times[1];
+}
+
+$dated = blueworx_mcp_tool_forge_list_tasks( array() );
+check( 'each task says when it was added and last changed', array( $dated['tasks'][1]['created_date'], $dated['tasks'][1]['updated_date'] ), array( '2026-06-01', '2026-07-01' ) );
+check( 'a task Forge has no date for says so with nothing', $dated['tasks'][3]['created_date'], '' );
+check( 'work added before a date', ids_of( blueworx_mcp_tool_forge_list_tasks( array( 'created_before' => '2026-03-01' ) )['tasks'] ), array( 'wi_m1', 'wi_f2' ) );
+check( 'work added after a date', ids_of( blueworx_mcp_tool_forge_list_tasks( array( 'created_after' => '2026-02-01' ) )['tasks'] ), array( 'wi_f1', 'wi_f2' ) );
+check( 'oldest first', ids_of( blueworx_mcp_tool_forge_list_tasks( array( 'oldest_first' => true ) )['tasks'] ), array( 'wi_m1', 'wi_f2', 'wi_f1', 'wi_f3' ) );
+check( 'a created date that does not exist is refused', error_of( blueworx_mcp_tool_forge_list_tasks( array( 'created_before' => '2026-02-30' ) ) ), 'invalid_date' );
+check( 'the full task says when it was added', blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_f1' ) )['created_date'], '2026-06-01' );
+
+forge_reset();
+
 echo "\nTeam capacity\n";
 
 $team = blueworx_mcp_tool_forge_get_team_capacity(
