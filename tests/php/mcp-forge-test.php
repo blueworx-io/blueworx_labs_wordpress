@@ -1553,6 +1553,30 @@ check( 'the full task says when it was added', blueworx_mcp_tool_forge_get_task(
 
 forge_reset();
 
+echo "\nThe client as reviewer\n";
+
+// Forge keeps the client in the reviewer seat as "client", which is no person.
+blueworx_mcp_tool_forge_update_task(
+	array(
+		'id'       => 'wi_f2',
+		'reviewer' => 'The client',
+	)
+);
+check( 'the client can be made the reviewer', last_call( 'PATCH', '/work-items/wi_f2' )[3]['reviewer_id'], 'client' );
+check( 'and shows as the client', blueworx_mcp_tool_forge_get_task( array( 'id' => 'wi_f2' ) )['people']->reviewer, 'The client' );
+
+blueworx_mcp_tool_forge_create_task(
+	array(
+		'title'          => 'Sign off the homepage',
+		'client_site_id' => 'cs_a',
+		'reviewer'       => 'client',
+	)
+);
+check( 'a new task can have the client review it', last_call( 'POST', '/work-items' )[3]['reviewer_id'], 'client' );
+check( 'the client is no one\'s assignee', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee' => 'client' ) ) ), 'unknown_person' );
+
+forge_reset();
+
 echo "\nTeam capacity\n";
 
 $team = blueworx_mcp_tool_forge_get_team_capacity(

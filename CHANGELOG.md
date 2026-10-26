@@ -10,6 +10,8 @@ versioning.
 - **Claude can now see when Forge work was added.** Each task shows the day it
   was added and last changed, and Claude can list work added before a date,
   oldest first, to find items that have sat too long.
+- **Claude can make the client a Forge task's reviewer.** Before, it could only
+  pick a staff member.
 
 ## [1.96.6] - 2026-10-25
 
