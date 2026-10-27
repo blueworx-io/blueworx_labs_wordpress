@@ -161,12 +161,14 @@ function blueworx_store_dress_content( $content ) {
 			);
 		}
 		if ( 'order-confirmation' === $key ) {
-			return blueworx_store_shell_bare(
-				'Thank you',
-				'Your order is confirmed. A receipt is on its way by email.',
-				blueworx_store_shell_card( '', $content ),
-				$context['home_url'],
-				$context['site_name']
+			return blueworx_store_shell_confirmation(
+				array(
+					'site_name' => $context['site_name'],
+					'logo_url'  => $context['logo_url'],
+					'home_url'  => $context['home_url'],
+					'lede'      => 'Your order is confirmed. A receipt is on its way by email.',
+					'body'      => $content,
+				)
 			);
 		}
 		// 'dashboard': the whole screen, from dashboard.php.

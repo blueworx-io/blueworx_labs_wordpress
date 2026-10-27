@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.8] - 2026-10-27
+
+### Fixed
+- **The checkout title is the right size on Elementor sites.** Elementor's
+  heading style was blowing "Checkout" up into a huge display heading.
+- **The thank-you page uses the checkout's header.** It shows the site's logo
+  and "Thank you", with "Back to the site" on the right.
+
 ## [1.96.7] - 2026-10-26
 
 ### Fixed

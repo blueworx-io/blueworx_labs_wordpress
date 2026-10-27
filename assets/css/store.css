@@ -129,26 +129,36 @@
 .blueworx-checkout__brand { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; }
 .blueworx-checkout__crest { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; border-radius: 8px; object-fit: cover; background: var(--bw-brand-wash); color: var(--bw-text-accent); font-family: var(--bw-font-display); font-size: 13px; font-weight: 700; }
 .blueworx-checkout__titles { display: flex; flex-direction: column; min-width: 0; }
-.blueworx-checkout__club { font-size: 12px; color: var(--bw-text-muted); }
-.blueworx-checkout__h1 { margin: 0; font-family: var(--bw-font-display); font-size: 15px; font-weight: 600; color: var(--bw-text-heading); }
-.blueworx-checkout__secure { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--bw-text-muted); }
+/* Doubled up from here, because a page builder's site-wide styles are aimed
+   at every h1 and link on the page — Elementor's are .elementor-kit-N h1 and
+   .elementor-kit-N a, which outrank a single class and turned "Checkout" into
+   a 48px display heading. Two classes outrank them. */
+.blueworx-checkout .blueworx-checkout__club { font-size: 12px; line-height: 1.4; color: var(--bw-text-muted); }
+.blueworx-checkout .blueworx-checkout__h1 { margin: 0; font-family: var(--bw-font-display); font-size: 15px; font-weight: 600; line-height: 1.3; letter-spacing: normal; text-transform: none; color: var(--bw-text-heading); }
+.blueworx-checkout .blueworx-checkout__secure { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--bw-text-muted); }
+.blueworx-checkout .blueworx-checkout__home { flex: none; text-decoration: none; color: var(--bw-control-text); }
+.blueworx-checkout .blueworx-checkout__home .bw-icon { margin-right: 6px; }
 .blueworx-checkout__body { flex: 1 1 auto; }
+.blueworx-checkout__thanks { max-width: 760px; margin: 0 auto; padding: var(--bw-space-8, 32px); }
+.blueworx-checkout .blueworx-checkout__lede { margin: 0 0 var(--bw-space-6, 24px); font-size: 14px; color: var(--bw-text-muted); }
 .blueworx-checkout__foot { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 14px var(--bw-space-8, 32px); background: var(--bw-surface-card); border-top: 1px solid var(--bw-border); }
-.blueworx-checkout__back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.blueworx-checkout .blueworx-checkout__back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .blueworx-checkout__links { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-left: auto; }
-.blueworx-checkout__links a { font-size: 12px; color: var(--bw-text-muted); text-decoration: none; }
-.blueworx-checkout__links a:hover { color: var(--bw-text-link); }
+.blueworx-checkout .blueworx-checkout__links a { font-size: 12px; color: var(--bw-text-muted); text-decoration: none; }
+.blueworx-checkout .blueworx-checkout__links a:hover { color: var(--bw-text-link); }
 .blueworx-checkout__footnote { margin: 0; font-size: 12px; color: var(--bw-text-faint); }
 
 /* On a phone the header stacks and the footer becomes a list, so every link
    is a full-width target rather than three words wedged against a neighbour. */
 @media (max-width: 640px) {
   .blueworx-checkout__head { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
-  .blueworx-checkout__secure { width: 100%; }
+  .blueworx-checkout .blueworx-checkout__secure { width: 100%; }
+  .blueworx-checkout .blueworx-checkout__home { min-height: 44px; }
+  .blueworx-checkout__thanks { padding: 16px; }
   .blueworx-checkout__foot { flex-direction: column; align-items: stretch; padding: 16px; }
   .blueworx-checkout__links { flex-direction: column; align-items: stretch; gap: 0; margin-left: 0; }
-  .blueworx-checkout__links a { display: flex; align-items: center; min-height: 44px; }
-  .blueworx-checkout__back { min-height: 44px; }
+  .blueworx-checkout .blueworx-checkout__links a { display: flex; align-items: center; min-height: 44px; }
+  .blueworx-checkout .blueworx-checkout__back { min-height: 44px; }
 
   /* The pay bar: stays in view rather than scrolling away with the form.
      Sticky, not fixed, so it only takes over the bottom of the viewport once
