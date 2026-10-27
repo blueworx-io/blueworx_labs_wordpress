@@ -55,6 +55,28 @@ check( 'the body is passed through untouched', false !== strpos( $html, '<p id="
 check( 'a link with no label is skipped', substr_count( $html, '<nav class="blueworx-checkout__links"' ), 1 );
 check( 'and the real one is drawn', false !== strpos( $html, '>Terms</a>' ), true );
 check( 'no nav offered', false === strpos( $html, 'bw-secnav' ), true );
+check( 'the card reassurance sits on the right', false !== strpos( $html, 'class="blueworx-checkout__secure"' ), true );
+
+echo "\nThe thank-you frame\n";
+$html = blueworx_store_shell_confirmation( array(
+	'site_name' => 'Fixture',
+	'logo_url'  => 'http://x/logo.png',
+	'home_url'  => 'http://x/',
+	'lede'      => 'Your order is confirmed.',
+	'body'      => '<p id="shop-content">THANKS</p>',
+) );
+check( 'root is the checkout frame', false !== strpos( $html, '<div class="bw-admin blueworx-checkout">' ), true );
+check( 'with the checkout header', substr_count( $html, '<header class="blueworx-checkout__head">' ), 1 );
+check( 'titled thank you', false !== strpos( $html, '<h1 class="blueworx-checkout__h1">Thank you</h1>' ), true );
+check( 'one h1', substr_count( $html, '<h1' ), 1 );
+check( 'the logo is the crest', false !== strpos( $html, 'src="http://x/logo.png"' ), true );
+check( 'the way home is on the right', false !== strpos( $html, '<a class="bw-btn bw-btn--secondary blueworx-checkout__home" href="http://x/">' ), true );
+check( 'and not the card reassurance', false === strpos( $html, 'blueworx-checkout__secure' ), true );
+check( 'the lede is drawn', false !== strpos( $html, '<p class="blueworx-checkout__lede">Your order is confirmed.</p>' ), true );
+check( 'the body is passed through untouched', false !== strpos( $html, '<p id="shop-content">THANKS</p>' ), true );
+check( 'no checkout footer', false === strpos( $html, 'blueworx-checkout__foot' ), true );
+$html = blueworx_store_shell_confirmation( array( 'site_name' => 'Fixture', 'body' => '' ) );
+check( 'no home address, no button', false === strpos( $html, 'blueworx-checkout__home' ), true );
 
 echo "\nSmaller pieces\n";
 check( 'a bare view url', blueworx_store_view_url( 'orders' ), '?view=orders' );

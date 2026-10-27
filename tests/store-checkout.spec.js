@@ -52,13 +52,36 @@ test('the footer stacks into full-width targets on a phone', async ({ page }) =>
   expect(box.height).toBeGreaterThanOrEqual(44);
 });
 
-test('the thank-you page wears the bare frame', async ({ page }) => {
+test('the thank-you page wears the checkout header, with the way home on the right', async ({ page }) => {
   await page.goto(THANKS);
-  await expect(page.locator('.bw-admin.bw-page.blueworx-store')).toHaveCount(1);
-  await expect(page.locator('h1')).toHaveText('Thank you');
+  await expect(page.locator('.bw-admin.blueworx-checkout')).toHaveCount(1);
+  await expect(page.locator('.blueworx-checkout__head h1')).toHaveText('Thank you');
+  await expect(page.locator('.blueworx-checkout__head .blueworx-checkout__home')).toHaveText('Back to the site');
+  await expect(page.locator('.blueworx-checkout__secure')).toHaveCount(0);
   await expect(page.locator('#shop-content')).toHaveText('THANKS CONTENT');
   await expect(page.locator('head link[rel="stylesheet"][href*="store-surecart.css"]')).toHaveCount(0);
 });
+
+// Elementor styles every h1 and link through the body's .elementor-kit-N
+// class, which used to outrank the header and blow "Checkout" up to 48px.
+for (const [name, url] of [['checkout', CHECKOUT], ['thank-you page', THANKS]]) {
+  test(`a page builder's heading and link styles do not reach the ${name} header`, async ({ page }) => {
+    await page.goto(url);
+    await page.evaluate(() => {
+      document.body.classList.add('elementor-kit-52');
+      const style = document.createElement('style');
+      style.textContent = '.elementor-kit-52 h1{font-size:48px;line-height:1.2em;color:rgb(97,43,22)}'
+        + '.elementor-kit-52 a{color:rgb(97,43,22);text-decoration:underline}';
+      document.head.appendChild(style);
+    });
+    const h1 = page.locator('.blueworx-checkout__h1');
+    await expect(h1).toHaveCSS('font-size', '15px');
+    await expect(h1).not.toHaveCSS('color', 'rgb(97, 43, 22)');
+    if (url === THANKS) {
+      await expect(page.locator('.blueworx-checkout__home')).not.toHaveCSS('text-decoration-line', 'underline');
+    }
+  });
+}
 
 test('an ordinary page is left alone', async ({ page }) => {
   await page.goto('/claimed-fixture/');

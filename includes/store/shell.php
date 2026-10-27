@@ -294,33 +294,34 @@ function blueworx_store_shell_view( $views, $key ) {
 }
 
 /**
- * The same look with no nav — checkout and order confirmation.
+ * The order confirmation page: the checkout's own header, so the buyer sees
+ * the same page they paid on, with the way home where the card reassurance
+ * was. Nothing is left to pay for, so there is nothing to reassure about.
  *
- * A member on the checkout page is mid-purchase and should not be offered
- * six places to wander off to.
+ * Pure: everything drawn arrives in $args.
  *
- * @param string $title    Page title.
- * @param string $lede     Page lede.
- * @param string $body     Page body markup.
- * @param string $home_url Address to go home to.
- * @param string $site_name Site name.
+ * @param array<string,mixed> $args Confirmation arguments: site_name, logo_url, home_url, lede, body.
  * @return string
  */
-function blueworx_store_shell_bare( $title, $lede, $body, $home_url, $site_name ) {
-	$head = '<header class="bw-pagehead"><div class="bw-pagehead__titles">';
-	if ( '' !== trim( $site_name ) ) {
-		$head .= '<p class="bw-pagehead__eyebrow">' . blueworx_store_e( $site_name ) . '</p>';
+function blueworx_store_shell_confirmation( $args ) {
+	$site = trim( (string) ( $args['site_name'] ?? '' ) );
+	$logo = trim( (string) ( $args['logo_url'] ?? '' ) );
+	$home = trim( (string) ( $args['home_url'] ?? '' ) );
+	$lede = trim( (string) ( $args['lede'] ?? '' ) );
+	$body = (string) ( $args['body'] ?? '' );
+
+	$aside = '' !== $home
+		? '<a class="bw-btn bw-btn--secondary blueworx-checkout__home" href="' . blueworx_store_e( $home ) . '">'
+			. blueworx_store_shell_icon( 'arrow-left' ) . 'Back to the site</a>'
+		: '';
+
+	$out = '<div class="bw-admin blueworx-checkout">'
+		. blueworx_store_shell_checkout_head( $site, $logo, 'Thank you', $aside )
+		. '<main class="blueworx-checkout__body"><div class="blueworx-checkout__thanks">';
+	if ( '' !== $lede ) {
+		$out .= '<p class="blueworx-checkout__lede">' . blueworx_store_e( $lede ) . '</p>';
 	}
-	$head .= '<h1 class="bw-pagehead__h1">' . blueworx_store_e( $title ) . '</h1>';
-	if ( '' !== trim( $lede ) ) {
-		$head .= '<p class="bw-pagehead__lede">' . blueworx_store_e( $lede ) . '</p>';
-	}
-	$head .= '</div><div class="bw-pagehead__actions">'
-		. '<a class="bw-btn bw-btn--secondary" href="' . blueworx_store_e( $home_url ) . '">'
-		. blueworx_store_shell_icon( 'arrow-left' ) . 'Back to the site</a>'
-		. '</div></header>';
-	return '<div class="bw-admin bw-page blueworx-store">' . $head
-		. '<div class="bw-page__body"><main class="bw-panels">' . $body . '</main></div></div>';
+	return $out . blueworx_store_shell_card( '', $body ) . '</div></main></div>';
 }
 
 /**
@@ -331,8 +332,8 @@ function blueworx_store_shell_bare( $title, $lede, $body, $home_url, $site_name 
  * cutting the rendered content in two, and the_content hands it over as a
  * single string with no seam to cut on. See the design doc.
  *
- * No nav, for the same reason blueworx_store_shell_bare() has none: someone
- * mid-purchase should not be offered six places to wander off to. The
+ * No nav: someone mid-purchase should not be offered six places to wander
+ * off to. The
  * footer's links are the exception, because a buyer is entitled to read the
  * terms before paying.
  *
@@ -360,13 +361,20 @@ function blueworx_store_shell_checkout( $args ) {
 
 /**
  * The checkout header: the site's crest and name, and the one reassurance
- * that matters on a payment page — that the site never sees the card.
+ * that matters on a payment page — that the site never sees the card. The
+ * order confirmation page shares it with its own title and right-hand side.
  *
- * @param string $site Site name.
- * @param string $logo Logo URL.
+ * @param string      $site  Site name.
+ * @param string      $logo  Logo URL.
+ * @param string      $title Page title.
+ * @param string|null $aside Right-hand markup, already escaped; null for the card reassurance.
  * @return string
  */
-function blueworx_store_shell_checkout_head( $site, $logo ) {
+function blueworx_store_shell_checkout_head( $site, $logo, $title = 'Checkout', $aside = null ) {
+	if ( null === $aside ) {
+		$aside = '<p class="blueworx-checkout__secure">' . blueworx_store_shell_icon( 'lock' )
+			. 'Your card is handled by Stripe. The site never sees it.</p>';
+	}
 	$crest = '' !== $logo
 		? '<img class="blueworx-checkout__crest" src="' . blueworx_store_e( $logo ) . '" alt="" width="34" height="34">'
 		: '<span class="blueworx-checkout__crest" aria-hidden="true">' . blueworx_store_e( blueworx_store_initials( $site ) ) . '</span>';
@@ -377,10 +385,9 @@ function blueworx_store_shell_checkout_head( $site, $logo ) {
 	if ( '' !== $site ) {
 		$out .= '<span class="blueworx-checkout__club">' . blueworx_store_e( $site ) . '</span>';
 	}
-	$out .= '<h1 class="blueworx-checkout__h1">Checkout</h1>'
+	$out .= '<h1 class="blueworx-checkout__h1">' . blueworx_store_e( $title ) . '</h1>'
 		. '</span></div>'
-		. '<p class="blueworx-checkout__secure">' . blueworx_store_shell_icon( 'lock' )
-		. 'Your card is handled by Stripe. The site never sees it.</p>'
+		. $aside
 		. '</header>';
 	return $out;
 }
