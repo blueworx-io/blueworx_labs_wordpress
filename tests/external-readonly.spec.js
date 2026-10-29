@@ -137,10 +137,31 @@ test.describe('An external viewer changes nothing', () => {
     expect((await response.json()).message).toBe(READONLY_WRITE_MESSAGE);
   });
 
-  test('the users screen is refused', async ({ page }) => {
+  test('the users list opens, but no other user can be opened from it or by address', async ({
+    page,
+  }) => {
     await signInAsViewer(page);
-    await page.goto('/wp-admin/users.php');
 
+    const response = await page.goto('/wp-admin/users.php');
+    expect(response.status()).toBe(200);
+    await expect(page.locator('h1')).toContainText('Users');
+
+    // The admin account the harness signs in with is always on the list, so
+    // there is at least one row that is not the viewer's own.
+    const others = page.locator('#the-list tr').filter({ hasNotText: VIEWER });
+    expect(await others.count()).toBeGreaterThan(0);
+
+    // WordPress only links a row it would let you edit, so no other row may
+    // point into user-edit.php.
+    await expect(others.locator('a[href*="user-edit.php"]')).toHaveCount(0);
+
+    // And a hand-typed address is refused by the guard, not merely unlinked.
+    const rowId = await others.first().getAttribute('id');
+    const userId = Number(String(rowId).replace('user-', ''));
+    expect(userId).toBeGreaterThan(0);
+
+    const opened = await page.goto(`/wp-admin/user-edit.php?user_id=${userId}`);
+    expect(opened.status()).toBe(403);
     await expect(page.getByText('personal data')).toBeVisible();
   });
 

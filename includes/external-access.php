@@ -377,6 +377,29 @@ function blueworx_external_hide_menus() {
 }
 
 /**
+ * Opens the Users list to an external viewer, and nothing behind it.
+ *
+ * The shared read-only guard treats users.php as personal data. For a client
+ * looking round their own site that went too far: seeing who has an account is
+ * part of the tour. Opening one is not, so user-edit.php stays on the list and
+ * the guard still refuses every profile but the viewer's own. The list itself
+ * offers no way in, because edit_users is already stripped and WordPress only
+ * links a row it would let you edit.
+ *
+ * Support access is untouched: its Users screen still follows its data switch.
+ *
+ * @param array $screens $pagenow values denied as personal data.
+ * @return array The same list, without users.php for an external viewer.
+ */
+function blueworx_external_allow_users_list( $screens ) {
+	if ( ! blueworx_external_is_external_user( wp_get_current_user() ) ) {
+		return $screens;
+	}
+
+	return array_values( array_diff( (array) $screens, array( 'users.php' ) ) );
+}
+
+/**
  * The invitation lengths on offer, in days.
  *
  * @return array Whole days.
@@ -515,6 +538,7 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 // who is not an external viewer.
 add_action( 'admin_init', 'blueworx_external_gate_screens', 0 );
 add_action( 'admin_menu', 'blueworx_external_hide_menus', 999 );
+add_filter( 'blueworx_readonly_denied_screens', 'blueworx_external_allow_users_list' );
 
 // Registered unconditionally, unlike the role above — mirrors
 // blueworx_support_enforce_window(), which also registers regardless of the
