@@ -155,6 +155,9 @@ test.describe('An external viewer changes nothing', () => {
     // point into user-edit.php.
     await expect(others.locator('a[href*="user-edit.php"]')).toHaveCount(0);
 
+    // Nor any other way out of the row — the author-page View link included.
+    await expect(others.locator('.row-actions a')).toHaveCount(0);
+
     // And a hand-typed address is refused by the guard, not merely unlinked.
     const rowId = await others.first().getAttribute('id');
     const userId = Number(String(rowId).replace('user-', ''));

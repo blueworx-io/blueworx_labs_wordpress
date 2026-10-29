@@ -400,6 +400,30 @@ function blueworx_external_allow_users_list( $screens ) {
 }
 
 /**
+ * Leaves other users' rows on the Users list with no links at all.
+ *
+ * The list is there to show who has an account, not to be a way into one.
+ * WordPress still adds a View link to each person's author page, which is a
+ * door out of the list this role has no reason to use. The viewer's own row
+ * keeps its links, since their own profile is theirs to open.
+ *
+ * @param array   $actions Row action links.
+ * @param WP_User $user    The user the row is for.
+ * @return array The same links on the viewer's own row, otherwise none.
+ */
+function blueworx_external_strip_user_row_actions( $actions, $user ) {
+	if ( ! blueworx_external_is_external_user( wp_get_current_user() ) ) {
+		return $actions;
+	}
+
+	if ( $user instanceof WP_User && get_current_user_id() === (int) $user->ID ) {
+		return $actions;
+	}
+
+	return array();
+}
+
+/**
  * The invitation lengths on offer, in days.
  *
  * @return array Whole days.
@@ -539,6 +563,7 @@ if ( blueworx_feature_enabled( 'external_access' ) ) {
 add_action( 'admin_init', 'blueworx_external_gate_screens', 0 );
 add_action( 'admin_menu', 'blueworx_external_hide_menus', 999 );
 add_filter( 'blueworx_readonly_denied_screens', 'blueworx_external_allow_users_list' );
+add_filter( 'user_row_actions', 'blueworx_external_strip_user_row_actions', 999, 2 );
 
 // Registered unconditionally, unlike the role above — mirrors
 // blueworx_support_enforce_window(), which also registers regardless of the
