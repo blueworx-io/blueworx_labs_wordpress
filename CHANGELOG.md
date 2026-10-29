@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.10] - 2026-10-29
+
+### Fixed
+- **No View link on the Users list for external viewers.** Other people's
+  rows have no links at all.
+
 ## [1.96.9] - 2026-10-29
 
 ### Fixed
