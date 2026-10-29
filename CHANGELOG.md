@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.9] - 2026-10-29
+
+### Fixed
+- **External viewers can see the Users list.** They still cannot open anyone
+  else's profile.
+
 ## [1.96.8] - 2026-10-27
 
 ### Fixed
