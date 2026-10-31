@@ -106,6 +106,14 @@ function blueworx_get_feature_definitions() {
 			'detail'      => null,
 			'guide'       => false,
 		),
+		'merge_users'           => array(
+			'label'       => __( 'Merge users', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Adds a Merge link to the Users list, so two accounts for the same person become one. Everything from the spare account moves across, including SureCart purchases and LearnDash courses, and then the spare is deleted.', 'blueworx-labs-wordpress' ),
+			'section'     => 'security',
+			'detail'      => null,
+			'default'     => '0',
+			'guide'       => false,
+		),
 		'view_as_role'          => array(
 			'label'       => __( 'View the admin as another role', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Puts a control in the sidebar that shows the admin area the way one of your other roles sees it, to check what that role can and cannot reach. Anyone who edits the site can use it, and only ever downwards — an editor can look as an author, never the other way about. One click puts you back.', 'blueworx-labs-wordpress' ),

@@ -128,6 +128,7 @@ require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';
 require_once BLUEWORX_LABS_PATH . 'includes/readonly-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/support-access.php';
 require_once BLUEWORX_LABS_PATH . 'includes/external-access.php';
+require_once BLUEWORX_LABS_PATH . 'includes/merge-users/merge.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/oauth.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/server.php';
 require_once BLUEWORX_LABS_PATH . 'includes/mcp/forge.php';
