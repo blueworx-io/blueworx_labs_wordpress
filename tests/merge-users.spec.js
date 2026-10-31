@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS } from './helpers.js';
+import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, LOGIN_PATH, cacheBust, login } from './helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -102,5 +102,121 @@ test.describe('Merge users — the engine', () => {
     expect(progress[202], 'a course only the spare had comes across').toBeTruthy();
     expect(state.kept.meta.course_202_access_from, 'and so does access to it').toBe('1700000000');
     expect(state.activity_kept, 'activity records move to the kept account').toBe(1);
+  });
+});
+
+/**
+ * The merge screen for a pair of accounts, with the kept one already chosen.
+ *
+ * @param {number} from  Account the merge was started from.
+ * @param {number} other The other account.
+ * @return {string} Path.
+ */
+function previewPath(from, other) {
+  return `/wp-admin/admin.php?page=blueworx-merge-users&user=${from}&other=${other}&keep=other`;
+}
+
+test.describe('Merge users — the screen', () => {
+  test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No test site configured.');
+
+  test.beforeAll(() => {
+    fixture('feature', 'on');
+  });
+
+  test.afterAll(() => {
+    fixture('cleanup');
+    fixture('feature', 'off');
+  });
+
+  test('the Merge link only appears when the function is on', async ({ page }) => {
+    fixture('seed');
+    await login(page);
+
+    fixture('feature', 'off');
+    await page.goto('/wp-admin/users.php?s=merge_spare');
+    await expect(page.locator('tr', { hasText: 'merge_spare' }).first()).toBeVisible();
+    await expect(page.locator('.row-actions .blueworx_merge')).toHaveCount(0);
+
+    fixture('feature', 'on');
+    await page.goto('/wp-admin/users.php?s=merge_spare');
+    await expect(page.locator('tr', { hasText: 'merge_spare' }).locator('.row-actions .blueworx_merge a')).toHaveCount(1);
+  });
+
+  test('merging from the Users list', async ({ page }) => {
+    const { kept, spare } = fixture('seed');
+    await login(page);
+
+    await page.goto('/wp-admin/users.php?s=merge_spare');
+    const row = page.locator('tr', { hasText: 'merge_spare' });
+    await row.hover();
+    await row.locator('.row-actions .blueworx_merge a').click();
+
+    await page.fill('#blueworx_merge_users_q', 'merge_kept');
+    await page.getByRole('button', { name: 'Search' }).click();
+    await page.selectOption('#blueworx_merge_users_other', String(kept));
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const preview = page.locator('.blueworx-merge-users__preview');
+    await expect(preview).toContainText('merge_kept');
+    await expect(preview, 'profile fields are named in plain words').toContainText('Last name');
+    await expect(page.locator('.blueworx-merge-users__confirm')).toContainText('merge_spare will be deleted');
+
+    await page.getByLabel('merge-spare@example.invalid (from merge_spare)').check();
+    await page.getByRole('button', { name: 'Merge accounts' }).click();
+
+    await expect(page.getByText('Accounts merged.')).toBeVisible();
+
+    const state = fixture('inspect', kept, spare);
+    expect(state.spare).toBeNull();
+    expect(state.kept.email).toBe('merge-spare@example.invalid');
+    expect(state.kept.posts).toBe(2);
+  });
+
+  test('a blocked merge says why and offers no button', async ({ page }) => {
+    const { kept, spare } = fixture('seed', 'surecart-both');
+    await login(page);
+
+    await page.goto(previewPath(spare, kept));
+    await expect(page.getByText('These accounts cannot be merged.')).toBeVisible();
+    await expect(page.locator('.bw-admin')).toContainText('cus_kept');
+    await expect(page.getByRole('button', { name: 'Merge accounts' })).toHaveCount(0);
+  });
+
+  test('a stale form fails gently', async ({ page }) => {
+    const { kept, spare } = fixture('seed');
+    await login(page);
+
+    await page.goto(previewPath(spare, kept));
+    await expect(page.getByRole('button', { name: 'Merge accounts' })).toBeVisible();
+
+    fixture('delete', spare);
+    await page.getByRole('button', { name: 'Merge accounts' }).click();
+
+    await expect(page.getByText('The merge did not happen.')).toBeVisible();
+    await expect(page.locator('.bw-admin')).toContainText('no longer exists');
+  });
+
+  test('not offered to an external viewer', async ({ page }) => {
+    const { kept, spare } = fixture('seed');
+    const viewer = path.join(__dirname, 'fixtures', 'external-viewer.php');
+    const wpLoad = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-load.php');
+    execFileSync('php', [viewer, wpLoad, 'create']);
+
+    try {
+      await page.goto(cacheBust(LOGIN_PATH));
+      await page.fill('#user_login', 'bw_external_test');
+      await page.fill('#user_pass', 'ExternalTest!2026');
+      await page.click('#wp-submit');
+      await page.waitForURL(/wp-admin/);
+
+      await page.goto('/wp-admin/users.php?s=merge_spare');
+      await expect(page.locator('.row-actions .blueworx_merge')).toHaveCount(0);
+
+      const response = await page.goto(previewPath(spare, kept));
+      expect(response.status()).toBe(403);
+      await expect(page.getByRole('button', { name: 'Merge accounts' })).toHaveCount(0);
+    } finally {
+      execFileSync('php', [viewer, wpLoad, 'delete']);
+    }
   });
 });

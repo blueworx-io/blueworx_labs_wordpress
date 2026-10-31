@@ -12,6 +12,7 @@
  *   run <kept> <spare> <kept|spare> [actor] Prints {"ok":true} or {"error":code}.
  *   inspect <kept> <spare>                  Prints the state both accounts are in.
  *   delete <id>                             Deletes one account, as another tab would.
+ *   feature <on|off>                        Switches the function on or off.
  *   cleanup                                 Removes every merge_* account and post.
  *
  * @package BlueWorxLabsTests
@@ -69,6 +70,13 @@ function merge_fixture_cleanup() {
 if ( 'cleanup' === $command ) {
 	merge_fixture_cleanup();
 	echo "cleaned\n";
+	exit( 0 );
+}
+
+if ( 'feature' === $command ) {
+	update_option( 'blueworx_feature_merge_users', 'on' === ( $argv[3] ?? '' ) ? '1' : '0' );
+	echo "ok
+";
 	exit( 0 );
 }
 
