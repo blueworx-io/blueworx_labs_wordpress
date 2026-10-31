@@ -90,4 +90,17 @@ test.describe('Merge users — the engine', () => {
       expect(state.spare.posts).toBe(2);
     });
   }
+
+  test('combines LearnDash courses and progress', () => {
+    const { kept, spare } = fixture('seed', 'learndash');
+
+    expect(fixture('run', kept, spare, 'kept')).toEqual({ ok: true });
+
+    const state = fixture('inspect', kept, spare);
+    const progress = state.kept.meta['_sfwd-course_progress'];
+    expect(progress[101].completed, 'the further-along progress wins').toBe(3);
+    expect(progress[202], 'a course only the spare had comes across').toBeTruthy();
+    expect(state.kept.meta.course_202_access_from, 'and so does access to it').toBe('1700000000');
+    expect(state.activity_kept, 'activity records move to the kept account').toBe(1);
+  });
 });

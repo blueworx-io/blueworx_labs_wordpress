@@ -108,6 +108,146 @@ function blueworx_merge_users_has_value( $values ) {
 }
 
 /**
+ * Whether a LearnDash course record is finished.
+ *
+ * @param mixed $progress One course from _sfwd-course_progress.
+ * @return bool True when every step is done.
+ */
+function blueworx_merge_users_course_done( $progress ) {
+	return is_array( $progress )
+		&& ! empty( $progress['total'] )
+		&& (int) ( $progress['completed'] ?? 0 ) >= (int) $progress['total'];
+}
+
+/**
+ * Whether the spare got further through a course than the kept account.
+ *
+ * Finishing beats any number of steps; otherwise more steps done wins. A tie
+ * goes to the kept account, like everything else in a merge.
+ *
+ * @param mixed $kept  Kept account's record for the course.
+ * @param mixed $spare Spare account's record for the course.
+ * @return bool True when the spare's record should win.
+ */
+function blueworx_merge_users_spare_further( $kept, $spare ) {
+	$kept_done  = blueworx_merge_users_course_done( $kept );
+	$spare_done = blueworx_merge_users_course_done( $spare );
+
+	if ( $kept_done !== $spare_done ) {
+		return $spare_done;
+	}
+
+	return (int) ( $spare['completed'] ?? 0 ) > (int) ( $kept['completed'] ?? 0 );
+}
+
+/**
+ * Combines two LearnDash progress records, course by course.
+ *
+ * @param mixed $kept  Kept account's _sfwd-course_progress.
+ * @param mixed $spare Spare account's _sfwd-course_progress.
+ * @return array Combined progress, keyed by course ID.
+ */
+function blueworx_merge_users_course_progress( $kept, $spare ) {
+	$kept = is_array( $kept ) ? $kept : array();
+
+	foreach ( is_array( $spare ) ? $spare : array() as $course_id => $progress ) {
+		if ( ! isset( $kept[ $course_id ] ) || blueworx_merge_users_spare_further( $kept[ $course_id ], $progress ) ) {
+			$kept[ $course_id ] = $progress;
+		}
+	}
+
+	return $kept;
+}
+
+/**
+ * Combines two lists of LearnDash quiz attempts.
+ *
+ * @param mixed $kept  Kept account's _sfwd-quizzes.
+ * @param mixed $spare Spare account's _sfwd-quizzes.
+ * @return array The kept attempts, then any of the spare's not already there.
+ */
+function blueworx_merge_users_quizzes( $kept, $spare ) {
+	$merged = array_values( is_array( $kept ) ? $kept : array() );
+	$seen   = array();
+
+	foreach ( $merged as $attempt ) {
+		$seen[ ( $attempt['quiz'] ?? '' ) . '|' . ( $attempt['time'] ?? '' ) ] = true;
+	}
+
+	foreach ( is_array( $spare ) ? $spare : array() as $attempt ) {
+		$key = ( $attempt['quiz'] ?? '' ) . '|' . ( $attempt['time'] ?? '' );
+
+		if ( ! isset( $seen[ $key ] ) ) {
+			$merged[]     = $attempt;
+			$seen[ $key ] = true;
+		}
+	}
+
+	return $merged;
+}
+
+/**
+ * Which courses a merge adds, and where the spare's progress wins.
+ *
+ * @param int $kept_id  Account to keep.
+ * @param int $spare_id Account to delete.
+ * @return array 'added' and 'from_spare', each a list of course IDs.
+ */
+function blueworx_merge_users_learndash_preview( $kept_id, $spare_id ) {
+	$kept  = get_user_meta( (int) $kept_id, '_sfwd-course_progress', true );
+	$kept  = is_array( $kept ) ? $kept : array();
+	$spare = get_user_meta( (int) $spare_id, '_sfwd-course_progress', true );
+	$out   = array(
+		'added'      => array(),
+		'from_spare' => array(),
+	);
+
+	foreach ( is_array( $spare ) ? $spare : array() as $course_id => $progress ) {
+		if ( ! isset( $kept[ $course_id ] ) ) {
+			$out['added'][] = (int) $course_id;
+		} elseif ( blueworx_merge_users_spare_further( $kept[ $course_id ], $progress ) ) {
+			$out['from_spare'][] = (int) $course_id;
+		}
+	}
+
+	return $out;
+}
+
+/**
+ * Moves LearnDash progress, quiz attempts and activity to the kept account.
+ *
+ * Course access, completion dates and group membership are plain user meta and
+ * come across with the rest. Each table is only touched if LearnDash made it.
+ *
+ * @param int $kept_id  Account to keep.
+ * @param int $spare_id Account to delete.
+ * @return void
+ */
+function blueworx_merge_users_learndash( $kept_id, $spare_id ) {
+	global $wpdb;
+
+	$spare = get_user_meta( (int) $spare_id, '_sfwd-course_progress', true );
+	if ( is_array( $spare ) && $spare ) {
+		$kept = get_user_meta( (int) $kept_id, '_sfwd-course_progress', true );
+		update_user_meta( (int) $kept_id, '_sfwd-course_progress', wp_slash( blueworx_merge_users_course_progress( $kept, $spare ) ) );
+	}
+
+	$spare = get_user_meta( (int) $spare_id, '_sfwd-quizzes', true );
+	if ( is_array( $spare ) && $spare ) {
+		$kept = get_user_meta( (int) $kept_id, '_sfwd-quizzes', true );
+		update_user_meta( (int) $kept_id, '_sfwd-quizzes', wp_slash( blueworx_merge_users_quizzes( $kept, $spare ) ) );
+	}
+
+	foreach ( array( 'learndash_user_activity', 'learndash_pro_quiz_statistic_ref', 'learndash_pro_quiz_toplist' ) as $name ) {
+		$table = $wpdb->prefix . $name;
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) === $table ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->update( $table, array( 'user_id' => (int) $kept_id ), array( 'user_id' => (int) $spare_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- LearnDash has no API to move a user's records.
+		}
+	}
+}
+
+/**
  * Whether two accounts may be merged.
  *
  * @param int $kept_id  Account to keep.
