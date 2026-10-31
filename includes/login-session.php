@@ -159,9 +159,18 @@ function blueworx_login_session_expiration( $expiration, $user_id, $remember ) {
  * outcome, but removing a control people recognise, to make a hidden setting
  * the only explanation for how long they stay signed in, is worse.
  *
+ * Only on a real sign-in. The hook also fires when the page is merely opened,
+ * and core hides the "field is empty" errors on that visit only while $_POST is
+ * empty, so writing to it then greets everyone with two errors.
+ *
  * @return void
  */
 function blueworx_login_session_force_persistent() {
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only checks that a form was sent.
+	if ( empty( $_POST ) ) {
+		return;
+	}
+
 	// Writing to the request, not reading it: the value is a constant, nothing
 	// is trusted from the client, and core validates the credentials itself
 	// immediately afterwards.
