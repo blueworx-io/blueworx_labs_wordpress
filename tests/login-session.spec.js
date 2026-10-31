@@ -6,7 +6,7 @@
  * the session ends, and that value IS the setting taking effect.
  */
 
-import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login, restoreAll } from './helpers.js';
+import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, LOGIN_PATH, login, restoreAll } from './helpers.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 const HOUR = 60 * 60;
@@ -107,5 +107,22 @@ test.describe('Login session length', () => {
         },
       ],
     ]);
+  });
+  // Making every sign-in last used to tick "Remember me" on every visit to the
+  // login page, not just on a real sign-in. WordPress then read a plain visit
+  // as an empty form being sent, and greeted everyone with "The username field
+  // is empty" before they had typed anything.
+  test('opening the login page shows no errors before anyone signs in', async ({ browser }) => {
+    const context = await browser.newContext();
+
+    try {
+      const fresh = await context.newPage();
+      await fresh.goto(LOGIN_PATH);
+      await expect(fresh.locator('#user_login')).toBeVisible();
+      await expect(fresh.locator('#login_error')).toHaveCount(0);
+      await expect(fresh.locator('body')).not.toContainText('field is empty');
+    } finally {
+      await context.close();
+    }
   });
 });

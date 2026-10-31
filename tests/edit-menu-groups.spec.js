@@ -90,4 +90,20 @@ test.describe('Edit Menu — moving between groups', () => {
     // Back on a fresh render, the row is where it started.
     await expect(page.locator('.bw-menu-editor-item').first()).toHaveAttribute('data-slug', slug);
   });
+  // A design system update made its list rows stack top to bottom, which put
+  // each item's handle, name and arrows on separate lines and turned the
+  // screen into a long scroll. An item is one line.
+  test('each item sits on one line', async ({ page }) => {
+    await login(page);
+    await page.goto(EDIT_MENU);
+
+    const row = page.locator('.bw-menu-editor-item').first();
+    const label = await row.locator('.bw-menu-editor-label').boundingBox();
+    const up = await row.locator('.bw-menu-editor-up').boundingBox();
+
+    expect(label && up, 'the label and its arrows should both be drawn').toBeTruthy();
+    // The arrow starts above the label's bottom edge and ends below its top.
+    expect(up.y).toBeLessThan(label.y + label.height);
+    expect(up.y + up.height).toBeGreaterThan(label.y);
+  });
 });

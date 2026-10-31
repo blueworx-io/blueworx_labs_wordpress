@@ -332,9 +332,26 @@
    list, and stacking them wastes the very screen the reordering happens on. */
 .bw-menu-editor {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	/* Wide enough for a name beside its four arrows. */
+	grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
 	gap: var(--bw-space-8);
 	align-items: start;
+}
+
+/* One item is one line. The system's repeater row stacks its fields top to
+   bottom, which suits a form but puts the handle, name and each arrow on a line
+   of their own here. */
+.bw-menu-editor .bw-repeater__row {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--bw-space-3);
+	padding: var(--bw-space-4) var(--bw-space-5);
+	border-radius: var(--bw-radius-md);
+	box-shadow: none;
+}
+
+.bw-menu-editor .bw-repeater__fields {
+	flex: 1;
 }
 
 /* A menu label is one line that gives way, not a field that pushes the row

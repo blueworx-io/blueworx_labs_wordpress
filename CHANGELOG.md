@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.96.11] - 2026-10-31
+
+### Fixed
+- **The login page no longer shows errors before you sign in.** "The username
+  field is empty" appeared as soon as the page opened.
+- **Edit Menu is readable again.** Each menu item sits on one line with its
+  arrows, instead of being spread down the card.
+
 ## [1.96.10] - 2026-10-29
 
 ### Fixed
