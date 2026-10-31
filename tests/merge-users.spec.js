@@ -34,7 +34,6 @@ function fixture(...args) {
 
 test.describe('Merge users — the engine', () => {
   test.skip(isPlaceholder || !ADMIN_USER || !ADMIN_PASS, 'No test site configured.');
-  test.describe.configure({ mode: 'serial' });
 
   test.afterAll(() => {
     fixture('cleanup');
@@ -43,7 +42,14 @@ test.describe('Merge users — the engine', () => {
   test('carries everything across and deletes the spare', () => {
     const { kept, spare } = fixture('seed');
 
-    expect(fixture('run', kept, spare, 'kept')).toEqual({ ok: true });
+    const result = fixture('run', kept, spare, 'kept');
+    expect(result.ok).toBe(true);
+    expect(result.mails, 'nobody is emailed').toBe(0);
+    // SureCart copies a WordPress account's email onto its customers when the
+    // account is saved. The customer that came from the spare has to hear the
+    // kept address, and the spare must never be saved with a placeholder.
+    expect(result.updated, 'the kept account is saved, so SureCart syncs it').toContain(kept);
+    expect(result.updated, 'the spare is never saved').not.toContain(spare);
 
     const state = fixture('inspect', kept, spare);
     expect(state.spare, 'the spare account is deleted').toBeNull();
@@ -61,14 +67,44 @@ test.describe('Merge users — the engine', () => {
     expect(meta.sc_customer_ids).toEqual({ live: 'cus_spare' });
     expect(meta.session_tokens, 'sign-ins are never copied').toBe('');
     expect(meta._application_passwords, 'app passwords are never copied').toBe('');
+    expect(meta.view_as, '"view as" is never copied').toBe('');
+    expect(meta._new_email, "a pending email change can't follow").toBe('');
     expect(meta.blueworx_merge_log).toHaveLength(1);
   });
 
   test("takes the spare's email when asked", () => {
     const { kept, spare } = fixture('seed');
 
-    expect(fixture('run', kept, spare, 'spare')).toEqual({ ok: true });
+    const result = fixture('run', kept, spare, 'spare');
+    expect(result.ok).toBe(true);
+    expect(result.mails, 'nobody is emailed').toBe(0);
+    expect(result.updated, 'the spare is never saved with a placeholder').not.toContain(spare);
     expect(fixture('inspect', kept, spare).kept.email).toBe('merge-spare@example.invalid');
+  });
+
+  test("a SureCart customer from the spare is told the kept account's email", () => {
+    // Nothing else about the kept account changes here, so only a deliberate
+    // save tells SureCart which address its customer now belongs to.
+    const { kept, spare } = fixture('seed', 'no-url');
+
+    const result = fixture('run', kept, spare, 'kept');
+    expect(result.ok).toBe(true);
+    expect(result.updated).toContain(kept);
+  });
+
+  test('a retry never hands the kept account a placeholder email', () => {
+    const { kept, spare } = fixture('seed');
+    fixture('placeholder', spare);
+
+    expect(fixture('run', kept, spare, 'spare').ok).toBe(true);
+    expect(fixture('inspect', kept, spare).kept.email).toBe('merge-kept@example.invalid');
+  });
+
+  test('someone who cannot hand out roles cannot gain them by merging', () => {
+    const { kept, spare, manager } = fixture('seed', 'manager');
+
+    expect(fixture('run', kept, spare, 'kept', manager)).toEqual({ error: 'merge_users_roles' });
+    expect(fixture('inspect', kept, spare).spare, 'nothing was deleted').not.toBeNull();
   });
 
   for (const [name, variant, pick, code] of [
@@ -94,10 +130,14 @@ test.describe('Merge users — the engine', () => {
   test('combines LearnDash courses and progress', () => {
     const { kept, spare } = fixture('seed', 'learndash');
 
-    expect(fixture('run', kept, spare, 'kept')).toEqual({ ok: true });
+    expect(fixture('run', kept, spare, 'kept').ok).toBe(true);
 
     const state = fixture('inspect', kept, spare);
     const progress = state.kept.meta['_sfwd-course_progress'];
+    expect(state.kept.meta.course_101_access_from, 'the later access date wins, so access is not cut short').toBe('1700000000');
+    expect(state.kept.meta.learndash_course_expired_101, 'and the kept account is no longer marked expired').toBe('');
+    expect(state.kept.meta.learndash_course_expired_303, "the spare's expired mark never locks out the kept account").toBe('');
+    expect(state.quiz_stats_kept, "quiz records in LearnDash's older tables move too").toBe(1);
     expect(progress[101].completed, 'the further-along progress wins').toBe(3);
     expect(progress[202], 'a course only the spare had comes across').toBeTruthy();
     expect(state.kept.meta.course_202_access_from, 'and so does access to it').toBe('1700000000');

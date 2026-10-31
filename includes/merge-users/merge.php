@@ -42,9 +42,14 @@ function blueworx_merge_users_skip_meta( $key ) {
 		$wpdb->prefix . 'user-settings-time',
 		$wpdb->prefix . 'persisted_preferences',
 		$wpdb->prefix . 'dashboard_quick_press_last_post_id',
+		// "View as" lives under the site's table prefix, not under its own name.
+		$wpdb->prefix . '_blueworx_view_as_role',
 		'session_tokens',
 		'_application_passwords',
 		'default_password_nag',
+		// A pending "change my email" link, which would otherwise be able to
+		// change the kept account's email.
+		'_new_email',
 		'sc_customer_ids',
 		'_sfwd-course_progress',
 		'_sfwd-quizzes',
@@ -65,6 +70,7 @@ function blueworx_merge_users_skip_meta( $key ) {
 		'closedpostboxes_',
 		'meta-box-order_',
 		'screen_layout_',
+		'_two_factor_',
 	);
 
 	foreach ( $prefixes as $prefix ) {
@@ -238,11 +244,71 @@ function blueworx_merge_users_learndash( $kept_id, $spare_id ) {
 		update_user_meta( (int) $kept_id, '_sfwd-quizzes', wp_slash( blueworx_merge_users_quizzes( $kept, $spare ) ) );
 	}
 
-	foreach ( array( 'learndash_user_activity', 'learndash_pro_quiz_statistic_ref', 'learndash_pro_quiz_toplist' ) as $name ) {
-		$table = $wpdb->prefix . $name;
+	blueworx_merge_users_learndash_access( $kept_id, $spare_id );
 
+	foreach ( blueworx_merge_users_learndash_tables() as $table ) {
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) === $table ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->update( $table, array( 'user_id' => (int) $kept_id ), array( 'user_id' => (int) $spare_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- LearnDash has no API to move a user's records.
+		}
+	}
+}
+
+/**
+ * The LearnDash tables that hold records against a user.
+ *
+ * LearnDash renamed its quiz tables, and a site that never ran that upgrade
+ * still has the old names, so both are listed. Only the ones that exist are
+ * touched.
+ *
+ * @return string[] Table names.
+ */
+function blueworx_merge_users_learndash_tables() {
+	global $wpdb;
+
+	$tables = array(
+		$wpdb->prefix . 'learndash_user_activity',
+		$wpdb->prefix . 'learndash_pro_quiz_statistic_ref',
+		$wpdb->prefix . 'learndash_pro_quiz_toplist',
+		$wpdb->prefix . 'wp_pro_quiz_statistic_ref',
+		$wpdb->prefix . 'wp_pro_quiz_toplist',
+	);
+
+	if ( class_exists( 'LDLMS_DB' ) && method_exists( 'LDLMS_DB', 'get_table_name' ) ) {
+		foreach ( array( 'user_activity', 'quiz_statistic_ref', 'quiz_toplist' ) as $name ) {
+			$tables[] = LDLMS_DB::get_table_name( $name );
+		}
+	}
+
+	return array_values( array_unique( array_filter( $tables ) ) );
+}
+
+/**
+ * Keeps course access from being cut short by a merge.
+ *
+ * The kept account normally wins every key, but for access that could leave
+ * somebody locked out of a course they can open today: an expiring course
+ * counts from the access date, so the later of the two dates wins, and an
+ * "expired" mark goes when the spare still had access.
+ *
+ * @param int $kept_id  Account to keep.
+ * @param int $spare_id Account to delete.
+ * @return void
+ */
+function blueworx_merge_users_learndash_access( $kept_id, $spare_id ) {
+	foreach ( get_user_meta( (int) $spare_id ) as $key => $values ) {
+		if ( ! preg_match( '/^course_(\d+)_access_from$/', $key, $match ) ) {
+			continue;
+		}
+
+		$spare_from = (int) reset( $values );
+		$kept_from  = (int) get_user_meta( (int) $kept_id, $key, true );
+
+		if ( $spare_from > $kept_from ) {
+			update_user_meta( (int) $kept_id, $key, $spare_from );
+		}
+
+		if ( '' === (string) get_user_meta( (int) $spare_id, 'learndash_course_expired_' . $match[1], true ) ) {
+			delete_user_meta( (int) $kept_id, 'learndash_course_expired_' . $match[1] );
 		}
 	}
 }
@@ -273,6 +339,12 @@ function blueworx_merge_users_check( $kept_id, $spare_id, $actor_id ) {
 
 	if ( (int) $actor_id === (int) $spare->ID ) {
 		return new WP_Error( 'merge_users_self', __( 'You cannot delete the account you are signed in as. Keep that one instead.', 'blueworx-labs-wordpress' ) );
+	}
+
+	// A merge hands the kept account the spare's roles, which is the same as
+	// assigning them, so it needs the same permission WordPress asks for that.
+	if ( array_diff( (array) $spare->roles, (array) $kept->roles ) && ! user_can( (int) $actor_id, 'promote_users' ) ) {
+		return new WP_Error( 'merge_users_roles', __( 'The account being deleted has roles the kept one does not, and this account is not allowed to hand out roles. Ask an administrator.', 'blueworx-labs-wordpress' ) );
 	}
 
 	foreach ( array( $kept, $spare ) as $user ) {
@@ -336,6 +408,7 @@ function blueworx_merge_users_check( $kept_id, $spare_id, $actor_id ) {
  *     @type int[]    $courses_added               LearnDash courses only the spare had.
  *     @type int[]    $courses_progress_from_spare Courses where the spare was further along.
  *     @type array    $surecart                    Customer IDs the kept account ends with.
+ *     @type array    $surecart_before             Customer IDs the kept account started with.
  * }
  */
 function blueworx_merge_users_preview( $kept_id, $spare_id ) {
@@ -349,6 +422,13 @@ function blueworx_merge_users_preview( $kept_id, $spare_id ) {
 
 	foreach ( $spare_meta as $key => $values ) {
 		if ( blueworx_merge_users_skip_meta( $key ) || ! blueworx_merge_users_has_value( $values ) ) {
+			continue;
+		}
+
+		// The spare's "expired" mark must not lock the kept account out of a
+		// course it can still open.
+		if ( preg_match( '/^learndash_course_expired_(\d+)$/', $key, $match )
+			&& isset( $kept_meta[ 'course_' . $match[1] . '_access_from' ] ) ) {
 			continue;
 		}
 
@@ -378,6 +458,7 @@ function blueworx_merge_users_preview( $kept_id, $spare_id ) {
 		'courses_added'               => $courses['added'],
 		'courses_progress_from_spare' => $courses['from_spare'],
 		'surecart'                    => blueworx_merge_users_surecart_ids( $kept->ID ) + blueworx_merge_users_surecart_ids( $spare->ID ),
+		'surecart_before'             => blueworx_merge_users_surecart_ids( $kept->ID ),
 	);
 }
 
@@ -444,6 +525,12 @@ function blueworx_merge_users_run( $kept_id, $spare_id, $email_from, $actor_id )
 		$update['user_url'] = $spare->user_url;
 	}
 
+	// A run that stopped part-way can leave the spare holding the placeholder
+	// below. Taking that would give the kept account an address nobody reads.
+	if ( preg_match( '/^merged-\d+@invalid$/', $spare->user_email ) ) {
+		$email_from = 'kept';
+	}
+
 	if ( 'spare' === $email_from && $spare->user_email !== $kept->user_email ) {
 		// WordPress refuses two accounts with one address, so the spare lets go
 		// of it first. Written straight to the table: through wp_update_user()
@@ -453,7 +540,12 @@ function blueworx_merge_users_run( $kept_id, $spare_id, $email_from, $actor_id )
 		$update['user_email'] = $spare->user_email;
 	}
 
-	if ( count( $update ) > 1 ) {
+	// SureCart copies an account's email onto its customers only when the
+	// account is saved. A customer that came from the spare still has the
+	// spare's address until then, and receipts would keep going there.
+	$moved_customer = array_diff_assoc( $applied['surecart'], $applied['surecart_before'] );
+
+	if ( count( $update ) > 1 || $moved_customer ) {
 		add_filter( 'send_email_change_email', '__return_false' );
 		add_filter( 'send_password_change_email', '__return_false' );
 		$updated = wp_update_user( wp_slash( $update ) );
