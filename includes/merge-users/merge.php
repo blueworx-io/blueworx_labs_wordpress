@@ -559,7 +559,7 @@ function blueworx_merge_users_run( $kept_id, $spare_id, $email_from, $actor_id )
 	foreach ( $applied['meta_filled'] as $key ) {
 		delete_user_meta( $kept->ID, $key );
 
-		foreach ( get_user_meta( $spare->ID, $key ) as $value ) {
+		foreach ( get_user_meta( $spare->ID, $key, false ) as $value ) {
 			add_user_meta( $kept->ID, $key, wp_slash( $value ) );
 		}
 	}
@@ -634,7 +634,7 @@ function blueworx_merge_users_run( $kept_id, $spare_id, $email_from, $actor_id )
 
 	// The spare's own record of earlier merges comes too, so the history of
 	// who was folded into whom survives however many merges it took.
-	foreach ( get_user_meta( $spare->ID, 'blueworx_merge_log' ) as $earlier ) {
+	foreach ( get_user_meta( $spare->ID, 'blueworx_merge_log', false ) as $earlier ) {
 		add_user_meta( $kept->ID, 'blueworx_merge_log', wp_slash( $earlier ) );
 	}
 

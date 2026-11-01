@@ -23,6 +23,8 @@
  * @package BlueWorxLabsTests
  */
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery -- A fixture: it seeds and reads the tables directly on purpose.
+
 $wp_load = isset( $argv[1] ) ? $argv[1] : null;
 $command = isset( $argv[2] ) ? $argv[2] : '';
 
@@ -81,7 +83,12 @@ function merge_fixture_tables() {
 function merge_fixture_cleanup() {
 	global $wpdb;
 
-	foreach ( get_users( array( 'search' => 'merge_*', 'search_columns' => array( 'user_login' ) ) ) as $user ) {
+	foreach ( get_users(
+		array(
+			'search'         => 'merge_*',
+			'search_columns' => array( 'user_login' ),
+		)
+	) as $user ) {
 		wp_delete_user( $user->ID );
 	}
 
@@ -108,8 +115,8 @@ if ( 'cleanup' === $command ) {
 
 if ( 'feature' === $command ) {
 	update_option( 'blueworx_feature_merge_users', 'on' === ( $argv[3] ?? '' ) ? '1' : '0' );
-	echo "ok
-";
+	echo 'ok
+';
 	exit( 0 );
 }
 
@@ -150,7 +157,14 @@ if ( 'seed' === $command ) {
 	update_user_meta( $spare, '_application_passwords', array( array( 'uuid' => 'merge-fixture' ) ) );
 	update_user_meta( $spare, 'sc_customer_ids', array( 'live' => 'cus_spare' ) );
 	update_user_meta( $spare, $wpdb->prefix . '_blueworx_view_as_role', 'editor' );
-	update_user_meta( $spare, '_new_email', array( 'hash' => 'x', 'newemail' => 'someone-else@example.invalid' ) );
+	update_user_meta(
+		$spare,
+		'_new_email',
+		array(
+			'hash'     => 'x',
+			'newemail' => 'someone-else@example.invalid',
+		)
+	);
 	add_user_meta( $spare, 'blueworx_merge_log', array( 'spare_login' => 'merge_older' ) );
 
 	if ( 'surecart-both' === $variant ) {
@@ -174,7 +188,14 @@ if ( 'seed' === $command ) {
 	}
 
 	if ( 'cpt' === $variant ) {
-		wp_insert_post( array( 'post_type' => 'merge_fixture_cpt', 'post_status' => 'publish', 'post_title' => 'merge_fixture cpt', 'post_author' => $spare ) );
+		wp_insert_post(
+			array(
+				'post_type'   => 'merge_fixture_cpt',
+				'post_status' => 'publish',
+				'post_title'  => 'merge_fixture cpt',
+				'post_author' => $spare,
+			)
+		);
 	}
 
 	if ( 'support' === $variant && function_exists( 'blueworx_support_role_slug' ) ) {
@@ -186,14 +207,35 @@ if ( 'seed' === $command ) {
 	}
 
 	if ( 'no-url' === $variant ) {
-		wp_update_user( array( 'ID' => $spare, 'user_url' => '' ) );
+		wp_update_user(
+			array(
+				'ID'       => $spare,
+				'user_url' => '',
+			)
+		);
 	}
 
 	$manager = 0;
 	if ( 'manager' === $variant ) {
 		remove_role( 'merge_user_manager' );
-		add_role( 'merge_user_manager', 'User manager (test)', array( 'read' => true, 'list_users' => true, 'edit_users' => true, 'delete_users' => true ) );
-		$manager = wp_insert_user( array( 'user_login' => 'merge_manager', 'user_pass' => wp_generate_password(), 'user_email' => 'merge-manager@example.invalid', 'role' => 'merge_user_manager' ) );
+		add_role(
+			'merge_user_manager',
+			'User manager (test)',
+			array(
+				'read'         => true,
+				'list_users'   => true,
+				'edit_users'   => true,
+				'delete_users' => true,
+			)
+		);
+		$manager = wp_insert_user(
+			array(
+				'user_login' => 'merge_manager',
+				'user_pass'  => wp_generate_password(),
+				'user_email' => 'merge-manager@example.invalid',
+				'role'       => 'merge_user_manager',
+			)
+		);
 	}
 
 	if ( 'learndash' === $variant ) {
@@ -203,43 +245,126 @@ if ( 'seed' === $command ) {
 		update_user_meta( $kept, 'course_303_access_from', 1700000000 );
 		update_user_meta( $spare, 'learndash_course_expired_303', 1600000000 );
 
-		$group = wp_insert_post( array( 'post_type' => 'post', 'post_status' => 'draft', 'post_title' => 'merge_fixture group', 'post_author' => $kept ) );
+		$group = wp_insert_post(
+			array(
+				'post_type'   => 'post',
+				'post_status' => 'draft',
+				'post_title'  => 'merge_fixture group',
+				'post_author' => $kept,
+			)
+		);
 		update_user_meta( $spare, 'learndash_group_users_' . $group, $group );
 
 		$legacy = $wpdb->prefix . 'wp_pro_quiz_statistic_ref';
 		$wpdb->query( "CREATE TABLE IF NOT EXISTS {$legacy} ( statistic_ref_id bigint(20) NOT NULL AUTO_INCREMENT, quiz_id bigint(20) NOT NULL DEFAULT 0, user_id bigint(20) NOT NULL DEFAULT 0, create_time bigint(20) NOT NULL DEFAULT 0, PRIMARY KEY (statistic_ref_id) )" ); // phpcs:ignore
-		$wpdb->insert( $legacy, array( 'quiz_id' => 9, 'user_id' => $spare, 'create_time' => time() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->insert(
+			$legacy,
+			array(
+				'quiz_id'     => 9,
+				'user_id'     => $spare,
+				'create_time' => time(),
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		update_user_meta(
 			$kept,
 			'_sfwd-course_progress',
-			array( 101 => array( 'lessons' => array( 11 => 1 ), 'topics' => array(), 'completed' => 1, 'total' => 4 ) )
+			array(
+				101 => array(
+					'lessons'   => array( 11 => 1 ),
+					'topics'    => array(),
+					'completed' => 1,
+					'total'     => 4,
+				),
+			)
 		);
 		update_user_meta(
 			$spare,
 			'_sfwd-course_progress',
 			array(
-				101 => array( 'lessons' => array( 11 => 1, 12 => 1, 13 => 1 ), 'topics' => array(), 'completed' => 3, 'total' => 4 ),
-				202 => array( 'lessons' => array( 21 => 1 ), 'topics' => array(), 'completed' => 1, 'total' => 2 ),
+				101 => array(
+					'lessons'   => array(
+						11 => 1,
+						12 => 1,
+						13 => 1,
+					),
+					'topics'    => array(),
+					'completed' => 3,
+					'total'     => 4,
+				),
+				202 => array(
+					'lessons'   => array( 21 => 1 ),
+					'topics'    => array(),
+					'completed' => 1,
+					'total'     => 2,
+				),
 			)
 		);
 		update_user_meta( $spare, 'course_202_access_from', 1700000000 );
 
 		$table = $wpdb->prefix . 'learndash_user_activity';
 		$wpdb->query( "CREATE TABLE IF NOT EXISTS {$table} ( activity_id bigint(20) NOT NULL AUTO_INCREMENT, user_id bigint(20) NOT NULL DEFAULT 0, post_id bigint(20) NOT NULL DEFAULT 0, course_id bigint(20) NOT NULL DEFAULT 0, activity_type varchar(50) DEFAULT NULL, activity_status tinyint(1) DEFAULT NULL, PRIMARY KEY (activity_id) )" ); // phpcs:ignore
-		$wpdb->insert( $table, array( 'user_id' => $spare, 'post_id' => 202, 'course_id' => 202, 'activity_type' => 'course', 'activity_status' => 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->insert(
+			$table,
+			array(
+				'user_id'         => $spare,
+				'post_id'         => 202,
+				'course_id'       => 202,
+				'activity_type'   => 'course',
+				'activity_status' => 0,
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 		// Both started course 101; only the spare finished it.
-		$wpdb->insert( $table, array( 'user_id' => $kept, 'post_id' => 101, 'course_id' => 101, 'activity_type' => 'course', 'activity_status' => 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->insert(
+			$table,
+			array(
+				'user_id'         => $kept,
+				'post_id'         => 101,
+				'course_id'       => 101,
+				'activity_type'   => 'course',
+				'activity_status' => 0,
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$kept_row = $wpdb->insert_id;
-		$wpdb->insert( $table, array( 'user_id' => $spare, 'post_id' => 101, 'course_id' => 101, 'activity_type' => 'course', 'activity_status' => 1 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->insert(
+			$table,
+			array(
+				'user_id'         => $spare,
+				'post_id'         => 101,
+				'course_id'       => 101,
+				'activity_type'   => 'course',
+				'activity_status' => 1,
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
 		$meta_table = $table . '_meta';
 		$wpdb->query( "CREATE TABLE IF NOT EXISTS {$meta_table} ( activity_meta_id bigint(20) NOT NULL AUTO_INCREMENT, activity_id bigint(20) NOT NULL DEFAULT 0, activity_meta_key varchar(255) DEFAULT NULL, activity_meta_value mediumtext, PRIMARY KEY (activity_meta_id) )" ); // phpcs:ignore
-		$wpdb->insert( $meta_table, array( 'activity_id' => $kept_row, 'activity_meta_key' => 'steps_completed', 'activity_meta_value' => '1' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->insert(
+			$meta_table,
+			array(
+				'activity_id'         => $kept_row,
+				'activity_meta_key'   => 'steps_completed',
+				'activity_meta_value' => '1',
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	}
 
-	$page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'merge_fixture page', 'post_author' => $spare ) );
-	$post = wp_insert_post( array( 'post_type' => 'post', 'post_status' => 'draft', 'post_title' => 'merge_fixture post', 'post_author' => $spare ) );
+	$page = wp_insert_post(
+		array(
+			'post_type'   => 'page',
+			'post_status' => 'publish',
+			'post_title'  => 'merge_fixture page',
+			'post_author' => $spare,
+		)
+	);
+	$post = wp_insert_post(
+		array(
+			'post_type'   => 'post',
+			'post_status' => 'draft',
+			'post_title'  => 'merge_fixture post',
+			'post_author' => $spare,
+		)
+	);
 
 	wp_insert_comment(
 		array(
@@ -250,7 +375,13 @@ if ( 'seed' === $command ) {
 		)
 	);
 
-	echo wp_json_encode( array( 'kept' => $kept, 'spare' => $spare, 'manager' => $manager ) ) . "\n";
+	echo wp_json_encode(
+		array(
+			'kept'    => $kept,
+			'spare'   => $spare,
+			'manager' => $manager,
+		)
+	) . "\n";
 	exit( 0 );
 }
 
@@ -282,7 +413,12 @@ if ( 'run' === $command ) {
 
 	// Loads the spare's comments into the cache first, as a busy site would have
 	// them, to see whether the cache hears that they moved.
-	$comment_ids = get_comments( array( 'user_id' => (int) $argv[4], 'fields' => 'ids' ) );
+	$comment_ids = get_comments(
+		array(
+			'user_id' => (int) $argv[4],
+			'fields'  => 'ids',
+		)
+	);
 	foreach ( $comment_ids as $comment_id ) {
 		get_comment( $comment_id );
 	}
@@ -311,7 +447,14 @@ if ( 'run' === $command ) {
 
 if ( 'claim' === $command ) {
 	global $wpdb;
-	$third = wp_insert_user( array( 'user_login' => 'merge_third', 'user_pass' => wp_generate_password(), 'user_email' => 'merge-third@example.invalid', 'role' => 'subscriber' ) );
+	$third = wp_insert_user(
+		array(
+			'user_login' => 'merge_third',
+			'user_pass'  => wp_generate_password(),
+			'user_email' => 'merge-third@example.invalid',
+			'role'       => 'subscriber',
+		)
+	);
 	$wpdb->update( $wpdb->users, array( 'user_email' => (string) $argv[3] ), array( 'ID' => $third ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	clean_user_cache( $third );
 	echo wp_json_encode( array( 'third' => $third ) ) . "\n";
@@ -339,7 +482,10 @@ if ( 'inspect' === $command ) {
 	$spare_id = (int) $argv[4];
 	$out      = array();
 
-	foreach ( array( 'kept' => $kept_id, 'spare' => $spare_id ) as $label => $id ) {
+	foreach ( array(
+		'kept'  => $kept_id,
+		'spare' => $spare_id,
+	) as $label => $id ) {
 		clean_user_cache( $id );
 		$user = get_userdata( $id );
 
@@ -359,7 +505,7 @@ if ( 'inspect' === $command ) {
 			'url'      => $user->user_url,
 			'roles'    => array_values( $user->roles ),
 			'meta'     => $meta,
-			'posts'    => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_author = %d AND post_title LIKE 'merge_fixture%%'", $id ) ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			'posts'    => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_author = %d AND post_title LIKE %s", $id, $wpdb->esc_like( 'merge_fixture' ) . '%' ) ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			'comments' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->comments} WHERE user_id = %d AND comment_content = 'merge_fixture comment'", $id ) ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		);
 	}

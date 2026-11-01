@@ -7,6 +7,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins, then the engine under test.
 require __DIR__ . '/stubs.php';
 require dirname( __DIR__, 2 ) . '/includes/merge-users/merge.php';
 
@@ -51,18 +52,35 @@ check( 'a stored non-array is treated as nothing', array_keys( blueworx_merge_us
 echo "\nQuiz attempts\n";
 
 $quizzes = blueworx_merge_users_quizzes(
-	array( array( 'quiz' => 7, 'time' => 100 ) ),
 	array(
-		array( 'quiz' => 7, 'time' => 100 ),
-		array( 'quiz' => 8, 'time' => 200 ),
+		array(
+			'quiz' => 7,
+			'time' => 100,
+		),
+	),
+	array(
+		array(
+			'quiz' => 7,
+			'time' => 100,
+		),
+		array(
+			'quiz' => 8,
+			'time' => 200,
+		),
 	)
 );
 check(
 	'the kept attempts come first, then the spare\'s, without repeats',
 	$quizzes,
 	array(
-		array( 'quiz' => 7, 'time' => 100 ),
-		array( 'quiz' => 8, 'time' => 200 ),
+		array(
+			'quiz' => 7,
+			'time' => 100,
+		),
+		array(
+			'quiz' => 8,
+			'time' => 200,
+		),
 	)
 );
 

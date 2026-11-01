@@ -404,13 +404,13 @@ function blueworx_merge_users_render_preview( $user_id, $kept_id, $spare_id ) {
 	}
 
 	$rows = array(
-		__( 'Keeping', 'blueworx-labs-wordpress' )                   => esc_html( blueworx_merge_users_label( $kept ) ),
-		__( 'Deleting', 'blueworx-labs-wordpress' )                  => esc_html( blueworx_merge_users_label( $spare ) ),
+		__( 'Keeping', 'blueworx-labs-wordpress' )         => esc_html( blueworx_merge_users_label( $kept ) ),
+		__( 'Deleting', 'blueworx-labs-wordpress' )        => esc_html( blueworx_merge_users_label( $spare ) ),
 		__( 'Details filled in from the spare', 'blueworx-labs-wordpress' ) => $list( array_map( 'blueworx_merge_users_field_label', $plan['meta_filled'] ) ),
-		__( 'Roles added', 'blueworx-labs-wordpress' )               => $list( $plan['roles_added'] ),
-		__( 'Posts and pages moving', 'blueworx-labs-wordpress' )    => esc_html( (string) $plan['posts'] ),
-		__( 'Comments moving', 'blueworx-labs-wordpress' )           => esc_html( (string) $plan['comments'] ),
-		__( 'LearnDash courses added', 'blueworx-labs-wordpress' )   => $list( array_map( 'blueworx_merge_users_course_label', $plan['courses_added'] ) ),
+		__( 'Roles added', 'blueworx-labs-wordpress' )     => $list( $plan['roles_added'] ),
+		__( 'Posts and pages moving', 'blueworx-labs-wordpress' ) => esc_html( (string) $plan['posts'] ),
+		__( 'Comments moving', 'blueworx-labs-wordpress' ) => esc_html( (string) $plan['comments'] ),
+		__( 'LearnDash courses added', 'blueworx-labs-wordpress' ) => $list( array_map( 'blueworx_merge_users_course_label', $plan['courses_added'] ) ),
 		__( 'LearnDash progress taken from the spare', 'blueworx-labs-wordpress' ) => $list( array_map( 'blueworx_merge_users_course_label', $plan['courses_progress_from_spare'] ) ),
 		__( 'SureCart customer afterwards', 'blueworx-labs-wordpress' ) => $list( $surecart ),
 	);
