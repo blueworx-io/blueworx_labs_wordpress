@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.97.0] - 2026-11-01
+
+### Added
+- **Merge users.** Turn two accounts for the same person into one from the
+  Users list. Profile details, posts, comments, roles, SureCart purchases and
+  LearnDash courses move to the account you keep, and the other is deleted.
+  Off until you switch it on under Enhancements. Nobody is emailed.
+
 ## [1.96.11] - 2026-10-31
 
 ### Fixed
