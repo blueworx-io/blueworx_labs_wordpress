@@ -69,7 +69,35 @@ test.describe('Merge users — the engine', () => {
     expect(meta._application_passwords, 'app passwords are never copied').toBe('');
     expect(meta.view_as, '"view as" is never copied').toBe('');
     expect(meta._new_email, "a pending email change can't follow").toBe('');
-    expect(meta.blueworx_merge_log).toHaveLength(1);
+    expect(meta.blueworx_merge_log, "the spare's own earlier merges come too").toHaveLength(2);
+    const log = meta.blueworx_merge_log.find((entry) => entry.spare_login === 'merge_spare');
+    expect(log.kept_email, 'the log keeps the address the kept account started with').toBe('merge-kept@example.invalid');
+    expect(result.comment_owner, 'a cached comment hears that it moved').toBe(kept);
+  });
+
+  test('moves posts of every type, even ones no plugin registers any more', () => {
+    const { kept, spare } = fixture('seed', 'cpt');
+
+    expect(fixture('run', kept, spare, 'kept').ok).toBe(true);
+    expect(fixture('inspect', kept, spare).kept.posts).toBe(3);
+  });
+
+  test('an empty SureCart customer on the kept account is not a clash', () => {
+    const { kept, spare } = fixture('seed', 'surecart-empty');
+
+    expect(fixture('run', kept, spare, 'kept').ok).toBe(true);
+    expect(fixture('inspect', kept, spare).kept.meta.sc_customer_ids).toEqual({ live: 'cus_spare' });
+  });
+
+  test('a merge that stops part-way says so and leaves the spare as it was', () => {
+    const { kept, spare } = fixture('seed');
+    fixture('claim', 'merge-spare@example.invalid');
+
+    expect(fixture('run', kept, spare, 'spare')).toEqual({ error: 'merge_users_email', started: true });
+
+    const state = fixture('inspect', kept, spare);
+    expect(state.spare, 'nothing was deleted').not.toBeNull();
+    expect(state.spare.email, 'the spare gets its address back').toBe('merge-spare@example.invalid');
   });
 
   test("takes the spare's email when asked", () => {
@@ -111,6 +139,7 @@ test.describe('Merge users — the engine', () => {
     ['refuses a merge with itself', '', (ids) => [ids.kept, ids.kept, 1], 'merge_users_same'],
     ['refuses merging away the person doing it', '', (ids) => [ids.kept, ids.spare, ids.spare], 'merge_users_self'],
     ['refuses a support or external account', 'support', (ids) => [ids.kept, ids.spare, 1], 'merge_users_readonly'],
+    ['refuses keeping a support or external account', 'readonly-kept', (ids) => [ids.kept, ids.spare, 1], 'merge_users_readonly'],
     ['refuses two SureCart customers in the same mode', 'surecart-both', (ids) => [ids.kept, ids.spare, 1], 'merge_users_surecart'],
     ['refuses an account that no longer exists', '', (ids) => [ids.kept, ids.spare + 100000, 1], 'merge_users_missing'],
   ]) {
@@ -124,6 +153,7 @@ test.describe('Merge users — the engine', () => {
       expect(state.spare, 'nothing was deleted').not.toBeNull();
       expect(state.kept.meta.bw_only_spare, 'nothing was copied').toBe('');
       expect(state.spare.posts).toBe(2);
+      expect(state.spare.meta.sc_customer_ids, 'the SureCart link stays where it was').toEqual({ live: 'cus_spare' });
     });
   }
 
@@ -141,7 +171,9 @@ test.describe('Merge users — the engine', () => {
     expect(progress[101].completed, 'the further-along progress wins').toBe(3);
     expect(progress[202], 'a course only the spare had comes across').toBeTruthy();
     expect(state.kept.meta.course_202_access_from, 'and so does access to it').toBe('1700000000');
-    expect(state.activity_kept, 'activity records move to the kept account').toBe(1);
+    expect(state.activity_kept, 'activity records move, one per course when both took it').toBe(2);
+    expect(state.activity_101_status, 'and the finished one wins').toBe(1);
+    expect(state.activity_meta_orphans, 'nothing is left pointing at a removed record').toBe(0);
   });
 });
 
@@ -220,6 +252,42 @@ test.describe('Merge users — the screen', () => {
     await expect(page.getByText('These accounts cannot be merged.')).toBeVisible();
     await expect(page.locator('.bw-admin')).toContainText('cus_kept');
     await expect(page.getByRole('button', { name: 'Merge accounts' })).toHaveCount(0);
+    for (const id of ['cus_kept', 'cus_spare']) {
+      await expect(page.locator(`a[href*="page=sc-customers"][href*="id=${id}"]`), `links to ${id} in SureCart`).toHaveCount(1);
+    }
+  });
+
+  test('the preview names LearnDash groups and course access in words', async ({ page }) => {
+    const { kept, spare } = fixture('seed', 'learndash');
+    await login(page);
+
+    await page.goto(previewPath(spare, kept));
+    const preview = page.locator('.blueworx-merge-users__preview');
+    await expect(preview).toContainText('LearnDash group: merge_fixture group');
+    await expect(preview).toContainText('Course access:');
+    await expect(preview).not.toContainText('learndash_group_users_');
+    await expect(preview).not.toContainText('_access_from');
+  });
+
+  test('warns before an account becomes an administrator', async ({ page }) => {
+    const { kept, spare } = fixture('seed', 'admin-spare');
+    await login(page);
+
+    await page.goto(previewPath(spare, kept));
+    await expect(page.getByText('merge_kept will become an administrator')).toBeVisible();
+  });
+
+  test('a merge that stops part-way says so', async ({ page }) => {
+    const { kept, spare } = fixture('seed');
+    await login(page);
+
+    await page.goto(previewPath(spare, kept));
+    fixture('claim', 'merge-spare@example.invalid');
+    await page.getByLabel('merge-spare@example.invalid (from merge_spare)').check();
+    await page.getByRole('button', { name: 'Merge accounts' }).click();
+
+    await expect(page.getByText('The merge stopped part-way.')).toBeVisible();
+    await expect(page.locator('.bw-admin')).toContainText('safe to try again');
   });
 
   test('a stale form fails gently', async ({ page }) => {
@@ -255,6 +323,12 @@ test.describe('Merge users — the screen', () => {
       const response = await page.goto(previewPath(spare, kept));
       expect(response.status()).toBe(403);
       await expect(page.getByRole('button', { name: 'Merge accounts' })).toHaveCount(0);
+
+      const post = await page.request.post('/wp-admin/admin-post.php', {
+        form: { action: 'blueworx_merge_users', kept: String(kept), spare: String(spare), email_from: 'kept' },
+      });
+      expect(post.status(), 'a hand-made request is turned away too').toBe(403);
+      expect(fixture('inspect', kept, spare).spare, 'nothing was deleted').not.toBeNull();
     } finally {
       execFileSync('php', [viewer, wpLoad, 'delete']);
     }

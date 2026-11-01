@@ -8,13 +8,17 @@
  *
  * Usage: php merge-users.php /absolute/path/to/wp-load.php <command> [args]
  *
- *   seed [surecart-both|support|learndash]  Prints {"kept":id,"spare":id}.
+ *   seed [variant]                          Prints {"kept":id,"spare":id}. Variants:
+ *                                           surecart-both, surecart-empty, support,
+ *                                           readonly-kept, manager, no-url, cpt,
+ *                                           admin-spare, learndash.
  *   run <kept> <spare> <kept|spare> [actor] Prints {"ok":true} or {"error":code}.
+ *   claim <email>                           Gives a third account that address, straight in the table.
  *   inspect <kept> <spare>                  Prints the state both accounts are in.
  *   placeholder <id>                        Gives an account the address a half-finished merge leaves.
  *   delete <id>                             Deletes one account, as another tab would.
  *   feature <on|off>                        Switches the function on or off.
- *   cleanup                                 Removes every merge_* account and post.
+ *   cleanup                                 Removes every merge_* account, post and test table.
  *
  * @package BlueWorxLabsTests
  */
@@ -55,6 +59,21 @@ $keys = array(
 );
 
 /**
+ * The LearnDash tables the fixture stands in for, when LearnDash is not there.
+ *
+ * @return string[] Table names.
+ */
+function merge_fixture_tables() {
+	global $wpdb;
+
+	return array(
+		$wpdb->prefix . 'learndash_user_activity',
+		$wpdb->prefix . 'learndash_user_activity_meta',
+		$wpdb->prefix . 'wp_pro_quiz_statistic_ref',
+	);
+}
+
+/**
  * Removes every account and post this fixture made.
  *
  * @return void
@@ -66,11 +85,19 @@ function merge_fixture_cleanup() {
 		wp_delete_user( $user->ID );
 	}
 
-	foreach ( get_posts( array( 'post_type' => 'any', 'post_status' => 'any', 'numberposts' => -1, 's' => 'merge_fixture' ) ) as $post ) {
-		wp_delete_post( $post->ID, true );
+	// Straight from the table, so posts of a type nobody registered go too.
+	foreach ( $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_title LIKE 'merge\\_fixture%'" ) as $post_id ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		wp_delete_post( (int) $post_id, true );
 	}
 
 	$wpdb->query( "DELETE FROM {$wpdb->comments} WHERE comment_content = 'merge_fixture comment'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+	// Only ever the fixture's own: a site with LearnDash keeps its tables.
+	if ( ! defined( 'LEARNDASH_VERSION' ) ) {
+		foreach ( merge_fixture_tables() as $table ) {
+			$wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore
+		}
+	}
 }
 
 if ( 'cleanup' === $command ) {
@@ -124,9 +151,30 @@ if ( 'seed' === $command ) {
 	update_user_meta( $spare, 'sc_customer_ids', array( 'live' => 'cus_spare' ) );
 	update_user_meta( $spare, $wpdb->prefix . '_blueworx_view_as_role', 'editor' );
 	update_user_meta( $spare, '_new_email', array( 'hash' => 'x', 'newemail' => 'someone-else@example.invalid' ) );
+	add_user_meta( $spare, 'blueworx_merge_log', array( 'spare_login' => 'merge_older' ) );
 
 	if ( 'surecart-both' === $variant ) {
 		update_user_meta( $kept, 'sc_customer_ids', array( 'live' => 'cus_kept' ) );
+	}
+
+	if ( 'surecart-empty' === $variant ) {
+		update_user_meta( $kept, 'sc_customer_ids', array( 'live' => '' ) );
+	}
+
+	if ( 'readonly-kept' === $variant && function_exists( 'blueworx_support_role_slug' ) ) {
+		if ( ! get_role( blueworx_support_role_slug() ) ) {
+			add_role( blueworx_support_role_slug(), 'Support (test)', array( 'read' => true ) );
+		}
+
+		( new WP_User( $kept ) )->add_role( blueworx_support_role_slug() );
+	}
+
+	if ( 'admin-spare' === $variant ) {
+		( new WP_User( $spare ) )->add_role( 'administrator' );
+	}
+
+	if ( 'cpt' === $variant ) {
+		wp_insert_post( array( 'post_type' => 'merge_fixture_cpt', 'post_status' => 'publish', 'post_title' => 'merge_fixture cpt', 'post_author' => $spare ) );
 	}
 
 	if ( 'support' === $variant && function_exists( 'blueworx_support_role_slug' ) ) {
@@ -155,6 +203,9 @@ if ( 'seed' === $command ) {
 		update_user_meta( $kept, 'course_303_access_from', 1700000000 );
 		update_user_meta( $spare, 'learndash_course_expired_303', 1600000000 );
 
+		$group = wp_insert_post( array( 'post_type' => 'post', 'post_status' => 'draft', 'post_title' => 'merge_fixture group', 'post_author' => $kept ) );
+		update_user_meta( $spare, 'learndash_group_users_' . $group, $group );
+
 		$legacy = $wpdb->prefix . 'wp_pro_quiz_statistic_ref';
 		$wpdb->query( "CREATE TABLE IF NOT EXISTS {$legacy} ( statistic_ref_id bigint(20) NOT NULL AUTO_INCREMENT, quiz_id bigint(20) NOT NULL DEFAULT 0, user_id bigint(20) NOT NULL DEFAULT 0, create_time bigint(20) NOT NULL DEFAULT 0, PRIMARY KEY (statistic_ref_id) )" ); // phpcs:ignore
 		$wpdb->insert( $legacy, array( 'quiz_id' => 9, 'user_id' => $spare, 'create_time' => time() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -176,6 +227,15 @@ if ( 'seed' === $command ) {
 		$table = $wpdb->prefix . 'learndash_user_activity';
 		$wpdb->query( "CREATE TABLE IF NOT EXISTS {$table} ( activity_id bigint(20) NOT NULL AUTO_INCREMENT, user_id bigint(20) NOT NULL DEFAULT 0, post_id bigint(20) NOT NULL DEFAULT 0, course_id bigint(20) NOT NULL DEFAULT 0, activity_type varchar(50) DEFAULT NULL, activity_status tinyint(1) DEFAULT NULL, PRIMARY KEY (activity_id) )" ); // phpcs:ignore
 		$wpdb->insert( $table, array( 'user_id' => $spare, 'post_id' => 202, 'course_id' => 202, 'activity_type' => 'course', 'activity_status' => 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+		// Both started course 101; only the spare finished it.
+		$wpdb->insert( $table, array( 'user_id' => $kept, 'post_id' => 101, 'course_id' => 101, 'activity_type' => 'course', 'activity_status' => 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$kept_row = $wpdb->insert_id;
+		$wpdb->insert( $table, array( 'user_id' => $spare, 'post_id' => 101, 'course_id' => 101, 'activity_type' => 'course', 'activity_status' => 1 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+		$meta_table = $table . '_meta';
+		$wpdb->query( "CREATE TABLE IF NOT EXISTS {$meta_table} ( activity_meta_id bigint(20) NOT NULL AUTO_INCREMENT, activity_id bigint(20) NOT NULL DEFAULT 0, activity_meta_key varchar(255) DEFAULT NULL, activity_meta_value mediumtext, PRIMARY KEY (activity_meta_id) )" ); // phpcs:ignore
+		$wpdb->insert( $meta_table, array( 'activity_id' => $kept_row, 'activity_meta_key' => 'steps_completed', 'activity_meta_value' => '1' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	}
 
 	$page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'merge_fixture page', 'post_author' => $spare ) );
@@ -220,8 +280,41 @@ if ( 'run' === $command ) {
 		}
 	);
 
+	// Loads the spare's comments into the cache first, as a busy site would have
+	// them, to see whether the cache hears that they moved.
+	$comment_ids = get_comments( array( 'user_id' => (int) $argv[4], 'fields' => 'ids' ) );
+	foreach ( $comment_ids as $comment_id ) {
+		get_comment( $comment_id );
+	}
+
 	$result = blueworx_merge_users_run( (int) $argv[3], (int) $argv[4], (string) $argv[5], $actor );
-	echo wp_json_encode( is_wp_error( $result ) ? array( 'error' => $result->get_error_code() ) : array( 'ok' => true, 'updated' => array_values( array_unique( $updated ) ), 'mails' => $mails ) ) . "\n";
+
+	if ( is_wp_error( $result ) ) {
+		$data = $result->get_error_data();
+		$out  = array( 'error' => $result->get_error_code() );
+
+		if ( is_array( $data ) && ! empty( $data['started'] ) ) {
+			$out['started'] = true;
+		}
+	} else {
+		$out = array(
+			'ok'            => true,
+			'updated'       => array_values( array_unique( $updated ) ),
+			'mails'         => $mails,
+			'comment_owner' => $comment_ids ? (int) get_comment( $comment_ids[0] )->user_id : 0,
+		);
+	}
+
+	echo wp_json_encode( $out ) . "\n";
+	exit( 0 );
+}
+
+if ( 'claim' === $command ) {
+	global $wpdb;
+	$third = wp_insert_user( array( 'user_login' => 'merge_third', 'user_pass' => wp_generate_password(), 'user_email' => 'merge-third@example.invalid', 'role' => 'subscriber' ) );
+	$wpdb->update( $wpdb->users, array( 'user_email' => (string) $argv[3] ), array( 'ID' => $third ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	clean_user_cache( $third );
+	echo wp_json_encode( array( 'third' => $third ) ) . "\n";
 	exit( 0 );
 }
 
@@ -273,7 +366,13 @@ if ( 'inspect' === $command ) {
 
 	$table = $wpdb->prefix . 'learndash_user_activity';
 	if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$out['activity_kept'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE user_id = %d", $kept_id ) ); // phpcs:ignore
+		$out['activity_kept']       = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE user_id = %d", $kept_id ) ); // phpcs:ignore
+		$out['activity_101_status'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT MAX(activity_status) FROM {$table} WHERE user_id = %d AND course_id = 101", $kept_id ) ); // phpcs:ignore
+	}
+
+	$meta_table = $table . '_meta';
+	if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $meta_table ) ) === $meta_table ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$out['activity_meta_orphans'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$meta_table} m LEFT JOIN {$table} a ON a.activity_id = m.activity_id WHERE a.activity_id IS NULL" ); // phpcs:ignore
 	}
 
 	$legacy = $wpdb->prefix . 'wp_pro_quiz_statistic_ref';

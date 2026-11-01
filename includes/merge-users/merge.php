@@ -91,7 +91,15 @@ function blueworx_merge_users_skip_meta( $key ) {
 function blueworx_merge_users_surecart_ids( $user_id ) {
 	$ids = get_user_meta( (int) $user_id, 'sc_customer_ids', true );
 
-	return is_array( $ids ) ? array_filter( $ids, 'is_string' ) : array();
+	// An empty ID is no customer at all, and must not read as a clash.
+	return is_array( $ids )
+		? array_filter(
+			$ids,
+			static function ( $id ) {
+				return is_string( $id ) && '' !== $id;
+			}
+		)
+		: array();
 }
 
 /**
@@ -248,9 +256,62 @@ function blueworx_merge_users_learndash( $kept_id, $spare_id ) {
 
 	foreach ( blueworx_merge_users_learndash_tables() as $table ) {
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) === $table ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			if ( 'learndash_user_activity' === substr( $table, -strlen( 'learndash_user_activity' ) ) ) {
+				blueworx_merge_users_learndash_activity( $table, $kept_id, $spare_id );
+			}
+
 			$wpdb->update( $table, array( 'user_id' => (int) $kept_id ), array( 'user_id' => (int) $spare_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- LearnDash has no API to move a user's records.
 		}
 	}
+}
+
+/**
+ * Leaves one activity record per step when both accounts have one.
+ *
+ * Both accounts may have started the same course or lesson. LearnDash expects
+ * a single record for each, so before the spare's move across, the weaker of
+ * every pair goes: the finished one wins, and a tie goes to the kept account.
+ * Any details LearnDash kept against a removed record go with it.
+ *
+ * @param string $table    The activity table.
+ * @param int    $kept_id  Account to keep.
+ * @param int    $spare_id Account to delete.
+ * @return void
+ */
+function blueworx_merge_users_learndash_activity( $table, $kept_id, $spare_id ) {
+	global $wpdb;
+
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- LearnDash's own table, named by the code above.
+	$pairs = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT k.activity_id AS kept_row, s.activity_id AS spare_row, k.activity_status AS kept_status, s.activity_status AS spare_status
+			FROM {$table} k
+			JOIN {$table} s ON s.post_id = k.post_id AND s.course_id = k.course_id AND s.activity_type = k.activity_type
+			WHERE k.user_id = %d AND s.user_id = %d",
+			(int) $kept_id,
+			(int) $spare_id
+		)
+	);
+
+	$drop = array();
+	foreach ( (array) $pairs as $pair ) {
+		$drop[] = (int) $pair->spare_status > (int) $pair->kept_status ? (int) $pair->kept_row : (int) $pair->spare_row;
+	}
+
+	$drop = array_values( array_unique( $drop ) );
+
+	if ( ! $drop ) {
+		return;
+	}
+
+	$in = implode( ',', $drop );
+	$wpdb->query( "DELETE FROM {$table} WHERE activity_id IN ({$in})" );
+
+	$meta = $table . '_meta';
+	if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $meta ) ) ) === $meta ) {
+		$wpdb->query( "DELETE FROM {$meta} WHERE activity_id IN ({$in})" );
+	}
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 }
 
 /**
@@ -508,8 +569,9 @@ function blueworx_merge_users_run( $kept_id, $spare_id, $email_from, $actor_id )
 		$kept_user->add_role( $role );
 	}
 
-	$wpdb->update( $wpdb->comments, array( 'user_id' => $kept->ID ), array( 'user_id' => $spare->ID ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- No API moves comments between users.
-	wp_cache_set_comments_last_changed();
+	$comment_ids = $wpdb->get_col( $wpdb->prepare( "SELECT comment_ID FROM {$wpdb->comments} WHERE user_id = %d", $spare->ID ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- No API moves comments between users.
+	$wpdb->update( $wpdb->comments, array( 'user_id' => $kept->ID ), array( 'user_id' => $spare->ID ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Same.
+	clean_comment_cache( array_map( 'intval', $comment_ids ) );
 
 	/**
 	 * Fires before the spare account is deleted, for anything else to move.
@@ -556,27 +618,50 @@ function blueworx_merge_users_run( $kept_id, $spare_id, $email_from, $actor_id )
 			$wpdb->update( $wpdb->users, array( 'user_email' => $spare->user_email ), array( 'ID' => $spare->ID ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			clean_user_cache( $spare->ID );
 
-			return $updated;
+			// Everything before this has already moved, so the screen must not
+			// say nothing happened. 'started' is how it tells.
+			return new WP_Error(
+				'merge_users_email',
+				sprintf(
+					/* translators: %s: WordPress's reason. */
+					__( 'Everything else moved across, but the kept account could not be saved: %s Nothing has been deleted, so it is safe to try again once that is sorted.', 'blueworx-labs-wordpress' ),
+					wp_strip_all_tags( $updated->get_error_message() )
+				),
+				array( 'started' => true )
+			);
 		}
+	}
+
+	// The spare's own record of earlier merges comes too, so the history of
+	// who was folded into whom survives however many merges it took.
+	foreach ( get_user_meta( $spare->ID, 'blueworx_merge_log' ) as $earlier ) {
+		add_user_meta( $kept->ID, 'blueworx_merge_log', wp_slash( $earlier ) );
 	}
 
 	add_user_meta(
 		$kept->ID,
 		'blueworx_merge_log',
-		array(
-			'time'        => time(),
-			'actor'       => (int) $actor_id,
-			'spare_id'    => (int) $spare->ID,
-			'spare_login' => $spare->user_login,
-			'spare_email' => $spare->user_email,
-			'email_from'  => 'spare' === $email_from ? 'spare' : 'kept',
+		wp_slash(
+			array(
+				'time'        => time(),
+				'actor'       => (int) $actor_id,
+				'kept_email'  => $kept->user_email,
+				'spare_id'    => (int) $spare->ID,
+				'spare_login' => $spare->user_login,
+				'spare_email' => $spare->user_email,
+				'email_from'  => 'spare' === $email_from ? 'spare' : 'kept',
+			)
 		)
 	);
 
 	require_once ABSPATH . 'wp-admin/includes/user.php';
 
 	if ( ! wp_delete_user( $spare->ID, $kept->ID ) ) {
-		return new WP_Error( 'merge_users_delete', __( 'Everything was moved across, but the spare account could not be deleted. Delete it from the Users list.', 'blueworx-labs-wordpress' ) );
+		return new WP_Error(
+			'merge_users_delete',
+			__( 'Everything was moved across, but the spare account could not be deleted. Delete it from the Users list.', 'blueworx-labs-wordpress' ),
+			array( 'started' => true )
+		);
 	}
 
 	return $applied;

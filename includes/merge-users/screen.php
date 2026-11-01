@@ -128,14 +128,38 @@ function blueworx_merge_users_field_label( $key ) {
 		'phone'       => __( 'Phone', 'blueworx-labs-wordpress' ),
 	);
 
-	return isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
+	if ( isset( $labels[ $key ] ) ) {
+		return $labels[ $key ];
+	}
+
+	// LearnDash keeps groups and course access as one key per group or course.
+	$patterns = array(
+		/* translators: %s: group name. */
+		'/^learndash_group_users_(\d+)$/'    => __( 'LearnDash group: %s', 'blueworx-labs-wordpress' ),
+		/* translators: %s: group name. */
+		'/^learndash_group_leaders_(\d+)$/'  => __( 'LearnDash group leader: %s', 'blueworx-labs-wordpress' ),
+		/* translators: %s: course name. */
+		'/^course_(\d+)_access_from$/'       => __( 'Course access: %s', 'blueworx-labs-wordpress' ),
+		/* translators: %s: course name. */
+		'/^course_completed_(\d+)$/'         => __( 'Course completed: %s', 'blueworx-labs-wordpress' ),
+		/* translators: %s: course name. */
+		'/^learndash_course_expired_(\d+)$/' => __( 'Course access ended: %s', 'blueworx-labs-wordpress' ),
+	);
+
+	foreach ( $patterns as $pattern => $label ) {
+		if ( preg_match( $pattern, $key, $match ) ) {
+			return sprintf( $label, blueworx_merge_users_course_label( (int) $match[1] ) );
+		}
+	}
+
+	return $key;
 }
 
 /**
- * Names a LearnDash course by its title.
+ * Names a LearnDash course or group by its title.
  *
- * @param int $course_id Course ID.
- * @return string Title, or the ID when the course has gone.
+ * @param int $course_id Course or group ID.
+ * @return string Title, or the ID when it has gone.
  */
 function blueworx_merge_users_course_label( $course_id ) {
 	$title = get_the_title( $course_id );
@@ -335,12 +359,31 @@ function blueworx_merge_users_render_preview( $user_id, $kept_id, $spare_id ) {
 	$check = blueworx_merge_users_check( $kept_id, $spare_id, get_current_user_id() );
 
 	if ( is_wp_error( $check ) ) {
+		$actions = $back;
+		$data    = $check->get_error_data();
+
+		// A clash is sorted out in SureCart, so open each customer from here.
+		if ( is_array( $data ) && ! empty( $data['clashes'] ) ) {
+			foreach ( $data['clashes'] as $pair ) {
+				foreach ( $pair as $customer ) {
+					$actions .= ' ' . blueworx_ds_button(
+						array(
+							/* translators: %s: SureCart customer ID. */
+							'label' => sprintf( __( 'Open %s in SureCart', 'blueworx-labs-wordpress' ), $customer ),
+							'href'  => admin_url( 'admin.php?page=sc-customers&action=edit&id=' . rawurlencode( $customer ) ),
+							'icon'  => 'external-link',
+						)
+					);
+				}
+			}
+		}
+
 		echo blueworx_ds_notice( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helpers escape everything they emit.
 			array(
 				'tone'    => 'danger',
 				'title'   => __( 'These accounts cannot be merged.', 'blueworx-labs-wordpress' ),
 				'text'    => $check->get_error_message(),
-				'actions' => $back,
+				'actions' => $actions,
 			)
 		);
 
@@ -507,10 +550,15 @@ function blueworx_merge_users_handle() {
 	$result     = blueworx_merge_users_run( $kept, $spare, $email_from, get_current_user_id() );
 
 	if ( is_wp_error( $result ) ) {
+		$data    = $result->get_error_data();
+		$started = is_array( $data ) && ! empty( $data['started'] );
+
 		blueworx_merge_users_set_notice(
 			array(
-				'tone'  => 'danger',
-				'title' => __( 'The merge did not happen.', 'blueworx-labs-wordpress' ),
+				'tone'  => $started ? 'warning' : 'danger',
+				'title' => $started
+					? __( 'The merge stopped part-way.', 'blueworx-labs-wordpress' )
+					: __( 'The merge did not happen.', 'blueworx-labs-wordpress' ),
 				'text'  => $result->get_error_message(),
 			)
 		);
