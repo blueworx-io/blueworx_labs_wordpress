@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.97.1] - 2026-11-02
+
+### Changed
+- **Merge users is quicker to use.** Results show as you type, with no page
+  reload, and the search icon sits inside the box. Picking an account shows
+  both side by side, and you choose which one to keep from there.
+
 ## [1.97.0] - 2026-11-01
 
 ### Added
