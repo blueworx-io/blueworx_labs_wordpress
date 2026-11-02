@@ -213,7 +213,7 @@ function blueworx_merge_users_render_page() {
 	} elseif ( $other && in_array( $keep, array( 'this', 'other' ), true ) ) {
 		$kept  = 'this' === $keep ? $user_id : $other;
 		$spare = 'this' === $keep ? $other : $user_id;
-		blueworx_merge_users_render_preview( $user_id, $kept, $spare );
+		blueworx_merge_users_render_preview( $user_id, $kept, $spare, $search );
 	} else {
 		blueworx_merge_users_render_chooser( $user_id, $search, $other );
 	}
@@ -222,10 +222,12 @@ function blueworx_merge_users_render_page() {
 }
 
 /**
- * Step one: which account, and which to keep.
+ * Step one: find the other account, then pick which of the two to keep.
  *
- * A plain list with a search over it, rather than a live lookup: it works with
- * no script, and up to 200 matches is plenty to find one person by.
+ * The search runs as you type, and the side-by-side view opens in place, through
+ * merge-users.js, swapping in the same HTML the functions below draw. Without the
+ * script the search box is still a plain form and each result a plain link, so
+ * nothing here depends on it.
  *
  * @param int    $user_id Account the person started from.
  * @param string $search  Search text.
@@ -233,101 +235,36 @@ function blueworx_merge_users_render_page() {
  * @return void
  */
 function blueworx_merge_users_render_chooser( $user_id, $search, $other ) {
-	$user  = get_userdata( $user_id );
-	$query = array(
-		'exclude' => array( $user_id ),
-		'orderby' => 'login',
-		'number'  => 200,
-		'fields'  => array( 'ID', 'user_login', 'user_email' ),
-	);
+	$user = get_userdata( $user_id );
 
-	if ( '' !== $search ) {
-		$query['search']         = '*' . $search . '*';
-		$query['search_columns'] = array( 'user_login', 'user_email', 'display_name' );
-	}
-
-	$options = array();
-	foreach ( get_users( $query ) as $row ) {
-		$options[ (string) $row->ID ] = sprintf( '%1$s (%2$s)', $row->user_login, $row->user_email );
-	}
-
-	// Two forms, so searching never also submits whichever account the list
-	// happens to have selected.
-	$open = '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '" class="bw-fields bw-fields--single">'
+	$body = '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '" class="bw-fields bw-fields--single" role="search" data-blueworx-merge-search>'
 		. '<input type="hidden" name="page" value="blueworx-merge-users" />'
-		. '<input type="hidden" name="user" value="' . esc_attr( (string) $user_id ) . '" />';
-
-	$body = $open;
-
-	$body .= blueworx_ds_field(
-		array(
-			'label'   => __( 'Find the other account', 'blueworx-labs-wordpress' ),
-			'for'     => 'blueworx_merge_users_q',
-			'control' => blueworx_ds_input(
-				array(
-					'name'  => 'q',
-					'id'    => 'blueworx_merge_users_q',
-					'value' => $search,
-					'attrs' => array( 'placeholder' => __( 'Username, email or name', 'blueworx-labs-wordpress' ) ),
-				)
-			) . ' ' . blueworx_ds_button(
-				array(
-					'label' => __( 'Search', 'blueworx-labs-wordpress' ),
-					'type'  => 'submit',
-					'icon'  => 'search',
-				)
-			),
-		)
-	);
-
-	$body .= '</form>';
-
-	if ( $options ) {
-		$body .= $open . blueworx_ds_field(
+		. '<input type="hidden" name="user" value="' . esc_attr( (string) $user_id ) . '" />'
+		. blueworx_ds_field(
 			array(
-				'label'   => __( 'Other account', 'blueworx-labs-wordpress' ),
-				'for'     => 'blueworx_merge_users_other',
-				'control' => blueworx_ds_select(
+				'label'   => __( 'Find the other account', 'blueworx-labs-wordpress' ),
+				'for'     => 'blueworx_merge_users_q',
+				'control' => '<div class="bw-inputwrap">' . blueworx_ds_icon( 'search', 16, 'bw-inputwrap__icon' ) . blueworx_ds_input(
 					array(
-						'name'     => 'other',
-						'id'       => 'blueworx_merge_users_other',
-						'options'  => $options,
-						'selected' => (string) $other,
+						'type'  => 'search',
+						'name'  => 'q',
+						'id'    => 'blueworx_merge_users_q',
+						'value' => $search,
+						'attrs' => array(
+							'placeholder'   => __( 'Username, email or name', 'blueworx-labs-wordpress' ),
+							'autocomplete'  => 'off',
+							'aria-controls' => 'blueworx-merge-users-results',
+						),
 					)
-				),
+				) . '</div>',
 			)
-		);
-
-		$body .= blueworx_ds_radio_group(
-			array(
-				'name'     => 'keep',
-				'legend'   => __( 'Which account do you want to keep?', 'blueworx-labs-wordpress' ),
-				'choices'  => array(
-					'other' => __( 'The account picked above', 'blueworx-labs-wordpress' ),
-					/* translators: %s: username. */
-					'this'  => sprintf( __( 'Keep %s', 'blueworx-labs-wordpress' ), $user->user_login ),
-				),
-				'selected' => 'other',
-				'help'     => __( 'The one you do not keep is deleted at the end.', 'blueworx-labs-wordpress' ),
-			)
-		);
-
-		$body .= '<div>' . blueworx_ds_button(
-			array(
-				'label'   => __( 'Continue', 'blueworx-labs-wordpress' ),
-				'variant' => 'primary',
-				'type'    => 'submit',
-				'icon'    => 'arrow-right',
-			)
-		) . '</div></form>';
-	} else {
-		$body .= blueworx_ds_notice(
-			array(
-				'tone' => 'info',
-				'text' => __( 'No other accounts match that search.', 'blueworx-labs-wordpress' ),
-			)
-		);
-	}
+		)
+		// Inside the form only so the field grid spaces it from the box. It
+		// holds links, never fields, so nothing in it is ever submitted.
+		. '<div id="blueworx-merge-users-results" class="blueworx-merge-users__results" aria-live="polite">'
+		. blueworx_merge_users_results( $user_id, $search, $other )
+		. '</div>'
+		. '</form>';
 
 	echo blueworx_ds_card( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helpers escape everything they emit.
 		array(
@@ -338,21 +275,350 @@ function blueworx_merge_users_render_chooser( $user_id, $search, $other ) {
 			'class'   => 'blueworx-merge-users__choose',
 		)
 	);
+
+	echo '<div id="blueworx-merge-users-compare" class="blueworx-merge-users__compare">'
+		. ( $other ? blueworx_merge_users_compare( $user_id, $other, $search ) : '' ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Built from the design system helpers, which escape everything they emit.
+		. '</div>';
+}
+
+/**
+ * The accounts matching a search, each with a way to compare it.
+ *
+ * @param int    $user_id Account the person started from.
+ * @param string $search  Search text.
+ * @param int    $other   Account already picked, if any.
+ * @return string HTML.
+ */
+function blueworx_merge_users_results( $user_id, $search, $other ) {
+	if ( '' === $search ) {
+		return '<p class="bw-field__help">' . esc_html__( 'Start typing and matching accounts show up here.', 'blueworx-labs-wordpress' ) . '</p>';
+	}
+
+	$limit = 20;
+	$found = get_users(
+		array(
+			'exclude'        => array( $user_id ),
+			'search'         => '*' . $search . '*',
+			'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
+			'orderby'        => 'login',
+			// One more than is shown, to know whether to say there are more.
+			'number'         => $limit + 1,
+		)
+	);
+
+	if ( ! $found ) {
+		return blueworx_ds_notice(
+			array(
+				'tone' => 'info',
+				'text' => __( 'No other accounts match that search.', 'blueworx-labs-wordpress' ),
+			)
+		);
+	}
+
+	$rows = '';
+	foreach ( array_slice( $found, 0, $limit ) as $row ) {
+		$picked = (int) $other === (int) $row->ID;
+		$action = $picked
+			? blueworx_ds_badge( __( 'Picked', 'blueworx-labs-wordpress' ), 'accent', false, 'check' )
+			: blueworx_ds_button(
+				array(
+					'label' => __( 'Compare', 'blueworx-labs-wordpress' ),
+					'size'  => 'sm',
+					'href'  => blueworx_merge_users_url(
+						array(
+							'user'  => $user_id,
+							'other' => $row->ID,
+							'q'     => $search,
+						)
+					),
+					'attrs' => array(
+						'data-blueworx-merge-other' => (string) $row->ID,
+						/* translators: %s: username. */
+						'aria-label'                => sprintf( __( 'Compare with %s', 'blueworx-labs-wordpress' ), $row->user_login ),
+					),
+				)
+			);
+
+		$rows .= '<tr' . ( $picked ? ' aria-current="true"' : '' ) . '>'
+			. '<td><span class="bw-table__primary">' . esc_html( $row->user_login ) . '</span>'
+			. '<span class="bw-table__sub">' . esc_html( $row->display_name . ' · ' . $row->user_email ) . '</span></td>'
+			. '<td>' . esc_html( blueworx_merge_users_roles_label( $row ) ) . '</td>'
+			. '<td>' . esc_html( blueworx_merge_users_joined( $row ) ) . '</td>'
+			. '<td>' . $action . '</td>'
+			. '</tr>';
+	}
+
+	$html = '<div class="bw-tablescroll"><table class="bw-table"><thead><tr>'
+		. '<th scope="col">' . esc_html__( 'Account', 'blueworx-labs-wordpress' ) . '</th>'
+		. '<th scope="col">' . esc_html__( 'Role', 'blueworx-labs-wordpress' ) . '</th>'
+		. '<th scope="col">' . esc_html__( 'Joined', 'blueworx-labs-wordpress' ) . '</th>'
+		. '<th scope="col"><span class="screen-reader-text">' . esc_html__( 'Action', 'blueworx-labs-wordpress' ) . '</span></th>'
+		. '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+
+	if ( count( $found ) > $limit ) {
+		/* translators: %d: number of accounts shown. */
+		$html .= '<p class="bw-field__help">' . esc_html( sprintf( __( 'Showing the first %d. Keep typing to narrow it down.', 'blueworx-labs-wordpress' ), $limit ) ) . '</p>';
+	}
+
+	return $html;
+}
+
+/**
+ * The two accounts side by side, each with the button that keeps it.
+ *
+ * @param int    $user_id  Account the person started from.
+ * @param int    $other_id Account they picked.
+ * @param string $search   Search text, carried on so Back finds the same list.
+ * @return string HTML.
+ */
+function blueworx_merge_users_compare( $user_id, $other_id, $search ) {
+	$user  = get_userdata( $user_id );
+	$other = get_userdata( $other_id );
+
+	if ( ! $user || ! $other || (int) $user->ID === (int) $other->ID ) {
+		return blueworx_ds_notice(
+			array(
+				'tone' => 'warning',
+				'text' => __( 'That account no longer exists. Search for it again.', 'blueworx-labs-wordpress' ),
+			)
+		);
+	}
+
+	$facts = array(
+		'this'  => blueworx_merge_users_facts( $user ),
+		'other' => blueworx_merge_users_facts( $other ),
+	);
+
+	// A row only earns its place when either account has something in it, so a
+	// site without LearnDash or SureCart is not shown two rows of "None".
+	$optional = array();
+	foreach ( array( 'courses', 'surecart' ) as $key ) {
+		if ( $facts['this'][ $key ] || $facts['other'][ $key ] ) {
+			$optional[] = $key;
+		}
+	}
+
+	$cards = blueworx_merge_users_account_card( $user, 'this', __( 'Started here', 'blueworx-labs-wordpress' ), $facts['this'], $optional, $user_id, $other->ID, $search )
+		. blueworx_merge_users_account_card( $other, 'other', __( 'Picked', 'blueworx-labs-wordpress' ), $facts['other'], $optional, $user_id, $other->ID, $search );
+
+	return blueworx_ds_card(
+		array(
+			'title' => __( 'Which one do you want to keep?', 'blueworx-labs-wordpress' ),
+			'note'  => __( 'Everything moves to the one you keep, and the other is deleted at the end. You see exactly what will change before anything happens.', 'blueworx-labs-wordpress' ),
+			'body'  => '<div class="bw-fields">' . $cards . '</div>',
+			'class' => 'blueworx-merge-users__pair',
+			'attrs' => array( 'tabindex' => '-1' ),
+		)
+	);
+}
+
+/**
+ * One side of the comparison.
+ *
+ * Drawn by hand rather than with blueworx_ds_card(), which always makes an h2:
+ * these sit inside a card of their own, so their titles are h3.
+ *
+ * @param WP_User $account  Account this card is for.
+ * @param string  $keep     'this' or 'other', as the next step reads it.
+ * @param string  $eyebrow  Which of the two it is.
+ * @param array   $facts    From blueworx_merge_users_facts().
+ * @param array   $optional Optional rows to show.
+ * @param int     $user_id  Account the person started from.
+ * @param int     $other_id Account they picked.
+ * @param string  $search   Search text.
+ * @return string HTML.
+ */
+function blueworx_merge_users_account_card( $account, $keep, $eyebrow, $facts, $optional, $user_id, $other_id, $search ) {
+	$none = __( 'None', 'blueworx-labs-wordpress' );
+	$rows = array(
+		__( 'Name', 'blueworx-labs-wordpress' )            => esc_html( $account->display_name ),
+		__( 'Email', 'blueworx-labs-wordpress' )           => esc_html( $account->user_email ),
+		__( 'Role', 'blueworx-labs-wordpress' )            => esc_html( blueworx_merge_users_roles_label( $account ) ),
+		__( 'Joined', 'blueworx-labs-wordpress' )          => esc_html( blueworx_merge_users_joined( $account ) ),
+		__( 'Posts and pages', 'blueworx-labs-wordpress' ) => esc_html( number_format_i18n( $facts['posts'] ) ),
+		__( 'Comments', 'blueworx-labs-wordpress' )        => esc_html( number_format_i18n( $facts['comments'] ) ),
+	);
+
+	if ( in_array( 'courses', $optional, true ) ) {
+		$rows[ __( 'LearnDash courses', 'blueworx-labs-wordpress' ) ] = esc_html( number_format_i18n( $facts['courses'] ) );
+	}
+
+	if ( in_array( 'surecart', $optional, true ) ) {
+		$rows[ __( 'SureCart customer', 'blueworx-labs-wordpress' ) ] = esc_html( $facts['surecart'] ? implode( ', ', $facts['surecart'] ) : $none );
+	}
+
+	$title_id = 'blueworx-merge-users-' . $keep;
+
+	$form = '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '">'
+		. '<input type="hidden" name="page" value="blueworx-merge-users" />'
+		. '<input type="hidden" name="user" value="' . esc_attr( (string) $user_id ) . '" />'
+		. '<input type="hidden" name="other" value="' . esc_attr( (string) $other_id ) . '" />'
+		. '<input type="hidden" name="keep" value="' . esc_attr( $keep ) . '" />'
+		. ( '' !== $search ? '<input type="hidden" name="q" value="' . esc_attr( $search ) . '" />' : '' )
+		. blueworx_ds_button(
+			array(
+				'label'   => __( 'Keep this one', 'blueworx-labs-wordpress' ),
+				'variant' => 'primary',
+				'type'    => 'submit',
+				'icon'    => 'check',
+				'attrs'   => array(
+					/* translators: %s: username. */
+					'aria-label' => sprintf( __( 'Keep this one, %s', 'blueworx-labs-wordpress' ), $account->user_login ),
+				),
+			)
+		)
+		. '</form>';
+
+	return '<section class="bw-card bw-card--sunken" aria-labelledby="' . esc_attr( $title_id ) . '">'
+		. '<div class="bw-card__head"><div class="bw-card__titles">'
+		. '<p class="bw-card__eyebrow">' . esc_html( $eyebrow ) . '</p>'
+		. '<h3 class="bw-card__title" id="' . esc_attr( $title_id ) . '">' . esc_html( $account->user_login ) . '</h3>'
+		. '</div></div>'
+		. '<div class="bw-card__body">' . blueworx_ds_description_list( $rows ) . '</div>'
+		. '<div class="bw-card__foot">' . $form . '</div>'
+		. '</section>';
+}
+
+/**
+ * What an account holds, counted for the comparison.
+ *
+ * @param WP_User $account Account.
+ * @return array 'posts', 'comments', 'courses' (counts) and 'surecart' (IDs).
+ */
+function blueworx_merge_users_facts( $account ) {
+	global $wpdb;
+
+	$courses  = get_user_meta( $account->ID, '_sfwd-course_progress', true );
+	$enrolled = is_array( $courses ) ? array_map( 'intval', array_keys( $courses ) ) : array();
+
+	// Access to a course the person never opened is a key of its own, with no
+	// progress record behind it.
+	foreach ( array_keys( get_user_meta( $account->ID ) ) as $key ) {
+		if ( preg_match( '/^course_(\d+)_access_from$/', $key, $match ) ) {
+			$enrolled[] = (int) $match[1];
+		}
+	}
+
+	return array(
+		'posts'    => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_author = %d AND post_type <> 'revision'", $account->ID ) ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- The same count the merge itself moves; no API gives one across every post type.
+		'comments' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->comments} WHERE user_id = %d", $account->ID ) ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Same.
+		'courses'  => count( array_unique( $enrolled ) ),
+		'surecart' => array_values( blueworx_merge_users_surecart_ids( $account->ID ) ),
+	);
+}
+
+/**
+ * An account's roles, by the names WordPress shows for them.
+ *
+ * @param WP_User $account Account.
+ * @return string Comma-separated role names, or "None".
+ */
+function blueworx_merge_users_roles_label( $account ) {
+	$names = wp_roles()->get_names();
+	$roles = array();
+
+	foreach ( (array) $account->roles as $role ) {
+		$roles[] = isset( $names[ $role ] ) ? translate_user_role( $names[ $role ] ) : $role;
+	}
+
+	return $roles ? implode( ', ', $roles ) : __( 'None', 'blueworx-labs-wordpress' );
+}
+
+/**
+ * When an account was made, in the site's date format.
+ *
+ * @param WP_User $account Account.
+ * @return string Date.
+ */
+function blueworx_merge_users_joined( $account ) {
+	return date_i18n( get_option( 'date_format' ), strtotime( $account->user_registered ) );
+}
+
+/**
+ * Answers the screen's background requests: a search, or the comparison.
+ *
+ * Read-only, so a GET, but still behind the same checks as the screen and a
+ * nonce of its own, so another site cannot make an admin's browser list users.
+ *
+ * @return void
+ */
+function blueworx_merge_users_ajax() {
+	if ( ! blueworx_merge_users_allowed() ) {
+		wp_send_json_error( null, 403 );
+	}
+
+	check_ajax_referer( 'blueworx_merge_users_search', 'nonce' );
+
+	$user_id = isset( $_GET['user'] ) ? absint( $_GET['user'] ) : 0;
+	$other   = isset( $_GET['other'] ) ? absint( $_GET['other'] ) : 0;
+	$search  = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
+	$part    = isset( $_GET['part'] ) ? sanitize_key( wp_unslash( $_GET['part'] ) ) : '';
+
+	if ( ! get_userdata( $user_id ) ) {
+		wp_send_json_error( null, 404 );
+	}
+
+	wp_send_json_success(
+		array(
+			'html' => 'compare' === $part
+				? blueworx_merge_users_compare( $user_id, $other, $search )
+				: blueworx_merge_users_results( $user_id, $search, $other ),
+		)
+	);
+}
+
+/**
+ * Loads the search-as-you-type script on the screen.
+ *
+ * @param string $hook_suffix Current admin screen hook.
+ * @return void
+ */
+function blueworx_merge_users_enqueue( $hook_suffix ) {
+	if ( 'admin_page_blueworx-merge-users' !== $hook_suffix || ! blueworx_merge_users_allowed() ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'blueworx-merge-users',
+		BLUEWORX_LABS_URL . 'assets/js/merge-users.js',
+		array(),
+		blueworx_get_admin_asset_version( 'assets/js/merge-users.js' ),
+		true
+	);
+
+	wp_localize_script(
+		'blueworx-merge-users',
+		'blueworxMergeUsers',
+		array(
+			'ajax'   => admin_url( 'admin-ajax.php' ),
+			'nonce'  => wp_create_nonce( 'blueworx_merge_users_search' ),
+			'failed' => __( 'The search did not load. Press Enter to search the slower way.', 'blueworx-labs-wordpress' ),
+		)
+	);
 }
 
 /**
  * Step two: what the merge would change, and the one button that does it.
  *
- * @param int $user_id  Account the person started from, for the way back.
- * @param int $kept_id  Account to keep.
- * @param int $spare_id Account to delete.
+ * @param int    $user_id  Account the person started from, for the way back.
+ * @param int    $kept_id  Account to keep.
+ * @param int    $spare_id Account to delete.
+ * @param string $search   Search text, so Back returns to the same list.
  * @return void
  */
-function blueworx_merge_users_render_preview( $user_id, $kept_id, $spare_id ) {
+function blueworx_merge_users_render_preview( $user_id, $kept_id, $spare_id, $search = '' ) {
 	$back  = blueworx_ds_button(
 		array(
 			'label' => __( 'Back', 'blueworx-labs-wordpress' ),
-			'href'  => blueworx_merge_users_url( array( 'user' => $user_id ) ),
+			'href'  => blueworx_merge_users_url(
+				array_filter(
+					array(
+						'user'  => $user_id,
+						'other' => $user_id === $kept_id ? $spare_id : $kept_id,
+						'q'     => $search,
+					)
+				)
+			),
 			'icon'  => 'arrow-left',
 		)
 	);
@@ -440,6 +706,7 @@ function blueworx_merge_users_render_preview( $user_id, $kept_id, $spare_id ) {
 							'user'  => $user_id,
 							'other' => $user_id === $kept->ID ? $spare->ID : $kept->ID,
 							'keep'  => $user_id === $kept->ID ? 'other' : 'this',
+							'q'     => $search,
 						)
 					),
 				)
@@ -575,4 +842,6 @@ if ( blueworx_feature_enabled( 'merge_users' ) ) {
 	add_action( 'admin_menu', 'blueworx_merge_users_register_page' );
 	add_filter( 'user_row_actions', 'blueworx_merge_users_row_action', 10, 2 );
 	add_action( 'admin_post_blueworx_merge_users', 'blueworx_merge_users_handle' );
+	add_action( 'wp_ajax_blueworx_merge_users', 'blueworx_merge_users_ajax' );
+	add_action( 'admin_enqueue_scripts', 'blueworx_merge_users_enqueue' );
 }

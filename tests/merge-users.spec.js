@@ -223,10 +223,23 @@ test.describe('Merge users — the screen', () => {
     await row.hover();
     await row.locator('.row-actions .blueworx_merge a').click();
 
+    // Marks this page load, so a reload anywhere below shows up as a lost mark.
+    await page.evaluate(() => {
+      globalThis.blueworxMergeStayed = true;
+    });
+
+    await expect(page.locator('.bw-inputwrap__icon + #blueworx_merge_users_q'), 'the search icon sits inside the box, on the left').toHaveCount(1);
     await page.fill('#blueworx_merge_users_q', 'merge_kept');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await page.selectOption('#blueworx_merge_users_other', String(kept));
-    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.locator(`[data-blueworx-merge-other="${kept}"]`).click();
+
+    const pair = page.locator('.blueworx-merge-users__pair');
+    await expect(pair).toContainText('merge_spare');
+    await expect(pair).toContainText('merge_kept');
+    await expect(page.locator('#blueworx-merge-users-results'), 'the picked row says so').toContainText('Picked');
+    expect(await page.evaluate(() => globalThis.blueworxMergeStayed), 'searching and picking never reload the page').toBe(true);
+    expect(page.url(), 'a reload would land on the same view').toContain(`other=${kept}`);
+
+    await page.getByRole('button', { name: 'Keep this one, merge_kept' }).click();
 
     const preview = page.locator('.blueworx-merge-users__preview');
     await expect(preview).toContainText('merge_kept');
@@ -242,6 +255,26 @@ test.describe('Merge users — the screen', () => {
     expect(state.spare).toBeNull();
     expect(state.kept.email).toBe('merge-spare@example.invalid');
     expect(state.kept.posts).toBe(2);
+  });
+
+  test('the comparison counts what each account holds', async ({ page }) => {
+    const { kept, spare } = fixture('seed');
+    await login(page);
+
+    await page.goto(`/wp-admin/admin.php?page=blueworx-merge-users&user=${spare}&other=${kept}`);
+    const spareCard = page.locator('section[aria-labelledby="blueworx-merge-users-this"]');
+    await expect(spareCard).toContainText('merge-spare@example.invalid');
+    await expect(spareCard.locator('dt', { hasText: 'Posts and pages' }).locator('+ dd')).toHaveText('2');
+    await expect(spareCard, 'SureCart only shows when either account has a customer').toContainText('cus_spare');
+  });
+
+  test('a search with no matches says so', async ({ page }) => {
+    const { spare } = fixture('seed');
+    await login(page);
+
+    await page.goto(`/wp-admin/admin.php?page=blueworx-merge-users&user=${spare}`);
+    await page.fill('#blueworx_merge_users_q', 'nobody-by-this-name');
+    await expect(page.locator('#blueworx-merge-users-results')).toContainText('No other accounts match that search.');
   });
 
   test('a blocked merge says why and offers no button', async ({ page }) => {
@@ -302,6 +335,23 @@ test.describe('Merge users — the screen', () => {
 
     await expect(page.getByText('The merge did not happen.')).toBeVisible();
     await expect(page.locator('.bw-admin')).toContainText('no longer exists');
+  });
+
+  test.describe('without the script', () => {
+    test.use({ javaScriptEnabled: false });
+
+    test('search and picking still work as plain pages', async ({ page }) => {
+      const { kept, spare } = fixture('seed');
+      await login(page);
+
+      await page.goto(`/wp-admin/admin.php?page=blueworx-merge-users&user=${spare}`);
+      await page.fill('#blueworx_merge_users_q', 'merge_kept');
+      await page.press('#blueworx_merge_users_q', 'Enter');
+      await page.locator(`[data-blueworx-merge-other="${kept}"]`).click();
+      await page.getByRole('button', { name: 'Keep this one, merge_kept' }).click();
+
+      await expect(page.locator('.blueworx-merge-users__preview')).toContainText('merge_kept');
+    });
   });
 
   test('not offered to an external viewer', async ({ page }) => {
