@@ -110,6 +110,13 @@
       });
   }
 
+  // Somebody quick can type before this file has loaded on a slow page. The
+  // list on screen is for whatever the address says, so if the box holds
+  // something else by now, catch up.
+  if (input.value.trim() !== (new URLSearchParams(window.location.search).get('q') || '').trim()) {
+    search();
+  }
+
   input.addEventListener('input', function () {
     window.clearTimeout(timer);
     timer = window.setTimeout(search, 250);

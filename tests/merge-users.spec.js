@@ -222,6 +222,7 @@ test.describe('Merge users — the screen', () => {
     const row = page.locator('tr', { hasText: 'merge_spare' });
     await row.hover();
     await row.locator('.row-actions .blueworx_merge a').click();
+    await page.waitForURL(/page=blueworx-merge-users/);
 
     // Marks this page load, so a reload anywhere below shows up as a lost mark.
     await page.evaluate(() => {
