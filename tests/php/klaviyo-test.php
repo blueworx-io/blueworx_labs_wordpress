@@ -70,7 +70,7 @@ $settings = array(
 	'list_members'        => 'XRYaZh',
 );
 
-$order = array(
+$order_fixture = array(
 	'id'       => 'ord1',
 	'checkout' => array(
 		'paid_amount' => 251900,
@@ -81,7 +81,7 @@ $order = array(
 );
 
 echo "Started Membership\n";
-$plan = blueworx_klaviyo_plan_started( subscription_fixture(), $order, $settings );
+$plan = blueworx_klaviyo_plan_started( subscription_fixture(), $order_fixture, $settings );
 check( 'event name is the spreadsheet\'s', $plan['event']['name'], 'Started Membership' );
 check( 'revenue value in dollars', $plan['event']['value'], 2519.0 );
 check( 'value property', $plan['event']['properties']['value'], 2519.0 );
@@ -104,7 +104,7 @@ check( 'box ticked goes on Members', $plan['list'], 'XRYaZh' );
 check( 'one event per membership', $plan['event']['unique_id'], 'started-sub1' );
 
 echo "\nThe checkout box unticked\n";
-$unticked                         = $order;
+$unticked                         = $order_fixture;
 $unticked['checkout']['metadata'] = array();
 $plan                             = blueworx_klaviyo_plan_started( subscription_fixture(), $unticked, $settings );
 check( 'no consent written', isset( $plan['set']['marketing_consent'] ), false );
@@ -118,7 +118,7 @@ $other['price']['product'] = array(
 	'slug' => 'social-membership-arundel',
 	'name' => 'Social Membership - Arundel',
 );
-$plan                      = blueworx_klaviyo_plan_started( $other, $order, $settings );
+$plan                      = blueworx_klaviyo_plan_started( $other, $order_fixture, $settings );
 check( 'is_founding false', $plan['event']['properties']['is_founding'], false );
 check( 'founding_status untouched', isset( $plan['set']['founding_status'] ), false );
 check( 'founding_member untouched', isset( $plan['set']['founding_member'] ), false );
@@ -306,7 +306,7 @@ check( 'ticked records true', $attributes['properties']['marketing_consent'], tr
 
 echo "\nProperties marketing manage never appear\n";
 $every = array(
-	blueworx_klaviyo_plan_started( subscription_fixture(), $order, $settings ),
+	blueworx_klaviyo_plan_started( subscription_fixture(), $order_fixture, $settings ),
 	blueworx_klaviyo_plan_renewed( subscription_fixture(), 2, $settings ),
 	blueworx_klaviyo_plan_failed( subscription_fixture(), $settings ),
 	blueworx_klaviyo_plan_cancelled( subscription_fixture(), $settings ),

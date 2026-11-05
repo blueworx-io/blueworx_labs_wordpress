@@ -161,17 +161,8 @@ function blueworx_klaviyo_profile_attributes( $plan, $existing = array() ) {
 /**
  * The "Stay up to date" form: spreadsheet tab 1, Form A.
  *
- * @param array $form {
- *     @type string $email            Email address.
- *     @type string $first_name       First name.
- *     @type string $last_name        Last name.
- *     @type string $page             Address of the page the form was on.
- *     @type string $preferred_centre Centre of interest, if the form asks.
- * }
- * @param array $settings {
- *     @type string $list         Website Subscribers list.
- *     @type string $consent_text Wording shown beside the button.
- * }
+ * @param array $form     The answers: email, first_name, last_name, page and preferred_centre.
+ * @param array $settings The Website Subscribers list and the consent wording: list and consent_text.
  * @return array The plan.
  */
 function blueworx_klaviyo_plan_info_form( $form, $settings ) {
@@ -212,16 +203,8 @@ function blueworx_klaviyo_plan_info_form( $form, $settings ) {
  * only whether they also want wider news, and leaving it unticked never takes
  * away a yes they gave earlier.
  *
- * @param array $form {
- *     @type string $email      Email address.
- *     @type string $first_name First name.
- *     @type string $last_name  Last name.
- *     @type bool   $marketing  Whether the optional box was ticked.
- *     @type string $date       Reservation date, YYYY-MM-DD.
- * }
- * @param array $settings {
- *     @type string $list Founding Reservations list.
- * }
+ * @param array $form     The answers: email, first_name, last_name, date.
+ * @param array $settings The settings used: list.
  * @return array The plan.
  */
 function blueworx_klaviyo_plan_reservation_form( $form, $settings ) {
@@ -715,10 +698,10 @@ function blueworx_klaviyo_plan_refunded( $refund ) {
  * @param array $subscription SureCart subscription, expanded.
  * @param array $settings     Feature settings.
  * @param array $extra        Extra properties to set.
- * @param array $unset        Properties to remove.
+ * @param array $remove       Properties to remove.
  * @return array|null The plan.
  */
-function blueworx_klaviyo_plan_status( $subscription, $settings, $extra = array(), $unset = array() ) {
+function blueworx_klaviyo_plan_status( $subscription, $settings, $extra = array(), $remove = array() ) {
 	$details = blueworx_klaviyo_membership_details( $subscription, $settings );
 
 	if ( ! $details ) {
@@ -729,6 +712,6 @@ function blueworx_klaviyo_plan_status( $subscription, $settings, $extra = array(
 		'label' => 'Membership status update',
 		'email' => $details['email'],
 		'set'   => array_merge( blueworx_klaviyo_profile_base( $details ), $extra ),
-		'unset' => $unset,
+		'unset' => $remove,
 	);
 }

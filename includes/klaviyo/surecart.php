@@ -313,11 +313,7 @@ function blueworx_klaviyo_subscription_for_order( $order ) {
 /**
  * Works out what a SureCart event means for Klaviyo.
  *
- * @param array $webhook {
- *     @type string $type     Event type.
- *     @type string $id       The record it is about.
- *     @type array  $previous What changed, when SureCart says.
- * }
+ * @param array $webhook The event: type, id of the record it is about, and previous, what changed when SureCart says.
  * @return array|WP_Error Plans to send, possibly none, or an error worth a retry.
  */
 function blueworx_klaviyo_surecart_plans( $webhook ) {
@@ -540,7 +536,7 @@ function blueworx_klaviyo_plans_for_update( $subscription_id, $previous, $settin
 	}
 
 	// Remembered only once it has gone through, so a retry still sees the change.
-	$last                   = count( $plans ) - 1;
+	$last                    = count( $plans ) - 1;
 	$plans[ $last ]['after'] = array(
 		'subscription' => $subscription_id,
 		'state'        => $now,

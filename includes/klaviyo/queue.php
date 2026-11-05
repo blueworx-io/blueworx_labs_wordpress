@@ -56,12 +56,7 @@ function blueworx_klaviyo_retry_delays() {
  * Adds a job, or quietly records why it cannot be added. Never throws.
  *
  * @param string $key Identifies the job, so a repeat lands on the same row.
- * @param array  $job {
- *     @type string $label What the log calls it.
- *     @type string $email Who it is about, when known.
- *     @type array  $plan  A plan to send, or
- *     @type array  $webhook A SureCart event to work out first.
- * }
+ * @param array  $job The job: label, email when known, and either a plan to send or a SureCart webhook to work out first.
  * @return bool Whether it was queued.
  */
 function blueworx_klaviyo_enqueue( $key, $job ) {

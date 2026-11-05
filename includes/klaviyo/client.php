@@ -305,10 +305,10 @@ function blueworx_klaviyo_event_body( $plan ) {
  * The request body for subscribing one email to one list.
  *
  * @param string $email Email address.
- * @param string $list  List ID.
+ * @param string $list_id List ID.
  * @return array
  */
-function blueworx_klaviyo_subscribe_body( $email, $list ) {
+function blueworx_klaviyo_subscribe_body( $email, $list_id ) {
 	return array(
 		'data' => array(
 			'type'          => 'profile-subscription-bulk-create-job',
@@ -334,7 +334,7 @@ function blueworx_klaviyo_subscribe_body( $email, $list ) {
 				'list' => array(
 					'data' => array(
 						'type' => 'list',
-						'id'   => $list,
+						'id'   => $list_id,
 					),
 				),
 			),

@@ -27,6 +27,8 @@
 
 // phpcs:disable WordPress.DB.DirectDatabaseQuery -- A fixture: it reads the tables directly on purpose.
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
+// phpcs:disable WordPress.WP.AlternativeFunctions -- A CLI fixture writing its own files and stderr.
+// phpcs:disable WordPress.PHP.DevelopmentFunctions.error_log_var_export -- Reports a bad path on the command line.
 
 $wp_load = isset( $argv[1] ) ? $argv[1] : null;
 $command = isset( $argv[2] ) ? $argv[2] : '';
@@ -252,7 +254,7 @@ switch ( $command ) {
 
 		$_POST['referrer'] = 'https://padlx.com.au/';
 
-		do_action( 'elementor_pro/forms/new_record', $record );
+		do_action( 'elementor_pro/forms/new_record', $record ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores -- Elementor Pro's own hook.
 		klaviyo_fixture_print( array( 'ok' => true ) );
 		break;
 

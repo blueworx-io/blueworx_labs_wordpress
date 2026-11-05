@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.98.1] - 2026-11-05
+
+### Changed
+- Tidied the Klaviyo connection's code. Nothing changes for people using it.
+
 ## [1.98.0] - 2026-11-05
 
 ### Added

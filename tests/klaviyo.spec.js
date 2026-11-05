@@ -13,7 +13,7 @@
 import { createHmac } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 
 import { test, expect, isPlaceholder, ADMIN_USER, ADMIN_PASS, login } from './helpers.js';
 

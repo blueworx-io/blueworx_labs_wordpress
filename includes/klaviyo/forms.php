@@ -168,7 +168,7 @@ function blueworx_klaviyo_queue_info_form( $form ) {
  */
 function blueworx_klaviyo_on_sureforms_submission( $entry_id, $form_id, $data ) {
 	try {
-		if ( ! blueworx_feature_enabled( 'klaviyo' ) || (string) $form_id !== blueworx_klaviyo_setting( 'reservation_form_id' ) ) {
+		if ( ! blueworx_feature_enabled( 'klaviyo' ) || blueworx_klaviyo_setting( 'reservation_form_id' ) !== (string) $form_id ) {
 			return;
 		}
 
