@@ -281,6 +281,13 @@ function blueworx_get_feature_definitions() {
 			'detail'      => 'dashboard_widgets',
 			'guide'       => false,
 		),
+		'klaviyo'               => array(
+			'label'       => __( 'Klaviyo connection', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Sends SureCart memberships and chosen website form sign-ups to Klaviyo, with a log of every send. A checkout or form never waits for it. Off until you switch it on and add a key.', 'blueworx-labs-wordpress' ),
+			'section'     => 'store',
+			'detail'      => 'klaviyo',
+			'default'     => '0',
+		),
 		'store_pages'           => array(
 			'label'       => __( 'Store pages', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Gives SureCart\'s checkout, thank-you and account pages the BlueWorx look, and keeps the four pages SureCart needs present and published. Does nothing until SureCart is installed.', 'blueworx-labs-wordpress' ),

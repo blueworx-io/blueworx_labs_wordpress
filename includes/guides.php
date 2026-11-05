@@ -1910,6 +1910,24 @@ function blueworx_get_feature_guide_tasks() {
 			),
 		),
 
+		'klaviyo'         => array(
+			array(
+				'slug'  => '',
+				'title' => $t( 'Checking what has gone to Klaviyo' ),
+				'body'  => blueworx_guide_body(
+					array(
+						'where' => $t( 'BlueWorx > Klaviyo log' ),
+						'steps' => array(
+							$t( 'Open *Klaviyo log*.' ),
+							$t( 'Find the person by their email address. The newest sends are at the top.' ),
+							$t( 'Read the *Outcome* column. *Will try again* needs nothing from you. *Failed* means it did not reach Klaviyo, with the reason underneath.' ),
+						),
+						'then'  => $t( 'The last 100 sends are kept. Nothing here affects a checkout or a form: if Klaviyo is down, customers carry on as normal and the send tries again later.' ),
+					)
+				),
+			),
+		),
+
 		'store_pages'     => array(
 			array(
 				'slug'  => '',

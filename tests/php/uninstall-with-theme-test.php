@@ -95,6 +95,34 @@ function get_users( $args = array() ) {
 
 function remove_role( $slug ) {}
 
+function wp_clear_scheduled_hook( $hook ) {}
+
+/**
+ * Database stand-in, for the one family of rows uninstall removes by prefix.
+ */
+class Test_Database {
+	/**
+	 * Options table name.
+	 *
+	 * @var string
+	 */
+	public $options = 'wp_options';
+
+	public function esc_like( $text ) {
+		return $text;
+	}
+
+	public function prepare( $query, $value ) {
+		return $query;
+	}
+
+	public function query( $query ) {
+		return 0;
+	}
+}
+
+$GLOBALS['wpdb'] = new Test_Database();
+
 /**
  * Theme stand-in: only the theme's folder carries the plugin's text domain.
  */

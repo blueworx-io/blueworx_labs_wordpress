@@ -369,14 +369,30 @@ function get_user_meta( $id, $key, $single = false ) {
 
 function clean_user_cache( $id ) {}
 
+function wp_clear_scheduled_hook( $hook ) {}
+
 /**
- * The one wpdb call support-access.php makes: the unusable password.
+ * The wpdb calls under test: support-access.php's unusable password, and the
+ * Klaviyo rows uninstall.php removes by prefix.
  */
 class Blueworx_Test_Wpdb {
-	public $users = 'wp_users';
+	public $users   = 'wp_users';
+	public $options = 'wp_options';
 
 	public function update( $table, $data, $where ) {
 		return 1;
+	}
+
+	public function esc_like( $text ) {
+		return $text;
+	}
+
+	public function prepare( $query, $value ) {
+		return $query;
+	}
+
+	public function query( $query ) {
+		return 0;
 	}
 }
 
