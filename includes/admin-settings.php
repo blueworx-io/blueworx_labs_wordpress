@@ -68,6 +68,27 @@ function blueworx_register_settings_page() {
 		'blueworx_render_tracking_page'
 	);
 
+	// Listed while the function is on, reachable but unlisted while it is off,
+	// the same as single sign-on, so the screen can explain itself.
+	add_submenu_page(
+		blueworx_feature_enabled( 'klaviyo' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Klaviyo', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Klaviyo', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-klaviyo',
+		'blueworx_render_klaviyo_page'
+	);
+
+	// Directly under Klaviyo, and gated the same way, as SSO Logs is under sign-on.
+	add_submenu_page(
+		blueworx_feature_enabled( 'klaviyo' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Klaviyo log', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Klaviyo log', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-klaviyo-log',
+		'blueworx_render_klaviyo_log_page'
+	);
+
 	add_submenu_page(
 		'blueworx-labs-wordpress',
 		esc_html__( 'Support access', 'blueworx-labs-wordpress' ),
@@ -970,6 +991,16 @@ function blueworx_get_feature_detail_html( $key ) {
 				'label' => __( 'Open Tracking codes page', 'blueworx-labs-wordpress' ),
 				'icon'  => 'chart-line',
 				'href'  => admin_url( 'admin.php?page=blueworx-tracking' ),
+			)
+		);
+	}
+
+	if ( 'klaviyo' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Klaviyo page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'mail',
+				'href'  => admin_url( 'admin.php?page=blueworx-klaviyo' ),
 			)
 		);
 	}

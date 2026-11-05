@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.98.0] - 2026-11-05
+
+### Added
+- **Klaviyo connection.** Sends SureCart memberships (started, renewed, failed,
+  cancelled, refunded, changed plan) and chosen website forms to Klaviyo, and
+  updates the person's profile each time. A checkout or form never waits for
+  it: if Klaviyo is down, sends try again later. A log shows the last 100.
+  Off until you switch it on under Enhancements.
+
 ## [1.97.1] - 2026-11-02
 
 ### Changed

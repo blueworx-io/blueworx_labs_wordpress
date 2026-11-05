@@ -70,6 +70,25 @@ if ( ! $blueworx_theme_in_use ) {
 }
 
 /**
+ * Removes the Klaviyo connection's settings, queue and memory.
+ *
+ * The one wildcard here: queued jobs and per-subscription memory are named by a
+ * hash, so there is no list to work from. The prefix is this feature's alone.
+ *
+ * @return void
+ */
+function blueworx_uninstall_klaviyo() {
+	global $wpdb;
+
+	wp_clear_scheduled_hook( 'blueworx_klaviyo_tick' );
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Uninstall; a family of rows no API can list.
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'blueworx_klaviyo_' ) . '%' ) );
+
+	delete_option( 'blueworx_feature_klaviyo' );
+}
+
+/**
  * Removes the plugin's settings, role and accounts from the current site.
  *
  * Run once on a single site, and once on every site of a network.
@@ -89,6 +108,8 @@ function blueworx_uninstall_site() {
 	delete_option( 'blueworx_tracking_gtm' );
 	delete_option( 'blueworx_tracking_ga' );
 	delete_option( 'blueworx_tracking_meta' );
+
+	blueworx_uninstall_klaviyo();
 
 	// BlueWorx Support Access: the managed account, the role, and every option
 	// the feature created. On a network the account is shared, and is deleted
