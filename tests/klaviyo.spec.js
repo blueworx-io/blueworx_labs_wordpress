@@ -458,7 +458,7 @@ test.describe('Klaviyo connection', () => {
       expect(attributes.first_name).toBe('Jane');
       expect(attributes.properties.signup_source).toBe('website_info_form');
       expect(attributes.properties.signup_page).toBe('https://padlx.com.au/');
-      expect(attributes.properties.consent_text).toBe('Keep me posted.');
+      expect(attributes.properties.signup_consent_wording).toBe('Keep me posted.');
       expect(attributes.properties.marketing_consent).toBe(true);
       expect(attributes.properties.founding_member).toBeUndefined();
       expect(attributes.properties.lead_status).toBeUndefined();

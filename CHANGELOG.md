@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.98.2] - 2026-11-07
+
+### Fixed
+- The consent wording from a website sign-up now reaches Klaviyo. Klaviyo was
+  quietly dropping it because of the name it was sent under, so it now arrives
+  as `signup_consent_wording`.
+
 ## [1.98.1] - 2026-11-05
 
 ### Changed
