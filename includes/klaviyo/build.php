@@ -174,11 +174,12 @@ function blueworx_klaviyo_plan_info_form( $form, $settings ) {
 			'last_name'  => isset( $form['last_name'] ) ? $form['last_name'] : '',
 		),
 		'set'     => array(
-			'signup_source'     => 'website_info_form',
-			'signup_page'       => isset( $form['page'] ) ? $form['page'] : '',
-			'preferred_centre'  => isset( $form['preferred_centre'] ) ? $form['preferred_centre'] : '',
-			'consent_text'      => $settings['consent_text'],
-			'marketing_consent' => true,
+			'signup_source'          => 'website_info_form',
+			'signup_page'            => isset( $form['page'] ) ? $form['page'] : '',
+			'preferred_centre'       => isset( $form['preferred_centre'] ) ? $form['preferred_centre'] : '',
+			// Klaviyo silently drops a property called consent_text, so this name is deliberate.
+			'signup_consent_wording' => $settings['consent_text'],
+			'marketing_consent'      => true,
 		),
 		'guarded' => array(
 			// Never overwrite an existing true.

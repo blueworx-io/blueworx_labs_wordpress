@@ -242,7 +242,7 @@ $attributes = blueworx_klaviyo_profile_attributes( $plan, array() );
 check( 'new person: name written', $attributes['first_name'], 'Jane' );
 check( 'signup_source', $attributes['properties']['signup_source'], 'website_info_form' );
 check( 'signup_page', $attributes['properties']['signup_page'], 'https://padlx.com.au/' );
-check( 'consent_text', $attributes['properties']['consent_text'], 'Yes please' );
+check( 'signup_consent_wording', $attributes['properties']['signup_consent_wording'], 'Yes please' );
 check( 'marketing_consent', $attributes['properties']['marketing_consent'], true );
 check( 'founding_member false is kept, not dropped', $attributes['properties']['founding_member'], false );
 check( 'lead_status', $attributes['properties']['lead_status'], 'subscriber' );
