@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.100.0] - 2026-11-10
+
+### Added
+- **Claude can reach all of Forge.** An administrator who has connected Claude
+  can now read and change any part of Forge, not just projects, tasks and
+  capacity: Claude can list every route Forge has and call any of them, as
+  that administrator, with Forge's own checks and gates applying. Changes made
+  this way appear under Recent changes by Claude. Installing Forge's own
+  updates stays out of reach, as plugins always have.
+
 ## [1.99.1] - 2026-11-10
 
 ### Fixed

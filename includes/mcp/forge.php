@@ -76,6 +76,8 @@ function blueworx_mcp_forge_tool_handlers() {
 		'update_task'       => 'blueworx_mcp_tool_forge_update_task',
 		'add_task_comment'  => 'blueworx_mcp_tool_forge_add_comment',
 		'get_team_capacity' => 'blueworx_mcp_tool_forge_get_team_capacity',
+		'list_forge_routes' => 'blueworx_mcp_tool_forge_list_forge_routes',
+		'forge_request'     => 'blueworx_mcp_tool_forge_request',
 	);
 }
 
@@ -408,6 +410,56 @@ function blueworx_mcp_forge_tool_definitions() {
 				),
 			),
 			'annotations' => $readonly,
+		),
+		array(
+			'name'        => 'list_forge_routes',
+			'title'       => 'List every Forge route',
+			'description' => 'Lists every REST route Forge has on this site, one line per method, for forge_request. This is how the rest of Forge is reached: clients and their sites, people and their roles, working weeks and leave, reminders, recurring work, packages, onboarding, meetings, reports, saved views, integrations, updates and settings. Paths show their placeholders in braces, e.g. "/reminders/{reminder_id}".',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'search' => array(
+						'type'        => 'string',
+						'description' => 'Only routes whose path contains this, e.g. "leave" or "client".',
+					),
+				),
+			),
+			'annotations' => $readonly,
+		),
+		array(
+			'name'        => 'forge_request',
+			'title'       => 'Call any Forge route',
+			'description' => 'Calls any Forge REST route as the administrator who connected Claude, so every part of Forge can be read and changed, except installing Forge updates. Forge\'s own permission checks and workflow gates apply, and a refusal comes back in Forge\'s words. Prefer the named Forge tools where one fits; use this for everything else. Read before you write: a Forge edit takes the record_version of what you read, in the body, and is refused when the record has changed since. Every call other than a GET is logged on the Connect Claude screen. list_forge_routes shows the routes.',
+			'inputSchema' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'method' => array(
+						'type'        => 'string',
+						'enum'        => blueworx_mcp_forge_request_methods(),
+						'description' => 'HTTP method.',
+					),
+					'path'   => array(
+						'type'        => 'string',
+						'description' => 'Path under Forge\'s namespace, starting with "/", placeholders filled in, e.g. "/work-items/wi_abc123" or "/users/usr_abc123/leave".',
+					),
+					'query'  => array(
+						'type'                 => 'object',
+						'additionalProperties' => true,
+						'description'          => 'Query parameters, for reads and filters.',
+					),
+					'body'   => array(
+						'type'                 => 'object',
+						'additionalProperties' => true,
+						'description'          => 'JSON body, for writes.',
+					),
+				),
+				'required'   => array( 'method', 'path' ),
+			),
+			'annotations' => array(
+				'readOnlyHint'    => false,
+				'destructiveHint' => true,
+				'openWorldHint'   => false,
+			),
 		),
 	);
 }
@@ -2267,6 +2319,159 @@ function blueworx_mcp_forge_site_info() {
 				'name' => $name,
 			);
 		}
+	}
+
+	return $out;
+}
+
+/**
+ * The HTTP methods forge_request may use.
+ *
+ * @return string[]
+ */
+function blueworx_mcp_forge_request_methods() {
+	return array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' );
+}
+
+/**
+ * The Forge routes Connect Claude keeps out of reach, whatever the method.
+ *
+ * Connect Claude promises it cannot touch plugins, and installing a Forge
+ * update is exactly that, so the route is neither listed nor callable.
+ *
+ * @return string[] Paths under Forge's namespace.
+ */
+function blueworx_mcp_forge_blocked_routes() {
+	return array( '/updates/install' );
+}
+
+/**
+ * Whether a path is one Connect Claude keeps out of reach.
+ *
+ * @param string $path Path under Forge's namespace.
+ * @return bool
+ */
+function blueworx_mcp_forge_route_blocked( $path ) {
+	return in_array( rtrim( $path, '/' ), blueworx_mcp_forge_blocked_routes(), true );
+}
+
+/**
+ * Tool: list every route Forge has on this site.
+ *
+ * Read from WordPress's own route table, so a route Forge adds is listed the
+ * day it ships without a change here. The namespace is taken off the front and
+ * each placeholder is shown as "{name}", which is the form forge_request takes
+ * (with the name filled in).
+ *
+ * @param array $args Tool arguments.
+ * @return array|WP_Error
+ */
+function blueworx_mcp_tool_forge_list_forge_routes( $args ) {
+	$off = blueworx_mcp_forge_unavailable();
+
+	if ( $off ) {
+		return $off;
+	}
+
+	$search = isset( $args['search'] ) ? strtolower( trim( (string) $args['search'] ) ) : '';
+	$prefix = '/' . BLUEWORX_MCP_FORGE_NAMESPACE . '/';
+	$routes = array();
+
+	foreach ( rest_get_server()->get_routes( BLUEWORX_MCP_FORGE_NAMESPACE ) as $route => $handlers ) {
+		if ( 0 !== strpos( $route, $prefix ) ) {
+			continue;
+		}
+
+		$path = preg_replace( '/\(\?P<([A-Za-z0-9_]+)>[^)]*\)/', '{$1}', substr( $route, strlen( $prefix ) - 1 ) );
+
+		if ( blueworx_mcp_forge_route_blocked( $path ) || ( '' !== $search && false === strpos( strtolower( $path ), $search ) ) ) {
+			continue;
+		}
+
+		foreach ( (array) $handlers as $handler ) {
+			foreach ( array_keys( (array) ( $handler['methods'] ?? array() ) ) as $method ) {
+				$routes[] = array(
+					'method' => (string) $method,
+					'path'   => $path,
+				);
+			}
+		}
+	}
+
+	return array(
+		'routes' => $routes,
+		'total'  => count( $routes ),
+		'note'   => 'Call one with forge_request, filling in each {placeholder}. Read a record before changing it: writes take its record_version in the body.',
+	);
+}
+
+/**
+ * Tool: call any Forge route as the connected administrator.
+ *
+ * The path is checked before Forge sees it so a request cannot leave Forge's
+ * namespace: it must start with "/", may hold only the characters Forge's own
+ * routes use, and may not carry a query string, climb with "..", or spell the
+ * namespace out again. What Forge then allows is Forge's decision, made by the
+ * same permission checks and gates as in the app.
+ *
+ * @param array $args Tool arguments.
+ * @return array|WP_Error
+ */
+function blueworx_mcp_tool_forge_request( $args ) {
+	$off = blueworx_mcp_forge_unavailable();
+
+	if ( $off ) {
+		return $off;
+	}
+
+	$method = strtoupper( trim( (string) ( $args['method'] ?? '' ) ) );
+
+	if ( ! in_array( $method, blueworx_mcp_forge_request_methods(), true ) ) {
+		return new WP_Error( 'invalid_method', 'Use one of ' . implode( ', ', blueworx_mcp_forge_request_methods() ) . '.' );
+	}
+
+	$path = trim( (string) ( $args['path'] ?? '' ) );
+
+	if (
+		'' === $path
+		|| '/' !== $path[0]
+		|| ! preg_match( '#^[A-Za-z0-9_./-]+$#', $path )
+		|| preg_match( '#(^|/)\.\.?(/|$)#', $path )
+		|| 0 === strpos( $path, '/' . strtok( BLUEWORX_MCP_FORGE_NAMESPACE, '/' ) . '/' )
+	) {
+		return new WP_Error( 'invalid_path', 'Give the path under Forge\'s namespace, starting with "/", with any placeholder filled in, e.g. "/work-items/wi_abc123". list_forge_routes shows them.' );
+	}
+
+	if ( blueworx_mcp_forge_route_blocked( $path ) ) {
+		return new WP_Error( 'blocked_route', 'Connect Claude cannot install Forge updates. That is done from Forge\'s Settings or the WordPress Updates screen.' );
+	}
+
+	$query = $args['query'] ?? array();
+
+	if ( ! is_array( $query ) ) {
+		return new WP_Error( 'invalid_query', 'query must be an object of parameters.' );
+	}
+
+	$body = array_key_exists( 'body', $args ) ? $args['body'] : null;
+
+	if ( null !== $body && ! is_array( $body ) ) {
+		return new WP_Error( 'invalid_body', 'body must be a JSON object.' );
+	}
+
+	$data = blueworx_mcp_forge_request( $method, $path, $query, $body );
+
+	if ( is_wp_error( $data ) ) {
+		return $data;
+	}
+
+	$out = array(
+		'method' => $method,
+		'path'   => $path,
+		'data'   => $data,
+	);
+
+	if ( 'GET' !== $method ) {
+		$out['_log'] = array( 'called', 'Forge ' . $method . ' ' . $path );
 	}
 
 	return $out;

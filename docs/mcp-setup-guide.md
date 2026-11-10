@@ -69,6 +69,17 @@ or leave; that stays in Forge.
 - Other sign-offs Forge asks for later (approvals, review results) are still
   done in Forge by the people it names.
 
+### Everything else in Forge
+
+Those tools cover the everyday work. For the rest of Forge, Claude has two
+more: one lists every route Forge has (clients and their sites, people, working
+weeks and leave, reminders, recurring work, packages, onboarding, meetings,
+reports, saved views, integrations, settings), and the other calls any of them.
+Installing Forge's own updates is the one thing kept out of reach. Only
+administrators can connect Claude, so this is an administrator's
+reach, and Forge still applies its own checks and gates to every call. Every
+change made this way is listed under **Recent changes by Claude**.
+
 On a site without Forge, none of this is offered.
 
 ## SureCart shop

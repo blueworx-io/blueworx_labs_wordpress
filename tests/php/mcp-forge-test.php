@@ -1,4 +1,4 @@
-<?php
+<?php // phpcs:disable Squiz.Commenting, Generic.Files.OneObjectStructurePerFile, Universal.Files.SeparateFunctionsFromOO, WordPress.Files.FileName, WordPress.NamingConventions.PrefixAllGlobals, WordPress.WP.GlobalVariablesOverride, WordPress.WP.AlternativeFunctions, Universal.NamingConventions.NoReservedKeywordParameterNames, Generic.CodeAnalysis.UnusedFunctionParameter, Squiz.PHP.CommentedOutCode -- A test script: its stand-ins carry WordPress's own names and signatures, and its checks are plain top-level statements.
 /**
  * Connect Claude: the Forge tools, against a stand-in for Forge's REST routes.
  *
@@ -15,7 +15,6 @@
 
 require __DIR__ . '/stubs.php';
 
-// phpcs:disable Squiz.Commenting.FunctionComment.Missing, Squiz.Commenting.ClassComment.Missing, Squiz.Commenting.VariableComment.Missing, Generic.Files.OneObjectStructurePerFile.MultipleFound -- Test stand-ins.
 
 function wp_strip_all_tags( $text ) {
 	return strip_tags( $text );
@@ -31,6 +30,32 @@ function wp_date( $format ) {
 
 function wp_get_current_user() {
 	return (object) array( 'display_name' => 'Luke McFarland' );
+}
+
+class Fake_Rest_Server {
+	public function get_routes( $route_namespace = '' ) {
+		return array(
+			'/blueworx-forge/v1'                 => array( array( 'methods' => array( 'GET' => true ) ) ),
+			'/blueworx-forge/v1/work-items'      => array(
+				array( 'methods' => array( 'GET' => true ) ),
+				array( 'methods' => array( 'POST' => true ) ),
+			),
+			'/blueworx-forge/v1/updates/install' => array( array( 'methods' => array( 'POST' => true ) ) ),
+			'/blueworx-forge/v1/reminders/(?P<reminder_id>[A-Za-z0-9_\\-]+)' => array(
+				array( 'methods' => array( 'GET' => true ) ),
+				array(
+					'methods' => array(
+						'PATCH'  => true,
+						'DELETE' => true,
+					),
+				),
+			),
+		);
+	}
+}
+
+function rest_get_server() {
+	return new Fake_Rest_Server();
 }
 
 class WP_REST_Request {
@@ -694,7 +719,6 @@ function ids_of( $list ) {
 	return array_column( $list, 'id' );
 }
 
-// phpcs:enable
 
 require __DIR__ . '/../../includes/mcp/forge.php';
 
@@ -704,6 +728,18 @@ echo "With Forge off\n";
 
 check( 'no Forge tools are listed', blueworx_mcp_forge_tool_definitions(), array() );
 check( 'a call made anyway is refused plainly', error_of( blueworx_mcp_tool_forge_list_tasks( array() ) ), 'forge_inactive' );
+check(
+	'so is a request for any route',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'GET',
+				'path'   => '/work-items',
+			)
+		)
+	),
+	'forge_inactive'
+);
 check( 'site info says Forge is not there', blueworx_mcp_forge_site_info()['active'], false );
 check( 'and Forge was never asked', $GLOBALS['forge']['calls'], array() );
 
@@ -714,7 +750,7 @@ echo "\nWith Forge on\n";
 check(
 	'every Forge tool is listed',
 	array_column( blueworx_mcp_forge_tool_definitions(), 'name' ),
-	array( 'list_projects', 'get_project', 'list_tasks', 'get_task', 'create_task', 'update_task', 'add_task_comment', 'get_team_capacity' )
+	array( 'list_projects', 'get_project', 'list_tasks', 'get_task', 'create_task', 'update_task', 'add_task_comment', 'get_team_capacity', 'list_forge_routes', 'forge_request' )
 );
 
 $asks = array( 'designer', 'deliverer', 'who_pays', 'duplicate_check', 'triage_outcome', 'how_to_test', 'gate_answers', 'capacity_reason' );
@@ -1573,7 +1609,18 @@ blueworx_mcp_tool_forge_create_task(
 	)
 );
 check( 'a new task can have the client review it', last_call( 'POST', '/work-items' )[3]['reviewer_id'], 'client' );
-check( 'the client is no one\'s assignee', error_of( blueworx_mcp_tool_forge_update_task( array( 'id' => 'wi_f2', 'assignee' => 'client' ) ) ), 'unknown_person' );
+check(
+	'the client is no one\'s assignee',
+	error_of(
+		blueworx_mcp_tool_forge_update_task(
+			array(
+				'id'       => 'wi_f2',
+				'assignee' => 'client',
+			)
+		)
+	),
+	'unknown_person'
+);
 
 forge_reset();
 
@@ -1687,5 +1734,220 @@ check( 'an unknown person is refused', error_of( blueworx_mcp_tool_forge_get_tea
 
 $GLOBALS['forge']['no_capacity'] = true;
 check( 'someone Forge will not show capacity to is told in Forge\'s words', message_of( blueworx_mcp_tool_forge_get_team_capacity( array() ) ), 'You cannot see staff capacity.' );
+
+echo "\nReaching the rest of Forge\n";
+
+forge_reset();
+
+$routes = blueworx_mcp_tool_forge_list_forge_routes( array() );
+check(
+	'every Forge route is listed, one line per method, in the form a request takes',
+	$routes['routes'],
+	array(
+		array(
+			'method' => 'GET',
+			'path'   => '/work-items',
+		),
+		array(
+			'method' => 'POST',
+			'path'   => '/work-items',
+		),
+		array(
+			'method' => 'GET',
+			'path'   => '/reminders/{reminder_id}',
+		),
+		array(
+			'method' => 'PATCH',
+			'path'   => '/reminders/{reminder_id}',
+		),
+		array(
+			'method' => 'DELETE',
+			'path'   => '/reminders/{reminder_id}',
+		),
+	)
+);
+check( 'a search narrows it', array_column( blueworx_mcp_tool_forge_list_forge_routes( array( 'search' => 'remind' ) )['routes'], 'path' ), array( '/reminders/{reminder_id}', '/reminders/{reminder_id}', '/reminders/{reminder_id}' ) );
+check( 'the namespace itself is not a route', in_array( '', array_column( $routes['routes'], 'path' ), true ), false );
+check( 'installing Forge updates is not listed', in_array( '/updates/install', array_column( $routes['routes'], 'path' ), true ), false );
+check(
+	'and is refused when asked for anyway',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'POST',
+				'path'   => '/updates/install',
+			)
+		)
+	),
+	'blocked_route'
+);
+check(
+	'however it is spelled',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'POST',
+				'path'   => '/updates/install/',
+			)
+		)
+	),
+	'blocked_route'
+);
+
+$read = blueworx_mcp_tool_forge_request(
+	array(
+		'method' => 'GET',
+		'path'   => '/work-items/wi_f1',
+	)
+);
+check( 'a read comes back as Forge answered it', $read['data']['item']['id'], 'wi_f1' );
+check( 'and says what was asked', array( $read['method'], $read['path'] ), array( 'GET', '/work-items/wi_f1' ) );
+check( 'a read is not logged', isset( $read['_log'] ), false );
+
+$listed = blueworx_mcp_tool_forge_request(
+	array(
+		'method' => 'GET',
+		'path'   => '/work-items',
+		'query'  => array( 'client_site_id' => 'cs_b' ),
+	)
+);
+check( 'query parameters reach Forge', last_call( 'GET', '/work-items' )[2], array( 'client_site_id' => 'cs_b' ) );
+check( 'and filter the answer', ids_of( $listed['data']['items'] ), array( 'wi_p2', 'wi_f3' ) );
+
+$write = blueworx_mcp_tool_forge_request(
+	array(
+		'method' => 'PATCH',
+		'path'   => '/work-items/wi_f2',
+		'body'   => array(
+			'title'          => 'Renamed',
+			'record_version' => 1,
+		),
+	)
+);
+check(
+	'a write body goes to Forge as JSON',
+	last_call( 'PATCH', '/work-items/wi_f2' )[3],
+	array(
+		'title'          => 'Renamed',
+		'record_version' => 1,
+	)
+);
+check( 'and really was saved', $GLOBALS['forge']['items']['wi_f2']['title'], 'Renamed' );
+check( 'a write is logged on the Connect Claude screen', $write['_log'], array( 'called', 'Forge PATCH /work-items/wi_f2' ) );
+
+check(
+	'Forge\'s refusal comes back in its words',
+	message_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'GET',
+				'path'   => '/work-items/wi_nope',
+			)
+		)
+	),
+	'That work item does not exist.'
+);
+check(
+	'a gate refusal says what is still needed',
+	message_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'POST',
+				'path'   => '/work-items/wi_f1/transition',
+				'body'   => array(
+					'to'             => 'in-review',
+					'record_version' => 1,
+				),
+			)
+		)
+	),
+	'Forge will not move this to "in-review" yet. Still needed: Test steps written (Write the steps to test it); Hours available.'
+);
+
+check(
+	'a path must start under Forge',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'GET',
+				'path'   => 'work-items',
+			)
+		)
+	),
+	'invalid_path'
+);
+check(
+	'a path cannot climb out',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'GET',
+				'path'   => '/../wp/v2/users',
+			)
+		)
+	),
+	'invalid_path'
+);
+check(
+	'nor carry its own query string',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'GET',
+				'path'   => '/work-items?x=1',
+			)
+		)
+	),
+	'invalid_path'
+);
+check(
+	'nor be another namespace spelled out',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'GET',
+				'path'   => '/blueworx-forge/v1/work-items',
+			)
+		)
+	),
+	'invalid_path'
+);
+check(
+	'an unknown method is refused',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'FETCH',
+				'path'   => '/work-items',
+			)
+		)
+	),
+	'invalid_method'
+);
+check(
+	'a body that is not an object is refused',
+	error_of(
+		blueworx_mcp_tool_forge_request(
+			array(
+				'method' => 'POST',
+				'path'   => '/work-items',
+				'body'   => 'x',
+			)
+		)
+	),
+	'invalid_body'
+);
+check(
+	'nothing of that reached Forge',
+	count(
+		array_filter(
+			$GLOBALS['forge']['calls'],
+			function ( $c ) {
+				return 'FETCH' === $c[0] || false !== strpos( $c[1], '..' ) || false !== strpos( $c[1], '?' ) || false !== strpos( $c[1], 'blueworx-forge' ) || false !== strpos( $c[1], 'install' );
+			}
+		)
+	),
+	0
+);
 
 finish();

@@ -253,7 +253,18 @@ test.describe('Connect Claude', () => {
         return;
       }
 
-      expect(names).toEqual(expect.arrayContaining(['list_projects', 'list_tasks', 'create_task', 'update_task', 'get_team_capacity']));
+      expect(names).toEqual(expect.arrayContaining(['list_projects', 'list_tasks', 'create_task', 'update_task', 'get_team_capacity', 'list_forge_routes', 'forge_request']));
+
+      // The rest of Forge: every route is listed, and any of them can be
+      // called as the administrator, with Forge's own answer coming back.
+      const routes = await callTool(request, token, 'list_forge_routes', { search: 'people' });
+      expect(routes.isError, routes.content[0].text).toBeFalsy();
+      expect(routes.structuredContent.routes).toEqual(expect.arrayContaining([{ method: 'GET', path: '/people' }]));
+      const people = await callTool(request, token, 'forge_request', { method: 'GET', path: '/people' });
+      expect(people.isError, people.content[0].text).toBeFalsy();
+      expect(Array.isArray(people.structuredContent.data.people)).toBe(true);
+      const outside = await callTool(request, token, 'forge_request', { method: 'GET', path: '/../wp/v2/users' });
+      expect(outside.isError).toBe(true);
 
       const capacity = await callTool(request, token, 'get_team_capacity', {});
       expect(capacity.isError, capacity.content[0].text).toBeFalsy();
