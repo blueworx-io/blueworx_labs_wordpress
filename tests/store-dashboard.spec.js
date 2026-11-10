@@ -18,11 +18,18 @@ async function signInAsMember(page) {
   await expect(page.locator('#wpadminbar')).toHaveCount(1);
 }
 
-test("a signed-out visitor stays on the page and sees the shop's own content, not the frame", async ({ page }) => {
+test("a signed-out visitor stays on the page and sees the shop's own sign-in inside the checkout header and footer", async ({ page }) => {
   await page.goto(DASHBOARD);
   await expect(page).toHaveURL(/dashboard-fixture/);
-  await expect(page.locator('#foreign-content')).toBeVisible();
+  await expect(page.locator('.bw-admin.blueworx-checkout')).toHaveCount(1);
+  await expect(page.locator('.blueworx-checkout__head h1')).toHaveText('Sign in');
+  await expect(page.locator('.blueworx-checkout__head .blueworx-checkout__home')).toHaveText('Back to the site');
+  await expect(page.locator('.blueworx-checkout__secure')).toHaveCount(0);
+  await expect(page.locator('.blueworx-checkout__foot')).toBeVisible();
+  await expect(page.locator('.blueworx-checkout__links a', { hasText: 'Fixture terms' })).toBeVisible();
+  await expect(page.locator('.blueworx-checkout__signin #foreign-content')).toBeVisible();
   await expect(page.locator('.blueworx-store')).toHaveCount(0);
+  await expect(page.locator('head link[rel="stylesheet"][href*="store-surecart.css"]')).toHaveCount(1);
 });
 
 test('a member sees the frame, the nav and the overview', async ({ page }) => {

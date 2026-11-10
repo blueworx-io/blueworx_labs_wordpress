@@ -70,16 +70,19 @@ function blueworx_store_queried_page_key() {
 /**
  * Whether this page needs the SureCart token mapping. Pure.
  *
- * Checkout alone. The order confirmation page renders SureCart's
- * confirmation blocks, which are read-only text rather than fields, and
- * loading a field theme there would be dead weight on the one page a buyer
- * lands on straight after paying.
+ * Checkout, and the dashboard while nobody is signed in — that is the shop's
+ * sign-in form, fields like the checkout's. The order confirmation page
+ * renders SureCart's confirmation blocks, which are read-only text rather
+ * than fields, and loading a field theme there would be dead weight on the
+ * one page a buyer lands on straight after paying. A signed-in dashboard
+ * draws this plugin's own panels, so it has no SureCart fields to theme.
  *
- * @param string $page_key From blueworx_store_page_key().
+ * @param string $page_key  From blueworx_store_page_key().
+ * @param bool   $signed_in Whether anyone is signed in.
  * @return bool
  */
-function blueworx_store_wants_surecart_style( $page_key ) {
-	return 'checkout' === $page_key;
+function blueworx_store_wants_surecart_style( $page_key, $signed_in = true ) {
+	return 'checkout' === $page_key || ( 'dashboard' === $page_key && ! $signed_in );
 }
 
 /**
@@ -131,7 +134,7 @@ function blueworx_store_declare_assets() {
 		return;
 	}
 	blueworx_store_enqueue_frame();
-	if ( blueworx_store_wants_surecart_style( $key ) ) {
+	if ( blueworx_store_wants_surecart_style( $key, function_exists( 'is_user_logged_in' ) && is_user_logged_in() ) ) {
 		wp_enqueue_style( BLUEWORX_STORE_SURECART_STYLE );
 	}
 	if ( 'dashboard' === $key ) {

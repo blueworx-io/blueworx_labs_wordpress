@@ -78,6 +78,25 @@ check( 'no checkout footer', false === strpos( $html, 'blueworx-checkout__foot' 
 $html = blueworx_store_shell_confirmation( array( 'site_name' => 'Fixture', 'body' => '' ) );
 check( 'no home address, no button', false === strpos( $html, 'blueworx-checkout__home' ), true );
 
+echo "\nThe sign-in frame\n";
+$html = blueworx_store_shell_signin( array(
+	'site_name'  => 'Fixture',
+	'logo_url'   => '',
+	'home_url'   => 'http://x/',
+	'home_label' => 'Back to Fixture',
+	'body'       => '<p id="shop-content">LOGIN</p>',
+	'links'      => array( array( 'label' => 'Terms', 'href' => 'http://x/terms/' ) ),
+) );
+check( 'root is the checkout frame', false !== strpos( $html, '<div class="bw-admin blueworx-checkout">' ), true );
+check( 'with the checkout header', substr_count( $html, '<header class="blueworx-checkout__head">' ), 1 );
+check( 'titled sign in', false !== strpos( $html, '<h1 class="blueworx-checkout__h1">Sign in</h1>' ), true );
+check( 'the way home is on the right', false !== strpos( $html, 'class="bw-btn bw-btn--secondary blueworx-checkout__home" href="http://x/"' ), true );
+check( 'and not the card reassurance', false === strpos( $html, 'blueworx-checkout__secure' ), true );
+check( 'the body is passed through untouched', false !== strpos( $html, '<div class="blueworx-checkout__signin"><p id="shop-content">LOGIN</p></div>' ), true );
+check( 'and the checkout footer', substr_count( $html, '<footer class="blueworx-checkout__foot">' ), 1 );
+check( 'with its links', false !== strpos( $html, '>Terms</a>' ), true );
+check( 'and the labelled way back', false !== strpos( $html, '>Back to Fixture</a>' ), true );
+
 echo "\nSmaller pieces\n";
 check( 'a bare view url', blueworx_store_view_url( 'orders' ), '?view=orders' );
 check( 'appended to a query', blueworx_store_view_url( 'orders', 'http://x/?page_id=4' ), 'http://x/?page_id=4&view=orders' );
