@@ -11,7 +11,8 @@ versioning.
   can now read and change any part of Forge, not just projects, tasks and
   capacity: Claude can list every route Forge has and call any of them, as
   that administrator, with Forge's own checks and gates applying. Changes made
-  this way appear under Recent changes by Claude.
+  this way appear under Recent changes by Claude. Installing Forge's own
+  updates stays out of reach, as plugins always have.
 
 ## [1.99.1] - 2026-11-10
 

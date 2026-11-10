@@ -429,7 +429,7 @@ function blueworx_mcp_forge_tool_definitions() {
 		array(
 			'name'        => 'forge_request',
 			'title'       => 'Call any Forge route',
-			'description' => 'Calls any Forge REST route as the administrator who connected Claude, so every part of Forge can be read and changed. Forge\'s own permission checks and workflow gates apply, and a refusal comes back in Forge\'s words. Prefer the named Forge tools where one fits; use this for everything else. Read before you write: a Forge edit takes the record_version of what you read, in the body, and is refused when the record has changed since. Every call other than a GET is logged on the Connect Claude screen. list_forge_routes shows the routes.',
+			'description' => 'Calls any Forge REST route as the administrator who connected Claude, so every part of Forge can be read and changed, except installing Forge updates. Forge\'s own permission checks and workflow gates apply, and a refusal comes back in Forge\'s words. Prefer the named Forge tools where one fits; use this for everything else. Read before you write: a Forge edit takes the record_version of what you read, in the body, and is refused when the record has changed since. Every call other than a GET is logged on the Connect Claude screen. list_forge_routes shows the routes.',
 			'inputSchema' => array(
 				'type'       => 'object',
 				'properties' => array(
@@ -2334,6 +2334,28 @@ function blueworx_mcp_forge_request_methods() {
 }
 
 /**
+ * The Forge routes Connect Claude keeps out of reach, whatever the method.
+ *
+ * Connect Claude promises it cannot touch plugins, and installing a Forge
+ * update is exactly that, so the route is neither listed nor callable.
+ *
+ * @return string[] Paths under Forge's namespace.
+ */
+function blueworx_mcp_forge_blocked_routes() {
+	return array( '/updates/install' );
+}
+
+/**
+ * Whether a path is one Connect Claude keeps out of reach.
+ *
+ * @param string $path Path under Forge's namespace.
+ * @return bool
+ */
+function blueworx_mcp_forge_route_blocked( $path ) {
+	return in_array( rtrim( $path, '/' ), blueworx_mcp_forge_blocked_routes(), true );
+}
+
+/**
  * Tool: list every route Forge has on this site.
  *
  * Read from WordPress's own route table, so a route Forge adds is listed the
@@ -2362,7 +2384,7 @@ function blueworx_mcp_tool_forge_list_forge_routes( $args ) {
 
 		$path = preg_replace( '/\(\?P<([A-Za-z0-9_]+)>[^)]*\)/', '{$1}', substr( $route, strlen( $prefix ) - 1 ) );
 
-		if ( '' !== $search && false === strpos( strtolower( $path ), $search ) ) {
+		if ( blueworx_mcp_forge_route_blocked( $path ) || ( '' !== $search && false === strpos( strtolower( $path ), $search ) ) ) {
 			continue;
 		}
 
@@ -2418,6 +2440,10 @@ function blueworx_mcp_tool_forge_request( $args ) {
 		|| 0 === strpos( $path, '/' . strtok( BLUEWORX_MCP_FORGE_NAMESPACE, '/' ) . '/' )
 	) {
 		return new WP_Error( 'invalid_path', 'Give the path under Forge\'s namespace, starting with "/", with any placeholder filled in, e.g. "/work-items/wi_abc123". list_forge_routes shows them.' );
+	}
+
+	if ( blueworx_mcp_forge_route_blocked( $path ) ) {
+		return new WP_Error( 'blocked_route', 'Connect Claude cannot install Forge updates. That is done from Forge\'s Settings or the WordPress Updates screen.' );
 	}
 
 	$query = $args['query'] ?? array();

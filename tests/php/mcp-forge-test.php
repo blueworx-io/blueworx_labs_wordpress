@@ -41,6 +41,7 @@ class Fake_Rest_Server {
 				array( 'methods' => array( 'GET' => true ) ),
 				array( 'methods' => array( 'POST' => true ) ),
 			),
+			'/blueworx-forge/v1/updates/install'                             => array( array( 'methods' => array( 'POST' => true ) ) ),
 			'/blueworx-forge/v1/reminders/(?P<reminder_id>[A-Za-z0-9_\\-]+)' => array(
 				array( 'methods' => array( 'GET' => true ) ),
 				array(
@@ -1747,6 +1748,9 @@ check(
 );
 check( 'a search narrows it', array_column( blueworx_mcp_tool_forge_list_forge_routes( array( 'search' => 'remind' ) )['routes'], 'path' ), array( '/reminders/{reminder_id}', '/reminders/{reminder_id}', '/reminders/{reminder_id}' ) );
 check( 'the namespace itself is not a route', in_array( '', array_column( $routes['routes'], 'path' ), true ), false );
+check( 'installing Forge updates is not listed', in_array( '/updates/install', array_column( $routes['routes'], 'path' ), true ), false );
+check( 'and is refused when asked for anyway', error_of( blueworx_mcp_tool_forge_request( array( 'method' => 'POST', 'path' => '/updates/install' ) ) ), 'blocked_route' );
+check( 'however it is spelled', error_of( blueworx_mcp_tool_forge_request( array( 'method' => 'POST', 'path' => '/updates/install/' ) ) ), 'blocked_route' );
 
 $read = blueworx_mcp_tool_forge_request(
 	array(
@@ -1819,7 +1823,7 @@ check(
 		array_filter(
 			$GLOBALS['forge']['calls'],
 			function ( $c ) {
-				return 'FETCH' === $c[0] || false !== strpos( $c[1], '..' ) || false !== strpos( $c[1], '?' ) || false !== strpos( $c[1], 'blueworx-forge' );
+				return 'FETCH' === $c[0] || false !== strpos( $c[1], '..' ) || false !== strpos( $c[1], '?' ) || false !== strpos( $c[1], 'blueworx-forge' ) || false !== strpos( $c[1], 'install' );
 			}
 		)
 	),

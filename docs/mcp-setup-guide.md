@@ -9,8 +9,7 @@ categories and tags. Where Forge is installed, it can also work with Forge
 projects and tasks (see below).
 
 Claude **cannot**: upload or delete files, delete anything permanently, or
-change plugins (other than Forge, where it can install Forge's own updates), themes,
-settings or users.
+change plugins, themes, settings or users.
 
 ---
 
@@ -75,8 +74,9 @@ or leave; that stays in Forge.
 Those tools cover the everyday work. For the rest of Forge, Claude has two
 more: one lists every route Forge has (clients and their sites, people, working
 weeks and leave, reminders, recurring work, packages, onboarding, meetings,
-reports, saved views, integrations, updates, settings), and the other calls any
-of them. Only administrators can connect Claude, so this is an administrator's
+reports, saved views, integrations, settings), and the other calls any of them.
+Installing Forge's own updates is the one thing kept out of reach. Only
+administrators can connect Claude, so this is an administrator's
 reach, and Forge still applies its own checks and gates to every call. Every
 change made this way is listed under **Recent changes by Claude**.
 
