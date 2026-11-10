@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.99.0] - 2026-11-10
+
+### Added
+- **The sign-in page matches checkout.** A signed-out visitor who opens the
+  customer dashboard now sees SureCart's sign-in form inside the same header
+  and footer as the checkout and thank-you pages: the site's logo, "Sign in",
+  a way back to the site, and the legal links.
+
 ## [1.98.3] - 2026-11-10
 
 ### Fixed

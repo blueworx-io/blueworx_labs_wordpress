@@ -367,23 +367,41 @@ function blueworx_store_requested_record() {
  * SureCart wrote there.
  *
  * Left alone when another plugin has claimed the address — the route has
- * already redirected by now, so this is belt and braces — when nobody is
- * signed in, because the shop's own block then draws its sign-in form and a
- * frame with nothing in it would hide that — and when no screen can be drawn
- * at all.
+ * already redirected by now, so this is belt and braces — and when no screen
+ * can be drawn at all.
  *
- * @param string    $content   The page's own content.
- * @param array     $context   From blueworx_store_context().
- * @param bool|null $signed_in Whether anyone is signed in; null asks WordPress.
+ * When nobody is signed in the shop's own block draws its sign-in form, so
+ * the content is kept and wrapped in the checkout's header and footer
+ * instead of the dashboard frame, which would have nothing to show.
+ *
+ * @param string     $content   The page's own content.
+ * @param array      $context   From blueworx_store_context().
+ * @param bool|null  $signed_in Whether anyone is signed in; null asks WordPress.
+ * @param array|null $links     Footer links for the sign-in page; null asks for the checkout's.
  * @return string
  */
-function blueworx_store_dashboard_content( $content, $context, $signed_in = null ) {
+function blueworx_store_dashboard_content( $content, $context, $signed_in = null, $links = null ) {
 	$content = (string) $content;
+	if ( '' !== blueworx_store_dashboard_url() ) {
+		return $content;
+	}
 	if ( null === $signed_in ) {
 		$signed_in = function_exists( 'is_user_logged_in' ) && is_user_logged_in();
 	}
-	if ( ! $signed_in || '' !== blueworx_store_dashboard_url() ) {
-		return $content;
+	if ( ! $signed_in ) {
+		if ( null === $links ) {
+			$links = function_exists( 'blueworx_store_checkout_links' ) ? blueworx_store_checkout_links() : array();
+		}
+		return blueworx_store_shell_signin(
+			array(
+				'site_name'  => (string) ( $context['site_name'] ?? '' ),
+				'logo_url'   => (string) ( $context['logo_url'] ?? '' ),
+				'home_url'   => (string) ( $context['home_url'] ?? '' ),
+				'home_label' => (string) ( $context['home_label'] ?? '' ),
+				'body'       => $content,
+				'links'      => $links,
+			)
+		);
 	}
 	$base = '';
 	if ( function_exists( 'get_permalink' ) && function_exists( 'get_the_ID' ) ) {

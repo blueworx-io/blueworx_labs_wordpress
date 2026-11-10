@@ -325,6 +325,42 @@ function blueworx_store_shell_confirmation( $args ) {
 }
 
 /**
+ * The sign-in page: the checkout's header and footer around the shop's own
+ * sign-in form.
+ *
+ * A signed-out visitor who opens the customer dashboard sees this. The form
+ * is SureCart's — it is what the dashboard block draws when nobody is signed
+ * in — so the body is passed through untouched, the way checkout passes its
+ * form through. The way home sits where the card reassurance would, and the
+ * footer carries the same legal links as checkout, because a person about to
+ * sign in is as entitled to read them as one about to pay.
+ *
+ * Pure: everything drawn arrives in $args.
+ *
+ * @param array<string,mixed> $args Sign-in arguments: site_name, logo_url, home_url, home_label, body, links (each a label and href).
+ * @return string
+ */
+function blueworx_store_shell_signin( $args ) {
+	$site  = trim( (string) ( $args['site_name'] ?? '' ) );
+	$logo  = trim( (string) ( $args['logo_url'] ?? '' ) );
+	$home  = trim( (string) ( $args['home_url'] ?? '' ) );
+	$label = trim( (string) ( $args['home_label'] ?? '' ) );
+	$body  = (string) ( $args['body'] ?? '' );
+	$links = is_array( $args['links'] ?? null ) ? $args['links'] : array();
+
+	$aside = '' !== $home
+		? '<a class="bw-btn bw-btn--secondary blueworx-checkout__home" href="' . blueworx_store_e( $home ) . '">'
+			. blueworx_store_shell_icon( 'arrow-left' ) . 'Back to the site</a>'
+		: '';
+
+	return '<div class="bw-admin blueworx-checkout">'
+		. blueworx_store_shell_checkout_head( $site, $logo, 'Sign in', $aside )
+		. '<main class="blueworx-checkout__body"><div class="blueworx-checkout__signin">' . $body . '</div></main>'
+		. blueworx_store_shell_checkout_foot( $home, $label, $links, '' )
+		. '</div>';
+}
+
+/**
  * The checkout page's frame: a header, the shop's own form, and a footer.
  *
  * Chrome only. The two columns a buyer sees are not drawn here — they are

@@ -104,7 +104,8 @@ add_filter( 'blueworx_store_context', function ( $context ) {
 ## Checkout footer links
 
 `blueworx_store_checkout_links( $links, $context )` — filters the links in
-the checkout page's footer. `$links` already has a "Privacy policy" link
+the footer of the checkout page and of the sign-in page a signed-out visitor sees on
+the customer dashboard. `$links` already has a "Privacy policy" link
 when the site has one set under Settings → Privacy and it is published. A
 plugin adding its own privacy link should replace that entry rather than
 append a second one.
