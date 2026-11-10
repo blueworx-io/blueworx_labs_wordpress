@@ -91,7 +91,7 @@ function blueworx_render_mcp_page() {
 		array(
 			'title'   => __( 'Connect Claude', 'blueworx-labs-wordpress' ),
 			'lede'    => blueworx_mcp_forge_active()
-				? __( 'Lets Claude read and edit this site\'s content and Forge projects and tasks for you, after an administrator approves it. It cannot touch files, plugins, themes, settings or users.', 'blueworx-labs-wordpress' )
+				? __( 'Lets Claude read and edit this site\'s content and anything in Forge for you, after an administrator approves it. It cannot touch files, themes, WordPress settings or users, or any plugin other than Forge.', 'blueworx-labs-wordpress' )
 				: __( 'Lets Claude read and edit this site\'s content for you, after an administrator approves it. It cannot touch files, plugins, themes, settings or users.', 'blueworx-labs-wordpress' ),
 			'actions' => blueworx_ds_badge(
 				$on ? __( 'On', 'blueworx-labs-wordpress' ) : __( 'Off', 'blueworx-labs-wordpress' ),

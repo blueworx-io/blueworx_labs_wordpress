@@ -170,7 +170,7 @@ function blueworx_mcp_handle_message( $message, $grant ) {
 					),
 					'instructions'    => 'Tools for reading and editing the content of the WordPress site at ' . home_url() . '. New content is created as a draft unless you are asked to publish it. Files cannot be uploaded or deleted. Pages marked built_with_elementor keep their layout outside the content field, so editing content will not change what visitors see on them.'
 						. ( blueworx_mcp_surecart_active() ? ' The site also runs SureCart, its shop: get_store_settings, list_store_records, get_store_record and get_store_sales read products, prices, orders, subscriptions, customers, settings, the store\'s look and sales. These tools cannot change the shop, and SureCart\'s own checkout, shop and account pages are locked against changes too; when asked for a change, say which SureCart screen to open (most records have an admin_link) and what to change there.' : '' )
-						. ( blueworx_mcp_forge_active() ? ' The site also runs Forge, a project tracker: the *_project and *_task tools read and change its projects and tasks, get_team_capacity shows who has room week by week, and get_site_info lists its sites, people and statuses.' : '' ),
+						. ( blueworx_mcp_forge_active() ? ' The site also runs Forge, a project tracker: the *_project and *_task tools read and change its projects and tasks, get_team_capacity shows who has room week by week, and get_site_info lists its sites, people and statuses. Everything else in Forge is reached with forge_request, which calls any Forge route as the administrator who connected Claude; list_forge_routes shows them.' : '' ),
 				)
 			);
 
