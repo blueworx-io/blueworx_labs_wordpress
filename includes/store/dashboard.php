@@ -49,19 +49,27 @@ function blueworx_store_dashboard_url() {
 /**
  * Where this request should be sent instead, or '' to stay put.
  *
- * Two journeys meet here. A signed-out visitor who reaches the dashboard is
- * sent to the login page rather than shown a frame with nothing in it. And
- * when another plugin has claimed the dashboard's address, a member who
- * followed the shop's own account link, or an old bookmark, is carried across
- * with the panel they asked for intact — and with the action too, because a
- * bookmark of the shop's account page can name one ("edit this customer"),
- * and dropping it would land them on a screen that reads their details back
- * instead of the form they saved last time.
+ * One journey is decided here. When another plugin has claimed the
+ * dashboard's address, a member who followed the shop's own account link, or
+ * an old bookmark, is carried across with the panel they asked for intact —
+ * and with the action too, because a bookmark of the shop's account page can
+ * name one ("edit this customer"), and dropping it would land them on a
+ * screen that reads their details back instead of the form they saved last
+ * time.
  *
  * A claim is honoured whether or not anyone is signed in: the claimant
  * guards its own door.
  *
- * Pure, so both journeys are testable without a WordPress runtime.
+ * A signed-out visitor on the shop's own page stays put. The page's content
+ * is the shop's dashboard block, which draws its own sign-in form when nobody
+ * is signed in, and blueworx_store_dashboard_content() leaves that content
+ * alone. Sending them to the WordPress login instead was the old behaviour,
+ * and it skipped the shop's sign-in entirely.
+ *
+ * $signed_in and $login_url are kept so callers and tests need not change;
+ * nothing reads them now.
+ *
+ * Pure, so the journey is testable without a WordPress runtime.
  *
  * @param int    $queried_id   The post this request resolved to, 0 for none.
  * @param int    $dashboard_id The page id the shop recorded, 0 when it has none.
@@ -82,7 +90,7 @@ function blueworx_store_redirect_to( $queried_id, $dashboard_id, $claimed_url, $
 	}
 	$claimed_url = trim( (string) $claimed_url );
 	if ( '' === $claimed_url ) {
-		return $signed_in ? '' : (string) $login_url;
+		return '';
 	}
 	$target = '' === trim( (string) $view ) ? $claimed_url : blueworx_store_view_url( trim( (string) $view ), $claimed_url );
 	if ( '' === trim( (string) $model ) || '' === trim( (string) $action ) ) {
@@ -359,16 +367,22 @@ function blueworx_store_requested_record() {
  * SureCart wrote there.
  *
  * Left alone when another plugin has claimed the address — the route has
- * already redirected by now, so this is belt and braces — and when no screen
- * can be drawn at all.
+ * already redirected by now, so this is belt and braces — when nobody is
+ * signed in, because the shop's own block then draws its sign-in form and a
+ * frame with nothing in it would hide that — and when no screen can be drawn
+ * at all.
  *
- * @param string $content The page's own content.
- * @param array  $context From blueworx_store_context().
+ * @param string    $content   The page's own content.
+ * @param array     $context   From blueworx_store_context().
+ * @param bool|null $signed_in Whether anyone is signed in; null asks WordPress.
  * @return string
  */
-function blueworx_store_dashboard_content( $content, $context ) {
+function blueworx_store_dashboard_content( $content, $context, $signed_in = null ) {
 	$content = (string) $content;
-	if ( '' !== blueworx_store_dashboard_url() ) {
+	if ( null === $signed_in ) {
+		$signed_in = function_exists( 'is_user_logged_in' ) && is_user_logged_in();
+	}
+	if ( ! $signed_in || '' !== blueworx_store_dashboard_url() ) {
 		return $content;
 	}
 	$base = '';
