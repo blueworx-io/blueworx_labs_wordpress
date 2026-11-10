@@ -122,6 +122,32 @@ test.describe('BlueWorx split-screen login', () => {
     await expect(page.locator('#nav a')).not.toHaveCount(0);
   });
 
+  test('"Get New Password" lands on the check-your-email stop, not a 404', async ({ page, context }) => {
+    await context.clearCookies();
+    await page.setViewportSize(DESKTOP);
+    await page.goto(cacheBust(`${LOGIN_PATH}?action=lostpassword`));
+
+    // Core's fallback is the relative "wp-login.php?checkemail=confirm", which
+    // resolves under the custom slug to /admin_login/wp-login.php — a path
+    // nginx answers with its own 404 before WordPress runs. The form must
+    // carry the custom address instead.
+    const redirectTo = await page.locator('#lostpasswordform input[name="redirect_to"]').inputValue();
+    expect(redirectTo).not.toContain('wp-login.php');
+    expect(redirectTo).toContain(`${LOGIN_PATH}/?checkemail=confirm`);
+
+    // Submit it for real. Whether or not the harness can send mail, the
+    // visitor must stay on the login address and never see a 404.
+    await page.fill('#user_login', ADMIN_USER);
+    const [response] = await Promise.all([
+      page.waitForResponse((r) => r.request().isNavigationRequest() && r.url().includes(LOGIN_PATH)),
+      page.click('#lostpasswordform input[type="submit"]'),
+    ]);
+    expect(response.status()).toBeLessThan(400);
+    await page.waitForLoadState('domcontentloaded');
+    expect(page.url()).not.toContain('wp-login.php');
+    await expect(page.locator('.bw-login-panel')).toBeVisible();
+  });
+
   test('on a phone the panel gives way to the centred card', async ({ page, context }) => {
     await openLogin(page, context, PHONE);
 

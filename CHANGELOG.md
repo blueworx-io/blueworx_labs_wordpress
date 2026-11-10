@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.99.1] - 2026-11-10
+
+### Fixed
+- **"Get New Password" no longer lands on a 404.** On hosts that answer every
+  .php address themselves, sending a password-reset or sign-up form from the
+  custom login page showed the host's 404 instead of the "check your email"
+  stop. The email was always sent; the stop now shows as well.
+
 ## [1.99.0] - 2026-11-10
 
 ### Added

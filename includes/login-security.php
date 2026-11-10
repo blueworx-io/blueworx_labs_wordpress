@@ -354,6 +354,28 @@ if ( is_multisite() ) {
 }
 
 /**
+ * Sends the "check your email" stops to the custom login address.
+ *
+ * After a password-reset or registration form is submitted, core falls back to
+ * the relative address "wp-login.php?checkemail=…". Served from the custom
+ * slug, that resolves to /admin_login/wp-login.php, which a host that routes
+ * every .php URL straight to a file (nginx) answers with its own 404 before
+ * WordPress runs. The email has already gone by then, so only the stop breaks.
+ *
+ * @param string $redirect_to The redirect core already has, usually empty.
+ * @return string The custom login URL carrying the right checkemail flag.
+ */
+function blueworx_checkemail_redirect( $redirect_to ) {
+	if ( ! empty( $redirect_to ) ) {
+		return $redirect_to;
+	}
+
+	$flag = ( 'registration_redirect' === current_filter() ) ? 'registered' : 'confirm';
+
+	return add_query_arg( 'checkemail', $flag, home_url( '/' . blueworx_login_slug() . '/' ) );
+}
+
+/**
  * Secondary safeguard to block direct wp-login.php access.
  *
  * @return void
@@ -373,4 +395,6 @@ if ( blueworx_feature_enabled( 'login' ) ) {
 	add_filter( 'site_url', 'blueworx_replace_generated_login_url', 10, 2 );
 	add_filter( 'network_site_url', 'blueworx_replace_generated_login_url', 10, 2 );
 	add_action( 'template_redirect', 'blueworx_template_redirect_guard' );
+	add_filter( 'lostpassword_redirect', 'blueworx_checkemail_redirect' );
+	add_filter( 'registration_redirect', 'blueworx_checkemail_redirect' );
 }
