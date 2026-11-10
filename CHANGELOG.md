@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.98.3] - 2026-11-10
+
+### Fixed
+- **The customer dashboard now shows the shop's own sign-in.** With Store pages
+  on, a signed-out visitor who opened the dashboard was sent to the WordPress
+  login instead. They now stay on the page and see SureCart's sign-in form.
+  Sites with Store pages off are unchanged.
+
 ## [1.98.2] - 2026-11-07
 
 ### Fixed

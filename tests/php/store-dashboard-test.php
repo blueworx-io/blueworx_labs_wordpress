@@ -20,12 +20,15 @@ echo "Where a request is sent\n";
 // (queried, dashboard_id, claimed_url, signed_in, view, login_url, model, action, id)
 check( 'not the dashboard page: stay', blueworx_store_redirect_to( 3, 4, '', true, '', 'http://x/login/' ), '' );
 check( 'no id recorded: stay, even at 0', blueworx_store_redirect_to( 0, 0, '', true, '', 'http://x/login/' ), '' );
-check( 'the dashboard, signed out: login', blueworx_store_redirect_to( 4, 4, '', false, '', 'http://x/login/' ), 'http://x/login/' );
+check( 'the dashboard, signed out, unclaimed: stay, so the shop can draw its own sign-in', blueworx_store_redirect_to( 4, 4, '', false, '', 'http://x/login/' ), '' );
 check( 'the dashboard, signed in, unclaimed: stay', blueworx_store_redirect_to( 4, 4, '', true, 'orders', 'http://x/login/' ), '' );
 check( 'claimed: go there', blueworx_store_redirect_to( 4, 4, 'http://x/member/', true, '', 'http://x/login/' ), 'http://x/member/' );
 check( 'claimed, with the panel kept', blueworx_store_redirect_to( 4, 4, 'http://x/member/', true, 'orders', 'http://x/login/' ), 'http://x/member/?view=orders' );
 check( 'claimed, with an action kept', blueworx_store_redirect_to( 4, 4, 'http://x/member/', true, 'orders', 'http://x/login/', 'order', 'show', 'ord_1' ), 'http://x/member/?view=orders&model=order&action=show&id=ord_1' );
 check( 'claimed, signed out: still the claim (the claimant guards its own door)', blueworx_store_redirect_to( 4, 4, 'http://x/member/', false, '', 'http://x/login/' ), 'http://x/member/' );
+
+echo "\nWhat the page's content becomes\n";
+check( 'signed out: the shop\'s own content, untouched', blueworx_store_dashboard_content( '<p>SHOP</p>', array( 'home_url' => 'http://x/' ), false ), '<p>SHOP</p>' );
 
 echo "\nThe overview links to every other view\n";
 $views = blueworx_store_normalize_views( array( array( 'key' => 'dashboard' ), array( 'key' => 'club', 'label' => 'Club', 'lede' => 'L' ) ) );

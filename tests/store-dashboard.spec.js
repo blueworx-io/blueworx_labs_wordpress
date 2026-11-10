@@ -18,9 +18,11 @@ async function signInAsMember(page) {
   await expect(page.locator('#wpadminbar')).toHaveCount(1);
 }
 
-test('a signed-out visitor is sent to the login page', async ({ page }) => {
+test("a signed-out visitor stays on the page and sees the shop's own content, not the frame", async ({ page }) => {
   await page.goto(DASHBOARD);
-  await expect(page).toHaveURL(/admin_login/);
+  await expect(page).toHaveURL(/dashboard-fixture/);
+  await expect(page.locator('#foreign-content')).toBeVisible();
+  await expect(page.locator('.blueworx-store')).toHaveCount(0);
 });
 
 test('a member sees the frame, the nav and the overview', async ({ page }) => {
