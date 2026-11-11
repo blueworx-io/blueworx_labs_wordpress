@@ -83,3 +83,27 @@ function blueworx_disable_email_change_notification( $email_change_email, $user,
 if ( blueworx_feature_enabled( 'emails' ) ) {
 	add_filter( 'send_email_change_email', 'blueworx_disable_email_change_notification', 10, 3 );
 }
+
+/**
+ * Names the sender after the site rather than "WordPress".
+ *
+ * Only the default name is replaced. A plugin or a form that sets a sender
+ * name of its own has made a choice, and this keeps out of its way. The
+ * address is left alone too: a changed address can fail the receiving
+ * server's checks on who may send for the domain.
+ *
+ * @param string $name The sender name wp_mail has settled on.
+ * @return string
+ */
+function blueworx_email_sender_name( $name ) {
+	if ( 'WordPress' !== $name ) {
+		return $name;
+	}
+
+	$title = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+
+	return '' !== $title ? $title : $name;
+}
+if ( blueworx_feature_enabled( 'email_sender' ) ) {
+	add_filter( 'wp_mail_from_name', 'blueworx_email_sender_name' );
+}

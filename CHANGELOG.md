@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.101.0] - 2026-11-11
+
+### Added
+- **Email log.** A new function under Notifications & Cleanup keeps a record of
+  every email the site sends: who it went to, the subject, whether the mailer
+  accepted it, and what the mailer said if not. The list lives under BlueWorx
+  as Email logs, filters by text, status and date, and each row opens the full
+  message on a page of its own in a new tab. Thirty days are kept. Off until
+  switched on.
+- **Emails can be sent in the site's name.** The sender shows the site title
+  instead of "WordPress". A plugin that sets its own sender name is left alone.
+  On for new sites; a site that already runs the plugin keeps its current
+  sender until this is switched on under Notifications & Cleanup.
+
 ## [1.100.0] - 2026-11-10
 
 ### Added

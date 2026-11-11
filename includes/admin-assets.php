@@ -64,6 +64,8 @@ function blueworx_admin_design_screens() {
 		'admin_page_blueworx-klaviyo',
 		'blueworx_page_blueworx-klaviyo-log',
 		'admin_page_blueworx-klaviyo-log',
+		'blueworx_page_blueworx-email-log',
+		'admin_page_blueworx-email-log',
 		'blueworx_page_blueworx-external',
 		'blueworx_page_blueworx-embedded',
 		'blueworx_page_blueworx-additions',

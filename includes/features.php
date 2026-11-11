@@ -228,6 +228,23 @@ function blueworx_get_feature_definitions() {
 			'detail'      => null,
 			'guide'       => false,
 		),
+		'email_sender'          => array(
+			'label'       => __( 'Emails named after the site', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Emails the site sends show the site title as the sender instead of "WordPress". A plugin that sets its own sender name is left alone.', 'blueworx-labs-wordpress' ),
+			'section'     => 'notifications',
+			'detail'      => null,
+			'guide'       => false,
+		),
+		'email_log'             => array(
+			'label'       => __( 'Email log', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Keeps a record of every email the site sends, whether the mailer accepted it, and what it said if not. Thirty days are kept. Shown under BlueWorx as Email logs.', 'blueworx-labs-wordpress' ),
+			'section'     => 'notifications',
+			'detail'      => 'email_log',
+			// Off until chosen: it stores the full text of every message sent,
+			// password reset emails among them.
+			'default'     => '0',
+			'guide'       => false,
+		),
 		'profile_cleanup'       => array(
 			'label'       => __( 'Profile cleanup', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Hides unused profile options, Elementor AI, and Elementor Notes.', 'blueworx-labs-wordpress' ),

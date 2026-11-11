@@ -111,6 +111,14 @@ function blueworx_uninstall_site() {
 
 	blueworx_uninstall_klaviyo();
 
+	// The email log: its table, its clear-out and its switches.
+	global $wpdb;
+	wp_clear_scheduled_hook( 'blueworx_email_log_prune' );
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}blueworx_email_log" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall; the table name is built from the prefix.
+	delete_option( 'blueworx_email_log_schema' );
+	delete_option( 'blueworx_feature_email_log' );
+	delete_option( 'blueworx_feature_email_sender' );
+
 	// BlueWorx Support Access: the managed account, the role, and every option
 	// the feature created. On a network the account is shared, and is deleted
 	// outright on the last site that still has it.

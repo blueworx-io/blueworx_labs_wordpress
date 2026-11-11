@@ -89,6 +89,17 @@ function blueworx_register_settings_page() {
 		'blueworx_render_klaviyo_log_page'
 	);
 
+	// Listed while the function is on, reachable but unlisted while it is off,
+	// so the screen can explain itself and still show what was recorded.
+	add_submenu_page(
+		blueworx_feature_enabled( 'email_log' ) ? 'blueworx-labs-wordpress' : null,
+		esc_html__( 'Email logs', 'blueworx-labs-wordpress' ),
+		esc_html__( 'Email logs', 'blueworx-labs-wordpress' ),
+		'manage_options',
+		'blueworx-email-log',
+		'blueworx_render_email_log_page'
+	);
+
 	add_submenu_page(
 		'blueworx-labs-wordpress',
 		esc_html__( 'Support access', 'blueworx-labs-wordpress' ),
@@ -981,6 +992,16 @@ function blueworx_get_feature_detail_html( $key ) {
 				'label' => __( 'Open Single sign-on page', 'blueworx-labs-wordpress' ),
 				'icon'  => 'lock',
 				'href'  => admin_url( 'admin.php?page=blueworx-sso' ),
+			)
+		);
+	}
+
+	if ( 'email_log' === $key ) {
+		return blueworx_ds_button(
+			array(
+				'label' => __( 'Open Email logs page', 'blueworx-labs-wordpress' ),
+				'icon'  => 'mail',
+				'href'  => admin_url( 'admin.php?page=blueworx-email-log' ),
 			)
 		);
 	}
