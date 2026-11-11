@@ -215,6 +215,8 @@ const FEATURE_SECTIONS = {
   media_tools: 'media',
   translate: 'translation',
   emails: 'notifications',
+  email_sender: 'notifications',
+  email_log: 'notifications',
   profile_cleanup: 'notifications',
   cache_auto: 'performance',
   cache_manual: 'performance',

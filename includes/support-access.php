@@ -317,6 +317,9 @@ function blueworx_labs_deactivate_site() {
 
 	blueworx_support_on_deactivate();
 	blueworx_external_on_deactivate();
+
+	// The email log's daily clear-out. The rows stay: uninstall removes them.
+	wp_clear_scheduled_hook( 'blueworx_email_log_prune' );
 }
 
 /**

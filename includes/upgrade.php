@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return int Current migration version.
  */
 function blueworx_get_labs_db_version() {
-	return 13;
+	return 14;
 }
 
 /**
@@ -104,6 +104,28 @@ function blueworx_migrate_external_access_default() {
 	}
 
 	update_option( 'blueworx_feature_external_access', '0' );
+}
+
+/**
+ * Leaves existing sites sending email under the name they already used.
+ *
+ * 1.101.0 adds the `email_sender` feature default-on. A site upgrading into
+ * it would start signing its emails with the site title instead of "WordPress"
+ * without anyone choosing that, so it is written off there and left for the
+ * owner to switch on. Fresh installs inherit the default.
+ *
+ * @return void
+ */
+function blueworx_migrate_email_sender_default() {
+	if ( ! blueworx_should_opt_out_of_new_default( null !== get_option( 'blueworx_labs_db_version', null ) ) ) {
+		return;
+	}
+
+	if ( null !== get_option( 'blueworx_feature_email_sender', null ) ) {
+		return;
+	}
+
+	update_option( 'blueworx_feature_email_sender', '0' );
 }
 
 /**
@@ -714,6 +736,11 @@ function blueworx_run_pending_labs_migrations() {
 
 	if ( $stored_version < 13 ) {
 		blueworx_migrate_translate_audience();
+	}
+
+	// Must run before the version row write, like the other new defaults.
+	if ( $stored_version < 14 ) {
+		blueworx_migrate_email_sender_default();
 	}
 
 	update_option( 'blueworx_labs_db_version', $current_version );
