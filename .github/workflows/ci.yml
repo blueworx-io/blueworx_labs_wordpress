@@ -2,12 +2,15 @@ name: CI
 on: pull_request
 jobs:
   guardrails:
-    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@v1.24.0
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@v1.25.0
     with:
       plugin_slug: blueworx-labs-wordpress
       # Provision a disposable WordPress on the runner rather than pointing at a
       # staging host. See docs/wordpress-test-harness.md in the foundation.
       use_local_wordpress: true
+      # Test run against the WordPress 7.2 release candidate. Not for merging.
+      wordpress_version: 7.2-RC1
+      gutenberg: true
       # The suite is long enough that it, not the static checks, sets how long a
       # PR takes. Each shard is its own runner with its own WordPress, which is
       # what makes this safe — the specs mutate site-wide state, so they must
@@ -32,7 +35,7 @@ jobs:
       # Bump this whenever the design system changes upstream: the sync check
       # compares our copy against the foundation AT THIS REF, so a component
       # added upstream and copied here fails until the ref moves with it.
-      foundation_ref: v1.24.0
+      foundation_ref: v1.25.0
       # Our design system copy matches the foundation, so the sync check stays
       # strict (its default). Adherence is the one we cannot pass yet: the admin
       # re-skin is still hand-styled, and the components we invented for it are
