@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.102.2] - 2026-11-19
+
+### Changed
+- Developer setup only: trialling a Claude Code plugin on this repo. Nothing
+  changes on sites.
+
 ## [1.102.1] - 2026-11-19
 
 ### Changed
