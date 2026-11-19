@@ -1526,6 +1526,11 @@ test.describe('Support access — key lifecycle', () => {
       expect(prompt).toContain('/wp-json/');
       expect(prompt).toContain('READ ONLY');
 
+      // The button is wired up by a script near the foot of the page, after a
+      // long run of WordPress's own. A quick test can reach the button before
+      // that script has loaded, and a click then does nothing. A person is
+      // never that quick.
+      await page.waitForLoadState('load');
       const button = page.locator('[data-testid="bw-support-copy-prompt"]');
       await button.click();
       await expect(button).toHaveText('Copied');

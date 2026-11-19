@@ -2,7 +2,7 @@ name: CI
 on: pull_request
 jobs:
   guardrails:
-    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@v1.4.0
+    uses: blueworx-io/bluegroup_core_foundation/.github/workflows/ci-wordpress.yml@v1.24.0
     with:
       plugin_slug: blueworx-labs-wordpress
       # Provision a disposable WordPress on the runner rather than pointing at a
@@ -32,13 +32,18 @@ jobs:
       # Bump this whenever the design system changes upstream: the sync check
       # compares our copy against the foundation AT THIS REF, so a component
       # added upstream and copied here fails until the ref moves with it.
-      foundation_ref: v1.14.0
+      foundation_ref: v1.24.0
       # Our design system copy matches the foundation, so the sync check stays
       # strict (its default). Adherence is the one we cannot pass yet: the admin
       # re-skin is still hand-styled, and the components we invented for it are
       # deliberately local, which reads as off-system. `warn` prints the report
       # without blocking a merge. Remove it once the re-skin is on the system.
       admin_ui_adherence: warn
+      # The plugin has thousands of PHPCS problems from before the checks
+      # enforced them (the foundation's lint step used to pass whatever PHPCS
+      # said). `warn` shows them on every pull request without failing it.
+      # Remove it once they are cleared.
+      phpcs: warn
       # The shared exclude list deliberately keeps `scripts/` shippable, because
       # plenty of plugins keep runtime JS there. This one does not: what ships is
       # the allowlist in scripts/build-zip.mjs — the plugin file, uninstall.php,

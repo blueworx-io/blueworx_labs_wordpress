@@ -183,6 +183,13 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'content',
 			'detail'      => 'content_tools',
 		),
+		'page_lock'             => array(
+			'label'       => __( 'Locked pages', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Locks every new page so clients and connected tools can change its words, images and links but not add, move or remove sections. Only administrators can lock or unlock a page.', 'blueworx-labs-wordpress' ),
+			'section'     => 'content',
+			'detail'      => null,
+			'guide'       => false,
+		),
 		'revisions'             => array(
 			'label'       => __( 'Revision limit', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Keeps a set number of saved drafts per page or post instead of every version forever, which stops the database growing without limit.', 'blueworx-labs-wordpress' ),

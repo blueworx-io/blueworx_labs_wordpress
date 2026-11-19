@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.102.0] - 2026-11-19
+
+### Added
+- **Every new page is locked.** A page is locked as soon as it's made, so
+  clients and Claude can change its words, images and links but not add, move
+  or remove sections. Pages that already exist are left as they are, and an
+  administrator can lock or unlock any page from the page's settings. Switch
+  it off under Content as Locked pages.
+- **A simpler editor for clients on locked pages.** They see only the site's
+  own sections, with no code view and no add-block button, and the list of
+  sections opens on the left.
+
+### Changed
+- The admin design system is brought up to date with the shared one.
+
 ## [1.101.0] - 2026-11-11
 
 ### Added

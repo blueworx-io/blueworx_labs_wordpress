@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.101.0
+ * Version:           1.102.0
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -63,7 +63,7 @@ if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN )
 $blueworx_update_checker->getVcsApi()->enableReleaseAssets();
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.101.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.102.0' );
 }
 
 // The main plugin file's own path. Two things need it by name rather than by
@@ -124,6 +124,10 @@ require_once BLUEWORX_LABS_PATH . 'includes/email-notifications.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-log.php';
 require_once BLUEWORX_LABS_PATH . 'includes/email-log-screen.php';
 require_once BLUEWORX_LABS_PATH . 'includes/page-excerpts.php';
+// The shared page lock, copied whole from the foundation. Never edit it here.
+if ( blueworx_feature_enabled( 'page_lock' ) ) {
+	require_once BLUEWORX_LABS_PATH . 'blueworx-page-lock/blueworx-page-lock.php';
+}
 require_once BLUEWORX_LABS_PATH . 'includes/translate.php';
 require_once BLUEWORX_LABS_PATH . 'includes/profile-cleanup.php';
 require_once BLUEWORX_LABS_PATH . 'includes/user-roles.php';

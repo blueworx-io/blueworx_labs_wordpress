@@ -194,6 +194,38 @@ Styling lives in `.css` files beside each group (`core.css`, `forms.css` + `form
 that cannot ship React can use the classes alone: `.bw-btn.bw-btn--primary`, `.bw-card`,
 `.bw-table`, `.bw-formrow`, and so on.
 
+Three patterns exist only as classes, because they are read rather than operated and every
+screen that shows one is PHP: `.bw-schedule`, a gantt with the controls taken off, and
+`.bw-calendar`, a month grid. The calendar is a `table` with `.bw-calendar__day` cells,
+each holding a `.bw-calendar__daynum` and a `.bw-calendar__entries` list; a day outside the
+month is `--outside`, today is `--today`, and an entry's leading `.bw-calendar__kind` word
+takes its tone from an `--accent`, `--success`, `--warning`, `--danger` or `--info`
+modifier on the entry. Every day cell carries its short weekday name in `data-weekday`, and a day
+with nothing on it is also `--empty`: under 782px the grid becomes a list of the days that have
+something on them, and those are what it reads. Its `.bw-calendar__nav` is two ghost buttons around a
+`.bw-calendar__month` heading. See `components/data/data-calendar.card.html`.
+
+`.bw-compare` is the third: records down the side and one column per field, for reading
+what a change does to many records at once (an import's results, say). It goes on a
+`.bw-table` inside a `.bw-tablescroll` and grows as wide as its columns. The record's own
+cells are `.bw-compare__pin` and stay at the left while the fields scroll; the first is the
+row's `th scope="row"`, and the last pinned cell is also `--edge`. Field headers are
+`.bw-compare__field`. Every cell says something: a changed field is a `.bw-compare__new`
+value (clamped to two lines, so put the full text in its `title`) over the old one as
+`.bw-compare__old`, struck through, or `.bw-compare__was` ("was empty"); a field that stays
+as it is reads `.bw-compare__same` "No change" — never a blank. A record's detail goes in a
+`.bw-compare__detail` row under it, toggled by a ghost button in the pinned cell, its
+`.bw-compare__detail-body` held at the left. Under 782px nothing is pinned. See
+`components/data/data-compare.card.html`.
+
+A column a plugin adds to one of WordPress's own list tables (through
+`manage_edit-{post_type}_columns`) takes a key beginning `bw-`, such as `bw-last-updated`.
+WordPress's list tables are fixed-layout, so a column that names no width gets only what
+the others leave; the design system gives every `column-bw-…` column 10em. Its cell is a
+`.bw-admin` wrapper holding `.bw-table__primary` and `.bw-table__sub` lines.
+
+**Writing a component.** Mount with `createRoot` only. No `defaultProps`, `propTypes`, string refs or `findDOMNode` on any component: React 19 ignores the first two and removed the rest, and WordPress ships React 19 after 7.2.
+
 ### Which control for which job
 
 | Job | Use |
@@ -214,6 +246,8 @@ that cannot ship React can use the classes alone: `.bw-btn.bw-btn--primary`, `.b
 | Optional or advanced settings | `Accordion` |
 | Derived figures that stay put while tabs change | `SummaryStrip` |
 | Phases against a week or date scale | `Gantt` |
+| Dates on the month they fall in | `.bw-calendar` (classes only) |
+| What a change does to many records, field by field | `.bw-compare` (classes only) |
 
 ### Intentional additions
 
@@ -297,8 +331,10 @@ body.toplevel_page_<slug> #wpfooter { display: none; }
 
 ## Custom editor screens
 
-Any screen where a site owner edits a record or a set of page content is built by the
-**page editor library** (`editor/` in this skill), never by hand. The library owns the shape;
+Any screen where a site owner edits a record or plugin settings is built by the
+**page editor library** (`editor/` in this skill), never by hand. Page content is not edited
+here at all: a page is built from the plugin's own section blocks in WordPress's block editor, and the
+block editor's own UI is outside this system. The library owns the shape;
 the plugin owns only what goes in it.
 
 **The skeleton, always in this order:** page header (`bw-pagehead`) → tabs (`bw-tabs`, optional)
@@ -315,6 +351,8 @@ window, one per screen).
 - Tab and panel counts come from the data. An empty group reads "empty", never "0".
 - Records are WordPress post types. The library refuses to run a record editor whose post type
   nobody registered.
+- The browser half mounts with `createRoot` and uses no `defaultProps` or `propTypes`, so it runs
+  the same on React 18 and React 19.
 
 **Editor controls**
 
@@ -326,6 +364,7 @@ window, one per screen).
 | Fields that only exist while a condition holds | `bw-conditional` |
 | The record's title, and the slug beneath it | `bw-titleinput`, `bw-permalink` |
 | A small muted note with an icon | `bw-fieldnote` |
+| A line that goes somewhere else — a demo site, a help page | a `link` field: its `label` is the link's text, `url` where it goes; opens in a new tab, no heading, stores nothing |
 | A collapsible group | `bw-accordion` (not a new control) |
 | Rows that fall into named groups, each with its own subtotal | a `repeater` with `group_by` and `subtotal_of` |
 | Phases on a week or date scale | `gantt` |
@@ -390,3 +429,26 @@ post, which is what "records are post types" means.
 Use it when the truth already lives somewhere and an option would be a second
 copy of it — a switch that is really a page's post status, say, where storing it
 twice means the two can disagree with no way to tell which is right.
+
+## Section blocks
+
+Pages are built only from section blocks, edited in WordPress's block editor and locked by the
+shared page lock (blog posts keep WordPress's standard blocks). A reusable part of a page — a hero, a team
+list, an FAQ, a sponsor strip — is a **section block** the plugin ships. One shape, every plugin:
+
+- A folder per block, `blocks/<name>/`, registered with `register_block_type( __DIR__ . '/blocks/<name>' )`.
+- `block.json`: `"name": "<plugin>/<section>"`, `"apiVersion": 3`, `"render": "file:./render.php"`,
+  `"editorScript": "file:./edit.js"`, `"style": "file:./style.css"`. `supports` turns off `color`,
+  `typography` and `spacing` and sets `"html": false`; `align` may offer `wide` and `full`.
+- **Attributes are content, never layout.** Words, images, links, a count. The saved page holds
+  only the block comment with those attributes; there is no `save()` markup. That is what lets a fix
+  to `render.php` reach every page already built.
+- `render.php` draws the section from `$attributes`, escapes everything, and wraps it in
+  `get_block_wrapper_attributes()`. Styling in `style.css` uses the theme's named styles
+  (`var(--color-primary)`, `var(--space-6)`, `var(--font-heading)`), never a hard-coded value.
+- `edit.js` is plain JavaScript on `wp.element` — `RichText` for the words, `InspectorControls` for
+  the rest — with a hand-written `edit.asset.php` beside it naming its dependencies, so no build step.
+  A plugin that prefers JSX uses `@wordpress/scripts`; it is on the shared approved-deps list.
+- Block editor code is WordPress's own UI: the admin screen check does not judge it.
+
+The worked example is `.wp-test/example-plugin/blocks/section-hero/` in the foundation.
