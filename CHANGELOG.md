@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.102.1] - 2026-11-19
+
+### Changed
+- Code tidied to WordPress's coding standards. Nothing changes for anyone
+  using the site.
+
 ## [1.102.0] - 2026-11-19
 
 ### Added

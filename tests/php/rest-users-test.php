@@ -12,6 +12,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['hooks'] = array();
@@ -182,8 +183,8 @@ check(
 );
 
 $GLOBALS['options'] = array(
-	'blueworx_labs_db_version'      => 9,
-	'blueworx_feature_rest_users'   => '1',
+	'blueworx_labs_db_version'    => 9,
+	'blueworx_feature_rest_users' => '1',
 );
 blueworx_migrate_rest_users_default();
 

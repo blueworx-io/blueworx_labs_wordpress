@@ -129,6 +129,7 @@ function blueworx_sso_discovery_status() {
 	/* translators: %s: identity provider issuer URL. */
 	return array(
 		'connected' => true,
+		/* translators: %s: the identity provider's address. */
 		'message'   => sprintf( __( 'Connected to %s.', 'blueworx-labs-wordpress' ), $issuer ),
 	);
 }

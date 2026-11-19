@@ -8,6 +8,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
@@ -30,7 +31,15 @@ check( 'seven of them', count( $defaults ), 7 );
 check( 'in nav order', array_column( $defaults, 'key' ), array( 'dashboard', 'orders', 'invoices', 'billing', 'plans', 'profile', 'account' ) );
 
 echo "\nNormalising what a filter hands back\n";
-$n = blueworx_store_normalize_views( array( array( 'key' => 'club', 'label' => 'Club', 'shortcode' => 'club_panel' ) ) );
+$n = blueworx_store_normalize_views(
+	array(
+		array(
+			'key'       => 'club',
+			'label'     => 'Club',
+			'shortcode' => 'club_panel',
+		),
+	)
+);
 check( 'dashboard is put back, first', $n[0]['key'], 'dashboard' );
 check( 'the plugin view is kept', $n[1]['key'], 'club' );
 check( 'missing fields get defaults', $n[1]['where'], 'both' );
@@ -39,11 +48,22 @@ $n = blueworx_store_normalize_views( array( 'junk', array( 'label' => 'no key' )
 check( 'junk and duplicates are dropped', array_column( $n, 'key' ), array( 'dashboard', 'a' ) );
 
 echo "\nWhere a view sits\n";
-$views = blueworx_store_normalize_views( array(
-	array( 'key' => 'dashboard', 'where' => 'both' ),
-	array( 'key' => 'orders', 'where' => 'side' ),
-	array( 'key' => 'billing', 'where' => 'bar' ),
-) );
+$views = blueworx_store_normalize_views(
+	array(
+		array(
+			'key'   => 'dashboard',
+			'where' => 'both',
+		),
+		array(
+			'key'   => 'orders',
+			'where' => 'side',
+		),
+		array(
+			'key'   => 'billing',
+			'where' => 'bar',
+		),
+	)
+);
 check( 'sidebar', array_column( blueworx_store_views_side( $views ), 'key' ), array( 'dashboard', 'orders' ) );
 check( 'phone bar', array_column( blueworx_store_views_bar( $views ), 'key' ), array( 'dashboard', 'billing' ) );
 
@@ -62,7 +82,12 @@ blueworx_store_slot_set_sources(
 check( 'a block', blueworx_store_slot_block( 'surecart/customer-orders' ), '<p>orders</p>' );
 check( 'an unregistered block', blueworx_store_slot_block( 'other' ), '' );
 check( 'a shortcode', blueworx_store_slot_shortcode( 'club' ), '<p>club</p>' );
-blueworx_store_slot_set_sources( static function ( $n ) { throw new RuntimeException( 'boom' ); }, null );
+blueworx_store_slot_set_sources(
+	static function ( $n ) {
+		throw new RuntimeException( 'boom' );
+	},
+	null
+);
 check( 'a source that throws answers empty', blueworx_store_slot_block( 'x' ), '' );
 
 echo "\nAction addresses\n";
@@ -79,6 +104,13 @@ blueworx_store_set_action_check( static fn ( $c, $m ) => true );
 check( 'the installed check is used', blueworx_store_is_action( 'order', 'anything', blueworx_store_action_check() ), true );
 blueworx_store_set_action_check( null );
 $_GET = array();
-check( 'no address means no action', blueworx_store_requested_action(), array( 'model' => '', 'action' => '' ) );
+check(
+	'no address means no action',
+	blueworx_store_requested_action(),
+	array(
+		'model'  => '',
+		'action' => '',
+	)
+);
 
 finish();

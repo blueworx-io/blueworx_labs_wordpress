@@ -151,7 +151,7 @@ function blueworx_robots_txt_main_site_notice() {
  * @param bool   $is_public Whether the site is set to be indexed.
  * @return string robots.txt content.
  */
-function blueworx_robots_txt_filter( $output, $is_public ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Part of the filter signature; see above for why it is deliberately not acted on.
+function blueworx_robots_txt_filter( $output, $is_public ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Part of the filter signature; see above for why it is deliberately not acted on.
 	$content = blueworx_robots_txt_content();
 
 	return '' === trim( $content ) ? $output : $content . "\n";

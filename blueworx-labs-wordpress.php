@@ -3,7 +3,7 @@
  * Plugin Name:       BlueWorx Labs | WordPress Enhancements
  * Plugin URI:        https://blueworx.io/
  * Description:       Site hardening, admin and media tools, cache refresh, and profile enhancements.
- * Version:           1.102.0
+ * Version:           1.102.1
  * Requires at least: 5.0
  * Requires PHP:      8.0
  * Author:            BlueWorx
@@ -38,9 +38,9 @@ $blueworx_update_checker = PucFactory::buildUpdateChecker(
 	'https://github.com/blueworx-io/blueworx_labs_wordpress/',
 	__FILE__,
 	'blueworx-labs-wordpress' // Must equal the plugin's folder name on the site,
-	                          // and the folder name inside the release zip. If
-	                          // they disagree, an update installs alongside the
-	                          // original as a second copy and deactivates it.
+	// and the folder name inside the release zip. If
+	// they disagree, an update installs alongside the
+	// original as a second copy and deactivates it.
 );
 
 /*
@@ -63,7 +63,7 @@ if ( defined( 'BLUEWORX_PLUGIN_UPDATE_TOKEN' ) && BLUEWORX_PLUGIN_UPDATE_TOKEN )
 $blueworx_update_checker->getVcsApi()->enableReleaseAssets();
 
 if ( ! defined( 'BLUEWORX_LABS_VERSION' ) ) {
-	define( 'BLUEWORX_LABS_VERSION', '1.102.0' );
+	define( 'BLUEWORX_LABS_VERSION', '1.102.1' );
 }
 
 // The main plugin file's own path. Two things need it by name rather than by

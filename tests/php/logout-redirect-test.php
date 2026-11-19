@@ -12,6 +12,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['options'] = array();
@@ -24,7 +25,15 @@ const WP_DEFAULT = 'https://example.test/admin_login/?loggedout=true';
 
 // phpcs:disable Squiz.Commenting.FunctionComment.Missing -- Test stubs mirror core signatures.
 
+/**
+ * Stand-in for core's WP_User.
+ */
 class WP_User {
+	/**
+	 * The ID.
+	 *
+	 * @var int
+	 */
 	public $ID = 1;
 }
 

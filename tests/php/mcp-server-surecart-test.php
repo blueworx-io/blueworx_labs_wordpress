@@ -13,6 +13,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable Squiz.Commenting.FunctionComment.Missing, Squiz.Commenting.ClassComment.Missing, Squiz.Commenting.VariableComment.Missing, Generic.Files.OneObjectStructurePerFile.MultipleFound -- Test stand-ins.
@@ -148,21 +149,168 @@ $GLOBALS['options']['surecart_checkout_page_id']  = '41';
 $GLOBALS['options']['surecart_shop_page_id']      = '42';
 $GLOBALS['options']['surecart_dashboard_page_id'] = '43';
 
-check( 'a new SureCart product is refused', error_of( blueworx_mcp_tool_create_content( array( 'type' => 'sc_product', 'title' => 'Hoodie' ) ) ), 'surecart_read_only' );
-check( 'so is a change to one', error_of( blueworx_mcp_tool_update_content( array( 'type' => 'sc_product', 'id' => 5, 'title' => 'Hoodie' ) ) ), 'surecart_read_only' );
-check( 'and binning one', error_of( blueworx_mcp_tool_trash_content( array( 'type' => 'sc_product', 'id' => 5 ) ) ), 'surecart_read_only' );
-check( 'and a new collection', error_of( blueworx_mcp_tool_create_term( array( 'taxonomy' => 'sc_collection', 'name' => 'Sale' ) ) ), 'surecart_read_only' );
-check( 'by its REST name too', error_of( blueworx_mcp_tool_create_content( array( 'type' => 'sc-products', 'title' => 'Hoodie' ) ) ), 'surecart_read_only' );
-check( 'the checkout page cannot be changed', error_of( blueworx_mcp_tool_update_content( array( 'type' => 'page', 'id' => 41, 'title' => 'Pay' ) ) ), 'surecart_read_only' );
-check( 'nor the shop page binned', error_of( blueworx_mcp_tool_trash_content( array( 'type' => 'page', 'id' => 42 ) ) ), 'surecart_read_only' );
-check( 'nor the customer dashboard changed', error_of( blueworx_mcp_tool_update_content( array( 'type' => 'page', 'id' => 43, 'content' => 'x' ) ) ), 'surecart_read_only' );
+check(
+	'a new SureCart product is refused',
+	error_of(
+		blueworx_mcp_tool_create_content(
+			array(
+				'type'  => 'sc_product',
+				'title' => 'Hoodie',
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'so is a change to one',
+	error_of(
+		blueworx_mcp_tool_update_content(
+			array(
+				'type'  => 'sc_product',
+				'id'    => 5,
+				'title' => 'Hoodie',
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'and binning one',
+	error_of(
+		blueworx_mcp_tool_trash_content(
+			array(
+				'type' => 'sc_product',
+				'id'   => 5,
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'and a new collection',
+	error_of(
+		blueworx_mcp_tool_create_term(
+			array(
+				'taxonomy' => 'sc_collection',
+				'name'     => 'Sale',
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'by its REST name too',
+	error_of(
+		blueworx_mcp_tool_create_content(
+			array(
+				'type'  => 'sc-products',
+				'title' => 'Hoodie',
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'the checkout page cannot be changed',
+	error_of(
+		blueworx_mcp_tool_update_content(
+			array(
+				'type'  => 'page',
+				'id'    => 41,
+				'title' => 'Pay',
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'nor the shop page binned',
+	error_of(
+		blueworx_mcp_tool_trash_content(
+			array(
+				'type' => 'page',
+				'id'   => 42,
+			)
+		)
+	),
+	'surecart_read_only'
+);
+check(
+	'nor the customer dashboard changed',
+	error_of(
+		blueworx_mcp_tool_update_content(
+			array(
+				'type'    => 'page',
+				'id'      => 43,
+				'content' => 'x',
+			)
+		)
+	),
+	'surecart_read_only'
+);
 check( 'and none of that reached WordPress', writes(), array() );
 
-check( 'the checkout page can still be read', error_of( blueworx_mcp_tool_get_content( array( 'type' => 'page', 'id' => 41 ) ) ), 'no error' );
-check( 'a normal page can be created', error_of( blueworx_mcp_tool_create_content( array( 'type' => 'page', 'title' => 'About' ) ) ), 'no error' );
-check( 'and changed', error_of( blueworx_mcp_tool_update_content( array( 'type' => 'page', 'id' => 7, 'title' => 'About us' ) ) ), 'no error' );
-check( 'and binned', error_of( blueworx_mcp_tool_trash_content( array( 'type' => 'page', 'id' => 7 ) ) ), 'no error' );
-check( 'and a normal category created', error_of( blueworx_mcp_tool_create_term( array( 'taxonomy' => 'category', 'name' => 'News' ) ) ), 'no error' );
+check(
+	'the checkout page can still be read',
+	error_of(
+		blueworx_mcp_tool_get_content(
+			array(
+				'type' => 'page',
+				'id'   => 41,
+			)
+		)
+	),
+	'no error'
+);
+check(
+	'a normal page can be created',
+	error_of(
+		blueworx_mcp_tool_create_content(
+			array(
+				'type'  => 'page',
+				'title' => 'About',
+			)
+		)
+	),
+	'no error'
+);
+check(
+	'and changed',
+	error_of(
+		blueworx_mcp_tool_update_content(
+			array(
+				'type'  => 'page',
+				'id'    => 7,
+				'title' => 'About us',
+			)
+		)
+	),
+	'no error'
+);
+check(
+	'and binned',
+	error_of(
+		blueworx_mcp_tool_trash_content(
+			array(
+				'type' => 'page',
+				'id'   => 7,
+			)
+		)
+	),
+	'no error'
+);
+check(
+	'and a normal category created',
+	error_of(
+		blueworx_mcp_tool_create_term(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'News',
+			)
+		)
+	),
+	'no error'
+);
 check( 'those writes went through', writes(), array( array( 'POST', '/wp/v2/pages' ), array( 'POST', '/wp/v2/pages/7' ), array( 'DELETE', '/wp/v2/pages/7' ), array( 'POST', '/wp/v2/categories' ) ) );
 
 finish();

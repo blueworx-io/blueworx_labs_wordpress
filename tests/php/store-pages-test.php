@@ -7,6 +7,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
@@ -31,7 +32,14 @@ check( 'no id is missing', blueworx_store_decide( true, 0, '' ), 'missing' );
 
 echo "\nWhich problems the button can fix\n";
 $pages    = blueworx_store_pages();
-$problems = blueworx_store_problems( array( 'checkout' => 'ok', 'shop' => 'missing', 'dashboard' => 'unpublished', 'order-confirmation' => 'no-shop' ) );
+$problems = blueworx_store_problems(
+	array(
+		'checkout'           => 'ok',
+		'shop'               => 'missing',
+		'dashboard'          => 'unpublished',
+		'order-confirmation' => 'no-shop',
+	)
+);
 check( 'only missing and unpublished are problems', array_keys( $problems ), array( 'shop', 'dashboard' ) );
 check( 'every known page is repairable', array_keys( blueworx_store_repairable( $problems, $pages ) ), array( 'shop', 'dashboard' ) );
 check( 'an unknown missing page is not', blueworx_store_repairable( array( 'mystery' => 'missing' ), $pages ), array() );

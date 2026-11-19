@@ -12,6 +12,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['options'] = array(
@@ -150,9 +151,9 @@ $GLOBALS['options']['blueworx_sso_redirect_after_register'] = 'https://example.t
 check( 'joining uses its own page', blueworx_sso_default_destination( 'register' ), 'https://example.test/register-success/' );
 check( 'and signing in is unaffected', blueworx_sso_default_destination( 'login' ), 'https://example.test/welcome/' );
 
-echo "
+echo '
 Where a failed sign-in lands
-";
+';
 
 // The login screen is the wrong answer for somebody who clicked a button on the
 // front of the site: it reads as "your account is broken" rather than "that did

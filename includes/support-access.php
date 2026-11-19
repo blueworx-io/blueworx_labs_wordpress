@@ -1002,7 +1002,7 @@ function blueworx_support_render_panel() {
 	echo '<div class="bw-fields bw-fields--single">';
 
 	if ( '' !== $new_key ) {
-		echo blueworx_ds_notice(
+		echo blueworx_ds_notice( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'tone'  => 'warning',
 				'title' => __( 'Copy this key now — it is not shown again.', 'blueworx-labs-wordpress' ),
@@ -1010,7 +1010,7 @@ function blueworx_support_render_panel() {
 			)
 		);
 
-		echo blueworx_ds_copy_field(
+		echo blueworx_ds_copy_field( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'value' => $new_key,
 				'id'    => 'bw-support-key',
@@ -1029,7 +1029,7 @@ function blueworx_support_render_panel() {
 				<span class="bw-check__text"><?php esc_html_e( 'I have copied the key', 'blueworx-labs-wordpress' ); ?></span>
 			</label>
 			<?php
-			echo blueworx_ds_button(
+			echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 				array(
 					'label'    => __( 'Done', 'blueworx-labs-wordpress' ),
 					'variant'  => 'primary',
@@ -1047,7 +1047,7 @@ function blueworx_support_render_panel() {
 	}
 
 	if ( blueworx_support_is_throttled() ) {
-		echo blueworx_ds_notice(
+		echo blueworx_ds_notice( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'tone'  => 'warning',
 				'title' => __( 'Support access is temporarily blocked from this address.', 'blueworx-labs-wordpress' ),
@@ -1078,7 +1078,7 @@ function blueworx_support_render_panel() {
 			$open_text .= ' ' . __( 'Personal-data access is also open for this window.', 'blueworx-labs-wordpress' );
 		}
 
-		echo blueworx_ds_notice(
+		echo blueworx_ds_notice( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'tone'    => 'success',
 				'title'   => __( 'Support access is open', 'blueworx-labs-wordpress' ),
@@ -1087,7 +1087,7 @@ function blueworx_support_render_panel() {
 			)
 		);
 	} elseif ( $has_key ) {
-		echo blueworx_ds_notice(
+		echo blueworx_ds_notice( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'tone'    => 'info',
 				'title'   => __( 'Support access is shut', 'blueworx-labs-wordpress' ),
@@ -1110,7 +1110,7 @@ function blueworx_support_render_panel() {
 			<textarea id="bw-support-prompt" data-testid="bw-support-prompt" readonly hidden aria-hidden="true" tabindex="-1"><?php echo esc_textarea( $prompt ); ?></textarea>
 			<div>
 				<?php
-				echo blueworx_ds_button(
+				echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 					array(
 						'label' => __( 'Copy Claude Code prompt', 'blueworx-labs-wordpress' ),
 						'icon'  => 'file',
@@ -1148,7 +1148,7 @@ function blueworx_support_render_panel() {
 			<span class="bw-check__text"><?php esc_html_e( 'Also allow access to personal data for this session', 'blueworx-labs-wordpress' ); ?></span>
 		</label>
 		<?php
-		echo blueworx_ds_button(
+		echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'label'   => $open
 					? __( 'Close support access', 'blueworx-labs-wordpress' )
@@ -1165,7 +1165,7 @@ function blueworx_support_render_panel() {
 			)
 		);
 
-		echo blueworx_ds_button(
+		echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'label'   => __( 'Revoke access', 'blueworx-labs-wordpress' ),
 				'variant' => 'danger',
@@ -1180,7 +1180,7 @@ function blueworx_support_render_panel() {
 			)
 		);
 	} else {
-		echo blueworx_ds_button(
+		echo blueworx_ds_button( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The design system helper escapes everything it emits.
 			array(
 				'label'   => __( 'Generate key', 'blueworx-labs-wordpress' ),
 				'variant' => 'primary',

@@ -12,7 +12,10 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
+
+// phpcs:disable Squiz.Commenting.FunctionComment.Missing -- Test stubs mirror core signatures.
 
 define( 'WP_UNINSTALL_PLUGIN', 'blueworx-labs-wordpress/blueworx-labs-wordpress.php' );
 

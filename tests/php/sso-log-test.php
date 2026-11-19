@@ -14,6 +14,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['options'] = array();
@@ -59,9 +60,9 @@ function reset_log() {
 
 	$_COOKIE = array();
 	$_SERVER = array(
-		'HTTP_HOST'            => 'example.test',
-		'HTTP_USER_AGENT'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36',
-		'REMOTE_ADDR'          => '10.0.0.9',
+		'HTTP_HOST'             => 'example.test',
+		'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36',
+		'REMOTE_ADDR'           => '10.0.0.9',
 		'HTTP_CF_CONNECTING_IP' => '203.0.113.7',
 	);
 }
@@ -69,7 +70,16 @@ function reset_log() {
 echo "Recording an event\n";
 
 reset_log();
-blueworx_sso_event( 'start', 'started', 'sent_to_provider', array( 'ref' => 'abcd1234', 'cookie' => 'set', 'intent' => 'login' ) );
+blueworx_sso_event(
+	'start',
+	'started',
+	'sent_to_provider',
+	array(
+		'ref'    => 'abcd1234',
+		'cookie' => 'set',
+		'intent' => 'login',
+	)
+);
 
 $events = blueworx_sso_events();
 

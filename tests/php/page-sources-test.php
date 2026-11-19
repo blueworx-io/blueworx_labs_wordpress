@@ -7,6 +7,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
@@ -31,7 +32,14 @@ require __DIR__ . '/../../includes/page-sources.php';
 require __DIR__ . '/../../includes/store/pages.php';
 
 echo "The column\n";
-$columns = blueworx_page_sources_columns( array( 'cb' => 'x', 'title' => 'Title', 'author' => 'Author', 'date' => 'Date' ) );
+$columns = blueworx_page_sources_columns(
+	array(
+		'cb'     => 'x',
+		'title'  => 'Title',
+		'author' => 'Author',
+		'date'   => 'Date',
+	)
+);
 check( 'Source sits right after Title', array_keys( $columns ), array( 'cb', 'title', 'blueworx_page_source', 'author', 'date' ) );
 check( 'and is called Source', $columns['blueworx_page_source'], 'Source' );
 check( 'with no Title column it goes last', array_keys( blueworx_page_sources_columns( array( 'cb' => 'x' ) ) ), array( 'cb', 'blueworx_page_source' ) );
@@ -51,8 +59,21 @@ check( 'a non-string answer counts as no answer', blueworx_page_source( 7 ), '' 
 unset( $GLOBALS['filters']['blueworx_page_source'] );
 
 echo "\nRow actions\n";
-$offered = array( 'edit' => 'E', 'inline hide-if-no-js' => 'Q', 'trash' => 'T', 'view' => 'V', 'clone' => 'C' );
-check( 'a page with a source keeps view and edit only', blueworx_page_sources_row_actions( $offered, true ), array( 'edit' => 'E', 'view' => 'V' ) );
+$offered = array(
+	'edit'                 => 'E',
+	'inline hide-if-no-js' => 'Q',
+	'trash'                => 'T',
+	'view'                 => 'V',
+	'clone'                => 'C',
+);
+check(
+	'a page with a source keeps view and edit only',
+	blueworx_page_sources_row_actions( $offered, true ),
+	array(
+		'edit' => 'E',
+		'view' => 'V',
+	)
+);
 check( 'any other page keeps everything', blueworx_page_sources_row_actions( $offered, false ), $offered );
 check( 'junk in is an empty list out', blueworx_page_sources_row_actions( 'nope', true ), array() );
 
@@ -60,7 +81,7 @@ echo "\nDeletion\n";
 $GLOBALS['filters']['blueworx_page_source'] = static function ( $label, $post_id ) {
 	return 7 === $post_id ? 'Commerce page' : $label;
 };
-$refused = '';
+$refused                                    = '';
 try {
 	blueworx_page_sources_refuse_deletion( 7 );
 } catch ( RuntimeException $e ) {

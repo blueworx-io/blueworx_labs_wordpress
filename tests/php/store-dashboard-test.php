@@ -8,6 +8,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 require __DIR__ . '/../../includes/store/slot.php';
@@ -28,14 +29,36 @@ check( 'claimed, with an action kept', blueworx_store_redirect_to( 4, 4, 'http:/
 check( 'claimed, signed out: still the claim (the claimant guards its own door)', blueworx_store_redirect_to( 4, 4, 'http://x/member/', false, '', 'http://x/login/' ), 'http://x/member/' );
 
 echo "\nWhat the page's content becomes\n";
-$html = blueworx_store_dashboard_content( '<p>SHOP</p>', array( 'site_name' => 'Fixture', 'home_url' => 'http://x/' ), false, array( array( 'label' => 'Terms', 'href' => 'http://x/terms/' ) ) );
+$html = blueworx_store_dashboard_content(
+	'<p>SHOP</p>',
+	array(
+		'site_name' => 'Fixture',
+		'home_url'  => 'http://x/',
+	),
+	false,
+	array(
+		array(
+			'label' => 'Terms',
+			'href'  => 'http://x/terms/',
+		),
+	)
+);
 check( 'signed out: the sign-in frame', false !== strpos( $html, '<h1 class="blueworx-checkout__h1">Sign in</h1>' ), true );
 check( 'around the shop\'s own content', false !== strpos( $html, '<div class="blueworx-checkout__signin"><p>SHOP</p></div>' ), true );
 check( 'with the footer links', false !== strpos( $html, '>Terms</a>' ), true );
 check( 'and not the dashboard frame', false === strpos( $html, 'blueworx-store' ), true );
 
 echo "\nThe overview links to every other view\n";
-$views = blueworx_store_normalize_views( array( array( 'key' => 'dashboard' ), array( 'key' => 'club', 'label' => 'Club', 'lede' => 'L' ) ) );
+$views = blueworx_store_normalize_views(
+	array(
+		array( 'key' => 'dashboard' ),
+		array(
+			'key'   => 'club',
+			'label' => 'Club',
+			'lede'  => 'L',
+		),
+	)
+);
 $html  = blueworx_store_overview( $views, 'http://x/', 'http://x/acct/' );
 check( 'one quick link', substr_count( $html, 'blueworx-store__quick"' ), 1 );
 check( 'to the club view', false !== strpos( $html, 'href="http://x/acct/?view=club"' ), true );

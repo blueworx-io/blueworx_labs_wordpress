@@ -41,7 +41,7 @@ function blueworx_revisions_to_keep() {
  * @param WP_Post $post Post being saved.
  * @return int Number of revisions to keep.
  */
-function blueworx_revisions_filter( $num, $post ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $post is part of the filter signature; the limit is site-wide.
+function blueworx_revisions_filter( $num, $post ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- $post is part of the filter signature; the limit is site-wide.
 	if ( defined( 'WP_POST_REVISIONS' ) && true !== WP_POST_REVISIONS ) {
 		return $num;
 	}

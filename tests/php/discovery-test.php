@@ -7,21 +7,22 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['options'] = array(
-	'blueworx_sso_issuer'                   => 'https://idp.test',
-	'blueworx_sso_token_endpoint_override'  => 'https://override.test/token',
+	'blueworx_sso_issuer'                  => 'https://idp.test',
+	'blueworx_sso_token_endpoint_override' => 'https://override.test/token',
 );
 
 $GLOBALS['http'] = array(
 	'https://idp.test/.well-known/openid-configuration' => array(
-		'issuer'                              => 'https://idp.test',
-		'authorization_endpoint'              => 'https://idp.test/authorize',
-		'token_endpoint'                      => 'https://idp.test/token',
-		'userinfo_endpoint'                   => 'https://idp.test/userinfo',
-		'jwks_uri'                            => 'https://idp.test/keys',
-		'code_challenge_methods_supported'    => array( 'S256' ),
+		'issuer'                                => 'https://idp.test',
+		'authorization_endpoint'                => 'https://idp.test/authorize',
+		'token_endpoint'                        => 'https://idp.test/token',
+		'userinfo_endpoint'                     => 'https://idp.test/userinfo',
+		'jwks_uri'                              => 'https://idp.test/keys',
+		'code_challenge_methods_supported'      => array( 'S256' ),
 		'token_endpoint_auth_methods_supported' => array( 'client_secret_basic', 'client_secret_post' ),
 	),
 );

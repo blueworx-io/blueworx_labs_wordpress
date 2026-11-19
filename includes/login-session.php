@@ -109,7 +109,7 @@ function blueworx_admin_session_choice() {
  * @param bool $remember   Whether "Remember me" was ticked.
  * @return int Cookie lifetime in seconds.
  */
-function blueworx_login_session_expiration( $expiration, $user_id, $remember ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $remember is part of the filter signature; see above.
+function blueworx_login_session_expiration( $expiration, $user_id, $remember ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- $remember is part of the filter signature; see above.
 
 	/*
 	 * Checked against the named user rather than blueworx_support_is_support_user(),

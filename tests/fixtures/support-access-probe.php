@@ -66,11 +66,33 @@ switch ( $command ) {
 		);
 
 		if ( empty( $post ) ) {
-			$post = array( get_post( wp_insert_post( array( 'post_title' => 'BW probe post', 'post_content' => 'probe', 'post_status' => 'publish', 'post_type' => 'post' ) ) ) );
+			$post = array(
+				get_post(
+					wp_insert_post(
+						array(
+							'post_title'   => 'BW probe post',
+							'post_content' => 'probe',
+							'post_status'  => 'publish',
+							'post_type'    => 'post',
+						)
+					)
+				),
+			);
 		}
 
 		if ( empty( $page ) ) {
-			$page = array( get_post( wp_insert_post( array( 'post_title' => 'BW probe page', 'post_content' => 'probe', 'post_status' => 'publish', 'post_type' => 'page' ) ) ) );
+			$page = array(
+				get_post(
+					wp_insert_post(
+						array(
+							'post_title'   => 'BW probe page',
+							'post_content' => 'probe',
+							'post_status'  => 'publish',
+							'post_type'    => 'page',
+						)
+					)
+				),
+			);
 		}
 
 		$comments = get_comments(
@@ -127,6 +149,6 @@ switch ( $command ) {
 		break;
 
 	default:
-		fwrite( STDERR, "Unknown command: " . var_export( $command, true ) . "\n" );
+		fwrite( STDERR, 'Unknown command: ' . var_export( $command, true ) . "\n" );
 		exit( 1 );
 }

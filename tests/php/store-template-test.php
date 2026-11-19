@@ -8,6 +8,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals

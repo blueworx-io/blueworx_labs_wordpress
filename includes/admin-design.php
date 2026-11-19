@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * The tags these helpers emit, for wp_kses() at the point of output.
  *
- * wp_kses_post() is the usual choice but strips every form control — form,
+ * The usual choice is wp_kses_post(), but it strips every form control — form,
  * input, button, select — which is most of a settings screen. This is that list
  * plus the controls, and nothing else: no script, no style, no event handlers.
  *
@@ -35,42 +35,42 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function blueworx_ds_allowed_html() {
 	$global = array(
-		'class'    => true,
-		'id'       => true,
-		'style'    => true,
-		'title'    => true,
-		'role'     => true,
-		'tabindex' => true,
-		'hidden'   => true,
+		'class'                        => true,
+		'id'                           => true,
+		'style'                        => true,
+		'title'                        => true,
+		'role'                         => true,
+		'tabindex'                     => true,
+		'hidden'                       => true,
 
 		// Our own hooks. wp_kses() has no wildcard, so every data attribute the
 		// screens rely on is listed here or it is silently dropped — which looks
 		// exactly like markup that was never rendered.
-		'data-lucide'                => true,
-		'data-blueworx-feature'      => true,
-		'data-blueworx-detail'       => true,
-		'data-blueworx-guide'        => true,
-		'data-blueworx-guide-tab'    => true,
-		'data-blueworx-guide-panel'  => true,
-		'data-blueworx-roles'        => true,
-		'data-blueworx-roles-more'   => true,
-		'data-blueworx-roles-extra'  => true,
-		'data-blueworx-guide-tabs'   => true,
+		'data-lucide'                  => true,
+		'data-blueworx-feature'        => true,
+		'data-blueworx-detail'         => true,
+		'data-blueworx-guide'          => true,
+		'data-blueworx-guide-tab'      => true,
+		'data-blueworx-guide-panel'    => true,
+		'data-blueworx-roles'          => true,
+		'data-blueworx-roles-more'     => true,
+		'data-blueworx-roles-extra'    => true,
+		'data-blueworx-guide-tabs'     => true,
 		'data-blueworx-guide-products' => true,
 		'data-blueworx-guide-product'  => true,
-		'data-testid'                => true,
-		'data-blueworx-section'      => true,
-		'data-blueworx-panel'        => true,
-		'data-blueworx-range-value'  => true,
-		'data-blueworx-range-format' => true,
-		'data-blueworx-chips'        => true,
-		'data-blueworx-chip-for'     => true,
+		'data-testid'                  => true,
+		'data-blueworx-section'        => true,
+		'data-blueworx-panel'          => true,
+		'data-blueworx-range-value'    => true,
+		'data-blueworx-range-format'   => true,
+		'data-blueworx-chips'          => true,
+		'data-blueworx-chip-for'       => true,
 
 		// Edit Menu rows. The reorder script reads both, and a row whose
 		// data-slug was dropped saves as though it were never in the list.
-		'data-group'                 => true,
-		'data-slug'                  => true,
-		'draggable'                  => true,
+		'data-group'                   => true,
+		'data-slug'                    => true,
+		'draggable'                    => true,
 	);
 
 	// Every aria-* and data-* attribute our screens use, spelled out: wp_kses()
@@ -87,7 +87,7 @@ function blueworx_ds_allowed_html() {
 		'aria-selected'    => true,
 		'aria-disabled'    => true,
 		'aria-live'        => true,
-		'aria-haspopup'     => true,
+		'aria-haspopup'    => true,
 	);
 
 	$common = array_merge( $global, $aria );
@@ -117,34 +117,85 @@ function blueworx_ds_allowed_html() {
 		'thead'    => $common,
 		'tbody'    => $common,
 		'tr'       => $common,
-		'th'       => array_merge( $common, array( 'scope' => true, 'colspan' => true ) ),
+		'th'       => array_merge(
+			$common,
+			array(
+				'scope'   => true,
+				'colspan' => true,
+			)
+		),
 		'td'       => array_merge( $common, array( 'colspan' => true ) ),
-		'a'        => array_merge( $common, array( 'href' => true, 'target' => true, 'rel' => true, 'download' => true ) ),
-		'form'     => array_merge( $common, array( 'method' => true, 'action' => true, 'name' => true ) ),
+		'a'        => array_merge(
+			$common,
+			array(
+				'href'     => true,
+				'target'   => true,
+				'rel'      => true,
+				'download' => true,
+			)
+		),
+		'form'     => array_merge(
+			$common,
+			array(
+				'method' => true,
+				'action' => true,
+				'name'   => true,
+			)
+		),
 		'label'    => array_merge( $common, array( 'for' => true ) ),
-		'button'   => array_merge( $common, array( 'type' => true, 'name' => true, 'value' => true, 'disabled' => true ) ),
+		'button'   => array_merge(
+			$common,
+			array(
+				'type'     => true,
+				'name'     => true,
+				'value'    => true,
+				'disabled' => true,
+			)
+		),
 		'input'    => array_merge(
 			$common,
 			array(
-				'type'        => true,
-				'name'        => true,
-				'value'       => true,
-				'checked'     => true,
-				'disabled'    => true,
-				'readonly'    => true,
-				'required'    => true,
-				'placeholder' => true,
-				'min'         => true,
-				'max'         => true,
-				'step'        => true,
-				'size'        => true,
+				'type'         => true,
+				'name'         => true,
+				'value'        => true,
+				'checked'      => true,
+				'disabled'     => true,
+				'readonly'     => true,
+				'required'     => true,
+				'placeholder'  => true,
+				'min'          => true,
+				'max'          => true,
+				'step'         => true,
+				'size'         => true,
 				'autocomplete' => true,
 			)
 		),
-		'select'   => array_merge( $common, array( 'name' => true, 'multiple' => true, 'disabled' => true ) ),
-		'option'   => array_merge( $common, array( 'value' => true, 'selected' => true ) ),
+		'select'   => array_merge(
+			$common,
+			array(
+				'name'     => true,
+				'multiple' => true,
+				'disabled' => true,
+			)
+		),
+		'option'   => array_merge(
+			$common,
+			array(
+				'value'    => true,
+				'selected' => true,
+			)
+		),
 		'optgroup' => array_merge( $common, array( 'label' => true ) ),
-		'textarea' => array_merge( $common, array( 'name' => true, 'rows' => true, 'cols' => true, 'placeholder' => true, 'readonly' => true ) ),
+		'textarea' => array_merge(
+			$common,
+			array(
+				'name'        => true,
+				'rows'        => true,
+				'cols'        => true,
+				'placeholder' => true,
+				'readonly'    => true,
+			)
+		),
 		'fieldset' => $common,
 		'legend'   => $common,
 		'br'       => array(),
@@ -158,16 +209,16 @@ function blueworx_ds_allowed_html() {
 		'svg'      => array_merge(
 			$common,
 			array(
-				'xmlns'             => true,
-				'width'             => true,
-				'height'            => true,
-				'viewbox'           => true,
-				'fill'              => true,
-				'stroke'            => true,
-				'stroke-width'      => true,
-				'stroke-linecap'    => true,
-				'stroke-linejoin'   => true,
-				'focusable'         => true,
+				'xmlns'           => true,
+				'width'           => true,
+				'height'          => true,
+				'viewbox'         => true,
+				'fill'            => true,
+				'stroke'          => true,
+				'stroke-width'    => true,
+				'stroke-linecap'  => true,
+				'stroke-linejoin' => true,
+				'focusable'       => true,
 			)
 		),
 		'path'     => array(
@@ -210,7 +261,7 @@ function blueworx_ds_allowed_html() {
  *                      in the markup, entirely correct.
  * @return string HTML.
  */
-function blueworx_ds_icon( $name, $size = 16, $class = '' ) {
+function blueworx_ds_icon( $name, $size = 16, $class = '' ) { // phpcs:ignore Universal.NamingConventions.NoReservedKeywordParameterNames.classFound -- Renaming it could break a caller that passes it by name.
 	$classes = 'bw-icon';
 
 	if ( in_array( (int) $size, array( 14, 18, 20, 22, 28 ), true ) ) {
@@ -232,6 +283,8 @@ function blueworx_ds_icon( $name, $size = 16, $class = '' ) {
  * Renders a button, or a link that looks like one.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $label    Button text.
  *     @type string $variant  primary|secondary|ghost|danger|link. Default secondary.
  *     @type string $size     md|sm. Default md.
@@ -309,6 +362,8 @@ function blueworx_ds_button( $args ) {
  * an unlabelled button to anyone not looking at it.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $icon    Lucide icon name.
  *     @type string $label   Accessible name, also the tooltip.
  *     @type string $variant ghost|outline|danger. Default ghost.
@@ -386,6 +441,8 @@ function blueworx_ds_badge( $label, $tone = 'neutral', $dot = false, $icon = '' 
  * Renders a screen-level message.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $tone    info|success|warning|danger|accent. Default info.
  *     @type string $title   Optional bold first line.
  *     @type string $text    Body text.
@@ -474,6 +531,8 @@ function blueworx_ds_page_access( $capability, $scope ) {
  * Renders the page header every BlueWorx screen opens with.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $eyebrow Small brand line above the title.
  *     @type string $title   Screen title.
  *     @type string $lede    One-line explanation.
@@ -522,6 +581,8 @@ function blueworx_ds_page_header( $args ) {
  * Renders a card.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $eyebrow Optional small line above the title.
  *     @type string $title   Card title.
  *     @type string $note    Optional first line of the body.
@@ -572,8 +633,8 @@ function blueworx_ds_card( $args ) {
 	$body = '';
 
 	if ( '' !== $args['note'] || '' !== $args['body'] ) {
-		$note  = '' !== $args['note'] ? '<p class="bw-card__note">' . esc_html( $args['note'] ) . '</p>' : '';
-		$body  = '<div class="bw-card__body">' . $note . $args['body'] . '</div>';
+		$note = '' !== $args['note'] ? '<p class="bw-card__note">' . esc_html( $args['note'] ) . '</p>' : '';
+		$body = '<div class="bw-card__body">' . $note . $args['body'] . '</div>';
 	}
 
 	$footer = '' !== $args['footer'] ? '<div class="bw-card__foot">' . $args['footer'] . '</div>' : '';
@@ -598,6 +659,8 @@ function blueworx_ds_card( $args ) {
  * the look stays the system's.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $title Panel heading.
  *     @type string $sub   Optional line under the heading.
  *     @type string $body  Panel contents, already escaped.
@@ -657,6 +720,8 @@ function blueworx_ds_description_list( $rows ) {
  * Renders the "nothing here" state.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $icon    Lucide icon name.
  *     @type string $title   Heading.
  *     @type string $text    Explanation.
@@ -693,6 +758,8 @@ function blueworx_ds_empty_state( $args ) {
  * to the field whose id it names.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $value Value to show.
  *     @type string $id    Field id, and the handle the button copies by.
  *     @type string $label Copy button label.
@@ -745,6 +812,8 @@ function blueworx_ds_copy_field( $args ) {
  * `for` pair, so callers pass the label text, not an id to point at.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $name    Field name.
  *     @type string $label   Visible label text.
  *     @type string $value   Submitted value.
@@ -792,6 +861,8 @@ function blueworx_ds_checkbox( $args ) {
  * one class and lets the input type decide the shape.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $name    Field name, shared across the group.
  *     @type string $label   Visible label text.
  *     @type string $value   Submitted value.
@@ -834,6 +905,8 @@ function blueworx_ds_radio( $args ) {
  * Renders a set of radio buttons as one labelled choice.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $name     Field name.
  *     @type string $legend   Heading for the group.
  *     @type array  $choices  Value => label.
@@ -889,6 +962,8 @@ function blueworx_ds_radio_group( $args ) {
  * Renders a select.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $name     Field name.
  *     @type string $id       Element id, for a label to point at.
  *     @type array  $options  Value => label.
@@ -934,6 +1009,8 @@ function blueworx_ds_select( $args ) {
  * Renders a text-shaped input.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $type  Input type.
  *     @type string $name  Field name.
  *     @type string $id    Element id.
@@ -977,6 +1054,8 @@ function blueworx_ds_input( $args ) {
  * Renders a textarea.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $name  Field name.
  *     @type string $id    Element id.
  *     @type string $value Current value.
@@ -1014,6 +1093,8 @@ function blueworx_ds_textarea( $args ) {
  * Wraps a control with its label and help text.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $label   Label text. An empty label renders no element.
  *     @type string $for     Id of the control the label points at.
  *     @type string $control Control HTML, already escaped by its own helper.
@@ -1068,6 +1149,8 @@ function blueworx_ds_field( $args ) {
  * border, and removing it means writing CSS this file is not allowed to write.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $name     Field name. Rendered with a [] suffix.
  *     @type string $legend   Heading for the group.
  *     @type array  $choices  Value => label.
@@ -1127,6 +1210,8 @@ function blueworx_ds_choice_group( $args ) {
  * forms instead.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $label   Label text.
  *     @type string $for     Id of the control the label points at.
  *     @type string $control Control HTML.

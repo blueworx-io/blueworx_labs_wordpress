@@ -10,6 +10,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable Squiz.Commenting.FunctionComment.Missing -- Test stand-ins.
@@ -35,9 +36,29 @@ function wp_strip_all_tags( $text ) {
 	return trim( strip_tags( (string) $text ) );
 }
 
+/**
+ * Stand-in for core's WP_REST_Request.
+ */
 class WP_REST_Request {
+	/**
+	 * The method.
+	 *
+	 * @var mixed
+	 */
 	public $method;
+
+	/**
+	 * The route.
+	 *
+	 * @var mixed
+	 */
 	public $route;
+
+	/**
+	 * The query.
+	 *
+	 * @var array
+	 */
 	public $query = array();
 
 	public function __construct( $method = 'GET', $route = '' ) {
@@ -50,9 +71,29 @@ class WP_REST_Request {
 	}
 }
 
+/**
+ * Stand-in for the response.
+ */
 class Fake_Response {
+	/**
+	 * The status.
+	 *
+	 * @var mixed
+	 */
 	public $status;
+
+	/**
+	 * The data.
+	 *
+	 * @var mixed
+	 */
 	public $data;
+
+	/**
+	 * The headers.
+	 *
+	 * @var mixed
+	 */
 	public $headers;
 
 	public function __construct( $status, $data, $headers = array() ) {
@@ -79,6 +120,11 @@ class Fake_Response {
  * object that only becomes an array when it is JSON-encoded.
  */
 class Fake_Model implements JsonSerializable {
+	/**
+	 * The attributes.
+	 *
+	 * @var mixed
+	 */
 	private $attributes;
 
 	public function __construct( $attributes ) {
@@ -91,11 +137,21 @@ class Fake_Model implements JsonSerializable {
 	}
 }
 
-$GLOBALS['sc'] = array( 'calls' => array(), 'routes' => array() );
+$GLOBALS['sc'] = array(
+	'calls'  => array(),
+	'routes' => array(),
+);
 
 function rest_do_request( $request ) {
 	$GLOBALS['sc']['calls'][] = array( $request->method, $request->route, $request->query );
-	$answer = isset( $GLOBALS['sc']['routes'][ $request->route ] ) ? $GLOBALS['sc']['routes'][ $request->route ] : array( 404, array( 'code' => 'rest_no_route', 'message' => 'No route.' ), array() );
+	$answer                   = isset( $GLOBALS['sc']['routes'][ $request->route ] ) ? $GLOBALS['sc']['routes'][ $request->route ] : array(
+		404,
+		array(
+			'code'    => 'rest_no_route',
+			'message' => 'No route.',
+		),
+		array(),
+	);
 	return new Fake_Response( $answer[0], $answer[1], $answer[2] );
 }
 
@@ -113,28 +169,93 @@ function message_of( $result ) {
 
 require dirname( __DIR__, 2 ) . '/includes/mcp/surecart.php';
 
-check( 'a token is never returned', blueworx_mcp_surecart_scrub( array( 'object' => 'settings', 'api_token' => 'st_x', 'uninstall' => false ) ), array( 'object' => 'settings', 'uninstall' => false ) );
-check( 'nor one buried in a record', blueworx_mcp_surecart_scrub( array( 'processors' => array( array( 'id' => 'p1', 'live_secret_key' => 'sk', 'webhook_signing_secret' => 'wh' ) ) ) ), array( 'processors' => array( array( 'id' => 'p1' ) ) ) );
-$shaped = blueworx_mcp_surecart_shape( array( 'id' => 'o1', 'currency' => 'gbp', 'amount_due' => 2400, 'created_at' => 1747498098, 'post' => array( 'ID' => 1 ) ) );
+check(
+	'a token is never returned',
+	blueworx_mcp_surecart_scrub(
+		array(
+			'object'    => 'settings',
+			'api_token' => 'st_x',
+			'uninstall' => false,
+		)
+	),
+	array(
+		'object'    => 'settings',
+		'uninstall' => false,
+	)
+);
+check(
+	'nor one buried in a record',
+	blueworx_mcp_surecart_scrub(
+		array(
+			'processors' => array(
+				array(
+					'id'                     => 'p1',
+					'live_secret_key'        => 'sk',
+					'webhook_signing_secret' => 'wh',
+				),
+			),
+		)
+	),
+	array( 'processors' => array( array( 'id' => 'p1' ) ) )
+);
+$shaped = blueworx_mcp_surecart_shape(
+	array(
+		'id'         => 'o1',
+		'currency'   => 'gbp',
+		'amount_due' => 2400,
+		'created_at' => 1747498098,
+		'post'       => array( 'ID' => 1 ),
+	)
+);
 check( 'money reads as money', $shaped['amount_due_display'], '£24.00' );
 check( 'the raw amount stays', $shaped['amount_due'], 2400 );
 check( 'dates read as dates', $shaped['created_at'], '2025-05-17T16:08:18+00:00' );
 check( 'the WordPress copy is dropped', isset( $shaped['post'] ), false );
-check( 'yen has no pence', blueworx_mcp_surecart_shape( array( 'currency' => 'jpy', 'amount' => 2400 ) )['amount_display'], '¥2,400' );
-check( 'an unlisted currency shows its code', blueworx_mcp_surecart_shape( array( 'currency' => 'chf', 'amount' => 2400 ) )['amount_display'], 'CHF 24.00' );
+check(
+	'yen has no pence',
+	blueworx_mcp_surecart_shape(
+		array(
+			'currency' => 'jpy',
+			'amount'   => 2400,
+		)
+	)['amount_display'],
+	'¥2,400'
+);
+check(
+	'an unlisted currency shows its code',
+	blueworx_mcp_surecart_shape(
+		array(
+			'currency' => 'chf',
+			'amount'   => 2400,
+		)
+	)['amount_display'],
+	'CHF 24.00'
+);
 check( 'the passed currency fills a gap', blueworx_mcp_surecart_shape( array( 'amount' => 500 ), 'usd' )['amount_display'], '$5.00' );
 check( 'an order links to its screen', blueworx_mcp_surecart_admin_link( 'orders', 'o1' ), 'https://shop.test/wp-admin/admin.php?page=sc-orders&action=edit&id=o1' );
 check( 'no id gives the list screen', blueworx_mcp_surecart_admin_link( 'orders' ), 'https://shop.test/wp-admin/admin.php?page=sc-orders' );
 check( 'a type with no screen gives no link', blueworx_mcp_surecart_admin_link( 'clicks', 'c1' ), '' );
 check( 'an unknown type gives no link', blueworx_mcp_surecart_admin_link( 'nope', 'c1' ), '' );
-check( 'every type says if it is personal', count( array_filter( blueworx_mcp_surecart_types(), function ( $t ) { return ! is_bool( $t['personal'] ); } ) ), 0 );
+check(
+	'every type says if it is personal',
+	count(
+		array_filter(
+			blueworx_mcp_surecart_types(),
+			function ( $t ) {
+				return ! is_bool( $t['personal'] );
+			}
+		)
+	),
+	0
+);
 check( 'customers are personal', blueworx_mcp_surecart_types()['customers']['personal'], true );
 check( 'products are not', blueworx_mcp_surecart_types()['products']['personal'], false );
 check( 'an unknown type counts as personal', blueworx_mcp_surecart_is_personal( 'nope' ), true );
 check( 'orders count as personal', blueworx_mcp_surecart_is_personal( 'orders' ), true );
 check( 'products do not', blueworx_mcp_surecart_is_personal( 'products' ), false );
 check( 'routes sit under surecart/v1', blueworx_mcp_surecart_types()['orders']['route'], '/surecart/v1/orders' );
-$GLOBALS['readonly_user'] = (object) array( 'ID' => 9 ); $GLOBALS['data_open'] = false;
+$GLOBALS['readonly_user'] = (object) array( 'ID' => 9 );
+$GLOBALS['data_open']     = false;
 check( 'a read-only account with data closed is blocked', blueworx_mcp_surecart_personal_blocked(), true );
 $GLOBALS['data_open'] = true;
 check( 'and let through once data is opened', blueworx_mcp_surecart_personal_blocked(), false );
@@ -150,22 +271,104 @@ define( 'SURECART_PLUGIN_FILE', 'x' );
 check( 'with SureCart present it is active', blueworx_mcp_surecart_active(), true );
 check( 'and nothing refuses', blueworx_mcp_surecart_unavailable(), null );
 
-$product = array( 'id' => 'p1', 'object' => 'product', 'name' => 'Hoodie', 'metrics' => array( 'currency' => 'gbp', 'max_price_amount' => 2400 ), 'created_at' => 1747498098, 'post' => array( 'ID' => 1 ), 'image_srcset' => 'x' );
+$product                 = array(
+	'id'           => 'p1',
+	'object'       => 'product',
+	'name'         => 'Hoodie',
+	'metrics'      => array(
+		'currency'         => 'gbp',
+		'max_price_amount' => 2400,
+	),
+	'created_at'   => 1747498098,
+	'post'         => array( 'ID' => 1 ),
+	'image_srcset' => 'x',
+);
 $GLOBALS['sc']['routes'] = array(
 	'/surecart/v1/products'      => array( 200, array( $product ), array( 'X-WP-Total' => '11' ) ),
 	'/surecart/v1/products/p1'   => array( 200, $product, array() ),
-	'/surecart/v1/orders'        => array( 200, array( array( 'id' => 'o1', 'currency' => 'gbp', 'amount_due' => 2400 ) ), array( 'X-WP-Total' => '1' ) ),
+	'/surecart/v1/orders'        => array(
+		200,
+		array(
+			array(
+				'id'         => 'o1',
+				'currency'   => 'gbp',
+				'amount_due' => 2400,
+			),
+		),
+		array( 'X-WP-Total' => '1' ),
+	),
 	'/surecart/v1/subscriptions' => array( 200, array(), array( 'X-WP-Total' => '0' ) ),
-	'/surecart/v1/settings'      => array( 200, array( 'object' => 'settings', 'api_token' => 'st_x', 'uninstall' => false ), array() ),
-	'/surecart/v1/brand'         => array( 200, array( 'object' => 'brand', 'color' => '00ccff', 'dark_color' => '112233', 'theme' => 'light', 'logo_url' => 'https://media.test/logo.svg', 'logo' => array( 'id' => 'm1' ) ), array() ),
-	'/surecart/v1/account'       => array( 200, array( 'object' => 'account', 'name' => 'Demo', 'currency' => 'gbp', 'is_connected' => true, 'plan' => array( 'name' => 'Launch' ), 'public_token' => 'pt_x', 'cache_keys' => array( 'a' => 'b' ), 'order_protocol' => 'zzz' ), array() ),
-	'/surecart/v1/stats/orders'  => array( 200, array( 'object' => 'stats', 'query' => array( 'currency' => 'gbp', 'interval' => 'month' ), 'data' => array( array( 'interval_at' => 1767225600, 'amount' => 4800, 'average_amount' => 2400, 'count' => 2 ), array( 'interval_at' => 1769904000, 'amount' => 0, 'average_amount' => 0, 'count' => 0 ) ) ), array() ),
+	'/surecart/v1/settings'      => array(
+		200,
+		array(
+			'object'    => 'settings',
+			'api_token' => 'st_x',
+			'uninstall' => false,
+		),
+		array(),
+	),
+	'/surecart/v1/brand'         => array(
+		200,
+		array(
+			'object'     => 'brand',
+			'color'      => '00ccff',
+			'dark_color' => '112233',
+			'theme'      => 'light',
+			'logo_url'   => 'https://media.test/logo.svg',
+			'logo'       => array( 'id' => 'm1' ),
+		),
+		array(),
+	),
+	'/surecart/v1/account'       => array(
+		200,
+		array(
+			'object'         => 'account',
+			'name'           => 'Demo',
+			'currency'       => 'gbp',
+			'is_connected'   => true,
+			'plan'           => array( 'name' => 'Launch' ),
+			'public_token'   => 'pt_x',
+			'cache_keys'     => array( 'a' => 'b' ),
+			'order_protocol' => 'zzz',
+		),
+		array(),
+	),
+	'/surecart/v1/stats/orders'  => array(
+		200,
+		array(
+			'object' => 'stats',
+			'query'  => array(
+				'currency' => 'gbp',
+				'interval' => 'month',
+			),
+			'data'   => array(
+				array(
+					'interval_at'    => 1767225600,
+					'amount'         => 4800,
+					'average_amount' => 2400,
+					'count'          => 2,
+				),
+				array(
+					'interval_at'    => 1769904000,
+					'amount'         => 0,
+					'average_amount' => 0,
+					'count'          => 0,
+				),
+			),
+		),
+		array(),
+	),
 );
 check( 'every tool says it is read-only', array_unique( array_column( array_column( blueworx_mcp_surecart_tool_definitions(), 'annotations' ), 'readOnlyHint' ) ), array( true ) );
 check( 'and none reaches outside the site', array_unique( array_column( array_column( blueworx_mcp_surecart_tool_definitions(), 'annotations' ), 'openWorldHint' ) ), array( false ) );
 check( 'and every listed tool has a handler', array_keys( blueworx_mcp_surecart_tool_handlers() ), array_column( blueworx_mcp_surecart_tool_definitions(), 'name' ) );
 check( 'site info lists the types', in_array( 'products', blueworx_mcp_surecart_site_info()['record_types'], true ), true );
-$list = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'per_page' => 500 ) );
+$list = blueworx_mcp_tool_surecart_list_records(
+	array(
+		'type'     => 'products',
+		'per_page' => 500,
+	)
+);
 check( 'per_page is capped at 100', last_call()[2]['per_page'], 100 );
 check( 'the request is for the route under surecart/v1', last_call()[1], '/surecart/v1/products' );
 check( 'the total comes back', $list['total'], 11 );
@@ -175,22 +378,83 @@ check( 'the list links to its screen', $list['admin_link'], 'https://shop.test/w
 check( 'records are cleaned', isset( $list['records'][0]['post'] ) || isset( $list['records'][0]['image_srcset'] ), false );
 blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) );
 check( 'per_page defaults to 20', last_call()[2]['per_page'], 20 );
-blueworx_mcp_tool_surecart_list_records( array( 'type' => 'orders', 'search' => 'smith', 'status' => 'paid', 'customer_id' => 'c1' ) );
+blueworx_mcp_tool_surecart_list_records(
+	array(
+		'type'        => 'orders',
+		'search'      => 'smith',
+		'status'      => 'paid',
+		'customer_id' => 'c1',
+	)
+);
 $q = last_call()[2];
 check( 'search maps to query', $q['query'], 'smith' );
 check( 'status maps to status[]', $q['status'], array( 'paid' ) );
 check( 'customer maps to customer_ids', $q['customer_ids'], array( 'c1' ) );
 check( 'no date filter is sent, as none is confirmed', isset( $q['created_at'] ), false );
-blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'customer_id' => 'c1' ) );
+blueworx_mcp_tool_surecart_list_records(
+	array(
+		'type'        => 'products',
+		'customer_id' => 'c1',
+	)
+);
 check( 'a filter a type does not take is dropped', isset( last_call()[2]['customer_ids'] ), false );
-check( 'a filter a type does not take is named as ignored', blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'customer_id' => 'c1' ) )['ignored_filters'], array( 'customer_id' ) );
-check( 'a filter that applies is not named', isset( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'search' => 'x' ) )['ignored_filters'] ), false );
+check(
+	'a filter a type does not take is named as ignored',
+	blueworx_mcp_tool_surecart_list_records(
+		array(
+			'type'        => 'products',
+			'customer_id' => 'c1',
+		)
+	)['ignored_filters'],
+	array( 'customer_id' )
+);
+check(
+	'a filter that applies is not named',
+	isset(
+		blueworx_mcp_tool_surecart_list_records(
+			array(
+				'type'   => 'products',
+				'search' => 'x',
+			)
+		)['ignored_filters']
+	),
+	false
+);
 check( 'list has no date arguments', array_intersect( array( 'from', 'to' ), array_keys( blueworx_mcp_surecart_tool_definitions()[1]['inputSchema']['properties'] ) ), array() );
 $GLOBALS['tz_offset'] = 0;
-check( 'a get returns the record with its link', blueworx_mcp_tool_surecart_get_record( array( 'type' => 'products', 'id' => 'p1' ) )['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1' );
+check(
+	'a get returns the record with its link',
+	blueworx_mcp_tool_surecart_get_record(
+		array(
+			'type' => 'products',
+			'id'   => 'p1',
+		)
+	)['admin_link'],
+	'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1'
+);
 check( 'and asks for that record', last_call()[1], '/surecart/v1/products/p1' );
-check( 'money in a record reads as money', blueworx_mcp_tool_surecart_get_record( array( 'type' => 'products', 'id' => 'p1' ) )['metrics']['max_price_amount_display'], '£24.00' );
-check( 'a path in an ID is refused', error_of( blueworx_mcp_tool_surecart_get_record( array( 'type' => 'products', 'id' => '../settings' ) ) ), 'invalid_id' );
+check(
+	'money in a record reads as money',
+	blueworx_mcp_tool_surecart_get_record(
+		array(
+			'type' => 'products',
+			'id'   => 'p1',
+		)
+	)['metrics']['max_price_amount_display'],
+	'£24.00'
+);
+check(
+	'a path in an ID is refused',
+	error_of(
+		blueworx_mcp_tool_surecart_get_record(
+			array(
+				'type' => 'products',
+				'id'   => '../settings',
+			)
+		)
+	),
+	'invalid_id'
+);
 check( 'an unknown type is refused', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'users' ) ) ), 'unknown_type' );
 $settings = blueworx_mcp_tool_surecart_get_settings( array() );
 check( 'settings never carry the token', isset( $settings['settings']['api_token'] ), false );
@@ -200,7 +464,13 @@ check( 'the account name and currency come back', array( $settings['account']['n
 check( 'the account has no cache keys or tokens', array_intersect( array( 'cache_keys', 'public_token' ), array_keys( $settings['account'] ) ), array() );
 check( 'settings link to the screens', array_keys( $settings['links'] ), array( 'settings', 'brand', 'checkout' ) );
 $GLOBALS['tz_offset'] = -18000;
-$sales = blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01', 'to' => '2026-10-21' ) );
+$sales                = blueworx_mcp_tool_surecart_get_sales(
+	array(
+		'report' => 'orders',
+		'from'   => '2026-01-01',
+		'to'     => '2026-10-21',
+	)
+);
 check( 'sales ask for a month by default', last_call()[2]['interval'], 'month' );
 check( 'sales ask the stats route', last_call()[1], '/surecart/v1/stats/orders' );
 check( 'sales rows read as money', $sales['rows'][0]['amount_display'], '£48.00' );
@@ -208,20 +478,88 @@ check( 'and as an average', $sales['rows'][0]['average_amount_display'], '£24.0
 check( 'and a UTC-midnight bucket keeps its day on a site behind UTC', $sales['rows'][1]['interval_at'], '2026-02-01' );
 check( 'and as a date', $sales['rows'][0]['interval_at'], '2026-01-01' );
 check( 'sales add up', array( $sales['totals']['count'], $sales['totals']['amount_display'] ), array( 2, '£48.00' ) );
-check( 'sales need both dates', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01' ) ) ), 'invalid_date' );
-check( 'an unknown report is refused', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'x', 'from' => '2026-01-01', 'to' => '2026-02-01' ) ) ), 'unknown_report' );
-$GLOBALS['sc']['routes']['/surecart/v1/products'] = array( 400, array( 'code' => 'missing_token', 'message' => '<p>Please connect your site to SureCart.</p>' ), array() );
+check(
+	'sales need both dates',
+	error_of(
+		blueworx_mcp_tool_surecart_get_sales(
+			array(
+				'report' => 'orders',
+				'from'   => '2026-01-01',
+			)
+		)
+	),
+	'invalid_date'
+);
+check(
+	'an unknown report is refused',
+	error_of(
+		blueworx_mcp_tool_surecart_get_sales(
+			array(
+				'report' => 'x',
+				'from'   => '2026-01-01',
+				'to'     => '2026-02-01',
+			)
+		)
+	),
+	'unknown_report'
+);
+$GLOBALS['sc']['routes']['/surecart/v1/products'] = array(
+	400,
+	array(
+		'code'    => 'missing_token',
+		'message' => '<p>Please connect your site to SureCart.</p>',
+	),
+	array(),
+);
 check( 'a store with no connection says so in SureCart\'s words', message_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) ) ), 'Please connect your site to SureCart.' );
 // In-process, SureCart hands most types back as model objects, not arrays.
-$GLOBALS['sc']['routes']['/surecart/v1/orders']    = array( 200, array( new Fake_Model( array( 'id' => 'o2', 'currency' => 'gbp', 'amount_due' => 1500, 'checkout' => (object) array( 'id' => 'ch1', 'customer' => (object) array( 'name' => 'Ann', 'api_token' => 'x' ) ) ) ) ), array( 'X-WP-Total' => '1' ) );
-$GLOBALS['sc']['routes']['/surecart/v1/orders/o2'] = array( 200, new Fake_Model( array( 'id' => 'o2', 'currency' => 'gbp', 'amount_due' => 1500, 'checkout' => (object) array( 'id' => 'ch1', 'webhook_signing_secret' => 'wh' ) ) ), array() );
+$GLOBALS['sc']['routes']['/surecart/v1/orders']    = array(
+	200,
+	array(
+		new Fake_Model(
+			array(
+				'id'         => 'o2',
+				'currency'   => 'gbp',
+				'amount_due' => 1500,
+				'checkout'   => (object) array(
+					'id'       => 'ch1',
+					'customer' => (object) array(
+						'name'      => 'Ann',
+						'api_token' => 'x',
+					),
+				),
+			)
+		),
+	),
+	array( 'X-WP-Total' => '1' ),
+);
+$GLOBALS['sc']['routes']['/surecart/v1/orders/o2'] = array(
+	200,
+	new Fake_Model(
+		array(
+			'id'         => 'o2',
+			'currency'   => 'gbp',
+			'amount_due' => 1500,
+			'checkout'   => (object) array(
+				'id'                     => 'ch1',
+				'webhook_signing_secret' => 'wh',
+			),
+		)
+	),
+	array(),
+);
 $objects = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'orders' ) );
 check( 'a list of model objects still returns its records', count( $objects['records'] ), 1 );
 check( 'and each reads as money', $objects['records'][0]['amount_due_display'] ?? null, '£15.00' );
 check( 'and a nested object is cleaned too', isset( $objects['records'][0]['checkout']['customer']['api_token'] ), false );
 check( 'and keeps what is safe', $objects['records'][0]['checkout']['customer']['name'] ?? null, 'Ann' );
 check( 'the orders list asks for the checkout and its customer', array_intersect( array( 'checkout', 'checkout.customer', 'checkout.line_items' ), (array) ( last_call()[2]['expand'] ?? array() ) ), array( 'checkout', 'checkout.customer', 'checkout.line_items' ) );
-$one = blueworx_mcp_tool_surecart_get_record( array( 'type' => 'orders', 'id' => 'o2' ) );
+$one = blueworx_mcp_tool_surecart_get_record(
+	array(
+		'type' => 'orders',
+		'id'   => 'o2',
+	)
+);
 check( 'a single model object comes back as a record', $one['amount_due_display'] ?? null, '£15.00' );
 check( 'and is cleaned', isset( $one['checkout']['webhook_signing_secret'] ), false );
 check( 'a single order asks for the same detail', in_array( 'checkout.customer', (array) ( last_call()[2]['expand'] ?? array() ), true ), true );
@@ -229,24 +567,124 @@ blueworx_mcp_tool_surecart_list_records( array( 'type' => 'subscriptions' ) );
 check( 'subscriptions ask for the customer and the product', array_intersect( array( 'customer', 'price', 'price.product' ), (array) ( last_call()[2]['expand'] ?? array() ) ), array( 'customer', 'price', 'price.product' ) );
 blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) );
 check( 'a product list asks for no extra detail', isset( last_call()[2]['expand'] ), false );
-check( 'no type without personal details expands anything', array_keys( array_filter( blueworx_mcp_surecart_types(), function ( $t ) { return ! $t['personal'] && ! empty( $t['expand'] ); } ) ), array() );
+check(
+	'no type without personal details expands anything',
+	array_keys(
+		array_filter(
+			blueworx_mcp_surecart_types(),
+			function ( $t ) {
+				return ! $t['personal'] && ! empty( $t['expand'] );
+			}
+		)
+	),
+	array()
+);
 check( 'the caller cannot ask for an expand', isset( blueworx_mcp_surecart_tool_definitions()[1]['inputSchema']['properties']['expand'] ) || isset( blueworx_mcp_surecart_tool_definitions()[2]['inputSchema']['properties']['expand'] ), false );
-blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products', 'expand' => array( 'customer' ) ) );
+blueworx_mcp_tool_surecart_list_records(
+	array(
+		'type'   => 'products',
+		'expand' => array( 'customer' ),
+	)
+);
 check( 'and one passed anyway is not sent', isset( last_call()[2]['expand'] ), false );
 
 // Prices and variants have no screen of their own, so they link to their product.
-$GLOBALS['sc']['routes']['/surecart/v1/prices']   = array( 200, array( new Fake_Model( array( 'id' => 'pr1', 'product' => 'p1' ) ), new Fake_Model( array( 'id' => 'pr2' ) ) ), array( 'X-WP-Total' => '2' ) );
-$GLOBALS['sc']['routes']['/surecart/v1/variants'] = array( 200, array( new Fake_Model( array( 'id' => 'v1', 'product' => (object) array( 'id' => 'p7', 'name' => 'Hoodie' ) ) ) ), array( 'X-WP-Total' => '1' ) );
+$GLOBALS['sc']['routes']['/surecart/v1/prices']   = array(
+	200,
+	array(
+		new Fake_Model(
+			array(
+				'id'      => 'pr1',
+				'product' => 'p1',
+			)
+		),
+		new Fake_Model( array( 'id' => 'pr2' ) ),
+	),
+	array( 'X-WP-Total' => '2' ),
+);
+$GLOBALS['sc']['routes']['/surecart/v1/variants'] = array(
+	200,
+	array(
+		new Fake_Model(
+			array(
+				'id'      => 'v1',
+				'product' => (object) array(
+					'id'   => 'p7',
+					'name' => 'Hoodie',
+				),
+			)
+		),
+	),
+	array( 'X-WP-Total' => '1' ),
+);
 $prices = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'prices' ) );
 check( 'a price links to its product', $prices['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1' );
 check( 'a price with no product has no link', $prices['records'][1]['admin_link'], '' );
 check( 'a variant links to its product, expanded or not', blueworx_mcp_tool_surecart_list_records( array( 'type' => 'variants' ) )['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p7' );
-$GLOBALS['sc']['routes']['/surecart/v1/prices/pr1'] = array( 200, new Fake_Model( array( 'id' => 'pr1', 'product' => 'p1' ) ), array() );
-check( 'and so does a single price', blueworx_mcp_tool_surecart_get_record( array( 'type' => 'prices', 'id' => 'pr1' ) )['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1' );
+$GLOBALS['sc']['routes']['/surecart/v1/prices/pr1'] = array(
+	200,
+	new Fake_Model(
+		array(
+			'id'      => 'pr1',
+			'product' => 'p1',
+		)
+	),
+	array(),
+);
+check(
+	'and so does a single price',
+	blueworx_mcp_tool_surecart_get_record(
+		array(
+			'type' => 'prices',
+			'id'   => 'pr1',
+		)
+	)['admin_link'],
+	'https://shop.test/wp-admin/admin.php?page=sc-products&action=edit&id=p1'
+);
 
 // Charges and refunds have no screen; they link to their order when they carry one.
-$GLOBALS['sc']['routes']['/surecart/v1/charges'] = array( 200, array( new Fake_Model( array( 'id' => 'c1', 'checkout' => (object) array( 'id' => 'ch1', 'order' => (object) array( 'id' => 'o9' ) ) ) ), new Fake_Model( array( 'id' => 'c2', 'checkout' => 'ch2' ) ) ), array( 'X-WP-Total' => '2' ) );
-$GLOBALS['sc']['routes']['/surecart/v1/refunds'] = array( 200, array( new Fake_Model( array( 'id' => 'r1', 'charge' => (object) array( 'id' => 'c1', 'checkout' => (object) array( 'order' => 'o9' ) ) ) ), new Fake_Model( array( 'id' => 'r2', 'charge' => 'c1' ) ) ), array( 'X-WP-Total' => '2' ) );
+$GLOBALS['sc']['routes']['/surecart/v1/charges'] = array(
+	200,
+	array(
+		new Fake_Model(
+			array(
+				'id'       => 'c1',
+				'checkout' => (object) array(
+					'id'    => 'ch1',
+					'order' => (object) array( 'id' => 'o9' ),
+				),
+			)
+		),
+		new Fake_Model(
+			array(
+				'id'       => 'c2',
+				'checkout' => 'ch2',
+			)
+		),
+	),
+	array( 'X-WP-Total' => '2' ),
+);
+$GLOBALS['sc']['routes']['/surecart/v1/refunds'] = array(
+	200,
+	array(
+		new Fake_Model(
+			array(
+				'id'     => 'r1',
+				'charge' => (object) array(
+					'id'       => 'c1',
+					'checkout' => (object) array( 'order' => 'o9' ),
+				),
+			)
+		),
+		new Fake_Model(
+			array(
+				'id'     => 'r2',
+				'charge' => 'c1',
+			)
+		),
+	),
+	array( 'X-WP-Total' => '2' ),
+);
 $charges = blueworx_mcp_tool_surecart_list_records( array( 'type' => 'charges' ) );
 check( 'charges ask for their checkout and its order', array_intersect( array( 'checkout', 'checkout.order' ), (array) ( last_call()[2]['expand'] ?? array() ) ), array( 'checkout', 'checkout.order' ) );
 check( 'a charge links to its order', $charges['records'][0]['admin_link'], 'https://shop.test/wp-admin/admin.php?page=sc-orders&action=edit&id=o9' );
@@ -264,7 +702,12 @@ check( 'but each checkout keeps its own', $checkouts['records'][0]['admin_link']
 
 // Some types can only be listed.
 $before = count( $GLOBALS['sc']['calls'] );
-$reason = blueworx_mcp_tool_surecart_get_record( array( 'type' => 'return_reasons', 'id' => 'rr1' ) );
+$reason = blueworx_mcp_tool_surecart_get_record(
+	array(
+		'type' => 'return_reasons',
+		'id'   => 'rr1',
+	)
+);
 check( 'a get on a list-only type is refused up front', error_of( $reason ), 'list_only' );
 check( 'with a plain way forward', strpos( message_of( $reason ), 'list_store_records' ) !== false, true );
 check( 'and SureCart is not asked', count( $GLOBALS['sc']['calls'] ), $before );
@@ -272,9 +715,36 @@ check( 'return reasons are list-only', blueworx_mcp_surecart_types()['return_rea
 check( 'orders are not', blueworx_mcp_surecart_types()['orders']['list_only'], false );
 
 // The core store settings, each read on its own so one refusal does not sink the rest.
-$GLOBALS['sc']['routes']['/surecart/v1/tax_protocol']    = array( 200, new Fake_Model( array( 'object' => 'tax_protocol', 'tax_enabled' => true, 'eu_vat' => (object) array( 'api_key' => 'k', 'required' => true ) ) ), array() );
-$GLOBALS['sc']['routes']['/surecart/v1/order_protocol']  = array( 200, array( 'object' => 'order_protocol', 'number_prefix' => 'SC' ), array() );
-$GLOBALS['sc']['routes']['/surecart/v1/review_protocol'] = array( 403, array( 'code' => 'plan_required', 'message' => 'Reviews need a higher plan.' ), array() );
+$GLOBALS['sc']['routes']['/surecart/v1/tax_protocol']    = array(
+	200,
+	new Fake_Model(
+		array(
+			'object'      => 'tax_protocol',
+			'tax_enabled' => true,
+			'eu_vat'      => (object) array(
+				'api_key'  => 'k',
+				'required' => true,
+			),
+		)
+	),
+	array(),
+);
+$GLOBALS['sc']['routes']['/surecart/v1/order_protocol']  = array(
+	200,
+	array(
+		'object'        => 'order_protocol',
+		'number_prefix' => 'SC',
+	),
+	array(),
+);
+$GLOBALS['sc']['routes']['/surecart/v1/review_protocol'] = array(
+	403,
+	array(
+		'code'    => 'plan_required',
+		'message' => 'Reviews need a higher plan.',
+	),
+	array(),
+);
 $settings = blueworx_mcp_tool_surecart_get_settings( array() );
 check( 'settings still come back when one part is refused', error_of( $settings ), 'no error' );
 check( 'the tax setup comes back', $settings['protocols']['tax_protocol']['tax_enabled'] ?? null, true );
@@ -299,11 +769,34 @@ $GLOBALS['readonly_user'] = (object) array( 'ID' => 9 );
 $GLOBALS['data_open']     = false;
 $before                   = count( $GLOBALS['sc']['calls'] );
 check( 'orders are withheld from a read-only account', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'subscriptions' ) ) ), 'personal_data_withheld' );
-check( 'and a single one too', error_of( blueworx_mcp_tool_surecart_get_record( array( 'type' => 'orders', 'id' => 'o1' ) ) ), 'personal_data_withheld' );
+check(
+	'and a single one too',
+	error_of(
+		blueworx_mcp_tool_surecart_get_record(
+			array(
+				'type' => 'orders',
+				'id'   => 'o1',
+			)
+		)
+	),
+	'personal_data_withheld'
+);
 check( 'and SureCart was never asked for them', count( $GLOBALS['sc']['calls'] ), $before );
 $GLOBALS['sc']['routes']['/surecart/v1/products'] = array( 200, array( $product ), array( 'X-WP-Total' => '11' ) );
 check( 'products are not', error_of( blueworx_mcp_tool_surecart_list_records( array( 'type' => 'products' ) ) ), 'no error' );
-check( 'nor sales totals', error_of( blueworx_mcp_tool_surecart_get_sales( array( 'report' => 'orders', 'from' => '2026-01-01', 'to' => '2026-10-21' ) ) ), 'no error' );
+check(
+	'nor sales totals',
+	error_of(
+		blueworx_mcp_tool_surecart_get_sales(
+			array(
+				'report' => 'orders',
+				'from'   => '2026-01-01',
+				'to'     => '2026-10-21',
+			)
+		)
+	),
+	'no error'
+);
 check( 'nothing but GET was ever sent', array_values( array_unique( array_column( $GLOBALS['sc']['calls'], 0 ) ) ), array( 'GET' ) );
 
 check( 'SureCart products are locked', blueworx_mcp_surecart_locked( 'sc_product' ), true );

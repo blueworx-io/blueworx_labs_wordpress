@@ -7,14 +7,22 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
 // phpcs:disable Squiz.Commenting.FunctionComment.Missing -- Test stubs mirror core signatures.
 // phpcs:disable Generic.CodeAnalysis.UnusedFunctionParameter
 
-$GLOBALS['roles'] = array(
-	'administrator' => array( 'name' => 'Administrator', 'capabilities' => array( 'manage_options' => true, 'edit_posts' => true, 'read' => true ) ),
+$GLOBALS['roles']  = array(
+	'administrator' => array(
+		'name'         => 'Administrator',
+		'capabilities' => array(
+			'manage_options' => true,
+			'edit_posts'     => true,
+			'read'           => true,
+		),
+	),
 );
 $GLOBALS['reader'] = 'administrator';
 
@@ -86,7 +94,7 @@ function blueworx_check_guide_format() {
 	$GLOBALS['options'] = array( 'blueworx_feature_display_names' => '1' );
 	check( 'SureCart becomes Commerce with it on', 'Commerce', blueworx_guide_product_label( 'surecart' ) );
 	check( 'LatePoint becomes Bookings', 'Bookings', blueworx_guide_product_label( 'latepoint' ) );
-	check( 'WordPress is never renamed', 'WordPress', blueworx_guide_product_label( 'wordpress' ) );
+	check( 'WordPress is never renamed', 'WordPress', blueworx_guide_product_label( 'wordpress' ) ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- the product key is lowercase.
 	check( 'an unknown product is empty', '', blueworx_guide_product_label( 'nope' ) );
 
 	$GLOBALS['options'] = array();
@@ -94,8 +102,8 @@ function blueworx_check_guide_format() {
 	echo "\nOnly client-facing features get a guide\n";
 
 	$GLOBALS['options'] = array();
-	$feature_guides = blueworx_get_feature_guides();
-	$ids            = array_column( $feature_guides, 'id' );
+	$feature_guides     = blueworx_get_feature_guides();
+	$ids                = array_column( $feature_guides, 'id' );
 
 	$hidden = array( 'xmlrpc', 'rest_users', 'author_slugs', 'application_passwords', 'robots_txt', 'emails', 'revisions', 'login_session', 'login_redirect', 'profile_cleanup', 'dashboard_widgets', 'admin_bar', 'admin_theme', 'display_names', 'comments', 'user_roles' );
 	foreach ( $hidden as $key ) {
@@ -154,11 +162,11 @@ function blueworx_check_guide_format() {
 		return $products;
 	};
 
-	$others = blueworx_get_other_product_guides();
+	$others     = blueworx_get_other_product_guides();
 	$by_product = array();
 	foreach ( $others as $guide ) {
 		$by_product[ $guide['product'] ][] = $guide['id'];
-		$ok = false !== strpos( $guide['body'], 'bw-guide__where' )
+		$ok                                = false !== strpos( $guide['body'], 'bw-guide__where' )
 			&& false !== strpos( $guide['body'], '<ol class="bw-guide__steps">' )
 			&& false !== strpos( $guide['body'], 'bw-guide__then' );
 		check( $guide['id'] . ' has where, steps and then', true, $ok );
