@@ -127,10 +127,12 @@ function blueworx_user_roles_enqueue( $hook_suffix ) {
 .blueworx-role-choices li{margin:0 0 var(--bw-space-2, 4px);}
 .blueworx-role-choices label{display:flex;align-items:center;gap:var(--bw-space-4, 8px);}
 .blueworx-role-help{margin-top:0;}
-#createuser .blueworx-role-choices input,#adduser .blueworx-role-choices input{width:var(--bw-space-7, 16px);min-width:var(--bw-space-7, 16px);flex:0 0 auto;}'
+#createuser .form-field .blueworx-role-choices input,#adduser .form-field .blueworx-role-choices input{width:var(--bw-space-7, 16px);min-width:var(--bw-space-7, 16px);flex:0 0 auto;}'
 		// The last rule is for the Add User screen (#239). Core sizes every
 		// input in that form by id, which outranks the checkbox's own size and
-		// stretched each box into a bar that crushed its label.
+		// stretched each box into a bar that crushed its label. The extra .form-field
+		// beats core on specificity, not load order: from WordPress 7.2 admin styles
+		// are no longer bundled, so this now prints before forms.css, not after it.
 	);
 }
 
