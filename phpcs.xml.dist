@@ -9,6 +9,8 @@
 	<exclude-pattern>/dist/</exclude-pattern>
 	<exclude-pattern>/.foundation/</exclude-pattern>
 	<exclude-pattern>*/assets/*</exclude-pattern>
+	<!-- The shared page lock, copied whole from the foundation and checked against it in CI. -->
+	<exclude-pattern>*/blueworx-page-lock/*</exclude-pattern>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>
