@@ -11,6 +11,10 @@
 	<exclude-pattern>*/assets/*</exclude-pattern>
 	<!-- The shared page lock, copied whole from the foundation and checked against it in CI. -->
 	<exclude-pattern>*/blueworx-page-lock/*</exclude-pattern>
+	<!-- The design system copy, held to the foundation's by the sync check. -->
+	<exclude-pattern>*/.claude/*</exclude-pattern>
+	<exclude-pattern>*/.wp-test/*</exclude-pattern>
+	<exclude-pattern>*/test-results/*</exclude-pattern>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>
