@@ -537,9 +537,9 @@ function blueworx_render_enhancements_page() {
 		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'blueworx-labs-wordpress' ) );
 	}
 
-	$sections  = blueworx_get_feature_sections();
-	$features  = blueworx_get_feature_definitions();
-	$notice    = get_transient( 'blueworx_labs_notice' );
+	$sections = blueworx_get_feature_sections();
+	$features = blueworx_get_feature_definitions();
+	$notice   = get_transient( 'blueworx_labs_notice' );
 
 	if ( $notice ) {
 		delete_transient( 'blueworx_labs_notice' );
@@ -648,7 +648,7 @@ function blueworx_render_enhancements_page() {
 	printf(
 		'<form method="post" action="%1$s" class="bw-page__form"><input type="hidden" name="action" value="blueworx_save_feature_settings" /><input type="hidden" name="blueworx_section" value="%3$s" data-blueworx-section-field />%2$s',
 		esc_url( admin_url( 'admin-post.php' ) ),
-		wp_nonce_field( 'blueworx_save_feature_settings', '_wpnonce', true, false ),
+		wp_nonce_field( 'blueworx_save_feature_settings', '_wpnonce', true, false ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core's own nonce field.
 		esc_attr( $first_section )
 	);
 
@@ -1395,7 +1395,7 @@ function blueworx_render_cache_page() {
 			. '<p class="bw-field__help">'
 			. esc_html__( 'Whenever anything changes — a page, a template, a menu, a theme setting, a plugin — every cached page is cleared, so visitors see the change straight away.', 'blueworx-labs-wordpress' )
 			. '</p>',
-		__( 'Last refreshed', 'blueworx-labs-wordpress' )    => esc_html(
+		__( 'Last refreshed', 'blueworx-labs-wordpress' ) => esc_html(
 			$last_purge
 				? sprintf(
 					/* translators: 1: how long ago, e.g. "5 mins"; 2: what changed, e.g. "menu change". */
@@ -1561,7 +1561,7 @@ function blueworx_render_edit_menu_page() {
 	printf(
 		'<form method="post" action="%1$s" class="bw-page__form"><input type="hidden" name="action" value="blueworx_save_admin_menu_order" />%2$s',
 		esc_url( admin_url( 'admin-post.php' ) ),
-		wp_nonce_field( 'blueworx_save_admin_menu_order', '_wpnonce', true, false )
+		wp_nonce_field( 'blueworx_save_admin_menu_order', '_wpnonce', true, false ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core's own nonce field.
 	);
 
 	$cards = '';

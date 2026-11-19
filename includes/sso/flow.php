@@ -642,6 +642,7 @@ function blueworx_sso_handle_callback() {
 
 	wp_set_auth_cookie( $user->ID, false );
 	wp_set_current_user( $user->ID );
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core's own sign-in hook, fired as wp_signon() would.
 	do_action( 'wp_login', $user->user_login, $user );
 
 	$default = blueworx_sso_default_destination( $intent );

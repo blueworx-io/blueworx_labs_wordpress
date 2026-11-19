@@ -39,11 +39,6 @@ jobs:
       # deliberately local, which reads as off-system. `warn` prints the report
       # without blocking a merge. Remove it once the re-skin is on the system.
       admin_ui_adherence: warn
-      # The plugin has thousands of PHPCS problems from before the checks
-      # enforced them (the foundation's lint step used to pass whatever PHPCS
-      # said). `warn` shows them on every pull request without failing it.
-      # Remove it once they are cleared.
-      phpcs: warn
       # The shared exclude list deliberately keeps `scripts/` shippable, because
       # plenty of plugins keep runtime JS there. This one does not: what ships is
       # the allowlist in scripts/build-zip.mjs — the plugin file, uninstall.php,

@@ -12,18 +12,57 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
 // phpcs:disable Squiz.Commenting.FunctionComment.Missing -- Test stubs mirror core signatures.
 // phpcs:disable Generic.CodeAnalysis.UnusedFunctionParameter -- Same: the text domain is part of the signature.
 
+/**
+ * Stand-in for core's WP_User.
+ */
 class WP_User {
+	/**
+	 * The ID.
+	 *
+	 * @var int
+	 */
 	public $ID = 0;
+
+	/**
+	 * The roles.
+	 *
+	 * @var array
+	 */
 	public $roles = array();
+
+	/**
+	 * The user login.
+	 *
+	 * @var string
+	 */
 	public $user_login = '';
+
+	/**
+	 * The user email.
+	 *
+	 * @var string
+	 */
 	public $user_email = '';
+
+	/**
+	 * The display name.
+	 *
+	 * @var string
+	 */
 	public $display_name = '';
+
+	/**
+	 * The user activation key.
+	 *
+	 * @var string
+	 */
 	public $user_activation_key = '';
 
 	public function __construct( $id = 0, $roles = array() ) {
@@ -41,7 +80,10 @@ function blueworx_feature_enabled( $key ) {
 }
 
 function blueworx_readonly_build_caps() {
-	return array( 'read' => true, 'manage_options' => true );
+	return array(
+		'read'           => true,
+		'manage_options' => true,
+	);
 }
 
 function blueworx_readonly_user_has_role( $user, $slug ) {
@@ -51,10 +93,17 @@ function blueworx_readonly_user_has_role( $user, $slug ) {
 // Stubs local to this test, beyond what stubs.php already provides. Kept as
 // its own block so Tasks 3 and 4 can append what their own checks need
 // without hunting through the rest of the file.
-// --- begin local stubs ---
+// Local stubs begin here.
 
-// The guard registers its hooks at file scope; only their existence matters
-// here, not what they do, since nothing in this script fires a hook.
+/**
+ * The guard registers its hooks at file scope; only their existence matters
+ * here, not what they do, since nothing in this script fires a hook.
+ *
+ * @param string   $hook     Hook name.
+ * @param callable $callback Callback.
+ * @param int      $priority Priority.
+ * @param int      $args     Number of arguments.
+ */
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
 function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
 
@@ -180,6 +229,11 @@ function get_password_reset_key( $user ) {
  * rather than quietly accepting writes nothing has checked.
  */
 class Blueworx_Test_Wpdb {
+	/**
+	 * The users.
+	 *
+	 * @var string
+	 */
 	public $users = 'wp_users';
 
 	public function update( $table, $data, $where ) {
@@ -237,7 +291,9 @@ function date_i18n( $f, $t ) {
 	return gmdate( 'j F Y', (int) $t );
 }
 
-// A single site. tests/php/multisite-accounts-test.php covers the network.
+/**
+ * A single site. tests/php/multisite-accounts-test.php covers the network.
+ */
 function is_multisite() {
 	return false;
 }
@@ -393,7 +449,13 @@ check( 'a duplicate is refused', is_wp_error( $again ), true );
 
 echo "\nAnd an address that is not one is refused before an account exists\n";
 
-$bad = blueworx_external_invite( array( 'name' => 'Nobody', 'email' => 'not-an-address', 'days' => 14 ) );
+$bad = blueworx_external_invite(
+	array(
+		'name'  => 'Nobody',
+		'email' => 'not-an-address',
+		'days'  => 14,
+	)
+);
 
 check( 'junk is refused', is_wp_error( $bad ), true );
 
@@ -416,7 +478,11 @@ echo "\nA send that fails is reported rather than swallowed\n";
 $GLOBALS['mail_fails'] = true;
 
 $failed = blueworx_external_invite(
-	array( 'name' => 'Sam', 'email' => 'sam@example.com', 'days' => 7 )
+	array(
+		'name'  => 'Sam',
+		'email' => 'sam@example.com',
+		'days'  => 7,
+	)
 );
 
 check( 'the account is still created', is_int( $failed ) && $failed > 0, true );
@@ -433,7 +499,11 @@ echo "\nA resend that fails leaves the link the person already has alone\n";
 $GLOBALS['mail_fails'] = false;
 
 $holder = blueworx_external_invite(
-	array( 'name' => 'Ada', 'email' => 'ada@example.com', 'days' => 14 )
+	array(
+		'name'  => 'Ada',
+		'email' => 'ada@example.com',
+		'days'  => 14,
+	)
 );
 
 $GLOBALS['users'][ $holder ]['activation_key'] = 'THEIR-WORKING-KEY';
@@ -476,7 +546,11 @@ check( 'and no reset key was generated for them', $GLOBALS['reset_keys_issued'],
 echo "\nAccess stops when it runs out\n";
 
 $live = blueworx_external_invite(
-	array( 'name' => 'Live', 'email' => 'live@example.com', 'days' => 14 )
+	array(
+		'name'  => 'Live',
+		'email' => 'live@example.com',
+		'days'  => 14,
+	)
 );
 
 check( 'a fresh invitation is not expired', blueworx_external_is_expired( $live ), false );
@@ -561,7 +635,11 @@ check(
 echo "\nRevoking removes the account entirely\n";
 
 $revoked = blueworx_external_invite(
-	array( 'name' => 'Revoke Me', 'email' => 'revoke@example.com', 'days' => 14 )
+	array(
+		'name'  => 'Revoke Me',
+		'email' => 'revoke@example.com',
+		'days'  => 14,
+	)
 );
 
 check( 'revoking an external account succeeds', blueworx_external_revoke( $revoked ), true );

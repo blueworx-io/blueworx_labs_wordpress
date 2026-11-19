@@ -27,6 +27,8 @@ function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
 
 /**
  * Core's, returning what it would for this plugin installed normally.
+ *
+ * @param string $file Path to a plugin's main file.
  */
 function plugin_basename( $file ) {
 	return 'blueworx-labs-wordpress/blueworx-labs-wordpress.php';

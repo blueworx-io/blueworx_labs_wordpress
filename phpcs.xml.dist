@@ -15,6 +15,9 @@
 	<exclude-pattern>*/.claude/*</exclude-pattern>
 	<exclude-pattern>*/.wp-test/*</exclude-pattern>
 	<exclude-pattern>*/test-results/*</exclude-pattern>
+	<!-- The vendored update checker ships exactly as upstream publishes it. -->
+	<exclude-pattern>*/plugin-update-checker/*</exclude-pattern>
+	<exclude-pattern>*/.superpowers/*</exclude-pattern>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>
@@ -40,5 +43,49 @@
 				<element value="BLUEWORX"/>
 			</property>
 		</properties>
+	</rule>
+
+	<!-- The PHP checks stand in for WordPress: they define core's own functions,
+	     classes and globals under core's names and signatures, write to the
+	     console, and keep each check in one file. Those rules cannot apply to
+	     them. Everything else still does. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.GlobalVariablesOverride">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.PHP.DevelopmentFunctions">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.PHP.DiscouragedPHPFunctions">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Files.FileName">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Classes.DuplicateClassName">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Files.SeparateFunctionsFromOO">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Namespaces">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.NamingConventions.NoReservedKeywordParameterNames">
+		<exclude-pattern>*/tests/*</exclude-pattern>
 	</rule>
 </ruleset>

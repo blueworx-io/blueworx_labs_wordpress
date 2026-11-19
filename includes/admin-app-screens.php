@@ -54,7 +54,7 @@ function blueworx_is_plugin_app_screen( $page ) {
  */
 function blueworx_admin_app_screen_body_class( $classes ) {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading which screen is being displayed, not acting on a request.
-	$page = isset( $_GET['page'] ) ? wp_unslash( $_GET['page'] ) : '';
+	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
 	if ( ! blueworx_is_plugin_app_screen( $page ) ) {
 		return $classes;

@@ -409,7 +409,7 @@ function blueworx_media_sanitize_svg_upload( $upload ) {
 		return $upload;
 	}
 
-	file_put_contents( $upload['file'], $clean ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents -- Rewriting the uploaded temp file in place; WP_Filesystem is not initialised during an upload.
+	file_put_contents( $upload['file'], $clean ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Rewriting the uploaded temp file in place; WP_Filesystem is not initialised during an upload.
 
 	return $upload;
 }
@@ -490,7 +490,7 @@ function blueworx_media_sanitize_svg_prefilter( $file ) {
 		return $file;
 	}
 
-	file_put_contents( $file['tmp_name'], $clean ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents -- Rewriting the upload temp file in place.
+	file_put_contents( $file['tmp_name'], $clean ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Rewriting the upload temp file in place.
 
 	return $file;
 }
@@ -669,8 +669,8 @@ function blueworx_media_replace_handle() {
 		}
 	}
 
-	// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- Moving the validated upload onto the existing attachment path; WP_Filesystem offers no equivalent that preserves the exact destination path.
-	if ( ! @rename( $upload['file'], $old_path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A failed move is reported to the user below, not to the error log.
+	// Moving the validated upload onto the existing attachment path; WP_Filesystem offers no equivalent that preserves the exact destination path.
+	if ( ! @rename( $upload['file'], $old_path ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, WordPress.PHP.NoSilencedErrors.Discouraged -- A failed move is reported to the user below, not to the error log.
 		wp_delete_file( $upload['file'] );
 		blueworx_media_replace_finish( $attachment_id, __( 'The new file could not be written over the old one.', 'blueworx-labs-wordpress' ) );
 	}
@@ -739,7 +739,10 @@ function blueworx_media_replace_notice() {
 	// .notice keeps core's placement — it is what admin_notices hoists to the
 	// top of the screen — and .bw-admin inside it is what the design system
 	// styles. Core's own notices on the same screen are untouched.
-	foreach ( array( 'error' => 'danger', 'success' => 'success' ) as $key => $tone ) {
+	foreach ( array(
+		'error'   => 'danger',
+		'success' => 'success',
+	) as $key => $tone ) {
 		if ( empty( $notice[ $key ] ) ) {
 			continue;
 		}

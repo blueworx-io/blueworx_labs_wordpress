@@ -36,6 +36,8 @@ function blueworx_sso_endpoint_override_fields() {
  * under it — so it is worth one helper rather than fifteen near-copies.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $key         Option key, also the field name after the
  *                               blueworx_sso_ prefix.
  *     @type string $label       Label text.
@@ -666,7 +668,7 @@ function blueworx_sso_save_settings( $posted ) {
 
 	// A changed provider makes the cached configuration and keys wrong, and a
 	// stale key set reads exactly like a broken connection.
-	if ( $previous_issuer !== blueworx_sso_option( 'issuer' ) ) {
+	if ( blueworx_sso_option( 'issuer' ) !== $previous_issuer ) {
 		delete_transient( 'blueworx_sso_discovery_' . md5( untrailingslashit( (string) $previous_issuer ) ) );
 		delete_transient( 'blueworx_sso_jwks' );
 	}

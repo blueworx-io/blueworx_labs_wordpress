@@ -696,7 +696,7 @@ function blueworx_mcp_surecart_resolve_type( $args ) {
  * @param array $args Arguments.
  * @return array|WP_Error Result.
  */
-function blueworx_mcp_tool_surecart_get_settings( $args ) {
+function blueworx_mcp_tool_surecart_get_settings( $args ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Every tool callback is passed its arguments; this one takes none.
 	$off = blueworx_mcp_surecart_unavailable();
 	if ( null !== $off ) {
 		return $off;

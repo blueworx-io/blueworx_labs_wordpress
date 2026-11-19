@@ -7,6 +7,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
@@ -35,7 +36,14 @@ check( 'null when there are no problems', blueworx_store_notice_message( array()
 check( 'and no markup', blueworx_store_notice_html( null, 'x' ), '' );
 
 echo "\nOne line per problem, in plain words\n";
-$m = blueworx_store_notice_message( array( 'checkout' => 'missing', 'dashboard' => 'unpublished' ), $pages, true );
+$m = blueworx_store_notice_message(
+	array(
+		'checkout'  => 'missing',
+		'dashboard' => 'unpublished',
+	),
+	$pages,
+	true
+);
 check( 'missing', $m['lines'][0], 'Your checkout page is missing, so nobody can pay.' );
 check( 'unpublished', $m['lines'][1], 'Your customer dashboard is in the trash or unpublished, so customers have nowhere to manage what they have bought.' );
 check( 'the button is offered', $m['button'], 'Put the missing pages back' );
@@ -47,7 +55,14 @@ check( 'no button', $m['button'], '' );
 check( 'the owner is told to finish setting the shop up', $m['footnote'], 'Open SureCart and finish setting the shop up.' );
 
 echo "\nThe markup escapes what it prints\n";
-$html = blueworx_store_notice_html( array( 'lines' => array( 'a <b>' ), 'button' => 'Go', 'footnote' => '' ), 'http://x/?a=1&b=2' );
+$html = blueworx_store_notice_html(
+	array(
+		'lines'    => array( 'a <b>' ),
+		'button'   => 'Go',
+		'footnote' => '',
+	),
+	'http://x/?a=1&b=2'
+);
 check( 'wrapper', false !== strpos( $html, '<div class="notice"><div class="bw-admin"><ds>' ), true );
 preg_match( '/<ds>(.*)<\/ds>/', $html, $matches );
 $args = json_decode( $matches[1], true );
@@ -59,13 +74,27 @@ check( 'button class', false !== strpos( $args['actions'], 'bw-btn bw-btn--prima
 check( 'button present', false !== strpos( $args['actions'], '>Go</a>' ), true );
 
 echo "\nA footnote trails the lines, still inline\n";
-$html = blueworx_store_notice_html( array( 'lines' => array( 'a', 'b' ), 'button' => '', 'footnote' => 'c' ), 'http://x/' );
+$html = blueworx_store_notice_html(
+	array(
+		'lines'    => array( 'a', 'b' ),
+		'button'   => '',
+		'footnote' => 'c',
+	),
+	'http://x/'
+);
 preg_match( '/<ds>(.*)<\/ds>/', $html, $matches );
 $args = json_decode( $matches[1], true );
 check( 'lines and footnote, no block elements', $args['html'], '<span>a</span><br><span>b</span><br><span>c</span>' );
 
 echo "\nNo button means no actions\n";
-$html = blueworx_store_notice_html( array( 'lines' => array( 'a' ), 'button' => '', 'footnote' => '' ), 'http://x/' );
+$html = blueworx_store_notice_html(
+	array(
+		'lines'    => array( 'a' ),
+		'button'   => '',
+		'footnote' => '',
+	),
+	'http://x/'
+);
 preg_match( '/<ds>(.*)<\/ds>/', $html, $matches );
 $args = json_decode( $matches[1], true );
 check( 'no actions', $args['actions'], '' );

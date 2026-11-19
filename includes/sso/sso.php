@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @param mixed  $default Value to return when the option is unset.
  * @return mixed Stored value, or $default.
  */
-function blueworx_sso_option( $name, $default = '' ) {
+function blueworx_sso_option( $name, $default = '' ) { // phpcs:ignore Universal.NamingConventions.NoReservedKeywordParameterNames.defaultFound -- Renaming it could break a caller that passes it by name.
 	return get_option( 'blueworx_sso_' . $name, $default );
 }
 

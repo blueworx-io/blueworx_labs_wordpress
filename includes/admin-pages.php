@@ -24,6 +24,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Opens a BlueWorx screen with its header, and dies for anyone without access.
  *
  * @param array $args {
+ *     Settings.
+ *
  *     @type string $title   Screen title.
  *     @type string $lede    One-line explanation.
  *     @type string $actions Header action HTML.
@@ -644,7 +646,7 @@ function blueworx_render_additions_page() {
 		blueworx_ds_card(
 			array(
 				'title' => __( 'Nothing else was invented', 'blueworx-labs-wordpress' ),
-				'body'    => '<p class="bw-field__help">'
+				'body'  => '<p class="bw-field__help">'
 					. esc_html__( 'Every other control on these screens is stock design system — page header, card, settings card, field, switch, checkbox, radio, select, notice, empty state, badge, chip, table, description list and tabs.', 'blueworx-labs-wordpress' )
 					. '</p><p class="bw-field__help">'
 					. esc_html__( 'The stylesheet is taken verbatim from the shared system. Anything in the table above is a local addition and should be folded back in, or the next sync will drop it.', 'blueworx-labs-wordpress' )

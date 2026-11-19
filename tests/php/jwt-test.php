@@ -11,11 +11,12 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 $GLOBALS['options'] = array(
-	'blueworx_sso_issuer'             => 'https://idp.test',
-	'blueworx_sso_jwks_uri_override'  => 'https://idp.test/keys',
+	'blueworx_sso_issuer'            => 'https://idp.test',
+	'blueworx_sso_jwks_uri_override' => 'https://idp.test/keys',
 );
 
 /**
@@ -36,7 +37,7 @@ function make_key( $kid ) {
 	);
 
 	if ( false === $key ) {
-		echo "FAIL could not generate a test key: " . openssl_error_string() . "\n";
+		echo 'FAIL could not generate a test key: ' . openssl_error_string() . "\n";
 		exit( 1 );
 	}
 
@@ -118,26 +119,134 @@ check( 'a good token verifies', outcome( $noop, $signing['key'] ), '' );
 
 // The single most important check in the feature: a token that says it needs no
 // signature must never be believed, however well-formed it is.
-check( 'alg none is refused', outcome( function ( &$h, &$c ) { $h['alg'] = 'none'; }, $signing['key'] ), 'blueworx_sso_bad_alg' );
-check( 'a symmetric alg is refused', outcome( function ( &$h, &$c ) { $h['alg'] = 'HS256'; }, $signing['key'] ), 'blueworx_sso_bad_alg' );
+check(
+	'alg none is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$h['alg'] = 'none';
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_alg'
+);
+check(
+	'a symmetric alg is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$h['alg'] = 'HS256';
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_alg'
+);
 
 check( 'a forged signature is refused', outcome( $noop, $other['key'] ), 'blueworx_sso_bad_signature' );
-check( 'an unknown key is refused', outcome( function ( &$h, &$c ) { $h['kid'] = 'key-99'; }, $signing['key'] ), 'blueworx_sso_unknown_key' );
-check( 'a wrong issuer is refused', outcome( function ( &$h, &$c ) { $c['iss'] = 'https://evil.test'; }, $signing['key'] ), 'blueworx_sso_bad_issuer' );
-check( 'a wrong audience is refused', outcome( function ( &$h, &$c ) { $c['aud'] = 'someone-else'; }, $signing['key'] ), 'blueworx_sso_bad_audience' );
-check( 'an expired token is refused', outcome( function ( &$h, &$c ) { $c['exp'] = time() - 600; }, $signing['key'] ), 'blueworx_sso_expired' );
-check( 'a missing expiry is refused', outcome( function ( &$h, &$c ) { unset( $c['exp'] ); }, $signing['key'] ), 'blueworx_sso_expired' );
-check( 'an issue time in the future is refused', outcome( function ( &$h, &$c ) { $c['iat'] = time() + 600; }, $signing['key'] ), 'blueworx_sso_bad_iat' );
-check( 'a replayed nonce is refused', outcome( function ( &$h, &$c ) { $c['nonce'] = 'a-different-nonce'; }, $signing['key'] ), 'blueworx_sso_bad_nonce' );
-check( 'a missing nonce is refused', outcome( function ( &$h, &$c ) { unset( $c['nonce'] ); }, $signing['key'] ), 'blueworx_sso_bad_nonce' );
+check(
+	'an unknown key is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$h['kid'] = 'key-99';
+		},
+		$signing['key']
+	),
+	'blueworx_sso_unknown_key'
+);
+check(
+	'a wrong issuer is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['iss'] = 'https://evil.test';
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_issuer'
+);
+check(
+	'a wrong audience is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['aud'] = 'someone-else';
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_audience'
+);
+check(
+	'an expired token is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['exp'] = time() - 600;
+		},
+		$signing['key']
+	),
+	'blueworx_sso_expired'
+);
+check(
+	'a missing expiry is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			unset( $c['exp'] );
+		},
+		$signing['key']
+	),
+	'blueworx_sso_expired'
+);
+check(
+	'an issue time in the future is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['iat'] = time() + 600;
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_iat'
+);
+check(
+	'a replayed nonce is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['nonce'] = 'a-different-nonce';
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_nonce'
+);
+check(
+	'a missing nonce is refused',
+	outcome(
+		function ( &$h, &$c ) {
+			unset( $c['nonce'] );
+		},
+		$signing['key']
+	),
+	'blueworx_sso_bad_nonce'
+);
 
 // An audience array is legal and common when a token is issued for more than one
 // client, so long as ours is in it.
-check( 'an audience array containing us verifies', outcome( function ( &$h, &$c ) { $c['aud'] = array( 'other', 'test-client' ); }, $signing['key'] ), '' );
+check(
+	'an audience array containing us verifies',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['aud'] = array( 'other', 'test-client' );
+		},
+		$signing['key']
+	),
+	''
+);
 
 // Small clock differences between two servers are normal and must not lock
 // people out; a token a minute past expiry is still within tolerance.
-check( 'a small clock difference is tolerated', outcome( function ( &$h, &$c ) { $c['exp'] = time() - 60; }, $signing['key'] ), '' );
+check(
+	'a small clock difference is tolerated',
+	outcome(
+		function ( &$h, &$c ) {
+			$c['exp'] = time() - 60;
+		},
+		$signing['key']
+	),
+	''
+);
 
 $malformed = blueworx_sso_verify_id_token( 'not.a.token', 'https://idp.test', 'test-client', 'the-nonce' );
 check( 'a malformed token is refused', $malformed->get_error_code(), 'blueworx_sso_malformed' );
@@ -147,11 +256,15 @@ check( 'a token with too few parts is refused', $two_parts->get_error_code(), 'b
 
 // Key rotation: a provider that swaps its signing key publishes the new one at
 // the same URL. A cached key set must not lock the site out until it expires.
-$rotated = make_key( 'key-2' );
+$rotated                                  = make_key( 'key-2' );
 $GLOBALS['http']['https://idp.test/keys'] = array( 'keys' => array( $rotated['jwk'] ) );
 
 $rotated_token = blueworx_sso_verify_id_token(
-	make_token( function ( &$h, &$c ) { $h['kid'] = 'key-2'; }, $rotated['key'] ),
+	make_token(
+		function ( &$h, &$c ) {
+			$h['kid'] = 'key-2'; },
+		$rotated['key']
+	),
 	'https://idp.test',
 	'test-client',
 	'the-nonce'

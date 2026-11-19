@@ -38,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * The roles this guard applies to.
  *
- * blueworx_external_role_slug() is guarded because includes/external-access.php
+ * The call to blueworx_external_role_slug() is guarded because includes/external-access.php
  * loads after this file, and because a build that ships only support access
  * must still work.
  *
@@ -797,7 +797,7 @@ add_action( 'wp_enqueue_scripts', 'blueworx_readonly_disable_heartbeat', 1 );
 /**
  * Whether this request is aimed at an endpoint that exists only to act.
  *
- * admin-post.php is not a screen. It is the generic "do something" handler, and
+ * The admin-post.php handler is not a screen. It is the generic "do something" handler, and
  * a plugin is free to hang an action off it and reach it with a plain link —
  * this plugin's own Duplicate row action does exactly that. So a read-only
  * account that is refused every POST could still create a post with one click,
@@ -889,7 +889,7 @@ add_action( 'init', 'blueworx_readonly_block_writes', 0 );
 /**
  * Refuses a read-only account on XML-RPC.
  *
- * xmlrpc.php reads its credentials out of the request body and authenticates
+ * XML-RPC reads its credentials out of the request body and authenticates
  * long after "init" has fired — so blueworx_readonly_block_writes() has already
  * run against an anonymous user and returned, and there is no XML-RPC
  * equivalent of the rest_pre_dispatch net. wp.newPost, wp.editPost,

@@ -40,7 +40,7 @@ function blueworx_sso_button_html( $args = array() ) {
 	if ( is_user_logged_in() ) {
 		return blueworx_sso_signed_in_link_html( $intent );
 	}
-	$label  = isset( $args['label'] ) ? trim( (string) $args['label'] ) : '';
+	$label = isset( $args['label'] ) ? trim( (string) $args['label'] ) : '';
 
 	if ( '' === $label ) {
 		$label = trim( (string) blueworx_sso_option( 'register' === $intent ? 'register_button_label' : 'button_label' ) );

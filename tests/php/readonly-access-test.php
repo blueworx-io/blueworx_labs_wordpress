@@ -13,6 +13,7 @@
  * @package BlueWorxLabs
  */
 
+// The shared WordPress stand-ins.
 require __DIR__ . '/stubs.php';
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
@@ -24,23 +25,49 @@ $GLOBALS['roles'] = array(
 	'administrator' => array(
 		'name'         => 'Administrator',
 		'capabilities' => array(
-			'read'             => true,
-			'edit_posts'       => true,
-			'delete_posts'     => true,
-			'manage_options'   => true,
-			'install_plugins'  => true,
-			'unfiltered_html'  => true,
-			'edit_users'       => true,
-			'promote_users'    => true,
+			'read'               => true,
+			'edit_posts'         => true,
+			'delete_posts'       => true,
+			'manage_options'     => true,
+			'install_plugins'    => true,
+			'unfiltered_html'    => true,
+			'edit_users'         => true,
+			'promote_users'      => true,
 			'manage_woocommerce' => true,
 		),
 	),
 );
 
+/**
+ * Stand-in for core's WP_User.
+ */
 class WP_User {
+	/**
+	 * The ID.
+	 *
+	 * @var int
+	 */
 	public $ID = 0;
+
+	/**
+	 * The roles.
+	 *
+	 * @var array
+	 */
 	public $roles = array();
+
+	/**
+	 * The user login.
+	 *
+	 * @var string
+	 */
 	public $user_login = '';
+
+	/**
+	 * The exists.
+	 *
+	 * @var bool
+	 */
 	private $exists = true;
 
 	public function __construct( $id = 0, $roles = array(), $login = '' ) {
@@ -54,7 +81,15 @@ class WP_User {
 	}
 }
 
+/**
+ * Stand-in for core's WP_Role.
+ */
 class WP_Role {
+	/**
+	 * The capabilities.
+	 *
+	 * @var array
+	 */
 	public $capabilities = array();
 
 	public function __construct( $capabilities ) {
@@ -78,7 +113,9 @@ function get_current_user_id() {
 	return (int) $user->ID;
 }
 
-// The support half of the pair, which the guard asks about by name.
+/**
+ * The support half of the pair, which the guard asks about by name.
+ */
 function blueworx_support_role_slug() {
 	return 'blueworx_support';
 }
@@ -95,8 +132,15 @@ function blueworx_external_role_slug() {
 	return 'blueworx_external';
 }
 
-// The guard registers its hooks at file scope; only their existence matters
-// here, not what they do, since nothing in this script fires a hook.
+/**
+ * The guard registers its hooks at file scope; only their existence matters
+ * here, not what they do, since nothing in this script fires a hook.
+ *
+ * @param string   $hook     Hook name.
+ * @param callable $callback Callback.
+ * @param int      $priority Priority.
+ * @param int      $args     Number of arguments.
+ */
 function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
 
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
