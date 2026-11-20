@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.102.4] - 2026-11-19
+
+### Fixed
+- On WordPress 7.2, the role tick boxes on the Add User screen stretched into
+  wide bars. They stay normal tick boxes now.
+
 ## [1.102.3] - 2026-11-19
 
 ### Changed
