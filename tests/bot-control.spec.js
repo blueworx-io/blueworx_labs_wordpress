@@ -33,6 +33,14 @@ const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
  */
 const PROBES = ['/phpmyadmin/', '/cgi-bin/', '/adminer', '/server-status', '/vendor/phpunit/'];
 
+/*
+ * The pause counts visitors by their address. Only a local site (or one behind
+ * a proxy that is trusted) believes the X-Forwarded-For these tests send, so
+ * on any other site every test client would be one visitor and one test would
+ * pause the next. Those tests run on the local site only.
+ */
+const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(`${baseURL}/`);
+
 /** A visitor address of its own, so one test never pauses another. */
 function visitor() {
   return `93.184.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}`;
@@ -87,6 +95,11 @@ test.describe('Bot control', () => {
 
     const api = await request.newContext({ baseURL, extraHTTPHeaders: { 'X-Forwarded-For': visitor() } });
 
+    // Remember what the site had, and put it back afterwards.
+    await openSectionFor(page, 'probe_block');
+    const wasOn = await page.locator('input.blueworx-feature-toggle[data-blueworx-feature="probe_block"]').isChecked();
+    const wasStatus = await page.locator('#blueworx_probe_status').inputValue();
+
     await restoreAll([
       [
         'answer with 403',
@@ -115,9 +128,9 @@ test.describe('Bot control', () => {
         'restore',
         async () => {
           await page.goto(SETTINGS_PATH);
-          await setFeature(page, 'probe_block', true);
+          await setFeature(page, 'probe_block', wasOn);
           await openSectionFor(page, 'probe_block');
-          await page.locator('#blueworx_probe_status').selectOption('404');
+          await page.locator('#blueworx_probe_status').selectOption(wasStatus);
           await save(page);
           await api.dispose();
         },
@@ -125,7 +138,9 @@ test.describe('Bot control', () => {
     ]);
   });
 
-  test('a visitor who keeps asking for missing pages is paused, and can still sign in', async () => {
+  test('a visitor who keeps asking for missing pages is paused, and can still sign in', async ({ page }) => {
+    test.skip(!isLocal, 'Needs a site that believes the visitor address the test sends.');
+
     const ip = visitor();
     const api = await request.newContext({ baseURL, extraHTTPHeaders: { 'X-Forwarded-For': ip } });
     const other = await request.newContext({ baseURL, extraHTTPHeaders: { 'X-Forwarded-For': visitor() } });
@@ -150,6 +165,16 @@ test.describe('Bot control', () => {
       const signIn = await api.get(`${LOGIN_PATH}/`);
       expect(signIn.status()).toBe(200);
 
+      // The REST API is never paused, in either address format.
+      const rest = await api.get('/?rest_route=/');
+      expect(rest.status()).toBe(200);
+
+      // Somebody signed in from the same address is not paused either.
+      await page.context().setExtraHTTPHeaders({ 'X-Forwarded-For': ip });
+      await login(page);
+      const signedIn = await page.goto('/');
+      expect(signedIn.status()).toBe(200);
+
       // A different visitor is not affected.
       const home = await other.get('/');
       expect(home.status()).toBe(200);
@@ -160,6 +185,8 @@ test.describe('Bot control', () => {
   });
 
   test('missing images do not count towards the limit', async () => {
+    test.skip(!isLocal, 'Needs a site that believes the visitor address the test sends.');
+
     const api = await request.newContext({ baseURL, extraHTTPHeaders: { 'X-Forwarded-For': visitor() } });
 
     try {

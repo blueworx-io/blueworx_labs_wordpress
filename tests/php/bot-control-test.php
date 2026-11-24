@@ -25,6 +25,31 @@ function wp_unslash( $value ) {
 function wp_parse_url( $url, $component = -1 ) {
 	return parse_url( $url, $component ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url
 }
+function trailingslashit( $value ) {
+	return rtrim( $value, '/\\' ) . '/';
+}
+$GLOBALS['ext_cache'] = false;
+$GLOBALS['cache']     = array();
+function wp_using_ext_object_cache() {
+	return $GLOBALS['ext_cache'];
+}
+function wp_cache_add( $key, $value, $group = '', $expire = 0 ) {
+	if ( ! isset( $GLOBALS['cache'][ $group . $key ] ) ) {
+		$GLOBALS['cache'][ $group . $key ] = $value;
+	}
+	return true;
+}
+function wp_cache_incr( $key, $offset = 1, $group = '' ) {
+	if ( ! isset( $GLOBALS['cache'][ $group . $key ] ) ) {
+		return false;
+	}
+	$GLOBALS['cache'][ $group . $key ] += $offset;
+	return $GLOBALS['cache'][ $group . $key ];
+}
+function blueworx_store_page_url( $key ) {
+	return isset( $GLOBALS['store_urls'][ $key ] ) ? $GLOBALS['store_urls'][ $key ] : '';
+}
+$GLOBALS['store_urls'] = array();
 function absint( $value ) {
 	return abs( (int) $value );
 }
@@ -95,6 +120,9 @@ $normal = array(
 	'/wp-login.php',
 	'/wp-admin/admin-ajax.php',
 	'/wp-json/wp/v2/posts',
+	'/wp-config-guide/',
+	'/wp-config-guide',
+	'/wp-config-tips.html',
 	'/wp-sitemap.xml',
 	'/robots.txt',
 	'/.well-known/acme-challenge/abc',
@@ -110,6 +138,17 @@ $normal = array(
 foreach ( $normal as $path ) {
 	check( 'not a probe: "' . $path . '"', blueworx_probe_path_matches( $path ), false );
 }
+
+echo "\nRequests the limit never touches\n";
+check( 'the admin area', blueworx_bot_path_is_exempt( '/wp-admin/edit.php' ), true );
+check( 'REST by path', blueworx_bot_path_is_exempt( '/wp-json/wp/v2/posts' ), true );
+check( 'REST by query', blueworx_bot_path_is_exempt( '/', 'rest_route=/surecart/v1/webhooks' ), true );
+check( 'REST by query with other arguments', blueworx_bot_path_is_exempt( '/index.php', 'a=1&rest_route=%2Fwp%2Fv2%2Fposts' ), true );
+check( 'REST after index.php', blueworx_bot_path_is_exempt( '/index.php/wp-json/wp/v2/posts' ), true );
+$GLOBALS['home_path'] = '/club';
+check( 'the admin area of a site in a folder', blueworx_bot_path_is_exempt( '/club/wp-admin/edit.php' ), true );
+check( 'REST of a site in a folder', blueworx_bot_path_is_exempt( '/club/wp-json/wp/v2/posts' ), true );
+$GLOBALS['home_path'] = '';
 
 echo "\nStatus and the missing-image exception\n";
 check( 'the answer defaults to 404', blueworx_probe_status(), 404 );
@@ -133,7 +172,31 @@ $_SERVER = array(
 	'REMOTE_ADDR'          => '10.0.0.2',
 	'HTTP_X_FORWARDED_FOR' => '10.0.0.7, 93.184.216.9',
 );
-check( 'behind a private balancer, the first public forwarded address is used', blueworx_visitor_ip(), '93.184.216.9' );
+check( 'behind a private balancer, the forwarded address is used', blueworx_visitor_ip(), '93.184.216.9' );
+$_SERVER = array(
+	'REMOTE_ADDR'          => '10.0.0.2',
+	'HTTP_X_FORWARDED_FOR' => '8.8.8.8, 93.184.216.9',
+);
+check( 'a visitor cannot choose their address by writing a header of their own', blueworx_visitor_ip(), '93.184.216.9' );
+$_SERVER = array(
+	'REMOTE_ADDR'          => '10.0.0.2',
+	'HTTP_X_FORWARDED_FOR' => '93.184.216.9, 172.67.1.1',
+);
+check( 'a Cloudflare address on the end of the list is skipped', blueworx_visitor_ip(), '93.184.216.9' );
+$_SERVER = array(
+	'REMOTE_ADDR'           => '93.184.216.5',
+	'HTTP_CF_CONNECTING_IP' => '93.184.216.20',
+);
+check( 'a Cloudflare header from an address that is not Cloudflare is ignored', blueworx_visitor_ip(), '93.184.216.5' );
+$_SERVER = array(
+	'REMOTE_ADDR'           => '10.0.0.2',
+	'HTTP_CF_CONNECTING_IP' => '93.184.216.20',
+);
+check( 'a Cloudflare header from a private address is ignored too', blueworx_visitor_ip(), '' );
+check( 'IPv6 ranges are understood', blueworx_ip_in_range( '2606:4700::1', '2606:4700::/32' ), true );
+check( 'and an address outside them is not inside', blueworx_ip_in_range( '2607:4700::1', '2606:4700::/32' ), false );
+check( 'a range that stops mid-byte is honoured', blueworx_ip_in_range( '173.245.63.255', '173.245.48.0/20' ), true );
+check( 'and the next address is outside', blueworx_ip_in_range( '173.245.64.0', '173.245.48.0/20' ), false );
 $_SERVER = array(
 	'REMOTE_ADDR'           => '172.67.1.1',
 	'HTTP_CF_CONNECTING_IP' => '93.184.216.20',
@@ -161,6 +224,17 @@ check( 'the limit has a floor of five', blueworx_missing_page_allowance(), 5 );
 update_option( 'blueworx_missing_page_limit', 99999 );
 check( 'and a ceiling of a thousand', blueworx_missing_page_allowance(), 1000 );
 
+echo "\nThe count only covers its own ten minutes\n";
+$GLOBALS['transients'] = array();
+$old_bucket            = (int) floor( time() / 600 ) - 1;
+$GLOBALS['transients'][ blueworx_missing_page_key( 'count', '93.184.216.77' ) . '_' . $old_bucket ] = 4;
+check( 'misses from an earlier window are not carried over', blueworx_missing_page_increment( '93.184.216.77' ), 1 );
+check( 'misses in the same window add up', blueworx_missing_page_increment( '93.184.216.77' ), 2 );
+$GLOBALS['ext_cache'] = true;
+check( 'with an object cache the first miss counts one', blueworx_missing_page_increment( '93.184.216.78' ), 1 );
+check( 'and the next adds one atomically', blueworx_missing_page_increment( '93.184.216.78' ), 2 );
+$GLOBALS['ext_cache'] = false;
+
 echo "\nCrawler rules in robots.txt\n";
 $core = "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n";
 $out  = blueworx_crawler_rules_filter( $core );
@@ -180,6 +254,24 @@ check( 'rules go under the catch-all group, not the first group', strpos( $out, 
 $only_bot = "User-agent: Googlebot\nDisallow: /private/\n";
 $out      = blueworx_crawler_rules_filter( $only_bot );
 check( 'with no catch-all group one is added', substr_count( $out, "User-agent: *\nDisallow: /cart/" ), 1 );
+
+$shared = "User-agent: Bingbot\nUser-agent: *\nDisallow: /wp-admin/\n\nUser-agent: Slurp\nDisallow: /slurp/\n";
+$out    = blueworx_crawler_rules_filter( $shared );
+check( 'a group shared by several crawlers stays whole', 0 === strpos( $out, "User-agent: Bingbot\nUser-agent: *\nDisallow: /cart/" ), true );
+check( 'other groups are left alone', false !== strpos( $out, "User-agent: Slurp\nDisallow: /slurp/" ), true );
+
+$other = "User-agent: *\nDisallow: /wp-admin/\n\nUser-agent: Googlebot\nDisallow: /cart/\n";
+$out   = blueworx_crawler_rules_filter( $other );
+check( 'a rule in another group does not count as already there', substr_count( $out, 'Disallow: /cart/' ), 2 );
+
+$GLOBALS['store_urls'] = array(
+	'checkout'  => 'https://example.test/pay-here/',
+	'dashboard' => 'https://example.test/?page_id=7',
+);
+$rules                 = blueworx_crawler_rules();
+check( "the store's own checkout address is kept off", in_array( 'Disallow: /pay-here/', $rules, true ), true );
+check( 'an address with no pretty path adds nothing', in_array( 'Disallow: /', $rules, true ), false );
+$GLOBALS['store_urls'] = array();
 
 $GLOBALS['home_path'] = '/sub';
 check( 'a site in a folder prefixes the rules', in_array( 'Disallow: /sub/cart/', blueworx_crawler_rules(), true ), true );
