@@ -43,6 +43,7 @@ const SCRIPTS = [
   'network-menu-icons-test.php',
   'application-passwords-test.php',
   'feature-defaults-test.php',
+  'bot-control-test.php',
 ];
 
 let phpAvailable = true;

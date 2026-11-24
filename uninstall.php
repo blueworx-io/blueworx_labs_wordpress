@@ -181,4 +181,14 @@ function blueworx_uninstall_site() {
 	delete_option( 'blueworx_mcp_last_used' );
 	delete_option( 'blueworx_mcp_revoked_at' );
 	delete_option( 'blueworx_mcp_log' );
+
+	// Bot control: the three switches and their settings. The per-visitor counters
+	// are transients keyed by a hash of the address, so they cannot be listed;
+	// they expire within the day on their own.
+	delete_option( 'blueworx_feature_probe_block' );
+	delete_option( 'blueworx_feature_missing_page_limit' );
+	delete_option( 'blueworx_feature_crawler_rules' );
+	delete_option( 'blueworx_probe_status' );
+	delete_option( 'blueworx_missing_page_limit' );
+	delete_option( 'blueworx_missing_page_pause' );
 }
