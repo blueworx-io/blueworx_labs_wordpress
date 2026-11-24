@@ -62,10 +62,17 @@ function blueworx_probe_segments( $path ) {
  * normal 404. Anything on the list is a file or folder no WordPress site serves
  * through WordPress, so a request for it can only be a scan.
  *
- * @param string $path Request path, without the query string.
+ * Some names are probes on one site and a real page on another: a folder called
+ * phpunit, or a page called adminer. Those are "ambiguous", and are only turned
+ * away once WordPress has looked and found no page there. Everything else
+ * (hidden files, config and backup files, scripts in uploads) is answered at
+ * once.
+ *
+ * @param string $path              Request path, without the query string.
+ * @param bool   $include_ambiguous Whether names that could be a real page count.
  * @return bool True when the path is a probe.
  */
-function blueworx_probe_path_matches( $path ) {
+function blueworx_probe_path_matches( $path, $include_ambiguous = true ) {
 	if ( false !== strpos( (string) $path, "\0" ) || false !== strpos( (string) $path, '%00' ) ) {
 		return true;
 	}
@@ -90,7 +97,7 @@ function blueworx_probe_path_matches( $path ) {
 	// Folders that are only ever somebody else's admin tool or a leftover.
 	$folders = array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules' );
 
-	if ( array_intersect( $folders, $segments ) ) {
+	if ( $include_ambiguous && array_intersect( $folders, $segments ) ) {
 		return true;
 	}
 
@@ -146,7 +153,8 @@ function blueworx_probe_path_matches( $path ) {
 		'access.log',
 	);
 
-	if ( in_array( $base, $files, true ) ) {
+	// A name with no extension (adminer, server-status) could be a page.
+	if ( in_array( $base, $files, true ) && ( $include_ambiguous || false !== strpos( $base, '.' ) ) ) {
 		return true;
 	}
 
@@ -192,7 +200,7 @@ function blueworx_path_is_static_asset( $path ) {
 		return false;
 	}
 
-	return (bool) preg_match( '/\.(jpe?g|png|gif|webp|avif|svg|ico|bmp|css|js|map|woff2?|ttf|otf|eot|mp[34]|webm|mov|pdf)$/', end( $segments ) );
+	return (bool) preg_match( '/\.(jpe?g|png|gif|webp|avif|svg|ico|bmp|css|m?js|cjs|map|json|webmanifest|wasm|woff2?|ttf|otf|eot|mp[34]|m4a|ogg|wav|webm|mov|pdf|tiff?|heic|jfif)$/', end( $segments ) );
 }
 
 /**
@@ -268,7 +276,7 @@ function blueworx_bot_path_is_exempt( $path, $query = '' ) {
 	if ( '' !== $query ) {
 		parse_str( $query, $args );
 
-		if ( isset( $args['rest_route'] ) ) {
+		if ( isset( $args['rest_route'] ) && is_string( $args['rest_route'] ) && '' !== $args['rest_route'] ) {
 			return true;
 		}
 	}
@@ -295,8 +303,25 @@ function blueworx_bot_path_is_exempt( $path, $query = '' ) {
 		return true;
 	}
 
-	if ( function_exists( 'blueworx_login_slug' ) && in_array( blueworx_login_slug(), $segments, true ) ) {
+	if ( function_exists( 'blueworx_is_custom_login_request_path' ) && blueworx_feature_enabled( 'login' ) && blueworx_is_custom_login_request_path( $path ) ) {
 		return true;
+	}
+
+	// Single sign-on: the address that starts a sign-in, and the provider's
+	// return with a state this site issued. A paused visitor must still be able
+	// to finish signing in.
+	if ( function_exists( 'blueworx_sso_enabled' ) && blueworx_sso_enabled() ) {
+		if ( '' !== $query ) {
+			parse_str( $query, $sso_args );
+
+			if ( isset( $sso_args['blueworx_sso'] ) ) {
+				return true;
+			}
+		}
+
+		if ( function_exists( 'blueworx_sso_is_own_callback' ) && blueworx_sso_is_own_callback() ) {
+			return true;
+		}
 	}
 
 	return false;
@@ -347,16 +372,14 @@ function blueworx_bot_respond( $status, $message, $headers = array() ) {
 }
 
 /**
- * The networks whose forwarded visitor address can be believed.
+ * Cloudflare's published address ranges.
  *
- * Cloudflare's published ranges. A request that arrives from one of these
- * carries the real visitor's address in CF-Connecting-IP. A host with another
- * proxy in front adds its ranges with the blueworx_trusted_proxies filter.
+ * Requests from these carry the real visitor's address in CF-Connecting-IP.
  *
  * @return string[] Networks in CIDR form.
  */
-function blueworx_trusted_proxy_ranges() {
-	$ranges = array(
+function blueworx_cloudflare_ranges() {
+	return array(
 		'173.245.48.0/20',
 		'103.21.244.0/22',
 		'103.22.200.0/22',
@@ -380,8 +403,23 @@ function blueworx_trusted_proxy_ranges() {
 		'2a06:98c0::/29',
 		'2c0f:f248::/32',
 	);
+}
 
-	$extra = apply_filters( 'blueworx_trusted_proxies', array() );
+/**
+ * Every network whose requests may carry a forwarded visitor address.
+ *
+ * Cloudflare, and the machine itself. Nothing else is trusted without being
+ * asked: a proxy that passes a visitor's own X-Forwarded-For through unchanged
+ * would let them choose their address. A host with a proxy in front adds its
+ * addresses with the blueworx_trusted_proxies filter.
+ *
+ * @return string[] Networks in CIDR form.
+ */
+function blueworx_trusted_proxy_ranges() {
+	// Cloudflare, plus the machine itself: a proxy on the same machine is the
+	// host's own set-up.
+	$ranges = array_merge( blueworx_cloudflare_ranges(), array( '127.0.0.0/8', '::1/128' ) );
+	$extra  = apply_filters( 'blueworx_trusted_proxies', array() );
 
 	return is_array( $extra ) ? array_merge( $ranges, array_map( 'strval', $extra ) ) : $ranges;
 }
@@ -420,6 +458,22 @@ function blueworx_ip_in_range( $ip, $range ) {
 }
 
 /**
+ * Whether an address is one of Cloudflare's.
+ *
+ * @param string $ip IP address.
+ * @return bool True for a Cloudflare address.
+ */
+function blueworx_ip_is_cloudflare( $ip ) {
+	foreach ( blueworx_cloudflare_ranges() as $range ) {
+		if ( blueworx_ip_in_range( $ip, $range ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Whether an address is one of the trusted proxy networks.
  *
  * @param string $ip IP address.
@@ -439,14 +493,14 @@ function blueworx_ip_is_trusted_proxy( $ip ) {
  * Works out who a visitor is, for counting their missing pages.
  *
  * REMOTE_ADDR is the answer, and the only one believed, unless the request
- * comes from a proxy that can be trusted to say who it is forwarding for: a
- * Cloudflare address (then CF-Connecting-IP is the visitor), or an address on a
- * private network, which is a load balancer in front of the site and not
- * somebody on the internet (then the visitor is the last public address in
- * X-Forwarded-For, which is the one that proxy saw, not anything the visitor
- * wrote). From anyone else the forwarding headers are ignored. A site with a
- * different arrangement says so with the blueworx_trusted_proxies or
- * blueworx_visitor_ip filters.
+ * comes from a proxy that is trusted to say who it is forwarding for (see
+ * blueworx_trusted_proxy_ranges()). From Cloudflare the visitor is
+ * CF-Connecting-IP. From any other trusted proxy the visitor is the last public
+ * address in X-Forwarded-For, which is the one that proxy saw, not anything the
+ * visitor wrote. A private address that is not trusted is a proxy the host has
+ * not told us about, so nobody is counted. From anyone else the forwarding
+ * headers are ignored. A site with a different arrangement says so with the
+ * blueworx_trusted_proxies or blueworx_visitor_ip filters.
  *
  * @return string Visitor address, or an empty string when it cannot be told.
  */
@@ -457,11 +511,14 @@ function blueworx_visitor_ip() {
 	$ip     = '';
 
 	if ( false !== filter_var( $remote, FILTER_VALIDATE_IP ) ) {
-		$is_private = false === filter_var( $remote, FILTER_VALIDATE_IP, $public );
+		$is_public = false !== filter_var( $remote, FILTER_VALIDATE_IP, $public );
 
-		if ( ! $is_private && ! blueworx_ip_is_trusted_proxy( $remote ) ) {
-			$ip = $remote;
-		} elseif ( ! $is_private && ! empty( $server['HTTP_CF_CONNECTING_IP'] ) && false !== filter_var( $server['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP ) ) {
+		if ( ! blueworx_ip_is_trusted_proxy( $remote ) ) {
+			// Not a proxy we know. A public address is the visitor. A private one
+			// is some proxy the host has not told us about, so nobody is counted
+			// rather than everybody as one.
+			$ip = $is_public ? $remote : '';
+		} elseif ( blueworx_ip_is_cloudflare( $remote ) && ! empty( $server['HTTP_CF_CONNECTING_IP'] ) && false !== filter_var( $server['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP ) ) {
 			$ip = (string) $server['HTTP_CF_CONNECTING_IP'];
 		} elseif ( ! empty( $server['HTTP_X_FORWARDED_FOR'] ) ) {
 			// Right to left: the entry nearest the site was written by a proxy we
@@ -611,7 +668,7 @@ function blueworx_bot_control_early() {
 		}
 	}
 
-	if ( $probe_on && apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path ), $path ) ) {
+	if ( $probe_on && apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
 		// A probe is a missing page too, so a scanner is paused after a handful
 		// of them rather than being answered cheaply for ever.
 		if ( $throttle_on && ! blueworx_bot_visitor_signed_in() ) {
@@ -628,13 +685,29 @@ function blueworx_bot_control_early() {
  * @return void
  */
 function blueworx_missing_page_count_404() {
-	if ( ! is_404() || is_user_logged_in() ) {
+	if ( ! is_404() ) {
 		return;
 	}
 
 	$path = blueworx_bot_request_path();
 
-	if ( '' === $path || blueworx_path_is_static_asset( $path ) || blueworx_bot_request_is_exempt( $path, blueworx_bot_request_query() ) ) {
+	if ( '' === $path || blueworx_bot_request_is_exempt( $path, blueworx_bot_request_query() ) ) {
+		return;
+	}
+
+	$signed_in = is_user_logged_in();
+
+	// A name that could have been a real page is turned away only now, when
+	// WordPress has looked and there is no page there.
+	if ( ! $signed_in && blueworx_feature_enabled( 'probe_block' ) && apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path ), $path ) ) {
+		if ( blueworx_feature_enabled( 'missing_page_limit' ) ) {
+			blueworx_missing_page_record( blueworx_visitor_ip() );
+		}
+
+		blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
+	}
+
+	if ( $signed_in || ! blueworx_feature_enabled( 'missing_page_limit' ) || blueworx_path_is_static_asset( $path ) ) {
 		return;
 	}
 
@@ -642,9 +715,55 @@ function blueworx_missing_page_count_404() {
 }
 
 /**
+ * Gets the rules that keep a store page away from crawlers.
+ *
+ * A page address can be written several ways, and a rule written for one does
+ * not cover the others: /pay-here/ does not cover /pay-here, and a plain
+ * permalink (/?page_id=7) has no path at all. So each form gets its own rule,
+ * and each is anchored so a different page that merely starts the same way
+ * (/pay-here-guide/) is not caught.
+ *
+ * @param string $url Full address of the page.
+ * @param string $base The site's folder, without a trailing slash.
+ * @return string[] Disallow lines, empty when the address cannot be turned into a safe rule.
+ */
+function blueworx_crawler_rules_for_url( $url, $base ) {
+	$path  = wp_parse_url( $url, PHP_URL_PATH );
+	$query = wp_parse_url( $url, PHP_URL_QUERY );
+	$path  = is_string( $path ) && '' !== $path ? $path : '/';
+
+	if ( is_string( $query ) && '' !== $query ) {
+		// Only the plain-permalink forms WordPress itself uses, and only the whole
+		// value: page_id=7 must not catch page_id=70.
+		if ( ! preg_match( '/^(page_id|p)=\d+$/', $query ) ) {
+			return array();
+		}
+
+		return array(
+			'Disallow: ' . $path . '?' . $query . '$',
+			'Disallow: ' . $path . '?' . $query . '&',
+		);
+	}
+
+	$trimmed = untrailingslashit( $path );
+
+	// The site's own front page is never a store page, and "/" would shut
+	// crawlers out of everything.
+	if ( '' === $trimmed || $trimmed === $base || 0 !== strpos( $trimmed, $base . '/' ) ) {
+		return array();
+	}
+
+	return array(
+		'Disallow: ' . $trimmed . '/',
+		'Disallow: ' . $trimmed . '$',
+	);
+}
+
+/**
  * Gets the robots.txt rules that keep crawlers off cart, checkout and filters.
  *
- * Wildcards (*) are understood by Google, Bing and the other major crawlers.
+ * Wildcards (*) and the end-of-address mark ($) are understood by Google, Bing
+ * and the other major crawlers.
  *
  * @return string[] Disallow lines.
  */
@@ -653,30 +772,27 @@ function blueworx_crawler_rules() {
 	$base = untrailingslashit( is_string( $home ) ? $home : '' );
 	$out  = array();
 
-	foreach ( array( '/cart/', '/checkout/', '/my-account/' ) as $path ) {
-		$out[] = 'Disallow: ' . $base . $path;
+	foreach ( array( '/cart', '/checkout', '/my-account' ) as $path ) {
+		$out[] = 'Disallow: ' . $base . $path . '/';
+		$out[] = 'Disallow: ' . $base . $path . '$';
 	}
 
 	// The store's own checkout and account pages, wherever they have been put.
-	// A page with no pretty address (?page_id=7) has no path to disallow, and
-	// "/" would shut crawlers out of the whole site, so those are skipped.
 	if ( function_exists( 'blueworx_store_page_url' ) ) {
 		foreach ( array( 'checkout', 'dashboard' ) as $key ) {
-			$url  = blueworx_store_page_url( $key );
-			$path = '' === $url ? null : wp_parse_url( $url, PHP_URL_PATH );
+			$url = blueworx_store_page_url( $key );
 
-			if ( is_string( $path ) && '/' !== $path && '' === (string) wp_parse_url( $url, PHP_URL_QUERY ) && 0 === strpos( $path, $base . '/' ) ) {
-				$out[] = 'Disallow: ' . trailingslashit( $path );
+			if ( '' !== $url ) {
+				$out = array_merge( $out, blueworx_crawler_rules_for_url( $url, $base ) );
 			}
 		}
-
-		$out = array_values( array_unique( $out ) );
 	}
 
 	foreach ( array( 'orderby=', 'filter_', 'min_price=', 'max_price=', 'rating_filter=', 'add-to-cart=' ) as $param ) {
 		$out[] = 'Disallow: ' . $base . '/*?*' . $param;
 	}
 
+	$out   = array_values( array_unique( $out ) );
 	$rules = apply_filters( 'blueworx_crawler_rules', $out );
 
 	return is_array( $rules ) ? array_values( array_filter( array_map( 'strval', $rules ) ) ) : $out;
@@ -685,10 +801,16 @@ function blueworx_crawler_rules() {
 /**
  * Adds the crawler rules to robots.txt.
  *
- * The rules go into the first "User-agent: *" group, after its User-agent lines,
- * wherever the file came from (WordPress, SureRank or the robots.txt editor).
- * A second "User-agent: *" group would not merge: crawlers read the first and
- * ignore the rest. A rule that group already has is not added twice.
+ * The rules go into every group, after that group's User-agent lines. A crawler
+ * that has a group of its own (Googlebot, say) reads only that group and
+ * ignores the "User-agent: *" one, so a rule added only to the catch-all group
+ * would never reach it. A group's existing rules are kept, and a rule it
+ * already has is not added twice. Where there is no catch-all group, one is
+ * added. A second "User-agent: *" group is never created: crawlers read the
+ * first and ignore the rest.
+ *
+ * Sitemap lines, blank lines and comments sit between groups without ending
+ * them, as they do for a crawler.
  *
  * @param string $output Generated robots.txt content.
  * @return string robots.txt content with the rules in it.
@@ -705,7 +827,7 @@ function blueworx_crawler_rules_filter( $output ) {
 	foreach ( $lines as $index => $line ) {
 		$trimmed = trim( $line );
 
-		if ( '' === $trimmed || '#' === $trimmed[0] ) {
+		if ( '' === $trimmed || '#' === $trimmed[0] || preg_match( '/^sitemap:/i', $trimmed ) ) {
 			continue;
 		}
 
@@ -737,39 +859,34 @@ function blueworx_crawler_rules_filter( $output ) {
 		}
 	}
 
-	// Rules go into the first group that covers every crawler, after its
-	// User-agent lines, so a group shared by several crawlers stays whole.
-	$target = null;
+	$wanted   = blueworx_crawler_rules();
+	$has_star = false;
 
-	foreach ( $groups as $group ) {
-		if ( $group['star'] ) {
-			$target = $group;
-			break;
+	// Work from the last group back, so the line numbers of earlier groups do not
+	// move as rules are inserted.
+	foreach ( array_reverse( $groups, true ) as $group ) {
+		$has_star = $has_star || $group['star'];
+		$add      = array();
+
+		foreach ( $wanted as $rule ) {
+			if ( ! isset( $group['rules'][ strtolower( preg_replace( '/\s+/', '', $rule ) ) ] ) ) {
+				$add[] = $rule;
+			}
+		}
+
+		if ( $add ) {
+			array_splice( $lines, $group['end'] + 1, 0, $add );
 		}
 	}
 
-	$add = array();
+	$result = implode( "\n", $lines );
 
-	foreach ( blueworx_crawler_rules() as $rule ) {
-		$key = strtolower( preg_replace( '/\s+/', '', $rule ) );
-
-		if ( null === $target || ! isset( $target['rules'][ $key ] ) ) {
-			$add[] = $rule;
-		}
+	if ( ! $has_star && $wanted ) {
+		// No catch-all group yet: add one at the end.
+		$result = rtrim( $result ) . "\n\nUser-agent: *\n" . implode( "\n", $wanted ) . "\n";
 	}
 
-	if ( empty( $add ) ) {
-		return (string) $output;
-	}
-
-	if ( null !== $target ) {
-		array_splice( $lines, $target['end'] + 1, 0, $add );
-
-		return implode( "\n", $lines );
-	}
-
-	// No catch-all group yet: add one at the end.
-	return rtrim( (string) $output ) . "\n\nUser-agent: *\n" . implode( "\n", $add ) . "\n";
+	return $result;
 }
 
 if ( blueworx_feature_enabled( 'probe_block' ) || blueworx_feature_enabled( 'missing_page_limit' ) ) {
@@ -778,8 +895,10 @@ if ( blueworx_feature_enabled( 'probe_block' ) || blueworx_feature_enabled( 'mis
 	add_action( 'plugins_loaded', 'blueworx_bot_control_early', 0 );
 }
 
-if ( blueworx_feature_enabled( 'missing_page_limit' ) ) {
-	add_action( 'template_redirect', 'blueworx_missing_page_count_404', 0 );
+if ( blueworx_feature_enabled( 'missing_page_limit' ) || blueworx_feature_enabled( 'probe_block' ) ) {
+	// Late, after WordPress's own redirects (an old page address, a missing
+	// trailing slash) have had their chance: those end in a page, not a miss.
+	add_action( 'template_redirect', 'blueworx_missing_page_count_404', 100 );
 }
 
 if ( blueworx_feature_enabled( 'crawler_rules' ) ) {

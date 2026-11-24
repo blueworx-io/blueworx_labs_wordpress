@@ -184,15 +184,22 @@ test.describe('Bot control', () => {
     }
   });
 
-  test('missing images do not count towards the limit', async () => {
+  test('missing images, scripts and manifests do not count towards the limit', async () => {
     test.skip(!isLocal, 'Needs a site that believes the visitor address the test sends.');
 
     const api = await request.newContext({ baseURL, extraHTTPHeaders: { 'X-Forwarded-For': visitor() } });
 
     try {
+      /*
+       * Through index.php, so the request reaches WordPress: the test server
+       * answers a missing file that ends in an extension itself.
+       */
+      const kinds = ['jpg', 'mjs', 'webmanifest', 'css', 'json'];
+
       for (let i = 0; i < 40; i++) {
-        const res = await api.get(`/wp-content/uploads/bw-missing-${i}.jpg`, { maxRedirects: 0 });
+        const res = await api.get(`/index.php/bw-missing-${i}.${kinds[i % kinds.length]}`, { maxRedirects: 0 });
         expect(res.status()).not.toBe(429);
+        expect(res.headers()['x-robots-tag']).toBeUndefined();
       }
 
       const home = await api.get('/');

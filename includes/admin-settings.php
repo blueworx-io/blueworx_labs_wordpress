@@ -1296,7 +1296,7 @@ function blueworx_get_feature_detail_html( $key ) {
 							),
 						)
 					),
-					'help'    => __( 'Counted per visitor over ten minutes. Missing images, scripts and other files are not counted, and neither are signed-in people.', 'blueworx-labs-wordpress' ),
+					'help'    => __( 'Counted per visitor over ten minutes. Missing images, scripts and other files are not counted, and neither are signed-in people. Visitors are told apart by their address, which is read directly or from Cloudflare. A site behind another proxy or load balancer is not counted until the host lists that proxy with the blueworx_trusted_proxies filter.', 'blueworx-labs-wordpress' ),
 				)
 			) . blueworx_ds_field(
 				array(
