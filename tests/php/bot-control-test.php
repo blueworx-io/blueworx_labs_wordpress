@@ -19,7 +19,7 @@ function blueworx_feature_enabled( $key ) {
 }
 function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
-	$GLOBALS['hooked'][ $hook ][]                = $callback;
+	$GLOBALS['hooked'][ $hook ][]                   = $callback;
 	$GLOBALS['hook_priority'][ $hook ][ $callback ] = $priority;
 }
 // Whether WordPress has reached init; most checks below stand after it.
@@ -158,7 +158,7 @@ update_option( 'permalink_structure', '/%postname%/' );
 update_option(
 	'rewrite_rules',
 	array(
-		'([^/]+)\.php/?$' => 'index.php?pagename=$matches[1]',
+		'([^/]+)\.php/?$'                                  => 'index.php?pagename=$matches[1]',
 		'.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\.php$' => 'index.php?feed=old',
 	)
 );
@@ -248,7 +248,7 @@ set_transient( blueworx_sso_attempt_key( 'issued' ), array( 'nonce' => 'n' ) );
 check( "the provider's return with a state this site issued is left alone", $sso_request( array( 'state' => 'issued' ) ), true );
 check( 'any other state is not', $sso_request( array( 'state' => 'made-up' ) ), false );
 $GLOBALS['filters']['blueworx_sso_is_login_request'] = function ( $is_login ) {
-	return $is_login || ! empty( $_GET['old_login'] );
+	return $is_login || ! empty( $_GET['old_login'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- A test's own value.
 };
 check( 'an old sign-in address the site has claimed is left alone', $sso_request( array( 'old_login' => '1' ) ), true );
 $GLOBALS['asked'] = 0;
@@ -268,9 +268,18 @@ check( 'and are asked once it is', $GLOBALS['asked'], 2 );
 unset( $GLOBALS['filters']['blueworx_sso_is_login_request'], $GLOBALS['filters']['blueworx_sso_is_register_request'] );
 $GLOBALS['hook_priority'] = array();
 $GLOBALS['hooked']        = array();
+update_option( 'blueworx_sso_client_secret', '' );
 blueworx_bot_control_hooks();
+update_option( 'blueworx_sso_client_secret', 'shhh' );
+// Single sign-on was not set up when the hooks were added; another plugin has
+// supplied its settings by the time they run.
+$GLOBALS['did_init'] = 0;
+
+$_SERVER['REQUEST_URI'] = '/.sso/start';
+check( 'probes wait for every plugin to load', $GLOBALS['hook_priority']['plugins_loaded']['blueworx_bot_control_early'] ?? 0, PHP_INT_MAX );
+blueworx_bot_control_early();
 check( 'with single sign-on on, probes wait until it has taken its own requests', $GLOBALS['hook_priority']['init']['blueworx_bot_control_early'] ?? 0, 2 );
-check( 'and are not turned away before', isset( $GLOBALS['hook_priority']['plugins_loaded'] ), false );
+$GLOBALS['did_init'] = 1;
 foreach ( array_keys( $sso_options ) as $key ) {
 	update_option( $key, '' );
 }
@@ -279,7 +288,11 @@ check( 'with single sign-on off, nothing is', $sso_request( array( 'blueworx_sso
 $GLOBALS['hook_priority'] = array();
 $GLOBALS['hooked']        = array();
 blueworx_bot_control_hooks();
-check( 'and probes are turned away as early as a plugin can', $GLOBALS['hook_priority']['plugins_loaded']['blueworx_bot_control_early'] ?? -1, 0 );
+$GLOBALS['did_init'] = 0;
+blueworx_bot_control_early();
+check( 'and probes are not put off', isset( $GLOBALS['hook_priority']['init'] ), false );
+$GLOBALS['did_init'] = 1;
+unset( $_SERVER['REQUEST_URI'] );
 
 echo "\nStatus and the missing-image exception\n";
 check( 'the answer defaults to 404', blueworx_probe_status(), 404 );
@@ -607,11 +620,19 @@ foreach ( array( '/panier/', '/panier$', '/panier?', '/boutique/commande/', '/bo
 	check( "a store's own page address is kept off: " . $path, in_array( 'Disallow: ' . $path, $rules, true ), true );
 }
 $GLOBALS['permalinks'][12] = 'https://example.test/commande/?lang=fr';
-$GLOBALS['permalinks'][13] = 'https://example.test/mon-compte?a=1&b=2';
+$GLOBALS['permalinks'][13] = 'https://example.test/mon-compte?lang=fr-fr';
 $rules                     = blueworx_crawler_rules();
 foreach ( array( '/commande/', '/commande$', '/commande?', '/mon-compte/', '/mon-compte?' ) as $path ) {
 	check( 'a shop page with a query of its own is kept off by its path: ' . $path, in_array( 'Disallow: ' . $path, $rules, true ), true );
 }
+$GLOBALS['permalinks'][11] = 'https://example.test/shop/?view=cart';
+$GLOBALS['permalinks'][12] = 'https://example.test/shop/?page_id=12&lang=fr';
+$GLOBALS['permalinks'][13] = 'https://example.test/shop/?lang=fr&page_id=13';
+$rules                     = blueworx_crawler_rules();
+check( 'a page picked by a query never shuts off the path it shares', preg_grep( '#^Disallow: /shop[/$?]?$#', $rules ), array() );
+check( 'it is kept off by the query that picks it', in_array( 'Disallow: /shop/?page_id=12&', $rules, true ), true );
+check( 'wherever in the query that is', in_array( 'Disallow: /shop/?*&page_id=13$', $rules, true ), true );
+check( 'and a page whose number starts the same is not caught', array_intersect( array( 'Disallow: /shop/?page_id=12', 'Disallow: /shop/?*&page_id=13' ), $rules ), array() );
 $GLOBALS['permalinks'][12] = 'https://example.test/?lang=fr';
 $GLOBALS['permalinks'][13] = 'https://example.test/index.php?lang=fr&page_id=13';
 $rules                     = blueworx_crawler_rules();

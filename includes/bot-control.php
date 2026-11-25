@@ -649,7 +649,7 @@ function blueworx_request_names_others( $ip ) {
 		$found = explode( ',', $value );
 
 		if ( 'HTTP_FORWARDED' === $name ) {
-			// Looks like this: for=1.2.3.4;proto=https, for="[2001:db8::1]".
+			// Each address follows "for", perhaps inside quotes and brackets.
 			preg_match_all( '/for="?\[?([^\]",;]+)/i', $value, $matches );
 			$found = $matches[1] ? $matches[1] : array( '' );
 		}
@@ -849,6 +849,14 @@ function blueworx_bot_control_early() {
 		return;
 	}
 
+	if ( ! did_action( 'init' ) && blueworx_sso_enabled() ) {
+		// A site can claim any old address as its sign-in, and only from init on is
+		// it safe to ask which. Right after single sign-on has taken its own
+		// requests (init, priority 1), so one of those is never turned away.
+		add_action( 'init', 'blueworx_bot_control_early', 2 );
+		return;
+	}
+
 	if ( blueworx_bot_request_is_exempt( $path, blueworx_bot_request_query() ) ) {
 		return;
 	}
@@ -948,21 +956,30 @@ function blueworx_crawler_rules_for_url( $url, $base ) {
 	$path  = wp_parse_url( $url, PHP_URL_PATH );
 	$query = wp_parse_url( $url, PHP_URL_QUERY );
 	$path  = is_string( $path ) && '' !== $path ? $path : '/';
+	$query = is_string( $query ) ? $query : '';
 
-	if ( is_string( $query ) && preg_match( '/^(page_id|p)=\d+$/', $query ) ) {
-		// The plain-permalink forms WordPress itself uses, and only the whole value:
-		// page_id=7 must not catch page_id=70.
+	if ( preg_match( '/(?:^|&)((?:page_id|p)=\d+)(?:&|$)/', $query, $match ) ) {
+		// The plain-permalink forms WordPress itself uses: the query is the page, and
+		// the path may be shared. Only the whole value: page_id=7 must not catch
+		// page_id=70.
 		return array(
-			'Disallow: ' . $path . '?' . $query . '$',
-			'Disallow: ' . $path . '?' . $query . '&',
+			'Disallow: ' . $path . '?' . $match[1] . '$',
+			'Disallow: ' . $path . '?' . $match[1] . '&',
+			'Disallow: ' . $path . '?*&' . $match[1] . '$',
+			'Disallow: ' . $path . '?*&' . $match[1] . '&',
 		);
+	}
+
+	// A language (/commande/?lang=fr) is left off: the path is the page. Any other
+	// query may be what picks the page, so the path alone is not safe to use.
+	if ( '' !== $query && ! preg_match( '/^lang=[\w-]+$/', $query ) ) {
+		return array();
 	}
 
 	$trimmed = untrailingslashit( $path );
 
-	// Any other query (/commande/?lang=fr) is left off: the path is the page. The
-	// site's own front page is never a store page, and "/" (or /index.php) would
-	// shut crawlers out of everything.
+	// The site's own front page is never a store page, and "/" (or /index.php)
+	// would shut crawlers out of everything.
 	if ( '' === $trimmed || $trimmed === $base || $base . '/index.php' === $trimmed || 0 !== strpos( $trimmed, $base . '/' ) ) {
 		return array();
 	}
@@ -1136,15 +1153,10 @@ function blueworx_bot_control_hooks() {
 	$probe_on = blueworx_feature_enabled( 'probe_block' );
 	$limit_on = blueworx_feature_enabled( 'missing_page_limit' );
 
-	if ( $probe_on && blueworx_sso_enabled() ) {
-		// A site can claim any old address as its sign-in, and only from init on is
-		// it safe to ask which. Right after single sign-on has taken its own
-		// requests (init, priority 1), so one of those is never turned away.
-		add_action( 'init', 'blueworx_bot_control_early', 2 );
-	} elseif ( $probe_on ) {
-		// Priority 0: as early as a plugin can run, before the theme, the query or
-		// any template is touched.
-		add_action( 'plugins_loaded', 'blueworx_bot_control_early', 0 );
+	if ( $probe_on ) {
+		// Before the theme, the query or any template is touched, but after every
+		// plugin, since another one may supply the single sign-on settings.
+		add_action( 'plugins_loaded', 'blueworx_bot_control_early', PHP_INT_MAX );
 	}
 
 	if ( $limit_on ) {
