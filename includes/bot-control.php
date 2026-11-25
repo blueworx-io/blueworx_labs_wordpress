@@ -55,6 +55,62 @@ function blueworx_probe_segments( $path ) {
 }
 
 /**
+ * Drops the folder the site lives in from the front of a path.
+ *
+ * @param string[] $segments Path segments.
+ * @return string[] Segments read from the site's own root.
+ */
+function blueworx_segments_within_site( $segments ) {
+	$home      = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+	$home_segs = blueworx_probe_segments( is_string( $home ) ? $home : '' );
+
+	if ( $home_segs && array_slice( $segments, 0, count( $home_segs ) ) === $home_segs ) {
+		return array_slice( $segments, count( $home_segs ) );
+	}
+
+	return $segments;
+}
+
+/**
+ * Whether this site gives its own pages addresses that look like this file.
+ *
+ * A permalink like /%postname%.php makes /info.php an ordinary page. So does a
+ * plugin's own address rule for the extension. Read from the saved settings,
+ * because this runs before WordPress has loaded its address rules. Only asked
+ * about a path that already looks like a probe, so it costs real visits nothing.
+ *
+ * @param string[] $segments Path segments.
+ * @return bool True when only WordPress can say whether there is a page here.
+ */
+function blueworx_probe_may_be_page( $segments ) {
+	$extension = strtolower( pathinfo( (string) end( $segments ), PATHINFO_EXTENSION ) );
+
+	if ( '' === $extension ) {
+		return false;
+	}
+
+	$structure = strtolower( untrailingslashit( (string) get_option( 'permalink_structure', '' ) ) );
+
+	if ( str_ends_with( $structure, '.' . $extension ) ) {
+		return true;
+	}
+
+	$rules = get_option( 'rewrite_rules', array() );
+	$path  = implode( '/', blueworx_segments_within_site( $segments ) );
+
+	foreach ( is_array( $rules ) ? array_keys( $rules ) : array() as $rule ) {
+		// Only rules written for the extension: WordPress's catch-all page rules
+		// match every path and say nothing about this one. A rule that cannot be
+		// read counts as a match, so the path waits for WordPress.
+		if ( false !== stripos( (string) $rule, '.' . $extension ) && 0 !== @preg_match( '#^' . $rule . '#i', $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Somebody else's pattern; a broken one returns false, handled here.
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Whether a request path is one of the well-known probe paths.
  *
  * Deliberately a short, specific list rather than a broad pattern: a rule that
@@ -63,8 +119,9 @@ function blueworx_probe_segments( $path ) {
  * through WordPress, so a request for it can only be a scan.
  *
  * Some names are probes on one site and a real page on another: a folder called
- * phpunit, or a page called adminer. Those are "ambiguous", and are only turned
- * away once WordPress has looked and found no page there. Everything else
+ * phpunit, a page called adminer, or /info.php where permalinks end in .php.
+ * Those are "ambiguous", and are only turned away once WordPress has looked and
+ * found no page there. Everything else
  * (hidden files, config and backup files, scripts in uploads) is answered at
  * once.
  *
@@ -94,6 +151,25 @@ function blueworx_probe_path_matches( $path, $include_ambiguous = true ) {
 		}
 	}
 
+	// A script inside the uploads folder is a planted web shell, never a page.
+	if ( in_array( 'uploads', $segments, true ) && in_array( 'wp-content', $segments, true ) && preg_match( '/\.(php\d?|phtml|phar)$/', $base ) ) {
+		return true;
+	}
+
+	// Everything below is a name, and on this site a name like it may be a page.
+	// Asked last, and only of a path that is otherwise a probe.
+	return blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) && ( $include_ambiguous || ! blueworx_probe_may_be_page( $segments ) );
+}
+
+/**
+ * Whether a file or folder name is one only scanners ask for.
+ *
+ * @param string[] $segments          Path segments.
+ * @param string   $base              Last segment.
+ * @param bool     $include_ambiguous Whether names that could be a real page count.
+ * @return bool True when the name is a probe's.
+ */
+function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 	// Folders that are only ever somebody else's admin tool or a leftover.
 	$folders = array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules' );
 
@@ -175,20 +251,16 @@ function blueworx_probe_path_matches( $path, $include_ambiguous = true ) {
 		return true;
 	}
 
-	// A script inside the uploads folder is a planted web shell, never a page.
-	if ( in_array( 'uploads', $segments, true ) && in_array( 'wp-content', $segments, true ) && preg_match( '/\.(php\d?|phtml|phar)$/', $base ) ) {
-		return true;
-	}
-
 	return false;
 }
 
 /**
- * Whether a request path is for a static file (image, script, font and so on).
+ * Whether a request path is for a static file (image, script, font, download).
  *
- * A page with a few broken images makes a visitor ask for a few missing files.
- * That is a page problem, not a scanner, so those never count towards the
- * missing-page limit.
+ * A page with a few broken images or download links makes a visitor ask for a
+ * few missing files. That is a page problem, not a scanner, so those never count
+ * towards the missing-page limit. Names only scanners ask for (backup.zip) are
+ * still turned away by the probe rules, which are separate.
  *
  * @param string $path Request path, without the query string.
  * @return bool True for a static asset.
@@ -200,7 +272,7 @@ function blueworx_path_is_static_asset( $path ) {
 		return false;
 	}
 
-	return (bool) preg_match( '/\.(jpe?g|png|gif|webp|avif|svg|ico|bmp|css|m?js|cjs|map|json|webmanifest|wasm|woff2?|ttf|otf|eot|mp[34]|m4a|ogg|wav|webm|mov|pdf|tiff?|heic|jfif)$/', end( $segments ) );
+	return (bool) preg_match( '/\.(jpe?g|png|gif|webp|avif|svg|ico|bmp|css|m?js|cjs|map|json|webmanifest|wasm|woff2?|ttf|otf|eot|mp[34]|m4a|ogg|wav|webm|mov|pdf|tiff?|heic|jfif|m4v|avi|mkv|wmv|aac|flac|zip|gz|tgz|tar|rar|7z|bz2|csv|tsv|txt|xml|rtf|docx?|xlsx?|xlsm|pptx?|ppsx?|od[tsp]|pages|numbers|key|epub|mobi|ics|vcf|gpx|kml|kmz|apk|exe|msi|dmg|pkg|iso|psd|ai|eps|indd|dwg|dxf)$/', end( $segments ) );
 }
 
 /**
@@ -251,7 +323,8 @@ function blueworx_bot_request_query() {
  * Sign-in, the admin area, background jobs and the REST API keep working for
  * everyone, so a paused visitor can still sign in. Paths are read relative to
  * the site, so a site in a folder or a subsite of a network is handled, and both
- * REST address formats (/wp-json/ and ?rest_route=) count.
+ * REST address formats (/wp-json/ and ?rest_route=) count. WordPress itself says
+ * what is the admin area, so it is found wherever WordPress is installed.
  *
  * @param string $path  Request path.
  * @param string $query Request query string.
@@ -273,6 +346,10 @@ function blueworx_bot_request_is_exempt( $path, $query = '' ) {
  * @return bool True for an exempt route.
  */
 function blueworx_bot_path_is_exempt( $path, $query = '' ) {
+	if ( is_admin() ) {
+		return true;
+	}
+
 	if ( '' !== $query ) {
 		parse_str( $query, $args );
 
@@ -286,12 +363,7 @@ function blueworx_bot_path_is_exempt( $path, $query = '' ) {
 
 	// Read the path from the site's own root: drop the folder the site lives in,
 	// and an index.php in front of the route.
-	$home      = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
-	$home_segs = blueworx_probe_segments( is_string( $home ) ? $home : '' );
-
-	if ( $home_segs && array_slice( $segments, 0, count( $home_segs ) ) === $home_segs ) {
-		$segments = array_slice( $segments, count( $home_segs ) );
-	}
+	$segments = blueworx_segments_within_site( $segments );
 
 	if ( isset( $segments[0] ) && 'index.php' === $segments[0] ) {
 		array_shift( $segments );
@@ -307,50 +379,17 @@ function blueworx_bot_path_is_exempt( $path, $query = '' ) {
 		return true;
 	}
 
-	// Single sign-on: the address that starts a sign-in, and the provider's
-	// return with a state this site issued. A paused visitor must still be able
-	// to finish signing in.
-	if ( function_exists( 'blueworx_sso_enabled' ) && blueworx_sso_enabled() ) {
-		if ( '' !== $query ) {
-			parse_str( $query, $sso_args );
-
-			if ( isset( $sso_args['blueworx_sso'] ) ) {
-				return true;
-			}
-		}
-
-		if ( function_exists( 'blueworx_sso_is_own_callback' ) && blueworx_sso_is_own_callback() ) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/**
- * Whether the visitor holds a valid signed-in session.
- *
- * Checked from the cookie itself, because the early checks run before
- * WordPress has worked out who is signed in. Anyone signed in is never paused
- * or counted: on a shared address they are not the one making the requests.
- *
- * @return bool True for a signed-in visitor.
- */
-function blueworx_bot_visitor_signed_in() {
-	static $signed_in = null;
-
-	if ( null === $signed_in ) {
-		$signed_in = defined( 'LOGGED_IN_COOKIE' ) && ! empty( $_COOKIE[ LOGGED_IN_COOKIE ] ) && function_exists( 'wp_validate_auth_cookie' ) && (bool) wp_validate_auth_cookie( '', 'logged_in' );
-	}
-
-	return $signed_in;
+	// Single sign-on: exactly the requests its handler takes over. A paused visitor
+	// must still be able to start and finish signing in.
+	return function_exists( 'blueworx_sso_request_route' ) && '' !== blueworx_sso_request_route();
 }
 
 /**
  * Sends a short plain-text answer and stops.
  *
- * Nothing else loads: no theme, no query, no template. Not cached, so changing
- * a setting takes effect straight away.
+ * Nothing else is built: no query, no template. Never cached, so one visitor's
+ * answer is not handed to another, and changing a setting takes effect straight
+ * away.
  *
  * @param int    $status  HTTP status.
  * @param string $message Plain-text body.
@@ -358,6 +397,10 @@ function blueworx_bot_visitor_signed_in() {
  * @return void
  */
 function blueworx_bot_respond( $status, $message, $headers = array() ) {
+	if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+		define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- The name page cache plugins look for.
+	}
+
 	status_header( $status );
 	nocache_headers();
 	header( 'Content-Type: text/plain; charset=utf-8' );
@@ -490,21 +533,24 @@ function blueworx_ip_is_trusted_proxy( $ip ) {
 }
 
 /**
- * Works out who a visitor is, for counting their missing pages.
+ * Works out the address a request came from.
+ *
+ * This is the best answer there is, but it may still be one address shared by
+ * many visitors. Counting and pausing use blueworx_limited_visitor_ip(), which
+ * leaves those out.
  *
  * REMOTE_ADDR is the answer, and the only one believed, unless the request
  * comes from a proxy that is trusted to say who it is forwarding for (see
  * blueworx_trusted_proxy_ranges()). From Cloudflare the visitor is
- * CF-Connecting-IP. From any other trusted proxy the visitor is the last public
- * address in X-Forwarded-For, which is the one that proxy saw, not anything the
- * visitor wrote. A private address that is not trusted is a proxy the host has
- * not told us about, so nobody is counted. From anyone else the forwarding
- * headers are ignored. A site with a different arrangement says so with the
- * blueworx_trusted_proxies or blueworx_visitor_ip filters.
+ * CF-Connecting-IP. From any other trusted proxy the visitor is the last address
+ * in X-Forwarded-For that is not a trusted proxy: the one that proxy saw, not
+ * anything the visitor wrote. A private address that is not trusted is a proxy
+ * the host has not told us about, so nobody is counted. From anyone else the
+ * forwarding headers are ignored.
  *
  * @return string Visitor address, or an empty string when it cannot be told.
  */
-function blueworx_visitor_ip() {
+function blueworx_request_ip() {
 	$server = $_SERVER; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Each value is validated as an IP address below before it is used.
 	$remote = isset( $server['REMOTE_ADDR'] ) ? (string) $server['REMOTE_ADDR'] : '';
 	$public = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
@@ -523,22 +569,144 @@ function blueworx_visitor_ip() {
 		} elseif ( ! empty( $server['HTTP_X_FORWARDED_FOR'] ) ) {
 			// Right to left: the entry nearest the site was written by a proxy we
 			// trust; anything further left could have been written by the visitor.
+			// The first one that is not a proxy we trust is the answer. When it is
+			// not a public address there is no answer: nothing beyond it is known.
 			foreach ( array_reverse( explode( ',', (string) $server['HTTP_X_FORWARDED_FOR'] ) ) as $candidate ) {
 				$candidate = trim( $candidate );
 
-				if ( false === filter_var( $candidate, FILTER_VALIDATE_IP, $public ) || blueworx_ip_is_trusted_proxy( $candidate ) ) {
+				if ( blueworx_ip_is_trusted_proxy( $candidate ) ) {
 					continue;
 				}
 
-				$ip = $candidate;
+				$ip = false !== filter_var( $candidate, FILTER_VALIDATE_IP, $public ) ? $candidate : '';
 				break;
 			}
 		}
 	}
 
-	$ip = apply_filters( 'blueworx_visitor_ip', $ip );
+	return $ip;
+}
+
+/**
+ * Gets the address a request came from, as the host sees it.
+ *
+ * A site with an arrangement of its own says so with the
+ * blueworx_trusted_proxies or blueworx_visitor_ip filters, from a plugin or the
+ * theme.
+ *
+ * @return string Visitor address, or an empty string when it cannot be told.
+ */
+function blueworx_visitor_ip() {
+	$ip = apply_filters( 'blueworx_visitor_ip', blueworx_request_ip() );
 
 	return ( is_string( $ip ) && false !== filter_var( $ip, FILTER_VALIDATE_IP ) ) ? $ip : '';
+}
+
+/**
+ * Whether a request carries any sign of having come through a proxy.
+ *
+ * Proxies, CDNs and load balancers add headers a browser never sends. Any one of
+ * them is enough. A proxy that adds none of them cannot be told from a visitor.
+ *
+ * @return bool True when some proxy handled the request.
+ */
+function blueworx_request_is_forwarded() {
+	foreach ( $_SERVER as $name => $value ) {
+		if ( '' !== $value && preg_match( '/^HTTP_(X_FORWARDED|FORWARDED|X_ORIGINAL_|X_REAL_|VIA$|CF_|CDN_|FASTLY_|X_SUCURI_|INCAP_|X_AZURE_|X_ARR_|X_AMZ_CF_|X_AMZN_|X_CLOUD_TRACE|X_ENVOY_|X_VARNISH|X_AKAMAI|AKAMAI|SURROGATE_|X_PROXY|X_CLUSTER_|X_VERCEL_|X_NF_|FLY_|.*(FORWARDED_FOR|CLIENT_?IP|REAL_IP|CONNECTING_IP)$)/', (string) $name ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether a trusted proxy's request shows anyone besides the visitor it named.
+ *
+ * Another address in any forwarding header, a Via header, or a value that cannot
+ * be read: each means there may be a proxy further out that nobody has vouched
+ * for, and the named "visitor" may be that proxy.
+ *
+ * @param string $ip The visitor the trusted proxy named.
+ * @return bool True when somebody else may stand between them and the site.
+ */
+function blueworx_request_names_others( $ip ) {
+	if ( ! empty( $_SERVER['HTTP_VIA'] ) ) {
+		return true;
+	}
+
+	foreach ( $_SERVER as $name => $value ) {
+		if ( ! is_string( $value ) || '' === $value || ! preg_match( '/^HTTP_(FORWARDED|.*(FORWARDED_FOR|CLIENT_?IP|REAL_IP|CONNECTING_IP(V6)?|EXTERNAL_ADDRESS|SOCKETIP))$/', (string) $name ) ) {
+			continue;
+		}
+
+		$found = explode( ',', $value );
+
+		if ( 'HTTP_FORWARDED' === $name ) {
+			// for=1.2.3.4;proto=https, for="[2001:db8::1]"
+			preg_match_all( '/for="?\[?([^\]",;]+)/i', $value, $matches );
+			$found = $matches[1] ? $matches[1] : array( '' );
+		}
+
+		foreach ( $found as $address ) {
+			$binary = @inet_pton( trim( $address ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled here.
+
+			if ( false === $binary || ( inet_pton( $ip ) !== $binary && ! blueworx_ip_is_trusted_proxy( trim( $address ) ) ) ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether an address may stand for more than one visitor.
+ *
+ * Pausing a shared address would pause everyone behind it, so anything in doubt
+ * counts as shared.
+ *
+ * @param string $ip Address from blueworx_request_ip().
+ * @return bool True unless the request points to this one visitor and nobody else.
+ */
+function blueworx_visitor_address_is_shared( $ip ) {
+	$remote = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
+	$server = isset( $_SERVER['SERVER_ADDR'] ) ? (string) $_SERVER['SERVER_ADDR'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
+
+	// Private or reserved, shared by a carrier, or the machine asking itself.
+	if ( false === filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) || blueworx_ip_in_range( $ip, '100.64.0.0/10' ) || $ip === $server ) {
+		return true;
+	}
+
+	if ( blueworx_ip_is_trusted_proxy( $remote ) ) {
+		return blueworx_request_names_others( $ip );
+	}
+
+	return blueworx_request_is_forwarded();
+}
+
+/**
+ * The address to count and pause, or none when it may be shared.
+ *
+ * Behind a CDN or load balancer nobody has vouched for, every visitor has the
+ * same address, so nobody is counted and nobody is paused. A host whose
+ * blueworx_visitor_ip filter names a different address has told visitors apart,
+ * and is believed. A host that already puts the real address in REMOTE_ADDR but
+ * leaves the forwarding headers in place says so by returning false from the
+ * blueworx_visitor_address_is_shared filter.
+ *
+ * @return string Address, or an empty string to leave the request alone.
+ */
+function blueworx_limited_visitor_ip() {
+	$ip = blueworx_visitor_ip();
+
+	if ( '' === $ip || blueworx_ip_is_trusted_proxy( $ip ) ) {
+		return '';
+	}
+
+	$shared = blueworx_request_ip() === $ip && blueworx_visitor_address_is_shared( $ip );
+
+	return apply_filters( 'blueworx_visitor_address_is_shared', $shared, $ip ) ? '' : $ip;
 }
 
 /**
@@ -616,7 +784,28 @@ function blueworx_missing_page_record( $ip ) {
 		$seconds = blueworx_missing_page_pause_minutes() * MINUTE_IN_SECONDS;
 
 		set_transient( blueworx_missing_page_key( 'pause', $ip ), time() + $seconds, $seconds );
+
+		// The last moment anyone at all is paused. Loaded with the site's other
+		// settings, so finding nobody paused costs no lookup.
+		if ( blueworx_missing_page_paused_until() < time() + $seconds ) {
+			update_option( 'blueworx_missing_page_paused_until', time() + $seconds, true );
+		}
 	}
+}
+
+/**
+ * When the last pause on this site ends.
+ *
+ * Read from the settings WordPress has already loaded, never with a lookup of
+ * its own: a site that has never paused anyone has no such setting, and asking
+ * for a missing one is a database query on every visit.
+ *
+ * @return int Timestamp, 0 when nobody has been paused.
+ */
+function blueworx_missing_page_paused_until() {
+	$loaded = wp_load_alloptions();
+
+	return isset( $loaded['blueworx_missing_page_paused_until'] ) ? (int) $loaded['blueworx_missing_page_paused_until'] : 0;
 }
 
 /**
@@ -626,7 +815,7 @@ function blueworx_missing_page_record( $ip ) {
  * @return int Seconds left, 0 when not paused.
  */
 function blueworx_missing_page_pause_left( $ip ) {
-	if ( '' === $ip ) {
+	if ( '' === $ip || blueworx_missing_page_paused_until() <= time() ) {
 		return 0;
 	}
 
@@ -636,21 +825,18 @@ function blueworx_missing_page_pause_left( $ip ) {
 }
 
 /**
- * Answers probe paths and paused visitors before WordPress does any real work.
+ * Answers probe paths before WordPress does any real work.
+ *
+ * Not counted towards a pause: the theme has not loaded, so a host's own say
+ * about visitor addresses may not be in place yet, and the answer is already as
+ * cheap as a pause would be.
  *
  * @return void
  */
 function blueworx_bot_control_early() {
 	$path = blueworx_bot_request_path();
 
-	if ( '' === $path ) {
-		return;
-	}
-
-	$probe_on    = blueworx_feature_enabled( 'probe_block' );
-	$throttle_on = blueworx_feature_enabled( 'missing_page_limit' );
-
-	if ( ! $probe_on && ! $throttle_on ) {
+	if ( '' === $path || ! blueworx_feature_enabled( 'probe_block' ) ) {
 		return;
 	}
 
@@ -658,25 +844,33 @@ function blueworx_bot_control_early() {
 		return;
 	}
 
-	$ip = $throttle_on ? blueworx_visitor_ip() : '';
-
-	if ( $throttle_on ) {
-		$left = blueworx_missing_page_pause_left( $ip );
-
-		if ( $left > 0 && ! blueworx_bot_visitor_signed_in() ) {
-			blueworx_bot_respond( 429, 'Too many requests for pages that do not exist. Please try again later.', array( 'Retry-After' => (string) $left ) );
-		}
-	}
-
-	if ( $probe_on && apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
-		// A probe is a missing page too, so a scanner is paused after a handful
-		// of them rather than being answered cheaply for ever.
-		if ( $throttle_on && ! blueworx_bot_visitor_signed_in() ) {
-			blueworx_missing_page_record( $ip );
-		}
-
+	if ( apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
 		blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
 	}
+}
+
+/**
+ * Turns away a paused visitor before WordPress looks for a page.
+ *
+ * Runs once plugins and the theme have loaded, so it knows a visitor by exactly
+ * the address their missing pages were counted under. Anyone signed in is never
+ * paused: on a shared address they are not the one making the requests.
+ *
+ * @return void
+ */
+function blueworx_missing_page_enforce_pause() {
+	if ( ! blueworx_feature_enabled( 'missing_page_limit' ) || blueworx_missing_page_paused_until() <= time() ) {
+		return;
+	}
+
+	$path = blueworx_bot_request_path();
+	$left = '' === $path ? 0 : blueworx_missing_page_pause_left( blueworx_limited_visitor_ip() );
+
+	if ( $left <= 0 || is_user_logged_in() || blueworx_bot_request_is_exempt( $path, blueworx_bot_request_query() ) ) {
+		return;
+	}
+
+	blueworx_bot_respond( 429, 'Too many requests for pages that do not exist. Please try again later.', array( 'Retry-After' => (string) $left ) );
 }
 
 /**
@@ -701,7 +895,7 @@ function blueworx_missing_page_count_404() {
 	// WordPress has looked and there is no page there.
 	if ( ! $signed_in && blueworx_feature_enabled( 'probe_block' ) && apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path ), $path ) ) {
 		if ( blueworx_feature_enabled( 'missing_page_limit' ) ) {
-			blueworx_missing_page_record( blueworx_visitor_ip() );
+			blueworx_missing_page_record( blueworx_limited_visitor_ip() );
 		}
 
 		blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
@@ -711,7 +905,21 @@ function blueworx_missing_page_count_404() {
 		return;
 	}
 
-	blueworx_missing_page_record( blueworx_visitor_ip() );
+	blueworx_missing_page_record( blueworx_limited_visitor_ip() );
+}
+
+/**
+ * Gets the rules for one path: with a closing slash, without, and with a query.
+ *
+ * @param string $path Path, without a trailing slash.
+ * @return string[] Disallow lines.
+ */
+function blueworx_crawler_rules_for_path( $path ) {
+	return array(
+		'Disallow: ' . $path . '/',
+		'Disallow: ' . $path . '$',
+		'Disallow: ' . $path . '?',
+	);
 }
 
 /**
@@ -753,10 +961,7 @@ function blueworx_crawler_rules_for_url( $url, $base ) {
 		return array();
 	}
 
-	return array(
-		'Disallow: ' . $trimmed . '/',
-		'Disallow: ' . $trimmed . '$',
-	);
+	return blueworx_crawler_rules_for_path( $trimmed );
 }
 
 /**
@@ -773,8 +978,19 @@ function blueworx_crawler_rules() {
 	$out  = array();
 
 	foreach ( array( '/cart', '/checkout', '/my-account' ) as $path ) {
-		$out[] = 'Disallow: ' . $base . $path . '/';
-		$out[] = 'Disallow: ' . $base . $path . '$';
+		$out = array_merge( $out, blueworx_crawler_rules_for_path( $base . $path ) );
+	}
+
+	// WooCommerce's own pages, whatever they are called or translated to.
+	if ( function_exists( 'wc_get_page_id' ) ) {
+		foreach ( array( 'cart', 'checkout', 'myaccount' ) as $key ) {
+			$page_id = (int) wc_get_page_id( $key );
+			$url     = $page_id > 0 && 'publish' === get_post_status( $page_id ) ? get_permalink( $page_id ) : '';
+
+			if ( is_string( $url ) && '' !== $url ) {
+				$out = array_merge( $out, blueworx_crawler_rules_for_url( $url, $base ) );
+			}
+		}
 	}
 
 	// The store's own checkout and account pages, wherever they have been put.
@@ -799,6 +1015,21 @@ function blueworx_crawler_rules() {
 }
 
 /**
+ * Puts a robots.txt rule in one form, so two can be compared.
+ *
+ * The directive's case does not matter to a crawler. The path's does: /Cart/ and
+ * /cart/ are two addresses.
+ *
+ * @param string $rule A robots.txt line.
+ * @return string The rule in a form to compare.
+ */
+function blueworx_crawler_rule_key( $rule ) {
+	$parts = explode( ':', preg_replace( '/\s*#.*$/', '', (string) $rule ), 2 );
+
+	return strtolower( trim( $parts[0] ) ) . ':' . ( isset( $parts[1] ) ? trim( $parts[1] ) : '' );
+}
+
+/**
  * Adds the crawler rules to robots.txt.
  *
  * The rules go into every group, after that group's User-agent lines. A crawler
@@ -809,8 +1040,9 @@ function blueworx_crawler_rules() {
  * added. A second "User-agent: *" group is never created: crawlers read the
  * first and ignore the rest.
  *
- * Sitemap lines, blank lines and comments sit between groups without ending
- * them, as they do for a crawler.
+ * Only Allow and Disallow lines end a group's User-agent lines. Anything else
+ * (Sitemap, Crawl-delay, blank lines, comments) does not, as it does not for
+ * Google, so a group several crawlers share is never split.
  *
  * @param string $output Generated robots.txt content.
  * @return string robots.txt content with the rules in it.
@@ -826,10 +1058,6 @@ function blueworx_crawler_rules_filter( $output ) {
 
 	foreach ( $lines as $index => $line ) {
 		$trimmed = trim( $line );
-
-		if ( '' === $trimmed || '#' === $trimmed[0] || preg_match( '/^sitemap:/i', $trimmed ) ) {
-			continue;
-		}
 
 		if ( preg_match( '/^user-agent:\s*(.*)$/i', $trimmed, $match ) ) {
 			if ( ! $in_head ) {
@@ -852,10 +1080,14 @@ function blueworx_crawler_rules_filter( $output ) {
 			continue;
 		}
 
+		if ( ! preg_match( '/^(allow|disallow)\s*:/i', $trimmed ) ) {
+			continue;
+		}
+
 		$in_head = false;
 
 		if ( $current >= 0 ) {
-			$groups[ $current ]['rules'][ strtolower( preg_replace( '/\s+/', '', $trimmed ) ) ] = true;
+			$groups[ $current ]['rules'][ blueworx_crawler_rule_key( $trimmed ) ] = true;
 		}
 	}
 
@@ -869,7 +1101,7 @@ function blueworx_crawler_rules_filter( $output ) {
 		$add      = array();
 
 		foreach ( $wanted as $rule ) {
-			if ( ! isset( $group['rules'][ strtolower( preg_replace( '/\s+/', '', $rule ) ) ] ) ) {
+			if ( ! isset( $group['rules'][ blueworx_crawler_rule_key( $rule ) ] ) ) {
 				$add[] = $rule;
 			}
 		}
@@ -889,10 +1121,16 @@ function blueworx_crawler_rules_filter( $output ) {
 	return $result;
 }
 
-if ( blueworx_feature_enabled( 'probe_block' ) || blueworx_feature_enabled( 'missing_page_limit' ) ) {
+if ( blueworx_feature_enabled( 'probe_block' ) ) {
 	// Priority 0: as early as a plugin can run, before the theme, the query or
 	// any template is touched.
 	add_action( 'plugins_loaded', 'blueworx_bot_control_early', 0 );
+}
+
+if ( blueworx_feature_enabled( 'missing_page_limit' ) ) {
+	// After plugins and the theme have loaded and single sign-on has taken its own
+	// requests (init), but before WordPress looks for a page or builds one.
+	add_action( 'wp_loaded', 'blueworx_missing_page_enforce_pause', 0 );
 }
 
 if ( blueworx_feature_enabled( 'missing_page_limit' ) || blueworx_feature_enabled( 'probe_block' ) ) {

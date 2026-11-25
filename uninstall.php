@@ -191,4 +191,5 @@ function blueworx_uninstall_site() {
 	delete_option( 'blueworx_probe_status' );
 	delete_option( 'blueworx_missing_page_limit' );
 	delete_option( 'blueworx_missing_page_pause' );
+	delete_option( 'blueworx_missing_page_paused_until' );
 }

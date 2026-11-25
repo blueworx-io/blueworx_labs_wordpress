@@ -696,19 +696,20 @@ function blueworx_sso_is_own_callback() {
 }
 
 /**
- * Routes sign-in and callback requests.
+ * Which part of the sign-in this request is for, if any.
  *
- * @return void
+ * The one answer to "is this a single sign-on request", used to route it and to
+ * leave it alone elsewhere (see includes/bot-control.php).
+ *
+ * @return string 'login', 'register', 'callback', or an empty string for any other request.
  */
-function blueworx_sso_dispatch() {
+function blueworx_sso_request_route() {
 	if ( ! blueworx_sso_enabled() ) {
-		return;
+		return '';
 	}
 
-	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Routing only; each branch does its own verification.
-	$action      = isset( $_GET['blueworx_sso'] ) ? sanitize_key( wp_unslash( $_GET['blueworx_sso'] ) ) : '';
-	$is_callback = 'callback' === $action || blueworx_sso_is_own_callback();
-	// phpcs:enable WordPress.Security.NonceVerification.Recommended
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Routing only; each branch does its own verification.
+	$action = isset( $_GET['blueworx_sso'] ) ? sanitize_key( wp_unslash( $_GET['blueworx_sso'] ) ) : '';
 
 	/**
 	 * Filters whether this request should start a sign-in.
@@ -720,7 +721,7 @@ function blueworx_sso_dispatch() {
 	 * @param string $action   The requested action, if any.
 	 */
 	if ( apply_filters( 'blueworx_sso_is_login_request', 'login' === $action, $action ) ) {
-		blueworx_sso_start( 'login' );
+		return 'login';
 	}
 
 	/**
@@ -733,7 +734,7 @@ function blueworx_sso_dispatch() {
 	 * @param string $action      The requested action, if any.
 	 */
 	if ( apply_filters( 'blueworx_sso_is_register_request', 'register' === $action, $action ) ) {
-		blueworx_sso_start( 'register' );
+		return 'register';
 	}
 
 	/*
@@ -742,8 +743,21 @@ function blueworx_sso_dispatch() {
 	 * return address keeps working without anyone re-registering anything, and
 	 * another integration's return traffic is left alone.
 	 */
-	if ( $is_callback ) {
+	return 'callback' === $action || blueworx_sso_is_own_callback() ? 'callback' : '';
+}
+
+/**
+ * Routes sign-in and callback requests.
+ *
+ * @return void
+ */
+function blueworx_sso_dispatch() {
+	$route = blueworx_sso_request_route();
+
+	if ( 'callback' === $route ) {
 		blueworx_sso_handle_callback();
+	} elseif ( '' !== $route ) {
+		blueworx_sso_start( $route );
 	}
 }
 add_action( 'init', 'blueworx_sso_dispatch', 1 );
