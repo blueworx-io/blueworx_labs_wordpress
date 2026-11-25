@@ -381,6 +381,7 @@ function blueworx_save_feature_settings() {
 	blueworx_save_media_tools_settings();
 	blueworx_save_content_tools_settings();
 	blueworx_save_revisions_settings();
+	blueworx_save_bot_control_settings();
 
 	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
@@ -510,6 +511,27 @@ function blueworx_save_media_tools_settings() {
 function blueworx_save_content_tools_settings() {
 	update_option( 'blueworx_duplicate_enabled', isset( $_POST['blueworx_duplicate_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
 	update_option( 'blueworx_external_permalinks_enabled', isset( $_POST['blueworx_external_permalinks_enabled'] ) ? '1' : '0' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+}
+
+/**
+ * Saves the scanner-bot settings.
+ *
+ * @return void
+ */
+function blueworx_save_bot_control_settings() {
+	if ( isset( $_POST['blueworx_probe_status'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+		$status = sanitize_key( wp_unslash( $_POST['blueworx_probe_status'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+
+		update_option( 'blueworx_probe_status', '403' === $status ? '403' : '404' );
+	}
+
+	if ( isset( $_POST['blueworx_missing_page_limit'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+		update_option( 'blueworx_missing_page_limit', max( 5, min( 1000, absint( wp_unslash( $_POST['blueworx_missing_page_limit'] ) ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	}
+
+	if ( isset( $_POST['blueworx_missing_page_pause'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+		update_option( 'blueworx_missing_page_pause', max( 1, min( 1440, absint( wp_unslash( $_POST['blueworx_missing_page_pause'] ) ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the calling handler.
+	}
 }
 
 /**
@@ -1230,6 +1252,73 @@ function blueworx_get_feature_detail_html( $key ) {
 		);
 
 		return blueworx_detail_stack( $fields );
+	}
+
+	if ( 'probe_block' === $key ) {
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'label'   => __( 'Answer a probe with', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_probe_status',
+					'control' => blueworx_ds_select(
+						array(
+							'name'     => 'blueworx_probe_status',
+							'id'       => 'blueworx_probe_status',
+							'options'  => array(
+								'404' => __( '404 Not found', 'blueworx-labs-wordpress' ),
+								'403' => __( '403 Forbidden', 'blueworx-labs-wordpress' ),
+							),
+							'selected' => (string) blueworx_probe_status(),
+						)
+					),
+					'help'    => __( 'Both are a short plain answer with no page built. 404 tells a bot nothing; 403 says the file is there but off limits. Covers hidden files (.env, .git), config and secret files, database dumps, backup archives, phpinfo and database admin tools.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		);
+	}
+
+	if ( 'missing_page_limit' === $key ) {
+		return blueworx_detail_stack(
+			blueworx_ds_field(
+				array(
+					'label'   => __( 'Missing pages one visitor may ask for', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_missing_page_limit',
+					'control' => blueworx_ds_input(
+						array(
+							'type'  => 'number',
+							'name'  => 'blueworx_missing_page_limit',
+							'id'    => 'blueworx_missing_page_limit',
+							'value' => (string) blueworx_missing_page_allowance(),
+							'small' => true,
+							'attrs' => array(
+								'min' => '5',
+								'max' => '1000',
+							),
+						)
+					),
+					'help'    => __( 'Counted per visitor over ten minutes. Missing images, scripts and other files are not counted, and neither are signed-in people. Visitors are told apart by their address, which is read directly or from Cloudflare. A site behind another proxy or load balancer is not counted until the host lists that proxy with the blueworx_trusted_proxies filter.', 'blueworx-labs-wordpress' ),
+				)
+			) . blueworx_ds_field(
+				array(
+					'label'   => __( 'Then pause them for (minutes)', 'blueworx-labs-wordpress' ),
+					'for'     => 'blueworx_missing_page_pause',
+					'control' => blueworx_ds_input(
+						array(
+							'type'  => 'number',
+							'name'  => 'blueworx_missing_page_pause',
+							'id'    => 'blueworx_missing_page_pause',
+							'value' => (string) blueworx_missing_page_pause_minutes(),
+							'small' => true,
+							'attrs' => array(
+								'min' => '1',
+								'max' => '1440',
+							),
+						)
+					),
+					'help'    => __( 'A paused visitor gets a short "too many requests" answer and no page is built. The sign-in screen and admin area always keep working.', 'blueworx-labs-wordpress' ),
+				)
+			)
+		);
 	}
 
 	if ( 'media_tools' === $key ) {

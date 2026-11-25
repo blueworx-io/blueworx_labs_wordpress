@@ -271,6 +271,27 @@ function blueworx_get_feature_definitions() {
 			'section'     => 'performance',
 			'detail'      => 'cache_manual',
 		),
+		'probe_block'           => array(
+			'label'       => __( 'Turn away scanner bots', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Bots probe sites for files like .env, backup.zip and phpinfo.php. Each probe is a missing page WordPress would build in full. This answers them with a short refusal before anything heavy loads. Normal pages, sign-in and checkout are never touched.', 'blueworx-labs-wordpress' ),
+			'section'     => 'performance',
+			'detail'      => 'probe_block',
+			'guide'       => false,
+		),
+		'missing_page_limit'    => array(
+			'label'       => __( 'Slow down visitors asking for missing pages', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Pauses any one visitor who asks for too many pages that do not exist, so a scanner stops using up the server. Missing images and files do not count, and sign-in always keeps working.', 'blueworx-labs-wordpress' ),
+			'section'     => 'performance',
+			'detail'      => 'missing_page_limit',
+			'guide'       => false,
+		),
+		'crawler_rules'         => array(
+			'label'       => __( 'Keep crawlers off cart, checkout and filtered shop pages', 'blueworx-labs-wordpress' ),
+			'description' => __( 'Adds rules to robots.txt that ask search engines and other crawlers to skip the cart, checkout, account and filtered or sorted shop pages. Works with the search engine rules above, and has no effect if a real robots.txt file sits on the server.', 'blueworx-labs-wordpress' ),
+			'section'     => 'performance',
+			'detail'      => null,
+			'guide'       => false,
+		),
 		'menu_editor'           => array(
 			'label'       => __( 'Menu editor', 'blueworx-labs-wordpress' ),
 			'description' => __( 'Lets you reorder menu items, hide them, or move them into More.', 'blueworx-labs-wordpress' ),

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.103.0] - 2026-11-24
+
+### Added
+- **Scanner bots turned away early.** Bots that probe for files like
+  `.env`, `backup.zip`, `wp-config.php.bak` and `phpinfo.php` now get a short
+  404 (or 403, your choice) before the theme or any page is built, which saves
+  the server the work. Normal pages, sign-in and checkout are untouched. Switch
+  it off under Performance as Turn away scanner bots.
+- **Visitors who keep asking for missing pages are paused.** After 30 missing
+  pages in ten minutes (you can change this) a visitor is told to slow down
+  for 15 minutes, again without building a page. Missing images and files
+  don't count, signed-in people are never paused and sign-in always works.
+  Switch it off under Performance.
+- **Crawlers kept off cart, checkout and filtered shop pages.** The site's
+  robots.txt now asks crawlers to skip the cart, checkout, account page and
+  sorted or filtered shop pages, whether the file comes from WordPress or from
+  the search engine rules setting. Switch it off under Performance.
+
 ## [1.102.4] - 2026-11-19
 
 ### Fixed
