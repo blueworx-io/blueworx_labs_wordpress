@@ -474,7 +474,7 @@ $GLOBALS['filters']['blueworx_trusted_proxies'] = function () {
 check( 'a proxy the host has named is believed', $limited( $direct + array( 'HTTP_X_FORWARDED_FOR' => '93.184.216.9' ) ), '93.184.216.9' );
 unset( $GLOBALS['filters']['blueworx_trusted_proxies'] );
 $GLOBALS['filters']['blueworx_visitor_ip'] = function ( $ip ) {
-	return empty( $_SERVER['HTTP_X_SUCURI_CLIENTIP'] ) ? $ip : $_SERVER['HTTP_X_SUCURI_CLIENTIP'];
+	return empty( $_SERVER['HTTP_X_SUCURI_CLIENTIP'] ) ? $ip : $_SERVER['HTTP_X_SUCURI_CLIENTIP']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- A test's own value.
 };
 check( 'a host that says who the visitor is is believed', $limited( $direct + array( 'HTTP_X_SUCURI_CLIENTIP' => '93.184.216.9' ) ), '93.184.216.9' );
 check( 'but not when it only hands the same address back', $limited( $direct + array( 'HTTP_X_FORWARDED_FOR' => '93.184.216.9' ) ), '' );

@@ -649,7 +649,7 @@ function blueworx_request_names_others( $ip ) {
 		$found = explode( ',', $value );
 
 		if ( 'HTTP_FORWARDED' === $name ) {
-			// for=1.2.3.4;proto=https, for="[2001:db8::1]"
+			// Looks like this: for=1.2.3.4;proto=https, for="[2001:db8::1]".
 			preg_match_all( '/for="?\[?([^\]",;]+)/i', $value, $matches );
 			$found = $matches[1] ? $matches[1] : array( '' );
 		}
