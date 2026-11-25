@@ -19,7 +19,13 @@ function blueworx_feature_enabled( $key ) {
 }
 function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
-	$GLOBALS['hooked'][ $hook ][] = $callback;
+	$GLOBALS['hooked'][ $hook ][]                = $callback;
+	$GLOBALS['hook_priority'][ $hook ][ $callback ] = $priority;
+}
+// Whether WordPress has reached init; most checks below stand after it.
+$GLOBALS['did_init'] = 1;
+function did_action( $hook ) {
+	return 'init' === $hook ? $GLOBALS['did_init'] : 0;
 }
 $GLOBALS['is_admin'] = false;
 function is_admin() {
@@ -245,11 +251,35 @@ $GLOBALS['filters']['blueworx_sso_is_login_request'] = function ( $is_login ) {
 	return $is_login || ! empty( $_GET['old_login'] );
 };
 check( 'an old sign-in address the site has claimed is left alone', $sso_request( array( 'old_login' => '1' ) ), true );
-unset( $GLOBALS['filters']['blueworx_sso_is_login_request'] );
+$GLOBALS['asked'] = 0;
+foreach ( array( 'blueworx_sso_is_login_request', 'blueworx_sso_is_register_request' ) as $filter ) {
+	$GLOBALS['filters'][ $filter ] = function ( $claimed ) {
+		++$GLOBALS['asked'];
+		return $claimed;
+	};
+}
+$GLOBALS['did_init'] = 0;
+$sso_request( array( 'old_login' => '1' ) );
+$sso_request( array() );
+check( "a site's own sign-in rules are never asked before WordPress is ready", $GLOBALS['asked'], 0 );
+$GLOBALS['did_init'] = 1;
+$sso_request( array( 'old_login' => '1' ) );
+check( 'and are asked once it is', $GLOBALS['asked'], 2 );
+unset( $GLOBALS['filters']['blueworx_sso_is_login_request'], $GLOBALS['filters']['blueworx_sso_is_register_request'] );
+$GLOBALS['hook_priority'] = array();
+$GLOBALS['hooked']        = array();
+blueworx_bot_control_hooks();
+check( 'with single sign-on on, probes wait until it has taken its own requests', $GLOBALS['hook_priority']['init']['blueworx_bot_control_early'] ?? 0, 2 );
+check( 'and are not turned away before', isset( $GLOBALS['hook_priority']['plugins_loaded'] ), false );
 foreach ( array_keys( $sso_options ) as $key ) {
 	update_option( $key, '' );
 }
 check( 'with single sign-on off, nothing is', $sso_request( array( 'blueworx_sso' => 'login' ) ), false );
+
+$GLOBALS['hook_priority'] = array();
+$GLOBALS['hooked']        = array();
+blueworx_bot_control_hooks();
+check( 'and probes are turned away as early as a plugin can', $GLOBALS['hook_priority']['plugins_loaded']['blueworx_bot_control_early'] ?? -1, 0 );
 
 echo "\nStatus and the missing-image exception\n";
 check( 'the answer defaults to 404', blueworx_probe_status(), 404 );
@@ -420,6 +450,13 @@ $worker = array(
 	'HTTP_CF_CONNECTING_IP' => '2a06:98c0:3600::103',
 );
 check( "Cloudflare's own address is never the visitor", $limited( $worker ), '' );
+$pseudo = array(
+	'REMOTE_ADDR'             => '172.67.1.1',
+	'HTTP_CF_CONNECTING_IP'   => '240.16.0.1',
+	'HTTP_X_FORWARDED_FOR'    => '240.16.0.1',
+	'HTTP_CF_CONNECTING_IPV6' => '2a00:1450::1',
+);
+check( 'a stand-in IPv4 address Cloudflare made up is never counted', $limited( $pseudo ), '' );
 $same = array(
 	'HTTP_X_REAL_IP'         => '93.184.216.9',
 	'HTTP_X_FORWARDED_PROTO' => 'https',
@@ -569,6 +606,20 @@ $rules                 = blueworx_crawler_rules();
 foreach ( array( '/panier/', '/panier$', '/panier?', '/boutique/commande/', '/boutique/commande?', '/?page_id=13$' ) as $path ) {
 	check( "a store's own page address is kept off: " . $path, in_array( 'Disallow: ' . $path, $rules, true ), true );
 }
+$GLOBALS['permalinks'][12] = 'https://example.test/commande/?lang=fr';
+$GLOBALS['permalinks'][13] = 'https://example.test/mon-compte?a=1&b=2';
+$rules                     = blueworx_crawler_rules();
+foreach ( array( '/commande/', '/commande$', '/commande?', '/mon-compte/', '/mon-compte?' ) as $path ) {
+	check( 'a shop page with a query of its own is kept off by its path: ' . $path, in_array( 'Disallow: ' . $path, $rules, true ), true );
+}
+$GLOBALS['permalinks'][12] = 'https://example.test/?lang=fr';
+$GLOBALS['permalinks'][13] = 'https://example.test/index.php?lang=fr&page_id=13';
+$rules                     = blueworx_crawler_rules();
+check( 'but never the front page in another language, or every page', preg_grep( '#^Disallow: (/|/index\.php)?[/$?]?$#', $rules ), array() );
+$GLOBALS['home_path']      = '/sub';
+$GLOBALS['permalinks'][12] = 'https://example.test/sub/?lang=fr';
+check( 'nor on a site in a folder', preg_grep( '#^Disallow: /sub[/$?]?$#', blueworx_crawler_rules() ), array() );
+$GLOBALS['home_path'] = '';
 $GLOBALS['unpublish'] = array( 11 );
 check( 'a page that is not published adds nothing', in_array( 'Disallow: /panier/', blueworx_crawler_rules(), true ), false );
 $GLOBALS['unpublish']  = array();

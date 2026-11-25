@@ -608,6 +608,12 @@ function blueworx_visitor_ip() {
  * Proxies, CDNs and load balancers add headers a browser never sends. Any one of
  * them is enough. A proxy that adds none of them cannot be told from a visitor.
  *
+ * On purpose, a header the visitor wrote counts too. A scanner can send one and
+ * dodge the limit, but nothing in the request tells that apart from a real proxy
+ * nobody has named, and pausing one of those pauses every shopper behind it. A
+ * host whose visitors all connect directly can return false from the
+ * blueworx_visitor_address_is_shared filter.
+ *
  * @return bool True when some proxy handled the request.
  */
 function blueworx_request_is_forwarded() {
@@ -674,6 +680,9 @@ function blueworx_visitor_address_is_shared( $ip ) {
 	$server = isset( $_SERVER['SERVER_ADDR'] ) ? (string) $_SERVER['SERVER_ADDR'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
 
 	// Private or reserved, shared by a carrier, or the machine asking itself.
+	// Reserved covers Cloudflare's stand-in IPv4 addresses (Pseudo IPv4, overwrite
+	// mode). Its CF-Connecting-IPv6 is not used instead: that mode also overwrites
+	// X-Forwarded-For, so a shared proxy in front of Cloudflare would not show.
 	if ( false === filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) || blueworx_ip_in_range( $ip, '100.64.0.0/10' ) || $ip === $server ) {
 		return true;
 	}
@@ -827,9 +836,9 @@ function blueworx_missing_page_pause_left( $ip ) {
 /**
  * Answers probe paths before WordPress does any real work.
  *
- * Not counted towards a pause: the theme has not loaded, so a host's own say
- * about visitor addresses may not be in place yet, and the answer is already as
- * cheap as a pause would be.
+ * Not counted towards a pause: the theme may not have loaded, so a host's own
+ * say about visitor addresses may not be in place yet, and the answer is already
+ * as cheap as a pause would be.
  *
  * @return void
  */
@@ -940,13 +949,9 @@ function blueworx_crawler_rules_for_url( $url, $base ) {
 	$query = wp_parse_url( $url, PHP_URL_QUERY );
 	$path  = is_string( $path ) && '' !== $path ? $path : '/';
 
-	if ( is_string( $query ) && '' !== $query ) {
-		// Only the plain-permalink forms WordPress itself uses, and only the whole
-		// value: page_id=7 must not catch page_id=70.
-		if ( ! preg_match( '/^(page_id|p)=\d+$/', $query ) ) {
-			return array();
-		}
-
+	if ( is_string( $query ) && preg_match( '/^(page_id|p)=\d+$/', $query ) ) {
+		// The plain-permalink forms WordPress itself uses, and only the whole value:
+		// page_id=7 must not catch page_id=70.
 		return array(
 			'Disallow: ' . $path . '?' . $query . '$',
 			'Disallow: ' . $path . '?' . $query . '&',
@@ -955,9 +960,10 @@ function blueworx_crawler_rules_for_url( $url, $base ) {
 
 	$trimmed = untrailingslashit( $path );
 
-	// The site's own front page is never a store page, and "/" would shut
-	// crawlers out of everything.
-	if ( '' === $trimmed || $trimmed === $base || 0 !== strpos( $trimmed, $base . '/' ) ) {
+	// Any other query (/commande/?lang=fr) is left off: the path is the page. The
+	// site's own front page is never a store page, and "/" (or /index.php) would
+	// shut crawlers out of everything.
+	if ( '' === $trimmed || $trimmed === $base || $base . '/index.php' === $trimmed || 0 !== strpos( $trimmed, $base . '/' ) ) {
 		return array();
 	}
 
@@ -1121,26 +1127,42 @@ function blueworx_crawler_rules_filter( $output ) {
 	return $result;
 }
 
-if ( blueworx_feature_enabled( 'probe_block' ) ) {
-	// Priority 0: as early as a plugin can run, before the theme, the query or
-	// any template is touched.
-	add_action( 'plugins_loaded', 'blueworx_bot_control_early', 0 );
-}
+/**
+ * Hooks each function that is switched on.
+ *
+ * @return void
+ */
+function blueworx_bot_control_hooks() {
+	$probe_on = blueworx_feature_enabled( 'probe_block' );
+	$limit_on = blueworx_feature_enabled( 'missing_page_limit' );
 
-if ( blueworx_feature_enabled( 'missing_page_limit' ) ) {
-	// After plugins and the theme have loaded and single sign-on has taken its own
-	// requests (init), but before WordPress looks for a page or builds one.
-	add_action( 'wp_loaded', 'blueworx_missing_page_enforce_pause', 0 );
-}
+	if ( $probe_on && blueworx_sso_enabled() ) {
+		// A site can claim any old address as its sign-in, and only from init on is
+		// it safe to ask which. Right after single sign-on has taken its own
+		// requests (init, priority 1), so one of those is never turned away.
+		add_action( 'init', 'blueworx_bot_control_early', 2 );
+	} elseif ( $probe_on ) {
+		// Priority 0: as early as a plugin can run, before the theme, the query or
+		// any template is touched.
+		add_action( 'plugins_loaded', 'blueworx_bot_control_early', 0 );
+	}
 
-if ( blueworx_feature_enabled( 'missing_page_limit' ) || blueworx_feature_enabled( 'probe_block' ) ) {
-	// Late, after WordPress's own redirects (an old page address, a missing
-	// trailing slash) have had their chance: those end in a page, not a miss.
-	add_action( 'template_redirect', 'blueworx_missing_page_count_404', 100 );
-}
+	if ( $limit_on ) {
+		// After plugins and the theme have loaded and single sign-on has taken its
+		// own requests (init), but before WordPress looks for a page or builds one.
+		add_action( 'wp_loaded', 'blueworx_missing_page_enforce_pause', 0 );
+	}
 
-if ( blueworx_feature_enabled( 'crawler_rules' ) ) {
-	// After the robots.txt editor (priority 20), so its content is what gets the
-	// rules added.
-	add_filter( 'robots_txt', 'blueworx_crawler_rules_filter', 30 );
+	if ( $limit_on || $probe_on ) {
+		// Late, after WordPress's own redirects (an old page address, a missing
+		// trailing slash) have had their chance: those end in a page, not a miss.
+		add_action( 'template_redirect', 'blueworx_missing_page_count_404', 100 );
+	}
+
+	if ( blueworx_feature_enabled( 'crawler_rules' ) ) {
+		// After the robots.txt editor (priority 20), so its content is what gets the
+		// rules added.
+		add_filter( 'robots_txt', 'blueworx_crawler_rules_filter', 30 );
+	}
 }
+blueworx_bot_control_hooks();

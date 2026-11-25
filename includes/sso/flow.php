@@ -701,10 +701,13 @@ function blueworx_sso_is_own_callback() {
  * The one answer to "is this a single sign-on request", used to route it and to
  * leave it alone elsewhere (see includes/bot-control.php).
  *
+ * Answers only from init on. A site's own filters may look up a page to
+ * recognise its address, and before init WordPress is not ready for that.
+ *
  * @return string 'login', 'register', 'callback', or an empty string for any other request.
  */
 function blueworx_sso_request_route() {
-	if ( ! blueworx_sso_enabled() ) {
+	if ( ! did_action( 'init' ) || ! blueworx_sso_enabled() ) {
 		return '';
 	}
 
