@@ -184,6 +184,35 @@ test.describe('Bot control', () => {
     }
   });
 
+  test('visitors who share one address behind an unknown proxy are never paused', async () => {
+    test.skip(!isLocal, 'Needs a site that believes the visitor address the test sends.');
+
+    // Every request reaches the site from the same proxy, as it does behind a
+    // content network nobody has told the site about.
+    const proxy = visitor();
+    const scanner = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { 'X-Forwarded-For': `${visitor()}, ${proxy}` },
+    });
+    const shopper = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { 'X-Forwarded-For': `${visitor()}, ${proxy}` },
+    });
+
+    try {
+      for (let i = 0; i < 35; i++) {
+        const res = await scanner.get(`/bw-shared-${i}/`, { maxRedirects: 0 });
+        expect(res.status()).toBe(404);
+      }
+
+      const home = await shopper.get('/');
+      expect(home.status()).toBe(200);
+    } finally {
+      await scanner.dispose();
+      await shopper.dispose();
+    }
+  });
+
   test('missing images, scripts and manifests do not count towards the limit', async () => {
     test.skip(!isLocal, 'Needs a site that believes the visitor address the test sends.');
 

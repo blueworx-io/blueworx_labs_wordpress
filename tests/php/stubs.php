@@ -85,6 +85,7 @@ function update_option( $key, $value, $autoload = null ) {
 }
 
 function get_transient( $key ) {
+	$GLOBALS['transient_reads'] = ( $GLOBALS['transient_reads'] ?? 0 ) + 1;
 	return array_key_exists( $key, $GLOBALS['transients'] ) ? $GLOBALS['transients'][ $key ] : false;
 }
 

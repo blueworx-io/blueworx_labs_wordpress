@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.103.1] - 2026-11-25
+
+### Fixed
+- **Pausing scanners is far more careful about real customers.** Visitors are only
+  paused when nothing suggests they share an address. Where a content network or
+  load balancer makes everyone look like one visitor, nobody is paused.
+  Signing in, single sign-on and the admin area always keep working, including
+  where WordPress lives in its own folder. Broken download links no longer
+  count, and a real page with an address like `/info.php` still opens. Sites
+  that have never paused anyone do no extra work.
+- **Search engine rules follow your real shop pages.** Renamed and translated
+  WooCommerce cart, checkout and account pages are now covered, and so are
+  checkout links that carry extra details. Rules you already have are kept as
+  they were.
+
 ## [1.103.0] - 2026-11-24
 
 ### Added

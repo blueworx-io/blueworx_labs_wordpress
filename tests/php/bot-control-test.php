@@ -18,7 +18,38 @@ function blueworx_feature_enabled( $key ) {
 	return true;
 }
 function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {}
-function add_action( $hook, $callback, $priority = 10, $args = 1 ) {}
+function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
+	$GLOBALS['hooked'][ $hook ][]                   = $callback;
+	$GLOBALS['hook_priority'][ $hook ][ $callback ] = $priority;
+}
+// Whether WordPress has reached init; most checks below stand after it.
+$GLOBALS['did_init'] = 1;
+function did_action( $hook ) {
+	return 'init' === $hook ? $GLOBALS['did_init'] : 0;
+}
+$GLOBALS['is_admin'] = false;
+function is_admin() {
+	return $GLOBALS['is_admin'];
+}
+function sanitize_key( $key ) {
+	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+}
+function wp_load_alloptions() {
+	return $GLOBALS['options'];
+}
+// A store's page settings: key => page id, and id => address.
+$GLOBALS['wc_pages']   = array();
+$GLOBALS['permalinks'] = array();
+$GLOBALS['unpublish']  = array();
+function wc_get_page_id( $page ) {
+	return isset( $GLOBALS['wc_pages'][ $page ] ) ? $GLOBALS['wc_pages'][ $page ] : -1;
+}
+function get_permalink( $id ) {
+	return isset( $GLOBALS['permalinks'][ $id ] ) ? $GLOBALS['permalinks'][ $id ] : false;
+}
+function get_post_status( $id ) {
+	return in_array( $id, $GLOBALS['unpublish'], true ) ? 'trash' : 'publish';
+}
 function wp_unslash( $value ) {
 	return $value;
 }
@@ -59,6 +90,9 @@ function home_url( $path = '' ) {
 
 $GLOBALS['home_path'] = '';
 
+// The real single sign-on routing, so the two can never disagree about it.
+require __DIR__ . '/../../includes/sso/sso.php';
+require __DIR__ . '/../../includes/sso/flow.php';
 require __DIR__ . '/../../includes/bot-control.php';
 
 echo "Probe paths are turned away\n";
@@ -111,6 +145,31 @@ foreach ( array( '/wp-config.php.bak', '/backup.zip', '/phpinfo.php', '/composer
 	check( 'turned away at once: ' . $path, blueworx_probe_path_matches( $path, false ), true );
 }
 
+echo "\nA file name that is a page address on this site waits for WordPress\n";
+update_option( 'permalink_structure', '/%postname%.php' );
+foreach ( array( '/info.php', '/test.php', '/phpinfo.php' ) as $path ) {
+	check( 'a .php permalink waits: ' . $path, blueworx_probe_path_matches( $path, false ), false );
+	check( 'and is a probe once WordPress finds no page: ' . $path, blueworx_probe_path_matches( $path ), true );
+}
+foreach ( array( '/.env', '/backup.zip', '/composer.json', '/wp-content/uploads/x.php', '/.git/index.php' ) as $path ) {
+	check( 'the rest are still turned away at once: ' . $path, blueworx_probe_path_matches( $path, false ), true );
+}
+update_option( 'permalink_structure', '/%postname%/' );
+update_option(
+	'rewrite_rules',
+	array(
+		'([^/]+)\.php/?$'                                  => 'index.php?pagename=$matches[1]',
+		'.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\.php$' => 'index.php?feed=old',
+	)
+);
+check( "a plugin's own .php page rule counts too", blueworx_probe_path_matches( '/info.php', false ), false );
+$GLOBALS['home_path'] = '/club';
+check( 'on a site in a folder as well', blueworx_probe_path_matches( '/club/info.php', false ), false );
+$GLOBALS['home_path'] = '';
+update_option( 'rewrite_rules', array( '.*wp-(atom|rdf|rss|rss2|feed|commentsrss2)\.php$' => 'index.php?feed=old' ) );
+check( "WordPress's own old feed rule does not", blueworx_probe_path_matches( '/info.php', false ), true );
+update_option( 'rewrite_rules', '' );
+
 echo "\nOrdinary paths are left alone\n";
 $normal = array(
 	'/',
@@ -160,6 +219,81 @@ check( 'the admin area of a site in a folder', blueworx_bot_path_is_exempt( '/cl
 check( 'REST of a site in a folder', blueworx_bot_path_is_exempt( '/club/wp-json/wp/v2/posts' ), true );
 $GLOBALS['home_path'] = '';
 
+$GLOBALS['is_admin'] = true;
+check( 'the admin area of WordPress in its own folder', blueworx_bot_path_is_exempt( '/wordpress/wp-admin/index.php' ), true );
+$GLOBALS['is_admin'] = false;
+check( 'a page that merely has wp-admin in it is not the admin area', blueworx_bot_path_is_exempt( '/wordpress/wp-admin/nope' ), false );
+
+echo "\nOnly the sign-ins single sign-on really handles are left alone\n";
+$sso_options = array(
+	'blueworx_sso_issuer'        => 'https://idp.test',
+	'blueworx_sso_client_id'     => 'client-abc',
+	'blueworx_sso_client_secret' => 'shhh',
+);
+foreach ( $sso_options as $key => $value ) {
+	update_option( $key, $value );
+}
+$sso_request = function ( $args, $path = '/no-such-page/' ) {
+	$_GET   = $args;
+	$exempt = blueworx_bot_path_is_exempt( $path, http_build_query( $args ) );
+	$_GET   = array();
+	return $exempt;
+};
+foreach ( array( 'login', 'register', 'callback' ) as $action ) {
+	check( 'a real one is left alone: ' . $action, $sso_request( array( 'blueworx_sso' => $action ) ), true );
+}
+check( 'an action nobody handles is an ordinary request', $sso_request( array( 'blueworx_sso' => 'anything' ) ), false );
+check( 'and so is an empty one', $sso_request( array( 'blueworx_sso' => '' ) ), false );
+set_transient( blueworx_sso_attempt_key( 'issued' ), array( 'nonce' => 'n' ) );
+check( "the provider's return with a state this site issued is left alone", $sso_request( array( 'state' => 'issued' ) ), true );
+check( 'any other state is not', $sso_request( array( 'state' => 'made-up' ) ), false );
+$GLOBALS['filters']['blueworx_sso_is_login_request'] = function ( $is_login ) {
+	return $is_login || ! empty( $_GET['old_login'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- A test's own value.
+};
+check( 'an old sign-in address the site has claimed is left alone', $sso_request( array( 'old_login' => '1' ) ), true );
+$GLOBALS['asked'] = 0;
+foreach ( array( 'blueworx_sso_is_login_request', 'blueworx_sso_is_register_request' ) as $filter ) {
+	$GLOBALS['filters'][ $filter ] = function ( $claimed ) {
+		++$GLOBALS['asked'];
+		return $claimed;
+	};
+}
+$GLOBALS['did_init'] = 0;
+$sso_request( array( 'old_login' => '1' ) );
+$sso_request( array() );
+check( "a site's own sign-in rules are never asked before WordPress is ready", $GLOBALS['asked'], 0 );
+$GLOBALS['did_init'] = 1;
+$sso_request( array( 'old_login' => '1' ) );
+check( 'and are asked once it is', $GLOBALS['asked'], 2 );
+unset( $GLOBALS['filters']['blueworx_sso_is_login_request'], $GLOBALS['filters']['blueworx_sso_is_register_request'] );
+$GLOBALS['hook_priority'] = array();
+$GLOBALS['hooked']        = array();
+update_option( 'blueworx_sso_client_secret', '' );
+blueworx_bot_control_hooks();
+update_option( 'blueworx_sso_client_secret', 'shhh' );
+// Single sign-on was not set up when the hooks were added; another plugin has
+// supplied its settings by the time they run.
+$GLOBALS['did_init'] = 0;
+
+$_SERVER['REQUEST_URI'] = '/.sso/start';
+check( 'probes wait for every plugin to load', $GLOBALS['hook_priority']['plugins_loaded']['blueworx_bot_control_early'] ?? 0, PHP_INT_MAX );
+blueworx_bot_control_early();
+check( 'with single sign-on on, probes wait until it has taken its own requests', $GLOBALS['hook_priority']['init']['blueworx_bot_control_early'] ?? 0, 2 );
+$GLOBALS['did_init'] = 1;
+foreach ( array_keys( $sso_options ) as $key ) {
+	update_option( $key, '' );
+}
+check( 'with single sign-on off, nothing is', $sso_request( array( 'blueworx_sso' => 'login' ) ), false );
+
+$GLOBALS['hook_priority'] = array();
+$GLOBALS['hooked']        = array();
+blueworx_bot_control_hooks();
+$GLOBALS['did_init'] = 0;
+blueworx_bot_control_early();
+check( 'and probes are not put off', isset( $GLOBALS['hook_priority']['init'] ), false );
+$GLOBALS['did_init'] = 1;
+unset( $_SERVER['REQUEST_URI'] );
+
 echo "\nStatus and the missing-image exception\n";
 check( 'the answer defaults to 404', blueworx_probe_status(), 404 );
 update_option( 'blueworx_probe_status', '403' );
@@ -171,6 +305,14 @@ check( 'a missing page is not', blueworx_path_is_static_asset( '/no-such-page/' 
 foreach ( array( '/assets/app.mjs', '/site.webmanifest', '/manifest.json', '/a/b.wasm', '/index.php/x.cjs' ) as $path ) {
 	check( 'a missing script or manifest is an asset: ' . $path, blueworx_path_is_static_asset( $path ), true );
 }
+
+foreach ( array( '/files/prices.csv', '/files/pack.zip', '/files/form.docx', '/files/list.XLSX', '/files/deck.pptx', '/files/site.tar.gz', '/files/event.ics', '/files/notes.txt' ) as $path ) {
+	check( 'a missing download is a file, not a page: ' . $path, blueworx_path_is_static_asset( $path ), true );
+}
+foreach ( array( '/blog/zip/', '/how-to-open-a-csv/', '/old-page.html', '/old-page.php' ) as $path ) {
+	check( 'a missing page still counts: ' . $path, blueworx_path_is_static_asset( $path ), false );
+}
+check( 'a backup archive is still a probe', blueworx_probe_path_matches( '/backup.zip' ), true );
 
 echo "\nVisitor address\n";
 $server_backup = $_SERVER;
@@ -236,7 +378,140 @@ $_SERVER = array(
 check( 'behind Cloudflare, its header is used', blueworx_visitor_ip(), '93.184.216.20' );
 $_SERVER = array( 'REMOTE_ADDR' => '127.0.0.1' );
 check( 'with no usable address nobody is counted', blueworx_visitor_ip(), '' );
+$_SERVER = array(
+	'REMOTE_ADDR'          => '127.0.0.1',
+	'HTTP_X_FORWARDED_FOR' => '93.184.216.9, 10.0.0.5',
+);
+check( 'the first address that is not trusted ends the search, even a private one', blueworx_visitor_ip(), '' );
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '93.184.216.9, unknown';
+check( 'and one that cannot be read', blueworx_visitor_ip(), '' );
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '93.184.216.9, 127.0.0.2';
+check( 'a known proxy on the way is still skipped', blueworx_visitor_ip(), '93.184.216.9' );
+
+echo "\nAn address that may be shared is never counted or paused\n";
+$limited = function ( $server ) {
+	$_SERVER = $server;
+	return blueworx_limited_visitor_ip();
+};
+$direct  = array( 'REMOTE_ADDR' => '93.184.216.5' );
+$local   = array(
+	'REMOTE_ADDR'          => '127.0.0.1',
+	'HTTP_X_FORWARDED_FOR' => '93.184.216.9',
+);
+$cloud   = array(
+	'REMOTE_ADDR'           => '172.67.1.1',
+	'HTTP_CF_CONNECTING_IP' => '93.184.216.20',
+);
+check( 'a visitor who connects directly is counted', $limited( $direct ), '93.184.216.5' );
+$ordinary = array(
+	'SERVER_ADDR'           => '93.184.216.1',
+	'HTTP_HOST'             => 'example.test',
+	'HTTP_USER_AGENT'       => 'Mozilla',
+	'HTTP_ACCEPT'           => '*/*',
+	'HTTP_REFERER'          => 'https://example.test/',
+	'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest',
+	'HTTP_CACHE_CONTROL'    => 'no-cache',
+	'HTTP_X_FORWARDED_FOR'  => '',
+);
+check( 'so is one who sends only ordinary headers', $limited( $direct + $ordinary ), '93.184.216.5' );
+$markers = array(
+	'HTTP_X_FORWARDED_FOR'          => '93.184.216.9',
+	'HTTP_X_FORWARDED_PROTO'        => 'https',
+	'HTTP_X_FORWARDED_HOST'         => 'example.test',
+	'HTTP_FORWARDED'                => 'for=93.184.216.9',
+	'HTTP_VIA'                      => '1.1 varnish',
+	'HTTP_X_REAL_IP'                => '93.184.216.9',
+	'HTTP_CLIENT_IP'                => '93.184.216.9',
+	'HTTP_TRUE_CLIENT_IP'           => '93.184.216.9',
+	'HTTP_X_CLUSTER_CLIENT_IP'      => '93.184.216.9',
+	'HTTP_CF_CONNECTING_IP'         => '93.184.216.9',
+	'HTTP_CF_RAY'                   => 'abc',
+	'HTTP_FASTLY_CLIENT_IP'         => '93.184.216.9',
+	'HTTP_X_SUCURI_CLIENTIP'        => '93.184.216.9',
+	'HTTP_INCAP_CLIENT_IP'          => '93.184.216.9',
+	'HTTP_CDN_LOOP'                 => 'some-cdn',
+	'HTTP_X_AMZ_CF_ID'              => 'abc',
+	'HTTP_X_AMZN_TRACE_ID'          => 'Root=1',
+	'HTTP_X_CLOUD_TRACE_CONTEXT'    => 'abc',
+	'HTTP_X_AZURE_SOCKETIP'         => '93.184.216.9',
+	'HTTP_X_ENVOY_EXTERNAL_ADDRESS' => '93.184.216.9',
+	'HTTP_X_VARNISH'                => '123',
+);
+foreach ( $markers as $header => $value ) {
+	check( 'nobody is counted behind a proxy nobody has vouched for: ' . $header, $limited( $direct + array( $header => $value ) ), '' );
+}
+check( 'the machine asking itself is not a visitor', $limited( $direct + array( 'SERVER_ADDR' => '93.184.216.5' ) ), '' );
+check( 'nor is an address a carrier shares', $limited( array( 'REMOTE_ADDR' => '100.64.3.4' ) ), '' );
+$usual = array(
+	'HTTP_X_FORWARDED_FOR'   => '93.184.216.20',
+	'HTTP_X_FORWARDED_PROTO' => 'https',
+	'HTTP_CDN_LOOP'          => 'cloudflare; loops=1',
+	'HTTP_CF_RAY'            => 'abc',
+	'HTTP_CF_IPCOUNTRY'      => 'ZA',
+	'HTTP_CF_VISITOR'        => '{"scheme":"https"}',
+);
+check( 'Cloudflare says who the visitor is', $limited( $cloud + $usual ), '93.184.216.20' );
+$six = array(
+	'REMOTE_ADDR'           => '172.67.1.1',
+	'HTTP_CF_CONNECTING_IP' => '2a00:1450::1',
+	'HTTP_X_FORWARDED_FOR'  => '2a00:1450:0:0::1',
+);
+check( 'an IPv6 address written another way is the same visitor', $limited( $six ), '2a00:1450::1' );
+check( 'another proxy in front of Cloudflare hides the visitor', $limited( $cloud + array( 'HTTP_X_FORWARDED_FOR' => '8.8.8.8, 93.184.216.20' ) ), '' );
+$worker = array(
+	'REMOTE_ADDR'           => '172.67.1.1',
+	'HTTP_CF_CONNECTING_IP' => '2a06:98c0:3600::103',
+);
+check( "Cloudflare's own address is never the visitor", $limited( $worker ), '' );
+$pseudo = array(
+	'REMOTE_ADDR'             => '172.67.1.1',
+	'HTTP_CF_CONNECTING_IP'   => '240.16.0.1',
+	'HTTP_X_FORWARDED_FOR'    => '240.16.0.1',
+	'HTTP_CF_CONNECTING_IPV6' => '2a00:1450::1',
+);
+check( 'a stand-in IPv4 address Cloudflare made up is never counted', $limited( $pseudo ), '' );
+$same = array(
+	'HTTP_X_REAL_IP'         => '93.184.216.9',
+	'HTTP_X_FORWARDED_PROTO' => 'https',
+	'HTTP_FORWARDED'         => 'for=93.184.216.9;proto=https',
+);
+check( 'a proxy on the same machine says who the visitor is', $limited( $local + $same ), '93.184.216.9' );
+check( 'an unknown proxy in front of that one hides the visitor', $limited( array( 'HTTP_X_FORWARDED_FOR' => '8.8.8.8, 93.184.216.9' ) + $local ), '' );
+check( 'even when only another header shows it', $limited( $local + array( 'HTTP_X_SUCURI_CLIENTIP' => '8.8.8.8' ) ), '' );
+check( 'or only a Via header', $limited( $local + array( 'HTTP_VIA' => '1.1 some-cdn' ) ), '' );
+check( 'or a Forwarded header', $limited( $local + array( 'HTTP_FORWARDED' => 'for=8.8.8.8;proto=https' ) ), '' );
+check( 'or one that cannot be read', $limited( $local + array( 'HTTP_FORWARDED' => 'for=_hidden' ) ), '' );
+$GLOBALS['filters']['blueworx_trusted_proxies'] = function () {
+	return array( '93.184.216.5' );
+};
+check( 'a proxy the host has named is believed', $limited( $direct + array( 'HTTP_X_FORWARDED_FOR' => '93.184.216.9' ) ), '93.184.216.9' );
+unset( $GLOBALS['filters']['blueworx_trusted_proxies'] );
+$GLOBALS['filters']['blueworx_visitor_ip'] = function ( $ip ) {
+	return empty( $_SERVER['HTTP_X_SUCURI_CLIENTIP'] ) ? $ip : $_SERVER['HTTP_X_SUCURI_CLIENTIP']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- A test's own value.
+};
+check( 'a host that says who the visitor is is believed', $limited( $direct + array( 'HTTP_X_SUCURI_CLIENTIP' => '93.184.216.9' ) ), '93.184.216.9' );
+check( 'but not when it only hands the same address back', $limited( $direct + array( 'HTTP_X_FORWARDED_FOR' => '93.184.216.9' ) ), '' );
+check( 'and never with the address of a proxy', $limited( $direct + array( 'HTTP_X_SUCURI_CLIENTIP' => '172.67.1.1' ) ), '' );
+unset( $GLOBALS['filters']['blueworx_visitor_ip'] );
+$GLOBALS['filters']['blueworx_visitor_address_is_shared'] = function () {
+	return false;
+};
+check( 'a host that has put the real address back can say so', $limited( $direct + array( 'HTTP_X_FORWARDED_FOR' => '93.184.216.5' ) ), '93.184.216.5' );
+unset( $GLOBALS['filters']['blueworx_visitor_address_is_shared'] );
 $_SERVER = $server_backup;
+
+echo "\nCounting and pausing use the same address\n";
+$hooked_on = function ( $hook ) {
+	return isset( $GLOBALS['hooked'][ $hook ] ) ? $GLOBALS['hooked'][ $hook ] : array();
+};
+check( 'pauses are enforced once the theme has loaded', in_array( 'blueworx_missing_page_enforce_pause', $hooked_on( 'wp_loaded' ), true ), true );
+check( 'and not before it has had its say', in_array( 'blueworx_missing_page_enforce_pause', $hooked_on( 'plugins_loaded' ), true ), false );
+check( 'probes are still turned away as early as before', in_array( 'blueworx_bot_control_early', $hooked_on( 'plugins_loaded' ), true ), true );
+
+echo "\nNothing is looked up while nobody is paused\n";
+$GLOBALS['transient_reads'] = 0;
+check( 'a visitor is not paused', blueworx_missing_page_pause_left( '93.184.216.200' ), 0 );
+check( 'and nothing was looked up to find out', $GLOBALS['transient_reads'], 0 );
 
 echo "\nA visitor is paused after too many missing pages\n";
 update_option( 'blueworx_missing_page_limit', 5 );
@@ -249,6 +524,15 @@ blueworx_missing_page_record( '93.184.216.9' );
 $left = blueworx_missing_page_pause_left( '93.184.216.9' );
 check( 'the fifth pauses them', $left > 14 * 60 && $left <= 15 * 60, true );
 check( 'another visitor is not affected', blueworx_missing_page_pause_left( '93.184.216.10' ), 0 );
+update_option( 'blueworx_missing_page_paused_until', time() - 1 );
+$GLOBALS['transient_reads'] = 0;
+check( 'once every pause is over nobody is paused', blueworx_missing_page_pause_left( '93.184.216.9' ), 0 );
+check( 'and nothing is looked up again', $GLOBALS['transient_reads'], 0 );
+update_option( 'blueworx_missing_page_paused_until', time() + 5 * HOUR_IN_SECONDS );
+for ( $i = 1; $i <= 5; $i++ ) {
+	blueworx_missing_page_record( '93.184.216.11' );
+}
+check( 'a shorter pause never cuts a longer one short', get_option( 'blueworx_missing_page_paused_until' ) > time() + 4 * HOUR_IN_SECONDS, true );
 blueworx_missing_page_record( '' );
 check( 'an unknown visitor is never counted', blueworx_missing_page_pause_left( '' ), 0 );
 update_option( 'blueworx_missing_page_limit', 1 );
@@ -302,6 +586,68 @@ $sitemap = "User-agent: Bingbot\nSitemap: https://example.test/sitemap.xml\nUser
 $out     = blueworx_crawler_rules_filter( $sitemap );
 check( 'a Sitemap line between two User-agent lines does not split the group', 0 === strpos( $out, "User-agent: Bingbot\nSitemap: https://example.test/sitemap.xml\nUser-agent: *\nDisallow: /cart/" ), true );
 check( 'and no second group is made', substr_count( strtolower( $out ), 'user-agent:' ), 2 );
+
+$delay = "User-agent: Googlebot\nCrawl-delay: 5\nUser-agent: Bingbot\nDisallow: /private/\n";
+$out   = blueworx_crawler_rules_filter( $delay );
+check( 'a Crawl-delay line does not split a shared group', 0 === strpos( $out, "User-agent: Googlebot\nCrawl-delay: 5\nUser-agent: Bingbot\nDisallow: /cart/" ), true );
+$host = "User-agent: Googlebot\nHost: example.test\nNoindex: /x/\nUser-agent: *\nAllow: /\n";
+$out  = blueworx_crawler_rules_filter( $host );
+check( 'nor does any other line that is not a rule', 0 === strpos( $out, "User-agent: Googlebot\nHost: example.test\nNoindex: /x/\nUser-agent: *\nDisallow: /cart/" ), true );
+$ends = "User-agent: Googlebot\nAllow: /a/\nUser-agent: *\nDisallow: /b/\n";
+$out  = blueworx_crawler_rules_filter( $ends );
+check( 'an Allow line still ends one', substr_count( $out, "Disallow: /cart/\n" ), 2 );
+
+$case = "User-agent: *\ndisallow:/Cart/\nDISALLOW: /checkout/ # ours\n";
+$out  = blueworx_crawler_rules_filter( $case );
+check( 'a rule for /Cart/ does not stand in for /cart/', false !== strpos( $out, "Disallow: /cart/\n" ), true );
+check( 'a rule is the same however Disallow is written', strpos( $out, "Disallow: /checkout/\n" ), false );
+
+check( 'a checkout link with a query and no closing slash is kept off', in_array( 'Disallow: /checkout?', blueworx_crawler_rules(), true ), true );
+check( 'without catching a page that starts with the same word', in_array( 'Disallow: /checkout', blueworx_crawler_rules(), true ), false );
+
+$GLOBALS['wc_pages']   = array(
+	'cart'      => 11,
+	'checkout'  => 12,
+	'myaccount' => 13,
+);
+$GLOBALS['permalinks'] = array(
+	11 => 'https://example.test/panier/',
+	12 => 'https://example.test/boutique/commande',
+	13 => 'https://example.test/?page_id=13',
+);
+$rules                 = blueworx_crawler_rules();
+foreach ( array( '/panier/', '/panier$', '/panier?', '/boutique/commande/', '/boutique/commande?', '/?page_id=13$' ) as $path ) {
+	check( "a store's own page address is kept off: " . $path, in_array( 'Disallow: ' . $path, $rules, true ), true );
+}
+$GLOBALS['permalinks'][12] = 'https://example.test/commande/?lang=fr';
+$GLOBALS['permalinks'][13] = 'https://example.test/mon-compte?lang=fr-fr';
+$rules                     = blueworx_crawler_rules();
+foreach ( array( '/commande/', '/commande$', '/commande?', '/mon-compte/', '/mon-compte?' ) as $path ) {
+	check( 'a shop page with a query of its own is kept off by its path: ' . $path, in_array( 'Disallow: ' . $path, $rules, true ), true );
+}
+$GLOBALS['permalinks'][11] = 'https://example.test/shop/?view=cart';
+$GLOBALS['permalinks'][12] = 'https://example.test/shop/?page_id=12&lang=fr';
+$GLOBALS['permalinks'][13] = 'https://example.test/shop/?lang=fr&page_id=13';
+$rules                     = blueworx_crawler_rules();
+check( 'a page picked by a query never shuts off the path it shares', preg_grep( '#^Disallow: /shop[/$?]?$#', $rules ), array() );
+check( 'it is kept off by the query that picks it', in_array( 'Disallow: /shop/?page_id=12&', $rules, true ), true );
+check( 'wherever in the query that is', in_array( 'Disallow: /shop/?*&page_id=13$', $rules, true ), true );
+check( 'and a page whose number starts the same is not caught', array_intersect( array( 'Disallow: /shop/?page_id=12', 'Disallow: /shop/?*&page_id=13' ), $rules ), array() );
+$GLOBALS['permalinks'][12] = 'https://example.test/?lang=fr';
+$GLOBALS['permalinks'][13] = 'https://example.test/index.php?lang=fr&page_id=13';
+$rules                     = blueworx_crawler_rules();
+check( 'but never the front page in another language, or every page', preg_grep( '#^Disallow: (/|/index\.php)?[/$?]?$#', $rules ), array() );
+$GLOBALS['home_path']      = '/sub';
+$GLOBALS['permalinks'][12] = 'https://example.test/sub/?lang=fr';
+check( 'nor on a site in a folder', preg_grep( '#^Disallow: /sub[/$?]?$#', blueworx_crawler_rules() ), array() );
+$GLOBALS['home_path'] = '';
+$GLOBALS['unpublish'] = array( 11 );
+check( 'a page that is not published adds nothing', in_array( 'Disallow: /panier/', blueworx_crawler_rules(), true ), false );
+$GLOBALS['unpublish']  = array();
+$GLOBALS['permalinks'] = array( 12 => 'https://example.test/' );
+check( 'a checkout on the front page never shuts crawlers out', array_intersect( array( 'Disallow: /', 'Disallow: $', 'Disallow: /$', 'Disallow: ?', 'Disallow: /?' ), blueworx_crawler_rules() ), array() );
+$GLOBALS['wc_pages']   = array();
+$GLOBALS['permalinks'] = array();
 
 $GLOBALS['store_urls'] = array(
 	'checkout'  => 'https://example.test/pay-here/',
