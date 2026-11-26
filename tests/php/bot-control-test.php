@@ -130,6 +130,11 @@ $probes = array(
 	'/shop/.env',
 	'/sub/backup.zip',
 	'/x%00.jpg',
+	'/aws-credentials.txt',
+	'/credentials.txt',
+	'/_next/static/chunks/main.js',
+	'/_next/data/abc/index.json',
+	'/_nuxt/entry.js',
 );
 
 foreach ( $probes as $path ) {
@@ -137,11 +142,11 @@ foreach ( $probes as $path ) {
 }
 
 echo "\nNames that could be a real page wait for WordPress\n";
-foreach ( array( '/docs/phpunit/', '/phpmyadmin/', '/adminer', '/server-status' ) as $path ) {
+foreach ( array( '/docs/phpunit/', '/phpmyadmin/', '/adminer', '/server-status', '/katalog/', '/katalog/product-123' ) as $path ) {
 	check( 'not turned away at once: ' . $path, blueworx_probe_path_matches( $path, false ), false );
 	check( 'but a probe once WordPress finds no page: ' . $path, blueworx_probe_path_matches( $path ), true );
 }
-foreach ( array( '/wp-config.php.bak', '/backup.zip', '/phpinfo.php', '/composer.json', '/db.sql', '/wp-content/uploads/x.php', '/dot/.git/config' ) as $path ) {
+foreach ( array( '/wp-config.php.bak', '/backup.zip', '/phpinfo.php', '/composer.json', '/db.sql', '/wp-content/uploads/x.php', '/dot/.git/config', '/aws-credentials.txt', '/_next/static/chunks/main.js' ) as $path ) {
 	check( 'turned away at once: ' . $path, blueworx_probe_path_matches( $path, false ), true );
 }
 
@@ -183,6 +188,7 @@ $normal = array(
 	'/backup-your-site-guide/',
 	'/blog/how-to-make-a-backup/',
 	'/info/',
+	'/products/_next-day-delivery/',
 	'/test/',
 	'/config/',
 	'/wp-login.php',

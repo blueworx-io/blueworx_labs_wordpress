@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.0] - 2026-11-26
+
+### Added
+- **Speed defaults for every site**, each with its own switch under
+  Performance, all on by default:
+  - **No cart checks for visitors who cannot buy.** On a WooCommerce store
+    where you have to sign in to buy, signed-out visitors are no longer checked
+    for a cart, which was a request the page cache never answered. Stores that
+    allow guest checkout are untouched.
+  - **SureRank broken-link checks paused.** The checks SureRank makes by
+    visiting every link are no longer run. Everything else in SureRank carries on.
+  - **Heavy crawlers asked to slow down** in robots.txt. Google and Bing are
+    never slowed.
+  - **Weekly clear-out** of old finished WooCommerce background jobs, expired
+    temporary data and expired visitor sessions.
+  - **Slow-page log.** Pages that take longer than two seconds (you can change
+    this) are remembered, with no personal details, and shown under Performance.
+  - **Weekly speed report**, emailed to BlueWorx (you can change where): the
+    uncached home page time, the slowest pages, and whether the object cache is
+    really being used on uncached pages, not only switched on. A button sends
+    one straight away.
+- **More scanner probes turned away early:** `aws-credentials.txt`,
+  `credentials.txt`, `/_next/...` and `/_nuxt/...` get the short refusal at
+  once, and `/katalog/...` does once WordPress finds no page there.
+
 ## [1.103.1] - 2026-11-25
 
 ### Fixed

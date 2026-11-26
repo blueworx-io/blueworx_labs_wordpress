@@ -171,9 +171,20 @@ function blueworx_probe_path_matches( $path, $include_ambiguous = true ) {
  */
 function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 	// Folders that are only ever somebody else's admin tool or a leftover.
-	$folders = array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules' );
+	// "katalog" is a folder bots guess on shop sites; a real page of that name is
+	// found by WordPress first, since these are only turned away once it says
+	// there is nothing there.
+	$folders = apply_filters( 'blueworx_probe_folders', array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules', 'katalog' ) );
 
-	if ( $include_ambiguous && array_intersect( $folders, $segments ) ) {
+	if ( $include_ambiguous && array_intersect( (array) $folders, $segments ) ) {
+		return true;
+	}
+
+	// Build folders of other web frameworks (/_next/static/..., /_nuxt/...). A
+	// WordPress site has none, so there is nothing here for WordPress to find.
+	$within = blueworx_segments_within_site( $segments );
+
+	if ( isset( $within[0] ) && in_array( $within[0], array( '_next', '_nuxt' ), true ) ) {
 		return true;
 	}
 
@@ -191,6 +202,11 @@ function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 		'secrets.yml',
 		'credentials',
 		'credentials.json',
+		'credentials.txt',
+		'aws-credentials',
+		'aws-credentials.txt',
+		'aws_credentials',
+		'aws_credentials.txt',
 		'appsettings.json',
 		'database.yml',
 		'sftp-config.json',

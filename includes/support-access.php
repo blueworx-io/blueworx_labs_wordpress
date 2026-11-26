@@ -320,6 +320,11 @@ function blueworx_labs_deactivate_site() {
 
 	// The email log's daily clear-out. The rows stay: uninstall removes them.
 	wp_clear_scheduled_hook( 'blueworx_email_log_prune' );
+
+	// The speed functions' weekly events. Their settings stay until uninstall.
+	wp_clear_scheduled_hook( 'blueworx_weekly_cleanup' );
+	wp_clear_scheduled_hook( 'blueworx_weekly_cleanup_more' );
+	wp_clear_scheduled_hook( 'blueworx_weekly_speed_report' );
 }
 
 /**

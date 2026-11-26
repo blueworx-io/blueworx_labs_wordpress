@@ -250,7 +250,8 @@ test.describe('Bot control', () => {
       expect(text).toContain('Disallow: /cart/');
       expect(text).toContain('Disallow: /checkout/');
       expect(text).toContain('Disallow: /*?*orderby=');
-      expect(text.toLowerCase().match(/user-agent:/g)).toHaveLength(1);
+      // Only one group for everybody: crawlers read the first and ignore the rest.
+      expect(text.toLowerCase().match(/user-agent:\s*\*/g)).toHaveLength(1);
     } finally {
       await api.dispose();
     }
