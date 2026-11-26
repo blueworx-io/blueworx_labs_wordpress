@@ -294,7 +294,7 @@ function blueworx_get_feature_definitions() {
 		),
 		'guest_cart_checks'     => array(
 			'label'       => __( 'No cart checks for visitors who cannot buy', 'blueworx-labs-wordpress' ),
-			'description' => __( 'On a WooCommerce store where you have to sign in to buy, signed-out visitors no longer ask the server what is in a cart they cannot have. Each of those checks is a page-sized job the page cache never answers. Stores that allow guest checkout are not affected.', 'blueworx-labs-wordpress' ),
+			'description' => __( 'On a WooCommerce store where you have to sign in to buy, a signed-out visitor with nothing in a cart no longer asks the server what is in it. Each of those checks is a page-sized job the page cache never answers. Anyone with a cart in progress, and every store that allows guest checkout, is not affected.', 'blueworx-labs-wordpress' ),
 			'section'     => 'performance',
 			'detail'      => null,
 			'guide'       => false,

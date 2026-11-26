@@ -10,9 +10,10 @@ versioning.
 - **Speed defaults for every site**, each with its own switch under
   Performance, all on by default:
   - **No cart checks for visitors who cannot buy.** On a WooCommerce store
-    where you have to sign in to buy, signed-out visitors are no longer checked
-    for a cart, which was a request the page cache never answered. Stores that
-    allow guest checkout are untouched.
+    where you have to sign in to buy, a signed-out visitor with nothing in a
+    cart is no longer checked for one, which was a request the page cache never
+    answered. Anyone with a cart in progress, and stores that allow guest
+    checkout, are untouched.
   - **SureRank broken-link checks paused.** The checks SureRank makes by
     visiting every link are no longer run. Everything else in SureRank carries on.
   - **Heavy crawlers asked to slow down** in robots.txt. Google and Bing are
@@ -26,8 +27,9 @@ versioning.
     really being used on uncached pages, not only switched on. A button sends
     one straight away.
 - **More scanner probes turned away early:** `aws-credentials.txt`,
-  `credentials.txt`, `/_next/...` and `/_nuxt/...` get the short refusal at
-  once, and `/katalog/...` does once WordPress finds no page there.
+  `credentials.txt` and `/_next/static/...` get the short refusal at once, and
+  `/katalog/...`, `/_next/...` and `/_nuxt/...` do once WordPress finds no page
+  there.
 
 ## [1.103.1] - 2026-11-25
 

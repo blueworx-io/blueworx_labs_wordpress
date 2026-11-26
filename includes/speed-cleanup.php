@@ -58,6 +58,8 @@ function blueworx_cleanup_retention_days( $status ) {
 	return max( 1, (int) apply_filters( 'blueworx_cleanup_retention_days', $days, $status ) );
 }
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery -- Action Scheduler's and WooCommerce's own tables, and a one-off clear-out whose result must never be cached.
+
 /**
  * Whether a database table exists.
  *
@@ -99,6 +101,15 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 	foreach ( array( 'complete', 'canceled', 'failed' ) as $status ) {
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( blueworx_cleanup_retention_days( $status ) * DAY_IN_SECONDS ) );
 
+		// Age is counted from when the job last ran, as Action Scheduler's own
+		// clean-up does, and not from when it was due: a job due three weeks ago
+		// that only finished today is not old. A cancelled job never ran, so it
+		// has to be old by both counts.
+		$age = 'canceled' === $status
+			? 'last_attempt_gmt < %s AND scheduled_date_gmt < %s'
+			: 'last_attempt_gmt < %s AND last_attempt_gmt > %s';
+		$low = 'canceled' === $status ? $cutoff : '2000-01-01 00:00:00';
+
 		while ( true ) {
 			if ( microtime( true ) >= $deadline ) {
 				$more = true;
@@ -106,10 +117,11 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 			}
 
 			$ids = $wpdb->get_col(
-				$wpdb->prepare(
-					"SELECT action_id FROM {$actions} WHERE status = %s AND scheduled_date_gmt < %s ORDER BY action_id ASC LIMIT 500", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table name is built from the site's own prefix.
+				$wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The age test carries two placeholders, counted below.
+					"SELECT action_id FROM {$actions} WHERE status = %s AND {$age} ORDER BY action_id ASC LIMIT 500", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Table name from the prefix; the age test is one of two fixed strings above.
 					$status,
-					$cutoff
+					$cutoff,
+					$low
 				)
 			);
 
@@ -120,13 +132,20 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 			$ids          = array_map( 'absint', $ids );
 			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
-			if ( $has_logs ) {
-				$wpdb->query( $wpdb->prepare( "DELETE FROM {$logs} WHERE action_id IN ({$placeholders})", $ids ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table name from the prefix; one %d per id.
+			if ( $has_logs && false === $wpdb->query( $wpdb->prepare( "DELETE FROM {$logs} WHERE action_id IN ({$placeholders})", $ids ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table name from the prefix; one %d per id.
+				break 2;
 			}
 
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$actions} WHERE action_id IN ({$placeholders})", $ids ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table name from the prefix; one %d per id.
+			$removed = $wpdb->query( $wpdb->prepare( "DELETE FROM {$actions} WHERE action_id IN ({$placeholders})", $ids ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table name from the prefix; one %d per id.
 
-			$deleted += count( $ids );
+			// A delete that fails would pick the same rows again until time ran
+			// out, so stop, and say nothing more is waiting: trying again in five
+			// minutes would fail the same way.
+			if ( ! $removed ) {
+				break 2;
+			}
+
+			$deleted += (int) $removed;
 		}
 	}
 
@@ -135,7 +154,6 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 		'more'    => $more,
 	);
 }
-
 /**
  * Removes WooCommerce visitor sessions that have already expired.
  *
@@ -152,6 +170,8 @@ function blueworx_cleanup_expired_sessions() {
 
 	return (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE session_expiry < %d", time() ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table name is built from the site's own prefix.
 }
+
+// phpcs:enable WordPress.DB.DirectDatabaseQuery
 
 /**
  * Runs the clear-out and remembers what it did.

@@ -171,20 +171,22 @@ function blueworx_probe_path_matches( $path, $include_ambiguous = true ) {
  */
 function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 	// Folders that are only ever somebody else's admin tool or a leftover.
-	// "katalog" is a folder bots guess on shop sites; a real page of that name is
-	// found by WordPress first, since these are only turned away once it says
-	// there is nothing there.
-	$folders = apply_filters( 'blueworx_probe_folders', array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules', 'katalog' ) );
+	// "katalog" is a folder bots guess on shop sites, and _next and _nuxt are
+	// the build folders of other web frameworks. All could be a real page's name
+	// on some site, so they are only turned away once WordPress says there is
+	// nothing there.
+	$folders = apply_filters( 'blueworx_probe_folders', array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules', 'katalog', '_next', '_nuxt' ) );
 
 	if ( $include_ambiguous && array_intersect( (array) $folders, $segments ) ) {
 		return true;
 	}
 
-	// Build folders of other web frameworks (/_next/static/..., /_nuxt/...). A
-	// WordPress site has none, so there is nothing here for WordPress to find.
+	// The asset folders a Next.js build serves (/_next/static/..., /_next/data/...,
+	// /_next/image). Nothing WordPress makes lives there, so these are turned
+	// away at once. The rest of /_next/ and /_nuxt/ wait for WordPress, above.
 	$within = blueworx_segments_within_site( $segments );
 
-	if ( isset( $within[0] ) && in_array( $within[0], array( '_next', '_nuxt' ), true ) ) {
+	if ( isset( $within[0], $within[1] ) && '_next' === $within[0] && in_array( $within[1], array( 'static', 'data', 'image' ), true ) ) {
 		return true;
 	}
 

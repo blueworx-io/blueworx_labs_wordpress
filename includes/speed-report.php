@@ -65,10 +65,42 @@ function blueworx_speed_probe_home() {
 		return null;
 	}
 
+	$headers = wp_remote_retrieve_headers( $response );
+
 	return array(
 		'seconds' => microtime( true ) - $start,
 		'status'  => (int) wp_remote_retrieve_response_code( $response ),
+		'cached'  => blueworx_response_looks_cached( is_object( $headers ) && method_exists( $headers, 'getAll' ) ? $headers->getAll() : (array) $headers ),
 	);
+}
+
+/**
+ * Whether a response's headers say a cache answered it.
+ *
+ * Page caches, content networks and proxies say so in different headers. Any of
+ * them saying "hit", or an Age above zero, counts. A cache that says nothing
+ * cannot be told apart from no cache, which is why the report words its answer
+ * as what the headers showed.
+ *
+ * @param array $headers Response headers, name => value.
+ * @return bool True when a header says the answer came from a cache.
+ */
+function blueworx_response_looks_cached( $headers ) {
+	$headers = array_change_key_case( (array) $headers, CASE_LOWER );
+
+	if ( isset( $headers['age'] ) && (int) $headers['age'] > 0 ) {
+		return true;
+	}
+
+	foreach ( array( 'x-cache', 'x-cache-status', 'cf-cache-status', 'x-proxy-cache', 'x-litespeed-cache', 'x-sg-cache', 'x-fastcgi-cache', 'x-nginx-cache', 'x-varnish-cache' ) as $name ) {
+		$value = isset( $headers[ $name ] ) ? (string) ( is_array( $headers[ $name ] ) ? implode( ',', $headers[ $name ] ) : $headers[ $name ] ) : '';
+
+		if ( false !== stripos( $value, 'hit' ) ) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /**
@@ -103,6 +135,19 @@ function blueworx_object_cache_verdict( $kind, $sample ) {
 		return array(
 			'rate' => $rate,
 			'text' => 'On. Too few uncached pages were sampled this week to say how well it is used.',
+		);
+	}
+
+	// The note left for the next page only survives if the cache is shared. One
+	// page cannot find it, so the first of any run is not counted against it.
+	$kept  = isset( $sample['kept'] ) ? (int) $sample['kept'] : 0;
+	$lost  = isset( $sample['lost'] ) ? max( 0, (int) $sample['lost'] - 1 ) : 0;
+	$tries = $kept + $lost;
+
+	if ( $tries >= 5 && 0 === $kept ) {
+		return array(
+			'rate' => $rate,
+			'text' => 'On, but nothing it holds survives from one page to the next, so in practice it is not a shared cache. Check the cache server is running and reachable.',
 		);
 	}
 
@@ -185,8 +230,15 @@ function blueworx_speed_report_text( $data ) {
 	$lines[] = '';
 	$lines[] = 'HOME PAGE, UNCACHED';
 
-	if ( is_array( $data['home'] ) ) {
+	if ( is_array( $data['home'] ) && $data['home']['status'] >= 200 && $data['home']['status'] < 300 && empty( $data['home']['cached'] ) ) {
 		$lines[] = sprintf( '%.1f seconds (answered with status %d)', $data['home']['seconds'], $data['home']['status'] );
+	} elseif ( is_array( $data['home'] ) ) {
+		$lines[] = sprintf(
+			'Not a clean uncached measurement: %.1f seconds, status %d, %s.',
+			$data['home']['seconds'],
+			$data['home']['status'],
+			! empty( $data['home']['cached'] ) ? 'and the response headers say a cache answered it' : 'which is not a successful page'
+		);
 	} else {
 		$lines[] = 'Could not be measured: the site could not reach itself.';
 	}
@@ -199,8 +251,9 @@ function blueworx_speed_report_text( $data ) {
 
 	if ( (int) $sample['requests'] > 0 ) {
 		$lines[] = sprintf(
-			'Sampled %d uncached pages: %d ms on average, %d database queries on average.',
+			'Sampled %d uncached pages since %s: %d ms on average, %d database queries on average.',
 			$sample['requests'],
+			! empty( $sample['since'] ) ? gmdate( 'j M', (int) $sample['since'] ) : 'the start of the week',
 			round( $sample['ms'] / $sample['requests'] ),
 			round( $sample['queries'] / $sample['requests'] )
 		);
@@ -239,10 +292,11 @@ function blueworx_speed_report_text( $data ) {
 /**
  * Sends the report, then starts the next week's count.
  *
- * @param bool $probe Whether to time an uncached home page visit.
+ * @param bool $probe     Whether to time an uncached home page visit.
+ * @param bool $scheduled True for the weekly report, which starts the next week's count. A report sent by hand never does, so it cannot take the week's measurements from the scheduled one.
  * @return bool True when the mail was accepted.
  */
-function blueworx_speed_report_send( $probe = true ) {
+function blueworx_speed_report_send( $probe = true, $scheduled = false ) {
 	$data    = blueworx_speed_report_data( $probe );
 	$subject = preg_replace( '/[\r\n]+/', ' ', sprintf( 'Weekly speed report: %s', $data['name'] ) );
 	$sent    = wp_mail( blueworx_speed_report_recipient(), $subject, blueworx_speed_report_text( $data ) );
@@ -256,11 +310,16 @@ function blueworx_speed_report_send( $probe = true ) {
 		false
 	);
 
-	if ( $sent ) {
-		// A new week starts with an empty sample, and the slow-page log keeps
-		// four weeks, so a page that was slow once does not stay on it for ever.
+	if ( $scheduled ) {
+		// A new week starts with an empty sample whether or not the mail went
+		// out: a failed send must not make the next report claim several weeks
+		// of measurements as one week's.
 		delete_option( 'blueworx_speed_sample' );
+	}
 
+	if ( $sent ) {
+		// The slow-page log keeps four weeks, so a page that was slow once does
+		// not stay on it for ever.
 		$cutoff = time() - ( 4 * WEEK_IN_SECONDS );
 
 		update_option(
@@ -287,7 +346,7 @@ function blueworx_speed_report_send( $probe = true ) {
  */
 function blueworx_speed_report_cron() {
 	if ( blueworx_feature_enabled( 'speed_report' ) ) {
-		blueworx_speed_report_send();
+		blueworx_speed_report_send( true, true );
 	}
 }
 
@@ -311,14 +370,24 @@ function blueworx_speed_report_sync_schedule() {
 /**
  * Sends a report now, for an administrator who asked for one on the settings screen.
  *
+ * The button posts back to the settings screen rather than to admin-post.php:
+ * the settings form around it carries its own hidden "action" field, and in a
+ * POST that one wins over the address, so admin-post.php would run the save.
+ *
  * @return void
  */
 function blueworx_speed_report_now() {
+	// Only when the button was the thing pressed: this runs on every admin page.
+	if ( empty( $_POST['blueworx_speed_report_now'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Checked below, once it is known this is the button.
+		return;
+	}
+
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'You do not have sufficient permissions to do this.', 'blueworx-labs-wordpress' ), '', array( 'response' => 403 ) );
 	}
 
-	check_admin_referer( 'blueworx_speed_report_now' );
+	blueworx_require_post_request();
+	check_admin_referer( 'blueworx_speed_report_now', 'blueworx_speed_nonce' );
 
 	$sent = blueworx_speed_report_send();
 
@@ -337,7 +406,7 @@ function blueworx_speed_report_now() {
 
 add_action( BLUEWORX_REPORT_HOOK, 'blueworx_speed_report_cron' );
 add_action( 'init', 'blueworx_speed_report_sync_schedule' );
-add_action( 'admin_post_blueworx_speed_report_now', 'blueworx_speed_report_now' );
+add_action( 'admin_init', 'blueworx_speed_report_now' );
 
 /**
  * Saves the slow-page log and speed report settings from the Enhancements form.
@@ -439,13 +508,19 @@ function blueworx_speed_detail_html( $key ) {
 			);
 		}
 
-		$last_text = is_array( $last ) && ! empty( $last['time'] )
+		$last_text = is_array( $last ) && ! empty( $last['time'] ) && empty( $last['sent'] )
+			? sprintf(
+				/* translators: %s: date of the last attempt. */
+				__( 'The last report, on %s, could not be sent. Check that this site can send email.', 'blueworx-labs-wordpress' ),
+				date_i18n( get_option( 'date_format' ), (int) $last['time'] )
+			)
+			: ( is_array( $last ) && ! empty( $last['time'] )
 			? sprintf(
 				/* translators: %s: date the last report was sent. */
 				__( 'The last report went out on %s.', 'blueworx-labs-wordpress' ),
-				wp_date( get_option( 'date_format' ), (int) $last['time'] )
+				date_i18n( get_option( 'date_format' ), (int) $last['time'] )
 			)
-			: __( 'No report has been sent yet. The first goes out within a day or so of switching this on.', 'blueworx-labs-wordpress' );
+			: __( 'No report has been sent yet. The first goes out within a day or so of switching this on.', 'blueworx-labs-wordpress' ) );
 
 		return blueworx_detail_stack(
 			$status . blueworx_ds_field(
@@ -462,20 +537,22 @@ function blueworx_speed_detail_html( $key ) {
 					),
 					'help'    => $last_text . ' ' . __( 'It says how long the home page takes uncached, which pages were slowest, and whether the object cache is really being used.', 'blueworx-labs-wordpress' ),
 				)
-			) . blueworx_ds_button(
+			) . '<input type="hidden" name="blueworx_speed_nonce" value="' . esc_attr( wp_create_nonce( 'blueworx_speed_report_now' ) ) . '" />' . blueworx_ds_button(
 				array(
 					'label'   => __( 'Send a report now', 'blueworx-labs-wordpress' ),
 					'icon'    => 'mail',
 					'variant' => 'ghost',
 					'size'    => 'sm',
-					'href'    => add_query_arg(
-						array(
-							'action'   => 'blueworx_speed_report_now',
-							'_wpnonce' => wp_create_nonce( 'blueworx_speed_report_now' ),
-						),
-						admin_url( 'admin-post.php' )
+					'type'    => 'submit',
+					// Posts straight to its own handler, past the settings form around
+					// it. A link would send mail on a prefetch or a stray click.
+					'attrs'   => array(
+						'name'        => 'blueworx_speed_report_now',
+						'value'       => '1',
+						'formaction'  => admin_url( 'admin.php?page=blueworx-labs-wordpress&section=performance' ),
+						'formmethod'  => 'post',
+						'data-testid' => 'bw-speed-report-now',
 					),
-					'attrs'   => array( 'data-testid' => 'bw-speed-report-now' ),
 				)
 			)
 		);
@@ -488,7 +565,7 @@ function blueworx_speed_detail_html( $key ) {
 			? sprintf(
 				/* translators: 1: date of the last clear-out, 2: old background jobs removed, 3: expired visitor sessions removed. */
 				__( 'The last clear-out was on %1$s. It removed %2$d old background jobs and %3$d expired visitor sessions.', 'blueworx-labs-wordpress' ),
-				wp_date( get_option( 'date_format' ), (int) $last['time'] ),
+				date_i18n( get_option( 'date_format' ), (int) $last['time'] ),
 				(int) $last['jobs'],
 				(int) $last['sessions']
 			)

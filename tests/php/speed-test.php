@@ -91,11 +91,34 @@ $GLOBALS['logged_in'] = false;
 function is_user_logged_in() {
 	return $GLOBALS['logged_in'];
 }
+$GLOBALS['object_cache'] = array();
+function wp_cache_get( $key, $group = '' ) {
+	return isset( $GLOBALS['object_cache'][ $group . $key ] ) ? $GLOBALS['object_cache'][ $group . $key ] : false;
+}
+function wp_cache_set( $key, $value, $group = '', $expire = 0 ) {
+	$GLOBALS['object_cache'][ $group . $key ] = $value;
+	return true;
+}
+$GLOBALS['did_wp'] = 0;
+function did_action( $hook ) {
+	return 'wp' === $hook ? $GLOBALS['did_wp'] : 0;
+}
+$GLOBALS['is_search'] = false;
+function is_search() {
+	return $GLOBALS['is_search'];
+}
+$GLOBALS['is_404'] = false;
+function is_404() {
+	return $GLOBALS['is_404'];
+}
 function wp_dequeue_script( $handle ) {
 	$GLOBALS['dequeued'][] = $handle;
 }
 $GLOBALS['dequeued'] = array();
 function nocache_headers() {}
+/**
+ * Stops the request, as wp_send_json() does.
+ */
 class Stop_Request extends Exception {}
 function wp_send_json( $data ) {
 	$GLOBALS['json'] = $data;
@@ -104,9 +127,25 @@ function wp_send_json( $data ) {
 function rest_ensure_response( $data ) {
 	return $data;
 }
+/**
+ * Stands in for WooCommerce being active.
+ */
 class WooCommerce {}
+/**
+ * A REST request reduced to its method and route.
+ */
 class WP_REST_Request {
+	/**
+	 * Method.
+	 *
+	 * @var string
+	 */
 	public $method;
+	/**
+	 * Route.
+	 *
+	 * @var string
+	 */
 	public $route;
 	public function __construct( $method, $route ) {
 		$this->method = $method;
@@ -134,8 +173,9 @@ require __DIR__ . '/../../includes/speed-report.php';
 
 echo "Each function has its own switch, and every hook follows it\n";
 check( 'guest cart answer hooked', hooked( 'init', 'blueworx_guest_cart_check_answer' ), true );
-check( 'cart script off hooked', hooked( 'wp_enqueue_scripts', 'blueworx_guest_cart_script_off' ), true );
+check( 'the cart script is left alone', hooked( 'wp_enqueue_scripts', 'blueworx_guest_cart_script_off' ), false );
 check( 'SureRank pause hooked', hooked( 'rest_pre_dispatch', 'blueworx_surerank_link_check_pause' ), true );
+check( 'the guest cart answer comes before WooCommerce starts', $GLOBALS['hooks']['init'][0][1] < 0, true );
 check( 'crawl delay hooked', hooked( 'robots_txt', 'blueworx_crawl_delay_filter' ), true );
 check( 'monitor hooked', hooked( 'shutdown', 'blueworx_speed_monitor_shutdown' ), true );
 check( 'cleanup runs on its event', hooked( 'blueworx_weekly_cleanup', 'blueworx_cleanup_cron' ), true );
@@ -207,14 +247,28 @@ check( 'a signed-in customer still gets their cart', $answered, false );
 $GLOBALS['logged_in'] = false;
 $_GET                 = array();
 
-blueworx_guest_cart_script_off();
-check( 'the cart script is not loaded for them', $GLOBALS['dequeued'], array( 'wc-cart-fragments' ) );
-$GLOBALS['dequeued']  = array();
-$GLOBALS['logged_in'] = true;
-blueworx_guest_cart_script_off();
-check( 'but is for customers', $GLOBALS['dequeued'], array() );
-$GLOBALS['logged_in'] = false;
-
+echo "\nA guest who has a cart in progress is still asked about it\n";
+$_GET = array( 'wc-ajax' => 'get_refreshed_fragments' );
+foreach ( array( 'woocommerce_items_in_cart', 'woocommerce_cart_hash', 'wp_woocommerce_session_abc123' ) as $cookie ) {
+	$_COOKIE  = array( $cookie => '1' );
+	$answered = false;
+	try {
+		blueworx_guest_cart_check_answer();
+	} catch ( Stop_Request $e ) {
+		$answered = true;
+	}
+	check( 'a ' . $cookie . ' cookie means a cart: asked as before', $answered, false );
+}
+$_COOKIE  = array( 'other' => '1' );
+$answered = false;
+try {
+	blueworx_guest_cart_check_answer();
+} catch ( Stop_Request $e ) {
+	$answered = true;
+}
+check( 'an unrelated cookie does not', $answered, true );
+$_COOKIE = array();
+$_GET    = array();
 echo "\nSureRank's link check is paused, and nothing else\n";
 $post = new WP_REST_Request( 'POST', '/surerank/v1/checks/broken-link' );
 $out  = blueworx_surerank_link_check_pause( null, null, $post );
@@ -236,6 +290,9 @@ check( 'Googlebot is not slowed', false === stripos( $out, 'googlebot' ), true )
 check( 'Bingbot is not slowed', false === stripos( $out, 'bingbot' ), true );
 check( 'one delay line for the group', substr_count( $out, 'Crawl-delay' ), 1 );
 check( 'a site that discourages search engines gets it too', false !== strpos( blueworx_crawl_delay_filter( $base, false ), 'Crawl-delay: 10' ), true );
+$out = blueworx_crawl_delay_filter( "User-agent: *\nDisallow: /wp-admin/\nDisallow: /private/\nAllow: /wp-admin/admin-ajax.php\n", true );
+check( 'the group keeps what the site already blocks', 2 === substr_count( $out, 'Disallow: /private/' ) && 2 === substr_count( $out, 'Disallow: /wp-admin/' ), true );
+check( 'and what it allows', 2 === substr_count( $out, 'Allow: /wp-admin/admin-ajax.php' ), true );
 $own = "User-agent: AhrefsBot\nDisallow: /\n\nUser-agent: *\nDisallow: /wp-admin/\n";
 check( 'a crawler with its own group is left to it', substr_count( blueworx_crawl_delay_filter( $own, true ), 'AhrefsBot' ), 1 );
 $GLOBALS['filters']['blueworx_crawl_delay_seconds'] = function () {
@@ -246,13 +303,40 @@ unset( $GLOBALS['filters']['blueworx_crawl_delay_seconds'] );
 
 echo "\nThe slow-page log keeps no secrets\n";
 $_SERVER['REQUEST_URI'] = '/shop/?token=abc123&s=my+secret&utm_source=x';
-check( 'only argument names are kept', blueworx_slow_request_label(), '/shop/?token&s&utm_source' );
-$_SERVER['REQUEST_URI'] = '/wp-admin/admin-ajax.php?action=Heartbeat&nonce=zzz';
+check( 'a search made the old way keeps nothing', blueworx_slow_request_label(), '(search)' );
+$_SERVER['REQUEST_URI'] = '/shop/?token=abc123&utm_source=x';
+check( 'values are never kept', blueworx_slow_request_label(), '/shop/?token&utm_source' );
+$_SERVER['REQUEST_URI'] = '/search/jane.doe@example.com/';
+check( 'a pretty search address is not kept', blueworx_slow_request_label(), '(search)' );
+$_SERVER['REQUEST_URI'] = '/members/jane.doe@example.com/profile/';
+check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/members/*/profile/' );
+$_SERVER['REQUEST_URI'] = '/orders/4400123987/';
+check( 'a long number is not kept', blueworx_slow_request_label(), '/orders/*/' );
+$_SERVER['REQUEST_URI']                      = '/wp-json/x/v1/lookup/some-person/details';
+$GLOBALS['filters']['blueworx_request_kind'] = function () {
+	return 'rest';
+};
+check( 'an API route is cut to its first pieces', blueworx_slow_request_label(), '/wp-json/x/v1' );
+$GLOBALS['filters']['blueworx_request_kind'] = function () {
+	return 'front';
+};
+$_SERVER['REQUEST_URI']                      = '/wp-admin/admin-ajax.php?action=Heartbeat&nonce=zzz';
 check( 'what an AJAX call is for is kept', blueworx_slow_request_label(), '/wp-admin/admin-ajax.php?action=heartbeat&nonce' );
 $_SERVER['REQUEST_URI'] = '/?wc-ajax=get_refreshed_fragments';
 check( 'and the cart check', blueworx_slow_request_label(), '/?wc-ajax=get_refreshed_fragments' );
 $_SERVER['REQUEST_URI'] = '/' . str_repeat( 'a', 500 );
-check( 'a very long address is cut', strlen( blueworx_slow_request_label() ), 200 );
+$GLOBALS['did_wp']      = 1;
+$GLOBALS['is_404']      = true;
+$_SERVER['REQUEST_URI'] = '/anything-somebody-typed/';
+check( 'a page that does not exist is not named', blueworx_slow_request_label(), '(page not found)' );
+$GLOBALS['is_404']      = false;
+$GLOBALS['is_search']   = true;
+$_SERVER['REQUEST_URI'] = '/?s=private';
+check( 'a search WordPress recognises is not named', blueworx_slow_request_label(), '(search)' );
+$GLOBALS['is_search']   = false;
+$GLOBALS['did_wp']      = 0;
+$_SERVER['REQUEST_URI'] = '/' . str_repeat( 'a', 500 );
+check( 'a very long segment is not kept', blueworx_slow_request_label(), '/*' );
 
 check( 'the default threshold is two seconds', blueworx_slow_threshold(), 2.0 );
 update_option( 'blueworx_slow_threshold', '0.01' );
@@ -303,6 +387,11 @@ check( 'half used', 0 === strpos( blueworx_object_cache_verdict( 'persistent', $
 $s['hits']   = 10;
 $s['misses'] = 400;
 check( 'on but barely used', 0 === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'On but barely used' ), true );
+$s['kept'] = 0;
+$s['lost'] = 12;
+check( 'on but nothing survives between pages', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
+$s['kept'] = 9;
+check( 'a note found again means it is shared', false === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
 $s['requests'] = 2;
 check( 'too few pages to say', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'Too few' ), true );
 $s['requests'] = 40;
@@ -316,7 +405,14 @@ $GLOBALS['wp_object_cache'] = (object) array(
 	'cache_hits'   => 8,
 	'cache_misses' => 2,
 );
-check( 'the counts are read from the cache', blueworx_object_cache_counts(), array( 'hits' => 8, 'misses' => 2 ) );
+check(
+	'the counts are read from the cache',
+	blueworx_object_cache_counts(),
+	array(
+		'hits'   => 8,
+		'misses' => 2,
+	)
+);
 $GLOBALS['wp_object_cache'] = new stdClass();
 check( 'a cache without counts is unknown, not zero', blueworx_object_cache_counts(), null );
 
@@ -336,18 +432,58 @@ check( 'with its hits and misses', array( $sample['hits'], $sample['misses'] ), 
 $GLOBALS['rand'] = 7;
 blueworx_speed_monitor_shutdown();
 check( 'an unsampled page is not', blueworx_speed_sample()['requests'], 1 );
-$GLOBALS['rand'] = 1;
+$GLOBALS['rand']                     = 1;
 $GLOBALS['switches']['speed_report'] = false;
 blueworx_speed_monitor_shutdown();
 check( 'report off: no sampling', blueworx_speed_sample()['requests'], 1 );
 $GLOBALS['switches'] = array();
 
+echo "\nA cached answer is not called uncached\n";
+check( 'a hit header', blueworx_response_looks_cached( array( 'X-Cache' => 'HIT' ) ), true );
+check( 'Cloudflare', blueworx_response_looks_cached( array( 'cf-cache-status' => 'HIT' ) ), true );
+check( 'an age', blueworx_response_looks_cached( array( 'Age' => '12' ) ), true );
+check(
+	'a miss',
+	blueworx_response_looks_cached(
+		array(
+			'X-Cache' => 'MISS',
+			'Age'     => '0',
+		)
+	),
+	false
+);
+check( 'no cache headers', blueworx_response_looks_cached( array() ), false );
+
 echo "\nThe weekly clear-out removes only what is old and finished\n";
 
+/**
+ * A database that records what it was asked and hands back prepared batches.
+ */
 class Fake_Wpdb {
-	public $prefix  = 'wp_';
+	/**
+	 * Table prefix.
+	 *
+	 * @var string
+	 */
+	public $prefix = 'wp_';
+	/**
+	 * Every query run.
+	 *
+	 * @var string[]
+	 */
 	public $queries = array();
+	/**
+	 * Ids to hand back, one list per select.
+	 *
+	 * @var array[]
+	 */
 	public $batches = array();
+	/**
+	 * Whether deletes fail.
+	 *
+	 * @var bool
+	 */
+	public $fail = false;
 	public function esc_like( $text ) {
 		return addcslashes( $text, '_%\\' );
 	}
@@ -366,11 +502,14 @@ class Fake_Wpdb {
 	}
 	public function get_col( $query ) {
 		$this->queries[] = $query;
-		return array_shift( $this->batches ) ?: array();
+		return ( $this->batches ? array_shift( $this->batches ) : array() );
 	}
 	public function query( $query ) {
 		$this->queries[] = $query;
-		return 3;
+		if ( $this->fail ) {
+			return false;
+		}
+		return preg_match( '/IN \(([^)]*)\)/', $query, $m ) ? count( explode( ',', $m[1] ) ) : 3;
 	}
 }
 
@@ -379,14 +518,16 @@ $wpdb->batches = array( array( 1, 2, 3 ), array( 4, 5 ), array( 6 ) );
 $result        = blueworx_cleanup_run( 20 );
 $all           = implode( "\n", $wpdb->queries );
 foreach ( array( 'complete', 'canceled', 'failed' ) as $status ) {
-	check( 'old jobs are selected: ' . $status, false !== strpos( $all, "status = '$status'" ), true );
+	check( 'old jobs are selected: ' . $status, strpos( $all, "status = '" . $status . "'" ) !== false, true ); // phpcs:ignore WordPress.PHP.YodaConditions.NotYoda -- Reads better this way round.
 }
-check( 'only those older than the retention time', substr_count( $all, 'scheduled_date_gmt <' ) >= 3, true );
+check( 'only those older than the retention time', substr_count( $all, 'last_attempt_gmt <' ) >= 3, true );
 check( 'never a job still waiting or running', false === strpos( $all, "'pending'" ) && false === strpos( $all, "'in-progress'" ), true );
 check( 'the logs of removed jobs go too', false !== strpos( $all, 'DELETE FROM wp_actionscheduler_logs WHERE action_id IN (1,2,3)' ), true );
 check( 'then the jobs', false !== strpos( $all, 'DELETE FROM wp_actionscheduler_actions WHERE action_id IN (1,2,3)' ), true );
 check( 'the count is of jobs', $result['jobs'], 6 );
 check( 'expired sessions are removed', false !== strpos( $all, 'DELETE FROM wp_woocommerce_sessions WHERE session_expiry <' ), true );
+check( 'a canceled job must be old by both counts', false !== strpos( $all, 'scheduled_date_gmt <' ), true );
+check( 'finished jobs are aged from when they last ran', false !== strpos( $all, 'last_attempt_gmt <' ), true );
 check( 'the run is remembered', get_option( 'blueworx_cleanup_last' )['jobs'], 6 );
 check( 'a run that finished leaves nothing to carry on', $result['more'], false );
 
@@ -398,6 +539,14 @@ $wpdb->batches = array( array( 1 ) );
 $result        = blueworx_cleanup_action_scheduler( microtime( true ) - 1 );
 check( 'a run out of time says there is more', $result['more'], true );
 check( 'and has deleted nothing', $result['deleted'], 0 );
+
+$wpdb          = new Fake_Wpdb();
+$wpdb->fail    = true;
+$wpdb->batches = array( array( 1, 2 ), array( 1, 2 ), array( 1, 2 ) );
+$result        = blueworx_cleanup_action_scheduler( microtime( true ) + 20 );
+check( 'a failing delete stops at once', count( $wpdb->queries ), 2 );
+check( 'nothing is counted as removed', $result['deleted'], 0 );
+check( 'and no retry is booked', $result['more'], false );
 
 echo "\nThe report\n";
 $data = array(
@@ -452,6 +601,18 @@ check( 'says the cache is on but barely used', false !== strpos( $text, 'On but 
 check( 'gives the hit rate', false !== strpos( $text, '2%' ), true );
 check( 'lists the slowest page', false !== strpos( $text, '/  worst 9.1s, average 6.0s, 12 times' ), true );
 check( 'says what the last clear-out did', false !== strpos( $text, '5000 old background jobs and 200 expired visitor sessions' ), true );
+$data['home'] = array(
+	'seconds' => 0.2,
+	'status'  => 200,
+	'cached'  => true,
+);
+check( 'a cached answer is not labelled uncached', false !== strpos( blueworx_speed_report_text( $data ), 'Not a clean uncached measurement' ), true );
+$data['home'] = array(
+	'seconds' => 0.2,
+	'status'  => 500,
+	'cached'  => false,
+);
+check( 'an error page is not either', false !== strpos( blueworx_speed_report_text( $data ), 'not a successful page' ), true );
 $data['home'] = null;
 check( 'an unreachable home page is said so', false !== strpos( blueworx_speed_report_text( $data ), 'Could not be measured' ), true );
 $data['log_on'] = false;

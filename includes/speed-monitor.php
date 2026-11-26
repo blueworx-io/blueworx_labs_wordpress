@@ -119,20 +119,66 @@ function blueworx_object_cache_kind() {
 }
 
 /**
- * Turns the request's address into a short, safe note.
+ * Whether a path segment could be something a visitor typed or supplied.
  *
- * Only the path is kept, and only the NAMES of query arguments: their values
- * can carry a token, an email address or a search somebody typed. The two
- * arguments that say what an AJAX call is for (action, wc-ajax) keep their
- * value, since without it every call looks the same.
+ * @param string $segment One path segment, already decoded.
+ * @return bool True for a segment that must not be kept.
+ */
+function blueworx_segment_is_personal( $segment ) {
+	return '' === $segment || false !== strpos( $segment, '@' ) || strlen( $segment ) > 60 || preg_match( '/\d{6,}/', $segment );
+}
+
+/**
+ * Turns the request's address into a short note that holds nothing personal.
  *
- * @return string Path, with argument names after a question mark.
+ * Only the route is kept. Anything a visitor could have supplied is left out:
+ * the values of query arguments (their names stay), a search (pretty search
+ * addresses carry what was typed), a page that does not exist (the address is
+ * whatever somebody asked for), and any path piece that looks like an email
+ * address or a long number. Of an API route only the first three pieces stay.
+ * The two arguments that say what an AJAX call is for (action, wc-ajax) keep
+ * their value, since without it every call looks the same.
+ *
+ * @return string Route, with argument names after a question mark.
  */
 function blueworx_slow_request_label() {
-	$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Reduced to a path and argument names below; never output unescaped.
+	$uri  = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Reduced to a route and argument names below; never output unescaped.
 	$path = wp_parse_url( $uri, PHP_URL_PATH );
-	$path = is_string( $path ) ? $path : '/';
-	$path = substr( preg_replace( '/[^\x21-\x7E]/', '', $path ), 0, 200 );
+	$path = is_string( $path ) ? rawurldecode( $path ) : '/';
+
+	// What WordPress has worked out is better than reading the address.
+	if ( did_action( 'wp' ) ) {
+		if ( function_exists( 'is_search' ) && is_search() ) {
+			return '(search)';
+		}
+
+		if ( function_exists( 'is_404' ) && is_404() ) {
+			return '(page not found)';
+		}
+	}
+
+	$segments = array();
+
+	foreach ( explode( '/', $path ) as $segment ) {
+		if ( '' === $segment ) {
+			continue;
+		}
+
+		$segments[] = blueworx_segment_is_personal( $segment ) ? '*' : substr( preg_replace( '/[^\x21-\x7E]/', '', $segment ), 0, 60 );
+	}
+
+	if ( in_array( blueworx_request_kind(), array( 'rest', 'ajax' ), true ) || ( isset( $segments[0] ) && 'wp-json' === $segments[0] ) ) {
+		$segments = array_slice( $segments, 0, 3 );
+	}
+
+	// A pretty search address (/search/whatever/) when WordPress has not said so.
+	if ( isset( $segments[0] ) && 'search' === $segments[0] ) {
+		return '(search)';
+	}
+
+	$label = '/' . implode( '/', $segments );
+	$label = '/' === $label ? '/' : $label . ( '/' === substr( $path, -1 ) ? '/' : '' );
+	$label = substr( $label, 0, 200 );
 
 	$query = wp_parse_url( $uri, PHP_URL_QUERY );
 	$parts = array();
@@ -155,9 +201,13 @@ function blueworx_slow_request_label() {
 		}
 	}
 
-	return '' === $path ? '/' : $path . ( $parts ? '?' . implode( '&', $parts ) : '' );
-}
+	// A search made the old way (?s=...) keeps no trace of what was typed either.
+	if ( isset( $args ) && is_array( $args ) && isset( $args['s'] ) ) {
+		return '(search)';
+	}
 
+	return $label . ( $parts ? '?' . implode( '&', $parts ) : '' );
+}
 /**
  * Gets the saved slow-page log, newest first.
  *
@@ -199,6 +249,9 @@ function blueworx_slow_log_entry( $seconds ) {
  * @return void
  */
 function blueworx_slow_log_write( $entry ) {
+	// Best effort: two slow requests that finish within milliseconds of each other
+	// can overwrite one another's entry. The log is a sample of where time goes,
+	// not a count, so that is accepted rather than paying for a locked write.
 	$log = blueworx_slow_log_entries();
 
 	array_unshift( $log, $entry );
@@ -224,6 +277,8 @@ function blueworx_speed_sample() {
 			'hits'     => 0,
 			'misses'   => 0,
 			'unknown'  => 0,
+			'kept'     => 0,
+			'lost'     => 0,
 			'ms'       => 0,
 			'queries'  => 0,
 		)
@@ -247,6 +302,19 @@ function blueworx_speed_sample_add( $seconds ) {
 	++$sample['requests'];
 	$sample['ms']      += (int) round( $seconds * 1000 );
 	$sample['queries'] += function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0;
+
+	// Hits are not proof the cache is shared between pages: some drop-ins count
+	// what they remember within one request as well. So a note is left in the
+	// cache for the next sampled page to find. A cache that really is shared
+	// finds it nearly every time; one that is not, never does.
+	if ( 'persistent' === blueworx_object_cache_kind() ) {
+		if ( false !== wp_cache_get( 'sample_note', 'blueworx_speed' ) ) {
+			++$sample['kept'];
+		} else {
+			++$sample['lost'];
+			wp_cache_set( 'sample_note', time(), 'blueworx_speed', 6 * HOUR_IN_SECONDS );
+		}
+	}
 
 	if ( $counts ) {
 		$sample['hits']   += $counts['hits'];
@@ -298,7 +366,11 @@ function blueworx_speed_monitor_shutdown() {
 
 	$seconds = microtime( true ) - (float) $_SERVER['REQUEST_TIME_FLOAT'];
 
-	if ( blueworx_feature_enabled( 'slow_log' ) && $seconds >= blueworx_slow_threshold() ) {
+	// The threshold is read only for a request that has already taken at least the
+	// shortest it can be set to. A site that never saved one has no stored value,
+	// and looking up a missing option is a database query on a site without a
+	// persistent cache. A quick page never pays for it.
+	if ( $seconds >= 0.2 && blueworx_feature_enabled( 'slow_log' ) && $seconds >= blueworx_slow_threshold() ) {
 		blueworx_slow_log_write( blueworx_slow_log_entry( $seconds ) );
 	}
 

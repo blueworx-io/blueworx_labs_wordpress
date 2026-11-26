@@ -262,10 +262,14 @@ test.describe('Speed defaults', () => {
           const api = await request.newContext({ baseURL });
 
           try {
-            const res = await api.get('/wp-admin/admin-post.php?action=blueworx_speed_report_now&_wpnonce=nope', {
+            // Signed out, and with no valid nonce, the button's request goes to the
+            // sign-in screen and sends nothing.
+            const res = await api.post(SETTINGS_PATH, {
+              form: { blueworx_speed_report_now: '1', blueworx_speed_nonce: 'nope' },
               maxRedirects: 0,
             });
-            expect(res.status()).not.toBe(200);
+            expect(res.status()).toBe(302);
+            expect(res.headers().location).not.toContain('blueworx_report=');
           } finally {
             await api.dispose();
           }

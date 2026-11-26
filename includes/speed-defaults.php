@@ -57,15 +57,40 @@ function blueworx_is_cart_check_request() {
 }
 
 /**
+ * Whether this visitor has a cart in progress.
+ *
+ * WooCommerce marks a visitor who has put something in a cart with a cookie for
+ * the item count and a session cookie. Without either there is nothing to ask
+ * about, and the same cookies are what page caches already look for.
+ *
+ * @return bool True when a cart cookie or session cookie came with the request.
+ */
+function blueworx_visitor_has_cart_cookie() {
+	foreach ( array_keys( $_COOKIE ) as $name ) {
+		$name = (string) $name;
+
+		if ( 'woocommerce_items_in_cart' === $name || 'woocommerce_cart_hash' === $name || 0 === strpos( $name, 'wp_woocommerce_session_' ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Answers a guest's cart check with an empty cart and builds nothing.
  *
- * Runs on init, once the sign-in cookie can be read but before WooCommerce
- * builds a cart, a session or the mini cart, which is where the time goes.
+ * Only for a signed-out visitor who cannot buy and has no cart in progress:
+ * the true answer for them is an empty cart. Anybody who has put something in
+ * a cart, or who can, is asked as before.
+ *
+ * Runs early on init, ahead of WooCommerce's own start-up, so no cart, session
+ * or mini cart is built, which is where the time goes.
  *
  * @return void
  */
 function blueworx_guest_cart_check_answer() {
-	if ( ! blueworx_is_cart_check_request() || ! blueworx_guest_cannot_buy() ) {
+	if ( ! blueworx_is_cart_check_request() || ! blueworx_guest_cannot_buy() || blueworx_visitor_has_cart_cookie() ) {
 		return;
 	}
 
@@ -81,22 +106,6 @@ function blueworx_guest_cart_check_answer() {
 		)
 	);
 }
-
-/**
- * Stops WooCommerce loading its cart-checking script for visitors who cannot buy.
- *
- * Only dequeued, never deregistered: another script may list it as something
- * it needs, and WordPress drops a script whose needs are missing. Where one
- * does, the script loads anyway and its request is answered cheaply above.
- *
- * @return void
- */
-function blueworx_guest_cart_script_off() {
-	if ( blueworx_guest_cannot_buy() ) {
-		wp_dequeue_script( 'wc-cart-fragments' );
-	}
-}
-
 /**
  * The route SureRank's broken-link check answers on, whichever version it is.
  *
@@ -175,6 +184,39 @@ function blueworx_crawl_delay_seconds() {
 }
 
 /**
+ * Gets the Allow and Disallow lines of the group for everybody.
+ *
+ * @param string $output robots.txt content.
+ * @return string[] Rule lines, in the order they appear.
+ */
+function blueworx_robots_everybody_rules( $output ) {
+	$rules   = array();
+	$in_all  = false;
+	$in_head = false;
+
+	foreach ( explode( "\n", str_replace( "\r\n", "\n", (string) $output ) ) as $line ) {
+		$line = trim( $line );
+
+		if ( preg_match( '/^user-agent:\s*(.*)$/i', $line, $match ) ) {
+			// Several User-agent lines in a row share the rules that follow.
+			$in_all  = $in_head ? ( $in_all || '*' === trim( $match[1] ) ) : '*' === trim( $match[1] );
+			$in_head = true;
+			continue;
+		}
+
+		if ( preg_match( '/^(allow|disallow)\s*:/i', $line ) ) {
+			$in_head = false;
+
+			if ( $in_all ) {
+				$rules[] = $line;
+			}
+		}
+	}
+
+	return $rules;
+}
+
+/**
  * Adds a slow-down request for aggressive crawlers to robots.txt.
  *
  * One group naming every crawler, so the file stays short. A crawler the file
@@ -190,7 +232,7 @@ function blueworx_crawl_delay_seconds() {
  * @param bool   $is_public Whether the site is set to be indexed.
  * @return string robots.txt content.
  */
-function blueworx_crawl_delay_filter( $output, $is_public = true ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Part of the filter signature; see above for why it is not acted on.
+function blueworx_crawl_delay_filter( $output, $is_public = true ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Part of the filter signature; see above for why it is not acted on.
 	$output = (string) $output;
 	$named  = array();
 
@@ -218,6 +260,12 @@ function blueworx_crawl_delay_filter( $output, $is_public = true ) { // phpcs:ig
 
 	$group .= 'Crawl-delay: ' . blueworx_crawl_delay_seconds() . "\n";
 
+	// A crawler reads only the group that names it, so it would stop obeying the
+	// rules the site already has for everybody. Those rules come with it.
+	foreach ( blueworx_robots_everybody_rules( $output ) as $rule ) {
+		$group .= $rule . "\n";
+	}
+
 	return rtrim( $output ) . "\n\n" . $group;
 }
 
@@ -228,8 +276,8 @@ function blueworx_crawl_delay_filter( $output, $is_public = true ) { // phpcs:ig
  */
 function blueworx_speed_defaults_hooks() {
 	if ( blueworx_feature_enabled( 'guest_cart_checks' ) ) {
-		add_action( 'init', 'blueworx_guest_cart_check_answer', 1 );
-		add_action( 'wp_enqueue_scripts', 'blueworx_guest_cart_script_off', 100 );
+		// Before WooCommerce starts its cart and session on init (priority 0).
+		add_action( 'init', 'blueworx_guest_cart_check_answer', -1 );
 	}
 
 	if ( blueworx_feature_enabled( 'surerank_link_checks' ) ) {
