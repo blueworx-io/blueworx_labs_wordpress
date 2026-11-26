@@ -181,12 +181,13 @@ function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 		return true;
 	}
 
-	// The asset folders a Next.js build serves (/_next/static/..., /_next/data/...,
-	// /_next/image). Nothing WordPress makes lives there, so these are turned
-	// away at once. The rest of /_next/ and /_nuxt/ wait for WordPress, above.
+	// The folder a Next.js build puts its scripts and styles in (/_next/static/...).
+	// Nothing WordPress makes lives there, so it is turned away at once. All the
+	// rest of /_next/ and /_nuxt/ waits for WordPress, above, because a real page
+	// could have any other name.
 	$within = blueworx_segments_within_site( $segments );
 
-	if ( isset( $within[0], $within[1] ) && '_next' === $within[0] && in_array( $within[1], array( 'static', 'data', 'image' ), true ) ) {
+	if ( isset( $within[0], $within[1] ) && '_next' === $within[0] && 'static' === $within[1] ) {
 		return true;
 	}
 

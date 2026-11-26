@@ -151,6 +151,16 @@ function blueworx_object_cache_verdict( $kind, $sample ) {
 		);
 	}
 
+	// The hit rate counts what a cache remembers within one page as well, so it
+	// cannot vouch for a cache that is shared. How often the note left for the
+	// next page was still there can.
+	if ( $tries >= 5 && $kept / $tries < 0.5 ) {
+		return array(
+			'rate' => $rate,
+			'text' => sprintf( 'On but not holding on to much. A note left for the next page was found again only %d%% of the time, so the cache is being emptied or is not always reachable. Check it is not flushed on every change.', round( 100 * $kept / $tries ) ),
+		);
+	}
+
 	if ( null === $rate ) {
 		return array(
 			'rate' => null,
@@ -181,13 +191,14 @@ function blueworx_object_cache_verdict( $kind, $sample ) {
 /**
  * Gathers everything the report says.
  *
- * @param bool $probe Whether to time an uncached home page visit.
+ * @param bool       $probe  Whether to time an uncached home page visit.
+ * @param array|null $sample The week's object cache sample. Default: the one being kept now.
  * @return array Report data.
  */
-function blueworx_speed_report_data( $probe = true ) {
+function blueworx_speed_report_data( $probe = true, $sample = null ) {
 	global $wp_version;
 
-	$sample = blueworx_speed_sample();
+	$sample = is_array( $sample ) ? $sample : blueworx_speed_sample();
 	$kind   = blueworx_object_cache_kind();
 
 	return array(
@@ -228,10 +239,11 @@ function blueworx_speed_report_text( $data ) {
 	$lines[] = $data['site'];
 	$lines[] = sprintf( 'BlueWorx plugin %s, WordPress %s, PHP %s%s', $data['plugin'], $data['wp'], $data['php'], '' !== $data['woo'] ? ', WooCommerce ' . $data['woo'] : '' );
 	$lines[] = '';
-	$lines[] = 'HOME PAGE, UNCACHED';
+	$lines[] = 'HOME PAGE, FRESH REQUEST';
 
 	if ( is_array( $data['home'] ) && $data['home']['status'] >= 200 && $data['home']['status'] < 300 && empty( $data['home']['cached'] ) ) {
 		$lines[] = sprintf( '%.1f seconds (answered with status %d)', $data['home']['seconds'], $data['home']['status'] );
+		$lines[] = 'Asked for with a one-off address and no sign of a cache in the answer. A content network that ignores the one-off address and says nothing could still have answered it, so treat a very quick result with care.';
 	} elseif ( is_array( $data['home'] ) ) {
 		$lines[] = sprintf(
 			'Not a clean uncached measurement: %.1f seconds, status %d, %s.',
@@ -253,7 +265,7 @@ function blueworx_speed_report_text( $data ) {
 		$lines[] = sprintf(
 			'Sampled %d uncached pages since %s: %d ms on average, %d database queries on average.',
 			$sample['requests'],
-			! empty( $sample['since'] ) ? gmdate( 'j M', (int) $sample['since'] ) : 'the start of the week',
+			! empty( $sample['since'] ) ? blueworx_local_date( (int) $sample['since'], 'j M' ) : 'the start of the week',
 			round( $sample['ms'] / $sample['requests'] ),
 			round( $sample['queries'] / $sample['requests'] )
 		);
@@ -279,10 +291,10 @@ function blueworx_speed_report_text( $data ) {
 		$lines[] = 'LAST CLEAR-OUT';
 		$lines[] = sprintf(
 			'%s: %d old background jobs and %d expired visitor sessions removed%s.',
-			gmdate( 'j M Y', (int) $data['cleanup']['time'] ),
+			blueworx_local_date( (int) $data['cleanup']['time'], 'j M Y' ),
 			$data['cleanup']['jobs'],
 			$data['cleanup']['sessions'],
-			! empty( $data['cleanup']['more'] ) ? ', more still to go' : ''
+			! empty( $data['cleanup']['error'] ) ? ', then stopped on a database error' : ( ! empty( $data['cleanup']['more'] ) ? ', more still to go' : '' )
 		);
 	}
 
@@ -297,7 +309,20 @@ function blueworx_speed_report_text( $data ) {
  * @return bool True when the mail was accepted.
  */
 function blueworx_speed_report_send( $probe = true, $scheduled = false ) {
-	$data    = blueworx_speed_report_data( $probe );
+	// The weekly report takes its sample, and starts the next week's, before
+	// anything slow happens (the home page visit, the email). Measurements made
+	// while it is being sent belong to the next report, not to none. It is done
+	// whether or not the mail goes out, so a failed send cannot make the next
+	// report claim several weeks of measurements as one week's. A report sent by
+	// hand only reads the sample and leaves it running.
+	$sample = null;
+
+	if ( $scheduled ) {
+		$sample = blueworx_speed_sample();
+		delete_option( 'blueworx_speed_sample' );
+	}
+
+	$data    = blueworx_speed_report_data( $probe, $sample );
 	$subject = preg_replace( '/[\r\n]+/', ' ', sprintf( 'Weekly speed report: %s', $data['name'] ) );
 	$sent    = wp_mail( blueworx_speed_report_recipient(), $subject, blueworx_speed_report_text( $data ) );
 
@@ -309,13 +334,6 @@ function blueworx_speed_report_send( $probe = true, $scheduled = false ) {
 		),
 		false
 	);
-
-	if ( $scheduled ) {
-		// A new week starts with an empty sample whether or not the mail went
-		// out: a failed send must not make the next report claim several weeks
-		// of measurements as one week's.
-		delete_option( 'blueworx_speed_sample' );
-	}
 
 	if ( $sent ) {
 		// The slow-page log keeps four weeks, so a page that was slow once does
@@ -512,13 +530,13 @@ function blueworx_speed_detail_html( $key ) {
 			? sprintf(
 				/* translators: %s: date of the last attempt. */
 				__( 'The last report, on %s, could not be sent. Check that this site can send email.', 'blueworx-labs-wordpress' ),
-				date_i18n( get_option( 'date_format' ), (int) $last['time'] )
+				blueworx_local_date( (int) $last['time'] )
 			)
 			: ( is_array( $last ) && ! empty( $last['time'] )
 			? sprintf(
 				/* translators: %s: date the last report was sent. */
 				__( 'The last report went out on %s.', 'blueworx-labs-wordpress' ),
-				date_i18n( get_option( 'date_format' ), (int) $last['time'] )
+				blueworx_local_date( (int) $last['time'] )
 			)
 			: __( 'No report has been sent yet. The first goes out within a day or so of switching this on.', 'blueworx-labs-wordpress' ) );
 
@@ -547,11 +565,14 @@ function blueworx_speed_detail_html( $key ) {
 					// Posts straight to its own handler, past the settings form around
 					// it. A link would send mail on a prefetch or a stray click.
 					'attrs'   => array(
-						'name'        => 'blueworx_speed_report_now',
-						'value'       => '1',
-						'formaction'  => admin_url( 'admin.php?page=blueworx-labs-wordpress&section=performance' ),
-						'formmethod'  => 'post',
-						'data-testid' => 'bw-speed-report-now',
+						'name'           => 'blueworx_speed_report_now',
+						'value'          => '1',
+						'formaction'     => admin_url( 'admin.php?page=blueworx-labs-wordpress&section=performance' ),
+						'formmethod'     => 'post',
+						// The report uses what is saved, so another field in the form that
+						// is not valid yet must not stop it.
+						'formnovalidate' => true,
+						'data-testid'    => 'bw-speed-report-now',
 					),
 				)
 			)
@@ -561,22 +582,29 @@ function blueworx_speed_detail_html( $key ) {
 	if ( 'weekly_cleanup' === $key ) {
 		$last = get_option( 'blueworx_cleanup_last', array() );
 
-		$text = is_array( $last ) && ! empty( $last['time'] )
+		$text = is_array( $last ) && ! empty( $last['time'] ) && ! empty( $last['error'] )
+			? sprintf(
+				/* translators: 1: date of the last clear-out, 2: old background jobs removed before it stopped. */
+				__( 'The last clear-out, on %1$s, stopped on a database error after removing %2$d old background jobs. It will try again next week.', 'blueworx-labs-wordpress' ),
+				blueworx_local_date( (int) $last['time'] ),
+				(int) $last['jobs']
+			)
+			: ( is_array( $last ) && ! empty( $last['time'] )
 			? sprintf(
 				/* translators: 1: date of the last clear-out, 2: old background jobs removed, 3: expired visitor sessions removed. */
 				__( 'The last clear-out was on %1$s. It removed %2$d old background jobs and %3$d expired visitor sessions.', 'blueworx-labs-wordpress' ),
-				date_i18n( get_option( 'date_format' ), (int) $last['time'] ),
+				blueworx_local_date( (int) $last['time'] ),
 				(int) $last['jobs'],
 				(int) $last['sessions']
 			)
-			: __( 'No clear-out has run yet. The first runs within the hour of switching this on, then once a week.', 'blueworx-labs-wordpress' );
+			: __( 'No clear-out has run yet. The first runs within the hour of switching this on, then once a week.', 'blueworx-labs-wordpress' ) );
 
 		return blueworx_detail_stack(
 			blueworx_ds_field(
 				array(
 					'label'   => __( 'What it removes', 'blueworx-labs-wordpress' ),
 					'control' => '<p class="bw-field__help" data-testid="bw-cleanup-last">' . esc_html( $text ) . '</p>',
-					'help'    => __( 'Background jobs that finished or were cancelled more than 14 days ago, failed ones after 30 days, expired temporary data, and expired visitor sessions. Jobs still waiting are never touched.', 'blueworx-labs-wordpress' ),
+					'help'    => __( 'Background jobs that finished more than 14 days ago, failed ones after 30 days, expired temporary data, and expired visitor sessions. Jobs still waiting are never touched.', 'blueworx-labs-wordpress' ),
 				)
 			)
 		);

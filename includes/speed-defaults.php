@@ -66,10 +66,14 @@ function blueworx_is_cart_check_request() {
  * @return bool True when a cart cookie or session cookie came with the request.
  */
 function blueworx_visitor_has_cart_cookie() {
+	// A store can rename its session cookie, with the filter WooCommerce itself
+	// reads it from. Asked for by that name as well as by the usual start of it.
+	$session_cookie = defined( 'COOKIEHASH' ) ? (string) apply_filters( 'woocommerce_cookie', 'wp_woocommerce_session_' . COOKIEHASH ) : '';  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filter, read so a renamed cookie is still found.
+
 	foreach ( array_keys( $_COOKIE ) as $name ) {
 		$name = (string) $name;
 
-		if ( 'woocommerce_items_in_cart' === $name || 'woocommerce_cart_hash' === $name || 0 === strpos( $name, 'wp_woocommerce_session_' ) ) {
+		if ( ( '' !== $session_cookie && $session_cookie === $name ) || 'woocommerce_items_in_cart' === $name || 'woocommerce_cart_hash' === $name || 0 === strpos( $name, 'wp_woocommerce_session_' ) ) {
 			return true;
 		}
 	}
@@ -195,7 +199,8 @@ function blueworx_robots_everybody_rules( $output ) {
 	$in_head = false;
 
 	foreach ( explode( "\n", str_replace( "\r\n", "\n", (string) $output ) ) as $line ) {
-		$line = trim( $line );
+		// A comment can follow any line: "User-agent: * # default".
+		$line = trim( (string) preg_replace( '/#.*$/', '', $line ) );
 
 		if ( preg_match( '/^user-agent:\s*(.*)$/i', $line, $match ) ) {
 			// Several User-agent lines in a row share the rules that follow.

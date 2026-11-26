@@ -79,7 +79,7 @@ function blueworx_table_exists( $table ) {
  * one long delete. Stops when the time is up and says whether more is left.
  *
  * @param float $deadline microtime() at which to stop.
- * @return array Array with 'deleted' (jobs removed) and 'more' (whether any old ones remain).
+ * @return array Array with 'deleted' (jobs removed), 'more' (whether any old ones remain) and 'error' (whether a database error stopped it).
  */
 function blueworx_cleanup_action_scheduler( $deadline ) {
 	global $wpdb;
@@ -92,23 +92,24 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 		return array(
 			'deleted' => 0,
 			'more'    => false,
+			'error'   => false,
 		);
 	}
 
 	$has_logs = blueworx_table_exists( $logs );
 	$more     = false;
+	$error    = false;
 
 	foreach ( array( 'complete', 'canceled', 'failed' ) as $status ) {
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( blueworx_cleanup_retention_days( $status ) * DAY_IN_SECONDS ) );
 
 		// Age is counted from when the job last ran, as Action Scheduler's own
 		// clean-up does, and not from when it was due: a job due three weeks ago
-		// that only finished today is not old. A cancelled job never ran, so it
-		// has to be old by both counts.
-		$age = 'canceled' === $status
-			? 'last_attempt_gmt < %s AND scheduled_date_gmt < %s'
-			: 'last_attempt_gmt < %s AND last_attempt_gmt > %s';
-		$low = 'canceled' === $status ? $cutoff : '2000-01-01 00:00:00';
+		// that only finished today is not old. A job that never ran has no such
+		// date (a cancelled one, say), and a cancellation date is not kept, so
+		// those are left to Action Scheduler rather than guessed at.
+		$age = 'last_attempt_gmt < %s AND last_attempt_gmt > %s';
+		$low = '2000-01-01 00:00:00';
 
 		while ( true ) {
 			if ( microtime( true ) >= $deadline ) {
@@ -133,6 +134,7 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
 			if ( $has_logs && false === $wpdb->query( $wpdb->prepare( "DELETE FROM {$logs} WHERE action_id IN ({$placeholders})", $ids ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table name from the prefix; one %d per id.
+				$error = true;
 				break 2;
 			}
 
@@ -142,6 +144,7 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 			// out, so stop, and say nothing more is waiting: trying again in five
 			// minutes would fail the same way.
 			if ( ! $removed ) {
+				$error = true;
 				break 2;
 			}
 
@@ -152,6 +155,7 @@ function blueworx_cleanup_action_scheduler( $deadline ) {
 	return array(
 		'deleted' => $deleted,
 		'more'    => $more,
+		'error'   => $error,
 	);
 }
 /**
@@ -174,6 +178,26 @@ function blueworx_cleanup_expired_sessions() {
 // phpcs:enable WordPress.DB.DirectDatabaseQuery
 
 /**
+ * Formats a saved time as a date in the site's own time zone.
+ *
+ * Not date_i18n() alone: it expects a time already shifted to the site's zone,
+ * and wp_date(), which does the shifting, does not exist before WordPress 5.3.
+ *
+ * @param int    $timestamp Unix time.
+ * @param string $format    PHP date format. Default: the site's date format.
+ * @return string Date.
+ */
+function blueworx_local_date( $timestamp, $format = '' ) {
+	$format = '' === $format ? (string) get_option( 'date_format', 'j F Y' ) : $format;
+
+	if ( function_exists( 'wp_date' ) ) {
+		return (string) wp_date( $format, (int) $timestamp );
+	}
+
+	return (string) date_i18n( $format, (int) $timestamp + (int) round( (float) get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS ) );
+}
+
+/**
  * Runs the clear-out and remembers what it did.
  *
  * @param int $seconds Longest it may run for.
@@ -194,6 +218,7 @@ function blueworx_cleanup_run( $seconds = 20 ) {
 		'jobs'     => $jobs['deleted'],
 		'sessions' => blueworx_cleanup_expired_sessions(),
 		'more'     => $jobs['more'],
+		'error'    => $jobs['error'],
 	);
 
 	update_option( 'blueworx_cleanup_last', $result, false );

@@ -142,7 +142,7 @@ foreach ( $probes as $path ) {
 }
 
 echo "\nNames that could be a real page wait for WordPress\n";
-foreach ( array( '/docs/phpunit/', '/phpmyadmin/', '/adminer', '/server-status', '/katalog/', '/katalog/product-123' ) as $path ) {
+foreach ( array( '/docs/phpunit/', '/phpmyadmin/', '/adminer', '/server-status', '/katalog/', '/katalog/product-123', '/_next/data/abc/', '/_next/image/', '/_nuxt/' ) as $path ) {
 	check( 'not turned away at once: ' . $path, blueworx_probe_path_matches( $path, false ), false );
 	check( 'but a probe once WordPress finds no page: ' . $path, blueworx_probe_path_matches( $path ), true );
 }

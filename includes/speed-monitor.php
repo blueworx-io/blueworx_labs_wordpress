@@ -129,6 +129,25 @@ function blueworx_segment_is_personal( $segment ) {
 }
 
 /**
+ * Whether WordPress resolved this request to the site's own content.
+ *
+ * @return bool True for the home page, a post or page, or a post type, category, tag or taxonomy archive.
+ */
+function blueworx_request_is_site_content() {
+	if ( ! did_action( 'wp' ) ) {
+		return false;
+	}
+
+	foreach ( array( 'is_front_page', 'is_singular', 'is_post_type_archive', 'is_tax', 'is_category', 'is_tag' ) as $check ) {
+		if ( function_exists( $check ) && $check() ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Turns the request's address into a short note that holds nothing personal.
  *
  * Only the route is kept. Anything a visitor could have supplied is left out:
@@ -171,6 +190,16 @@ function blueworx_slow_request_label() {
 		$segments = array_slice( $segments, 0, 3 );
 	}
 
+	// On the front of the site only a page that is the site's own content keeps
+	// its whole address: a post, a page, an archive, the home page. Everything else
+	// (a member's profile, an author page, anything a plugin answers) keeps only
+	// its first piece, since the rest can be a person's name. The same goes when
+	// WordPress never got far enough to say.
+	if ( 'front' === blueworx_request_kind() && count( $segments ) > 1 && ! blueworx_request_is_site_content() ) {
+		$segments = array( $segments[0], '*' );
+		$path     = '/' . $segments[0] . '/*';
+	}
+
 	// A pretty search address (/search/whatever/) when WordPress has not said so.
 	if ( isset( $segments[0] ) && 'search' === $segments[0] ) {
 		return '(search)';
@@ -208,6 +237,7 @@ function blueworx_slow_request_label() {
 
 	return $label . ( $parts ? '?' . implode( '&', $parts ) : '' );
 }
+
 /**
  * Gets the saved slow-page log, newest first.
  *
@@ -216,7 +246,46 @@ function blueworx_slow_request_label() {
 function blueworx_slow_log_entries() {
 	$log = get_option( 'blueworx_slow_log', array() );
 
-	return is_array( $log ) ? $log : array();
+	if ( ! is_array( $log ) ) {
+		return array();
+	}
+
+	// Entries saved before the log stopped keeping personal details are cut back
+	// to their first piece, so what an earlier version stored never reaches a
+	// screen or a report.
+	foreach ( $log as $index => $entry ) {
+		if ( is_array( $entry ) && empty( $entry['v'] ) && isset( $entry['path'] ) ) {
+			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
+			$log[ $index ]['v']    = 2;
+		}
+	}
+
+	return $log;
+}
+
+/**
+ * Cuts an older log entry's address back to its first piece.
+ *
+ * @param string $path Address as an earlier version saved it.
+ * @return string Address with nothing after the first piece, or a bracketed note.
+ */
+function blueworx_slow_generalise_path( $path ) {
+	if ( '' === $path || '(' === $path[0] ) {
+		return $path;
+	}
+
+	$route    = (string) strtok( $path, '?' );
+	$segments = array_values( array_filter( explode( '/', $route ), 'strlen' ) );
+
+	if ( empty( $segments ) ) {
+		return '/';
+	}
+
+	if ( 'search' === $segments[0] ) {
+		return '(search)';
+	}
+
+	return count( $segments ) > 1 ? '/' . $segments[0] . '/*' : '/' . $segments[0] . '/';
 }
 
 /**
@@ -230,6 +299,7 @@ function blueworx_slow_log_entry( $seconds ) {
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
 	return array(
+		'v'      => 2,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
 		'path'   => blueworx_slow_request_label(),
@@ -312,7 +382,7 @@ function blueworx_speed_sample_add( $seconds ) {
 			++$sample['kept'];
 		} else {
 			++$sample['lost'];
-			wp_cache_set( 'sample_note', time(), 'blueworx_speed', 6 * HOUR_IN_SECONDS );
+			wp_cache_set( 'sample_note', time(), 'blueworx_speed', WEEK_IN_SECONDS );
 		}
 	}
 
@@ -367,9 +437,10 @@ function blueworx_speed_monitor_shutdown() {
 	$seconds = microtime( true ) - (float) $_SERVER['REQUEST_TIME_FLOAT'];
 
 	// The threshold is read only for a request that has already taken at least the
-	// shortest it can be set to. A site that never saved one has no stored value,
-	// and looking up a missing option is a database query on a site without a
-	// persistent cache. A quick page never pays for it.
+	// shortest it can be set to, and is saved with the other autoloaded settings
+	// the first time the admin is opened (see blueworx_speed_seed_options()).
+	// Until then a site without a persistent cache pays one lookup, and only on a
+	// request that was already slow.
 	if ( $seconds >= 0.2 && blueworx_feature_enabled( 'slow_log' ) && $seconds >= blueworx_slow_threshold() ) {
 		blueworx_slow_log_write( blueworx_slow_log_entry( $seconds ) );
 	}
@@ -426,6 +497,29 @@ function blueworx_slow_log_by_page( $days = 7, $limit = 10 ) {
 
 	return array_slice( $pages, 0, $limit );
 }
+
+/**
+ * Saves the speed functions' own defaults the first time somebody opens the admin.
+ *
+ * An option that was never saved is looked up in the database on every request
+ * that asks for it, on a site without a persistent object cache. Saved, and set
+ * to load with the rest, it costs nothing. The values are the defaults, so
+ * nothing changes.
+ *
+ * @return void
+ */
+function blueworx_speed_seed_options() {
+	foreach ( array( 'guest_cart_checks', 'surerank_link_checks', 'crawl_delay', 'weekly_cleanup', 'slow_log', 'speed_report' ) as $key ) {
+		if ( false === get_option( 'blueworx_feature_' . $key ) ) {
+			add_option( 'blueworx_feature_' . $key, blueworx_get_feature_default( $key ), '', true );
+		}
+	}
+
+	if ( false === get_option( 'blueworx_slow_threshold' ) ) {
+		add_option( 'blueworx_slow_threshold', 2, '', true );
+	}
+}
+add_action( 'admin_init', 'blueworx_speed_seed_options' );
 
 /**
  * Hooks the monitor when either of its two functions is on.

@@ -92,6 +92,9 @@ function is_user_logged_in() {
 	return $GLOBALS['logged_in'];
 }
 $GLOBALS['object_cache'] = array();
+function date_i18n( $format, $timestamp = false ) {
+	return gmdate( $format, $timestamp );
+}
 function wp_cache_get( $key, $group = '' ) {
 	return isset( $GLOBALS['object_cache'][ $group . $key ] ) ? $GLOBALS['object_cache'][ $group . $key ] : false;
 }
@@ -107,7 +110,11 @@ $GLOBALS['is_search'] = false;
 function is_search() {
 	return $GLOBALS['is_search'];
 }
-$GLOBALS['is_404'] = false;
+$GLOBALS['is_404']   = false;
+$GLOBALS['singular'] = false;
+function is_singular() {
+	return $GLOBALS['singular'];
+}
 function is_404() {
 	return $GLOBALS['is_404'];
 }
@@ -259,6 +266,19 @@ foreach ( array( 'woocommerce_items_in_cart', 'woocommerce_cart_hash', 'wp_wooco
 	}
 	check( 'a ' . $cookie . ' cookie means a cart: asked as before', $answered, false );
 }
+define( 'COOKIEHASH', 'abc' );
+$GLOBALS['filters']['woocommerce_cookie'] = function () {
+	return 'my_store_session';
+};
+$_COOKIE                                  = array( 'my_store_session' => '1' );
+$answered                                 = false;
+try {
+	blueworx_guest_cart_check_answer();
+} catch ( Stop_Request $e ) {
+	$answered = true;
+}
+check( 'a renamed session cookie means a cart too', $answered, false );
+unset( $GLOBALS['filters']['woocommerce_cookie'] );
 $_COOKIE  = array( 'other' => '1' );
 $answered = false;
 try {
@@ -293,6 +313,13 @@ check( 'a site that discourages search engines gets it too', false !== strpos( b
 $out = blueworx_crawl_delay_filter( "User-agent: *\nDisallow: /wp-admin/\nDisallow: /private/\nAllow: /wp-admin/admin-ajax.php\n", true );
 check( 'the group keeps what the site already blocks', 2 === substr_count( $out, 'Disallow: /private/' ) && 2 === substr_count( $out, 'Disallow: /wp-admin/' ), true );
 check( 'and what it allows', 2 === substr_count( $out, 'Allow: /wp-admin/admin-ajax.php' ), true );
+$out = blueworx_crawl_delay_filter(
+	'User-agent: * # default
+Disallow: /private/ # keep out
+',
+	true
+);
+check( 'a comment after the star does not hide its rules', 2 === substr_count( $out, 'Disallow: /private/' ), true );
 $own = "User-agent: AhrefsBot\nDisallow: /\n\nUser-agent: *\nDisallow: /wp-admin/\n";
 check( 'a crawler with its own group is left to it', substr_count( blueworx_crawl_delay_filter( $own, true ), 'AhrefsBot' ), 1 );
 $GLOBALS['filters']['blueworx_crawl_delay_seconds'] = function () {
@@ -309,9 +336,17 @@ check( 'values are never kept', blueworx_slow_request_label(), '/shop/?token&utm
 $_SERVER['REQUEST_URI'] = '/search/jane.doe@example.com/';
 check( 'a pretty search address is not kept', blueworx_slow_request_label(), '(search)' );
 $_SERVER['REQUEST_URI'] = '/members/jane.doe@example.com/profile/';
-check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/members/*/profile/' );
+check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/members/*' );
+$GLOBALS['did_wp']      = 1;
+$GLOBALS['singular']    = true;
+$_SERVER['REQUEST_URI'] = '/members/about-us/';
+check( "the site's own content keeps its address", blueworx_slow_request_label(), '/members/about-us/' );
+$GLOBALS['singular']    = false;
+$_SERVER['REQUEST_URI'] = '/members/jane-doe/';
+check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/members/*' );
+$GLOBALS['did_wp']      = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
-check( 'a long number is not kept', blueworx_slow_request_label(), '/orders/*/' );
+check( 'a long number is not kept', blueworx_slow_request_label(), '/orders/*' );
 $_SERVER['REQUEST_URI']                      = '/wp-json/x/v1/lookup/some-person/details';
 $GLOBALS['filters']['blueworx_request_kind'] = function () {
 	return 'rest';
@@ -321,8 +356,14 @@ $GLOBALS['filters']['blueworx_request_kind'] = function () {
 	return 'front';
 };
 $_SERVER['REQUEST_URI']                      = '/wp-admin/admin-ajax.php?action=Heartbeat&nonce=zzz';
+$GLOBALS['filters']['blueworx_request_kind'] = function () {
+	return 'ajax';
+};
 check( 'what an AJAX call is for is kept', blueworx_slow_request_label(), '/wp-admin/admin-ajax.php?action=heartbeat&nonce' );
-$_SERVER['REQUEST_URI'] = '/?wc-ajax=get_refreshed_fragments';
+$GLOBALS['filters']['blueworx_request_kind'] = function () {
+	return 'front';
+};
+$_SERVER['REQUEST_URI']                      = '/?wc-ajax=get_refreshed_fragments';
 check( 'and the cart check', blueworx_slow_request_label(), '/?wc-ajax=get_refreshed_fragments' );
 $_SERVER['REQUEST_URI'] = '/' . str_repeat( 'a', 500 );
 $GLOBALS['did_wp']      = 1;
@@ -373,6 +414,37 @@ $pages = blueworx_slow_log_by_page( 7, 3 );
 check( 'summarised by page, three at most', count( $pages ), 3 );
 check( 'worst first', $pages[0]['worst'] >= $pages[1]['worst'], true );
 
+echo "\nWhat an earlier version saved is cut back\n";
+$GLOBALS['options']['blueworx_slow_log'] = array(
+	array(
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/members/jane-doe/?x=1',
+	),
+	array(
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/search/jane.doe@example.com/',
+	),
+	array(
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/',
+	),
+	array(
+		'v'    => 2,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/shop/blue-shirt/',
+	),
+);
+$paths                                   = array_column( blueworx_slow_log_entries(), 'path' );
+check( 'a name in a profile address goes', $paths[0], '/members/*' );
+check( 'a saved search goes', $paths[1], '(search)' );
+check( 'the home page stays', $paths[2], '/' );
+check( 'a current entry is untouched', $paths[3], '/shop/blue-shirt/' );
+$GLOBALS['options']['blueworx_slow_log'] = array();
+
 echo "\nThe object cache is judged on use, not on being switched on\n";
 $s = array(
 	'requests' => 40,
@@ -390,7 +462,11 @@ check( 'on but barely used', 0 === strpos( blueworx_object_cache_verdict( 'persi
 $s['kept'] = 0;
 $s['lost'] = 12;
 check( 'on but nothing survives between pages', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
+$s['kept'] = 3;
+$s['lost'] = 11;
+check( 'a note rarely found again is not called healthy', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'not holding on to much' ), true );
 $s['kept'] = 9;
+$s['lost'] = 1;
 check( 'a note found again means it is shared', false === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
 $s['requests'] = 2;
 check( 'too few pages to say', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'Too few' ), true );
@@ -526,7 +602,7 @@ check( 'the logs of removed jobs go too', false !== strpos( $all, 'DELETE FROM w
 check( 'then the jobs', false !== strpos( $all, 'DELETE FROM wp_actionscheduler_actions WHERE action_id IN (1,2,3)' ), true );
 check( 'the count is of jobs', $result['jobs'], 6 );
 check( 'expired sessions are removed', false !== strpos( $all, 'DELETE FROM wp_woocommerce_sessions WHERE session_expiry <' ), true );
-check( 'a canceled job must be old by both counts', false !== strpos( $all, 'scheduled_date_gmt <' ), true );
+check( 'a job that never ran is not guessed at', false === strpos( $all, 'scheduled_date_gmt' ), true );
 check( 'finished jobs are aged from when they last ran', false !== strpos( $all, 'last_attempt_gmt <' ), true );
 check( 'the run is remembered', get_option( 'blueworx_cleanup_last' )['jobs'], 6 );
 check( 'a run that finished leaves nothing to carry on', $result['more'], false );
@@ -547,6 +623,7 @@ $result        = blueworx_cleanup_action_scheduler( microtime( true ) + 20 );
 check( 'a failing delete stops at once', count( $wpdb->queries ), 2 );
 check( 'nothing is counted as removed', $result['deleted'], 0 );
 check( 'and no retry is booked', $result['more'], false );
+check( 'and the stop is reported', $result['error'], true );
 
 echo "\nThe report\n";
 $data = array(
@@ -596,6 +673,7 @@ $data = array(
 );
 $text = blueworx_speed_report_text( $data );
 check( 'names the site', false !== strpos( $text, "Weekly speed report: Example & Co\nhttps://example.test/" ), true );
+check( 'says it is a fresh request, and not to trust a quick one blindly', false !== strpos( $text, 'HOME PAGE, FRESH REQUEST' ) && false !== strpos( $text, 'treat a very quick result with care' ), true );
 check( 'gives the uncached home page time', false !== strpos( $text, '6.6 seconds' ), true );
 check( 'says the cache is on but barely used', false !== strpos( $text, 'On but barely used' ), true );
 check( 'gives the hit rate', false !== strpos( $text, '2%' ), true );
