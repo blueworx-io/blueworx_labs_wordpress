@@ -171,9 +171,23 @@ function blueworx_probe_path_matches( $path, $include_ambiguous = true ) {
  */
 function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 	// Folders that are only ever somebody else's admin tool or a leftover.
-	$folders = array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules' );
+	// "katalog" is a folder bots guess on shop sites, and _next and _nuxt are
+	// the build folders of other web frameworks. All could be a real page's name
+	// on some site, so they are only turned away once WordPress says there is
+	// nothing there.
+	$folders = apply_filters( 'blueworx_probe_folders', array( 'phpmyadmin', 'myadmin', 'cgi-bin', 'phpunit', 'node_modules', 'katalog', '_next', '_nuxt' ) );
 
-	if ( $include_ambiguous && array_intersect( $folders, $segments ) ) {
+	if ( $include_ambiguous && array_intersect( (array) $folders, $segments ) ) {
+		return true;
+	}
+
+	// The folder a Next.js build puts its scripts and styles in (/_next/static/...).
+	// Nothing WordPress makes lives there, so it is turned away at once. All the
+	// rest of /_next/ and /_nuxt/ waits for WordPress, above, because a real page
+	// could have any other name.
+	$within = blueworx_segments_within_site( $segments );
+
+	if ( isset( $within[0], $within[1] ) && '_next' === $within[0] && 'static' === $within[1] ) {
 		return true;
 	}
 
@@ -191,6 +205,11 @@ function blueworx_probe_name_matches( $segments, $base, $include_ambiguous ) {
 		'secrets.yml',
 		'credentials',
 		'credentials.json',
+		'credentials.txt',
+		'aws-credentials',
+		'aws-credentials.txt',
+		'aws_credentials',
+		'aws_credentials.txt',
 		'appsettings.json',
 		'database.yml',
 		'sftp-config.json',

@@ -192,4 +192,19 @@ function blueworx_uninstall_site() {
 	delete_option( 'blueworx_missing_page_limit' );
 	delete_option( 'blueworx_missing_page_pause' );
 	delete_option( 'blueworx_missing_page_paused_until' );
+
+	// Speed defaults: the switches, settings, log, sample and weekly events.
+	foreach ( array( 'guest_cart_checks', 'surerank_link_checks', 'crawl_delay', 'weekly_cleanup', 'slow_log', 'speed_report' ) as $blueworx_speed_key ) {
+		delete_option( 'blueworx_feature_' . $blueworx_speed_key );
+	}
+
+	delete_option( 'blueworx_slow_threshold' );
+	delete_option( 'blueworx_slow_log' );
+	delete_option( 'blueworx_speed_sample' );
+	delete_option( 'blueworx_speed_report_to' );
+	delete_option( 'blueworx_speed_report_last' );
+	delete_option( 'blueworx_cleanup_last' );
+	wp_clear_scheduled_hook( 'blueworx_weekly_cleanup' );
+	wp_clear_scheduled_hook( 'blueworx_weekly_cleanup_more' );
+	wp_clear_scheduled_hook( 'blueworx_weekly_speed_report' );
 }

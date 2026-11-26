@@ -382,6 +382,7 @@ function blueworx_save_feature_settings() {
 	blueworx_save_content_tools_settings();
 	blueworx_save_revisions_settings();
 	blueworx_save_bot_control_settings();
+	blueworx_save_speed_settings();
 
 	set_transient( 'blueworx_labs_notice', __( 'Settings saved.', 'blueworx-labs-wordpress' ), 30 );
 
@@ -853,6 +854,10 @@ function blueworx_render_feature_detail( $key ) {
  * @return string HTML, or an empty string when the feature has no detail.
  */
 function blueworx_get_feature_detail_html( $key ) {
+	if ( in_array( $key, array( 'slow_log', 'speed_report', 'weekly_cleanup' ), true ) ) {
+		return blueworx_speed_detail_html( $key );
+	}
+
 	if ( 'login' === $key ) {
 		// The whole address, copyable. A slug on its own is not the thing anybody
 		// needs to keep — the address is, and typing it out from a slug is where
