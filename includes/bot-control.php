@@ -358,6 +358,60 @@ function blueworx_bot_request_is_exempt( $path, $query = '' ) {
 }
 
 /**
+ * Every address prefix the REST API answers on.
+ *
+ * The default, the one WordPress is set to now, and the one saved in the site's
+ * address rules. A theme or an init callback can change the prefix after this
+ * has run, but the rules saved from the last time they were built still name it.
+ * A prefix can have several parts (api/rest), so each is a list of segments.
+ *
+ * @return array[] Each prefix as a list of lowercase segments.
+ */
+function blueworx_rest_prefixes() {
+	$found = array( 'wp-json' );
+
+	if ( function_exists( 'rest_get_url_prefix' ) ) {
+		$found[] = (string) rest_get_url_prefix();
+	}
+
+	$rules = get_option( 'rewrite_rules', array() );
+
+	foreach ( is_array( $rules ) ? $rules : array() as $rule => $target ) {
+		if ( 'index.php?rest_route=/' === $target && preg_match( '#^\^?([a-z0-9_/-]+)/\?\$$#i',(string) $rule, $match ) ) {
+			$found[] = $match[1];
+		}
+	}
+
+	$prefixes = array();
+
+	foreach ( array_unique( $found ) as $prefix ) {
+		$segments = blueworx_probe_segments( $prefix );
+
+		if ( $segments ) {
+			$prefixes[] = $segments;
+		}
+	}
+
+	return $prefixes;
+}
+
+/**
+ * Whether a path, read from the site's own root, is inside the REST API.
+ *
+ * @param string[] $segments Path segments from the site's root, without index.php.
+ * @return bool True for a REST address.
+ */
+function blueworx_path_is_rest( $segments ) {
+	foreach ( blueworx_rest_prefixes() as $prefix ) {
+		if ( array_slice( $segments, 0, count( $prefix ) ) === $prefix ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Whether a request path is one of the exempt routes.
  *
  * @param string $path  Request path.
@@ -390,11 +444,7 @@ function blueworx_bot_path_is_exempt( $path, $query = '' ) {
 
 	$first = isset( $segments[0] ) ? $segments[0] : '';
 
-	// The REST prefix is whatever the site has set it to; it is known by now, as
-	// this only runs once every plugin has loaded.
-	$rest_prefix = function_exists( 'rest_get_url_prefix' ) ? strtolower( (string) rest_get_url_prefix() ) : 'wp-json';
-
-	if ( in_array( $first, array( 'wp-admin', 'wp-json', $rest_prefix ), true ) || in_array( $base, array( 'wp-login.php', 'wp-cron.php', 'admin-ajax.php' ), true ) ) {
+	if ( 'wp-admin' === $first || blueworx_path_is_rest( $segments ) || in_array( $base, array( 'wp-login.php', 'wp-cron.php', 'admin-ajax.php' ), true ) ) {
 		return true;
 	}
 
@@ -536,16 +586,23 @@ function blueworx_normalise_ip( $ip ) {
  * @return bool True when the address is inside it.
  */
 function blueworx_ip_in_range( $ip, $range ) {
-	$parts    = explode( '/', (string) $range, 2 );
-	$parts[0] = blueworx_normalise_ip( $parts[0] );
-	$ip_bin   = @inet_pton( blueworx_normalise_ip( (string) $ip ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
-	$net    = @inet_pton( $parts[0] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
+	$parts  = explode( '/', (string) $range, 2 );
+	$mapped = blueworx_normalise_ip( $parts[0] ) !== $parts[0];
+	$ip_bin = @inet_pton( blueworx_normalise_ip( (string) $ip ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
+	$net    = @inet_pton( blueworx_normalise_ip( $parts[0] ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
 
 	if ( false === $ip_bin || false === $net || strlen( $ip_bin ) !== strlen( $net ) ) {
 		return false;
 	}
 
-	$bits  = isset( $parts[1] ) ? (int) $parts[1] : strlen( $ip_bin ) * 8;
+	$bits = isset( $parts[1] ) ? (int) $parts[1] : strlen( $ip_bin ) * 8;
+
+	if ( $mapped && isset( $parts[1] ) ) {
+		// A network written as IPv4-mapped IPv6 (::ffff:10.0.0.0/120) has 96 bits of
+		// prefix the IPv4 form does not: /120 is the IPv4 /24.
+		$bits = max( 0, $bits - 96 );
+	}
+
 	$bytes = intdiv( $bits, 8 );
 	$extra = $bits % 8;
 
@@ -615,7 +672,7 @@ function blueworx_ip_is_trusted_proxy( $ip ) {
 function blueworx_request_ip() {
 	$server = $_SERVER; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Each value is validated as an IP address below before it is used.
 	$remote = isset( $server['REMOTE_ADDR'] ) ? blueworx_normalise_ip( (string) $server['REMOTE_ADDR'] ) : '';
-	$public =FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+	$public = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
 	$ip     = '';
 
 	if ( false !== filter_var( $remote, FILTER_VALIDATE_IP ) ) {
@@ -717,9 +774,10 @@ function blueworx_request_names_others( $ip ) {
 		}
 
 		foreach ( $found as $address ) {
-			$binary = @inet_pton( trim( $address ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled here.
+			$address = blueworx_normalise_ip( trim( $address ) );
+			$binary  = @inet_pton( $address ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled here.
 
-			if ( false === $binary || ( inet_pton( $ip ) !== $binary && ! blueworx_ip_is_trusted_proxy( trim( $address ) ) ) ) {
+			if ( false === $binary || ( inet_pton( blueworx_normalise_ip( $ip ) ) !== $binary && ! blueworx_ip_is_trusted_proxy( $address ) ) ) {
 				return true;
 			}
 		}
@@ -911,6 +969,12 @@ function blueworx_bot_control_early() {
 		return;
 	}
 
+	// Most requests are not probes, so that is asked first: the checks below cost
+	// more and are only needed for a path that would be turned away.
+	if ( ! apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
+		return;
+	}
+
 	if ( ! did_action( 'init' ) && blueworx_sso_enabled() ) {
 		// A site can claim any old address as its sign-in, and only from init on is
 		// it safe to ask which. Right after single sign-on has taken its own
@@ -923,9 +987,7 @@ function blueworx_bot_control_early() {
 		return;
 	}
 
-	if ( apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
-		blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
-	}
+	blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
 }
 
 /**

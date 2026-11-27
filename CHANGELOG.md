@@ -14,7 +14,12 @@ versioning.
   never counts twice.
 - **Sign-in and admin are never turned away or paused**, also when WordPress
   lives in a folder of its own (its address differs from the site's) or the site
-  has renamed its REST address.
+  has renamed its REST address, including one with several parts (api/rest) or
+  one a theme sets after the site has started loading.
+- A trusted proxy network written as IPv4-in-IPv6 keeps its real size, and a
+  visitor a trusted proxy names that way is no longer mistaken for a shared address.
+- Requests that are not probes are now ruled out first, so the other checks only
+  run for a path that would be turned away.
 
 ## [1.104.1] - 2026-11-26
 
