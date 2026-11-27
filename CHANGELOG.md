@@ -18,8 +18,9 @@ versioning.
   one a theme sets after the site has started loading.
 - A trusted proxy network written as IPv4-in-IPv6 keeps its real size, and a
   visitor a trusted proxy names that way is no longer mistaken for a shared address.
-- Requests that are not probes are now ruled out first, so the other checks only
-  run for a path that would be turned away.
+- On a site with pretty permalinks and no saved address rules yet, a probe is
+  judged once WordPress has started, so a REST address set by a theme or plugin
+  is known first.
 
 ## [1.104.1] - 2026-11-26
 

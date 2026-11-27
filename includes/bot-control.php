@@ -377,7 +377,7 @@ function blueworx_rest_prefixes() {
 	$rules = get_option( 'rewrite_rules', array() );
 
 	foreach ( is_array( $rules ) ? $rules : array() as $rule => $target ) {
-		if ( 'index.php?rest_route=/' === $target && preg_match( '#^\^?([a-z0-9_/-]+)/\?\$$#i',(string) $rule, $match ) ) {
+		if ( 'index.php?rest_route=/$matches[1]' === $target && preg_match( '#^\^?([a-z0-9._/-]+)/\(\.\*\)\?$#i', (string) $rule, $match ) ) {
 			$found[] = $match[1];
 		}
 	}
@@ -393,6 +393,26 @@ function blueworx_rest_prefixes() {
 	}
 
 	return $prefixes;
+}
+
+/**
+ * Whether the REST address could still be changed by a plugin or the theme.
+ *
+ * Once the site has saved its address rules they name the REST prefix, so it is
+ * known from the start. Before that (and with plain permalinks, where there are
+ * no saved rules, a prefix in the path does not apply) it is only settled once
+ * every plugin and the theme have run.
+ *
+ * @return bool True when the saved rules cannot be relied on to name it.
+ */
+function blueworx_rest_prefix_unsettled() {
+	if ( '' === (string) get_option( 'permalink_structure', '' ) ) {
+		return false;
+	}
+
+	$rules = get_option( 'rewrite_rules', array() );
+
+	return ! is_array( $rules ) || empty( $rules );
 }
 
 /**
@@ -969,16 +989,12 @@ function blueworx_bot_control_early() {
 		return;
 	}
 
-	// Most requests are not probes, so that is asked first: the checks below cost
-	// more and are only needed for a path that would be turned away.
-	if ( ! apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
-		return;
-	}
-
-	if ( ! did_action( 'init' ) && blueworx_sso_enabled() ) {
+	if ( ! did_action( 'init' ) && ( blueworx_sso_enabled() || blueworx_rest_prefix_unsettled() ) ) {
 		// A site can claim any old address as its sign-in, and only from init on is
 		// it safe to ask which. Right after single sign-on has taken its own
-		// requests (init, priority 1), so one of those is never turned away.
+		// requests (init, priority 1), so one of those is never turned away. The
+		// same goes for the REST address when the site has no saved address rules
+		// yet: a theme or plugin may still be about to change it.
 		add_action( 'init', 'blueworx_bot_control_early', 2 );
 		return;
 	}
@@ -987,7 +1003,9 @@ function blueworx_bot_control_early() {
 		return;
 	}
 
-	blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
+	if ( apply_filters( 'blueworx_is_probe_path', blueworx_probe_path_matches( $path, false ), $path ) ) {
+		blueworx_bot_respond( blueworx_probe_status(), 403 === blueworx_probe_status() ? 'Forbidden' : 'Not found' );
+	}
 }
 
 /**
