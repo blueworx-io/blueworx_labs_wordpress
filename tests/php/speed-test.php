@@ -119,8 +119,12 @@ function is_404() {
 	return $GLOBALS['is_404'];
 }
 $GLOBALS['post_type'] = 'page';
+// What a theme's related-posts loop leaves behind: never the requested page's type.
 function get_post_type() {
-	return $GLOBALS['post_type'];
+	return 'post';
+}
+function get_queried_object() {
+	return (object) array( 'post_type' => $GLOBALS['post_type'] );
 }
 function wp_dequeue_script( $handle ) {
 	$GLOBALS['dequeued'][] = $handle;
@@ -291,6 +295,16 @@ try {
 	$answered = true;
 }
 check( 'a recently viewed list is not a cart', $answered, true );
+foreach ( array( 'sbjs_session', 'sbjs_current', '_hjSession_123', '_ga_ABC123', '_fbp' ) as $cookie ) {
+	$_COOKIE  = array( $cookie => '1' );
+	$answered = false;
+	try {
+		blueworx_guest_cart_check_answer();
+	} catch ( Stop_Request $e ) {
+		$answered = true;
+	}
+	check( 'the tracking cookie ' . $cookie . ' is not a cart', $answered, true );
+}
 define( 'COOKIEHASH', 'abc' );
 $GLOBALS['filters']['woocommerce_cookie'] = function () {
 	return 'my_store_session';
@@ -364,8 +378,13 @@ unset( $GLOBALS['filters']['blueworx_crawl_delay_seconds'] );
 echo "\nThe slow-page log keeps no secrets\n";
 $_SERVER['REQUEST_URI'] = '/shop/?token=abc123&s=my+secret&utm_source=x';
 check( 'a search made the old way keeps nothing', blueworx_slow_request_label(), '(search)' );
+$GLOBALS['did_wp']      = 1;
+$GLOBALS['singular']    = true;
+$GLOBALS['post_type']   = 'page';
 $_SERVER['REQUEST_URI'] = '/shop/?token=abc123&utm_source=x';
 check( 'values are never kept', blueworx_slow_request_label(), '/shop/?token&utm_source' );
+$GLOBALS['did_wp']      = 0;
+$GLOBALS['singular']    = false;
 $_SERVER['REQUEST_URI'] = '/search/jane.doe@example.com/';
 check( 'a pretty search address is not kept', blueworx_slow_request_label(), '(search)' );
 $_SERVER['REQUEST_URI'] = '/members/jane.doe@example.com/profile/';
@@ -381,7 +400,17 @@ $GLOBALS['post_type']   = 'product';
 $_SERVER['REQUEST_URI'] = '/shop/blue-shirt/';
 check( 'a product keeps its address', blueworx_slow_request_label(), '/shop/blue-shirt/' );
 $GLOBALS['post_type']   = 'page';
+$GLOBALS['post_type']   = 'member';
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a member at the root of the site is not named either', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_type']   = 'page';
+$_SERVER['REQUEST_URI'] = '/about/';
+check( 'a page at the root keeps its name', blueworx_slow_request_label(), '/about/' );
 $GLOBALS['singular']    = false;
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a root address a plugin answers is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/sitemap.xml';
+check( 'a file name at the root stays', blueworx_slow_request_label(), '/sitemap.xml' );
 $_SERVER['REQUEST_URI'] = '/members/jane-doe/';
 check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/members/*' );
 $GLOBALS['did_wp']      = 0;
@@ -426,6 +455,9 @@ update_option( 'blueworx_slow_threshold', '1.5' );
 check( 'a chosen threshold is used', blueworx_slow_threshold(), 1.5 );
 
 $_SERVER['REQUEST_URI']        = '/slow/';
+$GLOBALS['did_wp']             = 1;
+$GLOBALS['singular']           = true;
+$GLOBALS['post_type']          = 'page';
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime( true ) - 3;
 blueworx_speed_monitor_shutdown();
 check( 'a slow page is logged', count( blueworx_slow_log_entries() ), 1 );
@@ -443,6 +475,7 @@ $GLOBALS['switches'] = array();
 for ( $i = 0; $i < 250; $i++ ) {
 	blueworx_slow_log_write(
 		array(
+			'v'    => 3,
 			't'    => time(),
 			'ms'   => 1000 + $i,
 			'path' => '/p' . ( $i % 5 ) . '/',
@@ -475,6 +508,18 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		'v'    => 2,
 		't'    => time(),
 		'ms'   => 3000,
+		'path' => '/members/john-smith/',
+	),
+	array(
+		'v'    => 2,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/john-smith/',
+	),
+	array(
+		'v'    => 3,
+		't'    => time(),
+		'ms'   => 3000,
 		'path' => '/shop/blue-shirt/',
 	),
 );
@@ -482,7 +527,9 @@ $paths                                   = array_column( blueworx_slow_log_entri
 check( 'a name in a profile address goes', $paths[0], '/members/*' );
 check( 'a saved search goes', $paths[1], '(search)' );
 check( 'the home page stays', $paths[2], '/' );
-check( 'a current entry is untouched', $paths[3], '/shop/blue-shirt/' );
+check( 'a name kept by the version before the last is cut back too', $paths[3], '/members/*' );
+check( 'also at the root', $paths[4], '/*' );
+check( 'a current entry is untouched', $paths[5], '/shop/blue-shirt/' );
 $GLOBALS['options']['blueworx_slow_log'] = array();
 
 echo "\nThe object cache is judged on use, not on being switched on\n";

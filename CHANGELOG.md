@@ -4,21 +4,45 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.104.2] - 2026-11-27
+## [1.104.3] - 2026-11-27
 
 ### Fixed
 - **Speed defaults, review fixes.**
   - The slow-page log (and so the speed report) no longer keeps the address of
     a page that belongs to a custom content type such as members or staff, since
     that address can be a person's name. Posts, pages, products, categories and
-    tags keep theirs.
+    tags keep theirs. The type is read from the page that was asked for, so a
+    theme's related-posts loop cannot change it, and a single address piece at
+    the root of the site (/jane-doe/) is hidden the same way.
+  - Log entries saved by 1.104.0 and 1.104.1 are cut back the same way before
+    any screen or report reads them, so a member's name saved earlier is never
+    emailed.
   - A visitor whose cart cookie was renamed by a plugin that loads late is no
     longer treated as having no cart: any cookie that looks like a cart or a
-    session is kept.
+    session is kept. Tracking cookies (order attribution, analytics) are not
+    mistaken for carts.
   - A crawler name that is not one plain word can no longer add a line of its
     own to robots.txt.
   - The speed report no longer calls the object cache healthy until enough
     checks have shown it is shared between pages.
+
+## [1.104.2] - 2026-11-27
+
+### Fixed
+- **Scanner and crawler controls: more careful about who is who.** A visitor
+  whose server writes their address as IPv4-inside-IPv6 (::ffff:1.2.3.4) is now
+  counted as one visitor and checked against the trusted proxy networks as the
+  plain IPv4 address, so a proxy is never mistaken for a shopper and a shopper
+  never counts twice.
+- **Sign-in and admin are never turned away or paused**, also when WordPress
+  lives in a folder of its own (its address differs from the site's) or the site
+  has renamed its REST address, including one with several parts (api/rest) or
+  one a theme sets after the site has started loading.
+- A trusted proxy network written as IPv4-in-IPv6 keeps its real size, and a
+  visitor a trusted proxy names that way is no longer mistaken for a shared address.
+- On a site with pretty permalinks and no saved address rules yet, a probe is
+  judged once WordPress has started, so a REST address set by a theme or plugin
+  is known first.
 
 ## [1.104.1] - 2026-11-26
 

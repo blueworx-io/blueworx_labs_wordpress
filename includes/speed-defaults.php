@@ -57,6 +57,24 @@ function blueworx_is_cart_check_request() {
 }
 
 /**
+ * Whether a cookie name belongs to a tracking or analytics tool.
+ *
+ * @param string $name Cookie name, lower case.
+ * @return bool True for a cookie that says nothing about a cart.
+ */
+function blueworx_is_tracking_cookie( $name ) {
+	$prefixes = (array) apply_filters( 'blueworx_tracking_cookie_prefixes', array( 'sbjs_', '_hj', '_ga', '_gid', '_gcl', '_fb', '_clck', '_clsk', '_uet', '__hs', 'hubspot', 'ajs_', '_pk_', '_scid', '_tt_', '_pin_', 'mp_' ) );
+
+	foreach ( $prefixes as $prefix ) {
+		if ( '' !== $prefix && 0 === strpos( $name, strtolower( (string) $prefix ) ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Whether this visitor has a cart in progress.
  *
  * WooCommerce marks a visitor who has put something in a cart with a cookie for
@@ -77,6 +95,12 @@ function blueworx_visitor_has_cart_cookie() {
 	foreach ( array_keys( $_COOKIE ) as $name ) {
 		$name = (string) $name;
 		$low  = strtolower( $name );
+
+		// Tracking cookies say a page was viewed, not that anything is in a cart
+		// (WooCommerce's order attribution sbjs_session, analytics and ad pixels).
+		if ( blueworx_is_tracking_cookie( $low ) ) {
+			continue;
+		}
 
 		if ( ( '' !== $session_cookie && $session_cookie === $name ) || false !== strpos( $low, 'session' ) || false !== strpos( $low, 'cart' ) ) {
 			return true;

@@ -144,12 +144,18 @@ function blueworx_request_is_site_content() {
 	$types = (array) apply_filters( 'blueworx_slow_log_content_types', array( 'post', 'page', 'product' ) );
 	$taxes = (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) );
 
-	if ( function_exists( 'is_front_page' ) && is_front_page() ) {
-		return true;
+	foreach ( array( 'is_front_page', 'is_home', 'is_date' ) as $check ) {
+		if ( function_exists( $check ) && $check() ) {
+			return true;
+		}
 	}
 
 	if ( function_exists( 'is_singular' ) && is_singular() ) {
-		return function_exists( 'get_post_type' ) && in_array( get_post_type(), $types, true );
+		// The page that was asked for, not whatever post a theme's own loop (related
+		// posts, say) left as the current one.
+		$page = function_exists( 'get_queried_object' ) ? get_queried_object() : null;
+
+		return is_object( $page ) && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
 	}
 
 	if ( function_exists( 'is_post_type_archive' ) && is_post_type_archive() ) {
@@ -219,9 +225,16 @@ function blueworx_slow_request_label() {
 	// (a member's profile, an author page, anything a plugin answers) keeps only
 	// its first piece, since the rest can be a person's name. The same goes when
 	// WordPress never got far enough to say.
-	if ( 'front' === blueworx_request_kind() && count( $segments ) > 1 && ! blueworx_request_is_site_content() ) {
-		$segments = array( $segments[0], '*' );
-		$path     = '/' . $segments[0] . '/*';
+	if ( 'front' === blueworx_request_kind() && ! empty( $segments ) && ! blueworx_request_is_site_content() ) {
+		if ( count( $segments ) > 1 ) {
+			$segments = array( $segments[0], '*' );
+			$path     = '/' . $segments[0] . '/*';
+		} elseif ( false === strpos( $segments[0], '.' ) ) {
+			// A single piece at the root can be a person's name (/jane-doe/). A file
+			// name (sitemap.xml, wp-login.php) cannot.
+			$segments = array( '*' );
+			$path     = '/*';
+		}
 	}
 
 	// A pretty search address (/search/whatever/) when WordPress has not said so.
@@ -278,9 +291,9 @@ function blueworx_slow_log_entries() {
 	// to their first piece, so what an earlier version stored never reaches a
 	// screen or a report.
 	foreach ( $log as $index => $entry ) {
-		if ( is_array( $entry ) && empty( $entry['v'] ) && isset( $entry['path'] ) ) {
+		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 3 ) && isset( $entry['path'] ) ) {
 			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
-			$log[ $index ]['v']    = 2;
+			$log[ $index ]['v']    = 3;
 		}
 	}
 
@@ -309,7 +322,12 @@ function blueworx_slow_generalise_path( $path ) {
 		return '(search)';
 	}
 
-	return count( $segments ) > 1 ? '/' . $segments[0] . '/*' : '/' . $segments[0] . '/';
+	if ( count( $segments ) > 1 ) {
+		return '/' . $segments[0] . '/*';
+	}
+
+	// One piece at the root can be a person's name; a file name cannot.
+	return false === strpos( $segments[0], '.' ) ? '/*' : '/' . $segments[0];
 }
 
 /**
@@ -323,7 +341,7 @@ function blueworx_slow_log_entry( $seconds ) {
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
 	return array(
-		'v'      => 2,
+		'v'      => 3,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
 		'path'   => blueworx_slow_request_label(),
