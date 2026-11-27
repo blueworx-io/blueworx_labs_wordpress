@@ -8,7 +8,7 @@ versioning.
 
 ### Changed
 - **Version-only update.** The scanner and crawler fixes from the 13 review
-  findings on the bot control change are already in the plugin (1.104.0 to
+  findings on the bot control change are already in the plugin (earlier releases, up to
   1.104.2); each has a check in the bot control tests. This release changes no
   behaviour and releases that work under a fresh version number.
 
