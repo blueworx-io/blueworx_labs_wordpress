@@ -60,7 +60,10 @@ function wp_rand( $min, $max ) {
 }
 $GLOBALS['rand'] = 1;
 function get_page_uri( $id ) {
-	$pages = array( 7 => 'blog', 8 => 'blog-%e3%83%96%e3%83%ad%e3%82%b0' );
+	$pages = array(
+		7 => 'blog',
+		8 => 'blog-%e3%83%96%e3%83%ad%e3%82%b0',
+	);
 	return isset( $pages[ (int) $id ] ) ? $pages[ (int) $id ] : '';
 }
 function home_url( $path = '' ) {
