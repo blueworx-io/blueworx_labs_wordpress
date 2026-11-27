@@ -138,6 +138,15 @@ function is_home() {
 function get_queried_object() {
 	return (object) array( 'post_type' => $GLOBALS['post_type'] );
 }
+/**
+ * The address of the post WordPress answered with.
+ *
+ * @param mixed $post The post.
+ * @return string|false The address.
+ */
+function get_permalink( $post = 0 ) {
+	return isset( $GLOBALS['permalink'] ) ? 'https://example.test' . $GLOBALS['permalink'] : false;
+}
 function wp_dequeue_script( $handle ) {
 	$GLOBALS['dequeued'][] = $handle;
 }
@@ -407,6 +416,7 @@ check( 'a search made the old way keeps nothing', blueworx_slow_request_label(),
 $GLOBALS['did_wp']      = 1;
 $GLOBALS['singular']    = true;
 $GLOBALS['post_type']   = 'page';
+$GLOBALS['permalink']   = '/shop/';
 $_SERVER['REQUEST_URI'] = '/shop/?token=abc123&utm_source=x';
 check( 'values are never kept', blueworx_slow_request_label(), '/shop/?token&utm_source' );
 $GLOBALS['did_wp']      = 0;
@@ -417,12 +427,30 @@ $_SERVER['REQUEST_URI'] = '/members/jane.doe@example.com/profile/';
 check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/*' );
 $GLOBALS['did_wp']      = 1;
 $GLOBALS['singular']    = true;
+$GLOBALS['permalink']   = '/members/about-us/';
 $_SERVER['REQUEST_URI'] = '/members/about-us/';
 check( "the site's own content keeps its address", blueworx_slow_request_label(), '/members/about-us/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/page/2/';
+check( 'and its numbered pages', blueworx_slow_request_label(), '/members/about-us/page/2/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/comment-page-3/';
+check( 'and its comment pages', blueworx_slow_request_label(), '/members/about-us/comment-page-3/' );
+$_SERVER['REQUEST_URI'] = '/members/jane-doe/';
+check( 'a profile a plugin answers with a real page is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/jane-doe/';
+check( 'nor is a name after the page address', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/author/jane-doe/?p=123';
+$GLOBALS['permalink']   = '/2024/05/a-post/';
+check( 'a post answered at an author address is not named', blueworx_slow_request_label(), '/author/*?p' );
+$GLOBALS['permalink'] = '/members/about-us/';
+unset( $GLOBALS['permalink'] );
+$_SERVER['REQUEST_URI'] = '/members/about-us/';
+check( 'a post whose address WordPress cannot give is not named', blueworx_slow_request_label(), '/*' );
+$GLOBALS['permalink']   = '/members/about-us/';
 $GLOBALS['post_type']   = 'member';
 $_SERVER['REQUEST_URI'] = '/members/jane-doe/';
 check( 'a member post type keeps no name even though WordPress found it', blueworx_slow_request_label(), '/*' );
 $GLOBALS['post_type']   = 'product';
+$GLOBALS['permalink']   = '/shop/blue-shirt/';
 $_SERVER['REQUEST_URI'] = '/shop/blue-shirt/';
 check( 'a product keeps its address', blueworx_slow_request_label(), '/shop/blue-shirt/' );
 $GLOBALS['post_type']   = 'page';
@@ -430,6 +458,7 @@ $GLOBALS['post_type']   = 'member';
 $_SERVER['REQUEST_URI'] = '/jane-doe/';
 check( 'a member at the root of the site is not named either', blueworx_slow_request_label(), '/*' );
 $GLOBALS['post_type']   = 'page';
+$GLOBALS['permalink']   = '/about/';
 $_SERVER['REQUEST_URI'] = '/about/';
 check( 'a page at the root keeps its name', blueworx_slow_request_label(), '/about/' );
 $GLOBALS['singular']    = false;
@@ -669,6 +698,15 @@ $GLOBALS['wp_the_query'] = new class() {
 	 * @var object|null
 	 */
 	public $tax_query = null;
+	/**
+	 * Whether WordPress also calls this an author archive.
+	 *
+	 * @var bool
+	 */
+	public $author = false;
+	public function is_author() {
+		return $this->author;
+	}
 	public function is_post_type_archive() {
 		return $this->both;
 	}
@@ -721,7 +759,73 @@ $GLOBALS['wp_the_query']->tax_query                 = (object) array(
 	),
 );
 check( 'a language taxonomy is not counted', blueworx_slow_request_label(), '/tag/jane-doe/' );
-unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'], $GLOBALS['wp_the_query'] );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+
+// An author's archive filtered by a category or tag is still the author's.
+$GLOBALS['wp_the_query']->tax_query = null;
+$GLOBALS['wp_the_query']->author    = true;
+$_SERVER['REQUEST_URI']             = '/author/jane-doe/?cat=1';
+check( 'an author archive filtered by a category does not keep the name', blueworx_slow_request_label(), '/author/*?cat' );
+$GLOBALS['wp_the_query']->author = false;
+
+// A post type archive answers to the list of content types.
+$GLOBALS['wp_the_query'] = new class() {
+	public function is_front_page() {
+		return false;
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return false;
+	}
+	public function is_singular() {
+		return false;
+	}
+	/**
+	 * Whether WordPress also calls this an author archive.
+	 *
+	 * @var bool
+	 */
+	public $author = false;
+	/**
+	 * The post type the request asks for.
+	 *
+	 * @var string
+	 */
+	public $type = 'product';
+	public function is_author() {
+		return $this->author;
+	}
+	public function is_post_type_archive() {
+		return true;
+	}
+	public function is_category() {
+		return false;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get( $name ) {
+		return 'post_type' === $name ? $this->type : '';
+	}
+	public function get_queried_object() {
+		return (object) array( 'name' => $this->type );
+	}
+};
+$_SERVER['REQUEST_URI']  = '/shop/';
+check( 'a product archive is kept', blueworx_slow_request_label(), '/shop/' );
+$GLOBALS['wp_the_query']->type = 'member';
+$_SERVER['REQUEST_URI']        = '/members/';
+check( 'a members archive is not site content', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_the_query']->type   = 'product';
+$GLOBALS['wp_the_query']->author = true;
+$_SERVER['REQUEST_URI']          = '/author/jane-doe/?post_type=product';
+check( 'an author archive of a post type does not keep the name', blueworx_slow_request_label(), '/author/*?post_type' );
+unset( $GLOBALS['wp_the_query'] );
 $GLOBALS['did_wp']      = 0;
 $GLOBALS['did_wp']      = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
@@ -768,6 +872,7 @@ $_SERVER['REQUEST_URI']        = '/slow/';
 $GLOBALS['did_wp']             = 1;
 $GLOBALS['singular']           = true;
 $GLOBALS['post_type']          = 'page';
+$GLOBALS['permalink']          = '/slow/';
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime( true ) - 3;
 blueworx_speed_monitor_shutdown();
 check( 'a slow page is logged', count( blueworx_slow_log_entries() ), 1 );

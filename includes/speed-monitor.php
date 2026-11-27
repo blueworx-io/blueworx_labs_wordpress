@@ -194,6 +194,29 @@ function blueworx_main_query_taxonomies() {
 }
 
 /**
+ * Gets every post type the original request asks for.
+ *
+ * @return string[] Post type names; empty when the request does not say.
+ */
+function blueworx_main_query_post_types() {
+	global $wp_the_query;
+
+	$types = array();
+
+	if ( is_object( $wp_the_query ) && method_exists( $wp_the_query, 'get' ) ) {
+		$types = array_merge( $types, (array) $wp_the_query->get( 'post_type' ) );
+	}
+
+	$object = blueworx_main_query_object();
+
+	if ( null !== $object && isset( $object->name ) ) {
+		$types[] = $object->name;
+	}
+
+	return array_values( array_unique( array_filter( array_map( 'strval', $types ), 'strlen' ) ) );
+}
+
+/**
  * The first pieces of an address that are WordPress's or a store's own words.
  *
  * Anything else at the start of an address that WordPress did not answer as the
@@ -343,6 +366,54 @@ function blueworx_segments_are_posts_page( $segments ) {
 	}
 
 	return blueworx_segments_are_page_number( array_slice( $have, $n ) );
+}
+
+/**
+ * Whether the pieces of an address are the address of the post, page or product that was asked for.
+ *
+ * A plugin can answer /members/jane-doe/ or /author/jane-doe/?p=123 with a real
+ * page or post, so WordPress finding a post is not enough: the address has to be
+ * that post's own, optionally followed by a page number, comment page or feed.
+ *
+ * @param string[] $segments The pieces of the address, below the site's folder.
+ * @param object   $post_object The post WordPress answered with.
+ * @return bool True when the address is the object's own.
+ */
+function blueworx_segments_are_object_address( $segments, $post_object ) {
+	if ( ! function_exists( 'get_permalink' ) ) {
+		return false;
+	}
+
+	$link = get_permalink( $post_object );
+	$path = is_string( $link ) ? wp_parse_url( $link, PHP_URL_PATH ) : '';
+
+	if ( ! is_string( $path ) ) {
+		return false;
+	}
+
+	$own = array_values( array_filter( explode( '/', $path ), 'strlen' ) );
+	$own = blueworx_slow_segments_below_home( array_map( 'blueworx_slow_normalise_segment', $own ) );
+	$own = array_map( 'strtolower', $own );
+
+	$have = array_map( 'strtolower', array_map( 'strval', $segments ) );
+	$n    = count( $own );
+
+	if ( array_slice( $have, 0, $n ) !== $own ) {
+		return false;
+	}
+
+	$rest = array_slice( $have, $n );
+
+	if ( empty( $rest ) ) {
+		return true;
+	}
+
+	// A page number, a comment page or one of WordPress's own endpoints.
+	if ( 1 === count( $rest ) ) {
+		return 1 === preg_match( '/^(comment-page-[0-9]{1,5}|feed|embed|trackback|amp)$/', $rest[0] );
+	}
+
+	return blueworx_segments_are_page_number( $rest );
 }
 
 /**
@@ -520,7 +591,13 @@ function blueworx_request_is_site_content( $segments = array() ) {
 		// posts, say) left as the current one.
 		$page = blueworx_main_query_object();
 
-		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
+		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $page );
+	}
+
+	// An author's archive can also be a category, tag or post type archive
+	// (/author/jane-doe/?cat=1), and the author's name is in the address.
+	if ( blueworx_main_query_is( 'is_author' ) ) {
+		return false;
 	}
 
 	// Category, tag and other term archives all name a term, so all answer to the
@@ -543,7 +620,19 @@ function blueworx_request_is_site_content( $segments = array() ) {
 		return null !== $term && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
 	}
 
-	return blueworx_main_query_is( 'is_post_type_archive' );
+	if ( ! blueworx_main_query_is( 'is_post_type_archive' ) ) {
+		return false;
+	}
+
+	// A post type that holds people has an archive that lists them, so the type
+	// has to be one the site counts as its own content, like single posts are.
+	foreach ( blueworx_main_query_post_types() as $type ) {
+		if ( ! in_array( $type, $types, true ) ) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /**

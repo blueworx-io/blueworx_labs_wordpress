@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.6] - 2026-11-27
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A post, page or product keeps its address in the slow log and report only when
+    the address is that post's own (with a page number, comment page or feed). A
+    profile a plugin answers through a real page, or /author/jane-doe/?p=123, now
+    shows as a starred address.
+  - An author archive filtered by a category, tag or post type no longer keeps the
+    author's name.
+  - A post type archive is kept only for the types on the site's
+    blueworx_slow_log_content_types list, so a members or staff archive stays out.
+
 ## [1.104.5] - 2026-11-27
 
 ### Fixed
