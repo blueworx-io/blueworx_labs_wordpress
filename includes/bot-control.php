@@ -390,8 +390,29 @@ function blueworx_bot_path_is_exempt( $path, $query = '' ) {
 
 	$first = isset( $segments[0] ) ? $segments[0] : '';
 
-	if ( in_array( $first, array( 'wp-admin', 'wp-json' ), true ) || in_array( $base, array( 'wp-login.php', 'wp-cron.php', 'admin-ajax.php' ), true ) ) {
+	// The REST prefix is whatever the site has set it to; it is known by now, as
+	// this only runs once every plugin has loaded.
+	$rest_prefix = function_exists( 'rest_get_url_prefix' ) ? strtolower( (string) rest_get_url_prefix() ) : 'wp-json';
+
+	if ( in_array( $first, array( 'wp-admin', 'wp-json', $rest_prefix ), true ) || in_array( $base, array( 'wp-login.php', 'wp-cron.php', 'admin-ajax.php' ), true ) ) {
 		return true;
+	}
+
+	// WordPress in a folder of its own (siteurl differs from the site's address):
+	// its sign-in and admin live under that folder, and a locked-out administrator
+	// is the worst case there is.
+	if ( function_exists( 'site_url' ) ) {
+		$core = wp_parse_url( site_url( '/' ), PHP_URL_PATH );
+		$core = blueworx_probe_segments( is_string( $core ) ? $core : '' );
+		$all  = blueworx_probe_segments( $path );
+
+		if ( $core && array_slice( $all, 0, count( $core ) ) === $core ) {
+			$all = array_slice( $all, count( $core ) );
+
+			if ( isset( $all[0] ) && 'wp-admin' === $all[0] ) {
+				return true;
+			}
+		}
 	}
 
 	if ( function_exists( 'blueworx_is_custom_login_request_path' ) && blueworx_feature_enabled( 'login' ) && blueworx_is_custom_login_request_path( $path ) ) {
@@ -487,6 +508,27 @@ function blueworx_trusted_proxy_ranges() {
 }
 
 /**
+ * Writes an address one way, so the same visitor is never counted as two.
+ *
+ * A server that listens on both IPv4 and IPv6 can report a visitor as
+ * ::ffff:203.0.113.5. That is the IPv4 address 203.0.113.5, and must be counted
+ * and checked against the proxy networks as such. Anything that is not an
+ * address is returned as it came.
+ *
+ * @param string $ip Address as reported.
+ * @return string The plain IPv4 address for an IPv4-mapped one, otherwise unchanged.
+ */
+function blueworx_normalise_ip( $ip ) {
+	$binary = @inet_pton( (string) $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled here.
+
+	if ( false !== $binary && 16 === strlen( $binary ) && str_repeat( "\0", 10 ) . "\xff\xff" === substr( $binary, 0, 12 ) ) {
+		return (string) inet_ntop( substr( $binary, 12 ) );
+	}
+
+	return (string) $ip;
+}
+
+/**
  * Whether an address falls inside a network.
  *
  * @param string $ip    IPv4 or IPv6 address.
@@ -494,8 +536,9 @@ function blueworx_trusted_proxy_ranges() {
  * @return bool True when the address is inside it.
  */
 function blueworx_ip_in_range( $ip, $range ) {
-	$parts  = explode( '/', (string) $range, 2 );
-	$ip_bin = @inet_pton( (string) $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
+	$parts    = explode( '/', (string) $range, 2 );
+	$parts[0] = blueworx_normalise_ip( $parts[0] );
+	$ip_bin   = @inet_pton( blueworx_normalise_ip( (string) $ip ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
 	$net    = @inet_pton( $parts[0] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A malformed address returns false, handled below.
 
 	if ( false === $ip_bin || false === $net || strlen( $ip_bin ) !== strlen( $net ) ) {
@@ -571,8 +614,8 @@ function blueworx_ip_is_trusted_proxy( $ip ) {
  */
 function blueworx_request_ip() {
 	$server = $_SERVER; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Each value is validated as an IP address below before it is used.
-	$remote = isset( $server['REMOTE_ADDR'] ) ? (string) $server['REMOTE_ADDR'] : '';
-	$public = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+	$remote = isset( $server['REMOTE_ADDR'] ) ? blueworx_normalise_ip( (string) $server['REMOTE_ADDR'] ) : '';
+	$public =FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
 	$ip     = '';
 
 	if ( false !== filter_var( $remote, FILTER_VALIDATE_IP ) ) {
@@ -584,14 +627,14 @@ function blueworx_request_ip() {
 			// rather than everybody as one.
 			$ip = $is_public ? $remote : '';
 		} elseif ( blueworx_ip_is_cloudflare( $remote ) && ! empty( $server['HTTP_CF_CONNECTING_IP'] ) && false !== filter_var( $server['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP ) ) {
-			$ip = (string) $server['HTTP_CF_CONNECTING_IP'];
+			$ip = blueworx_normalise_ip( (string) $server['HTTP_CF_CONNECTING_IP'] );
 		} elseif ( ! empty( $server['HTTP_X_FORWARDED_FOR'] ) ) {
 			// Right to left: the entry nearest the site was written by a proxy we
 			// trust; anything further left could have been written by the visitor.
 			// The first one that is not a proxy we trust is the answer. When it is
 			// not a public address there is no answer: nothing beyond it is known.
 			foreach ( array_reverse( explode( ',', (string) $server['HTTP_X_FORWARDED_FOR'] ) ) as $candidate ) {
-				$candidate = trim( $candidate );
+				$candidate = blueworx_normalise_ip( trim( $candidate ) );
 
 				if ( blueworx_ip_is_trusted_proxy( $candidate ) ) {
 					continue;
@@ -618,7 +661,7 @@ function blueworx_request_ip() {
 function blueworx_visitor_ip() {
 	$ip = apply_filters( 'blueworx_visitor_ip', blueworx_request_ip() );
 
-	return ( is_string( $ip ) && false !== filter_var( $ip, FILTER_VALIDATE_IP ) ) ? $ip : '';
+	return ( is_string( $ip ) && false !== filter_var( $ip, FILTER_VALIDATE_IP ) ) ? blueworx_normalise_ip( $ip ) : '';
 }
 
 /**
@@ -695,8 +738,8 @@ function blueworx_request_names_others( $ip ) {
  * @return bool True unless the request points to this one visitor and nobody else.
  */
 function blueworx_visitor_address_is_shared( $ip ) {
-	$remote = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
-	$server = isset( $_SERVER['SERVER_ADDR'] ) ? (string) $_SERVER['SERVER_ADDR'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
+	$remote = isset( $_SERVER['REMOTE_ADDR'] ) ? blueworx_normalise_ip( (string) $_SERVER['REMOTE_ADDR'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
+	$server = isset( $_SERVER['SERVER_ADDR'] ) ? blueworx_normalise_ip( (string) $_SERVER['SERVER_ADDR'] ) : '';// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only compared, never output.
 
 	// Private or reserved, shared by a carrier, or the machine asking itself.
 	// Reserved covers Cloudflare's stand-in IPv4 addresses (Pseudo IPv4, overwrite

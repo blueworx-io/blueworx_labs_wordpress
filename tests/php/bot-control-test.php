@@ -89,6 +89,14 @@ function home_url( $path = '' ) {
 }
 
 $GLOBALS['home_path'] = '';
+$GLOBALS['site_path'] = null;
+$GLOBALS['rest_prefix'] = 'wp-json';
+function site_url( $path = '' ) {
+	return 'https://example.test' . ( null === $GLOBALS['site_path'] ? $GLOBALS['home_path'] : $GLOBALS['site_path'] ) . $path;
+}
+function rest_get_url_prefix() {
+	return $GLOBALS['rest_prefix'];
+}
 
 // The real single sign-on routing, so the two can never disagree about it.
 require __DIR__ . '/../../includes/sso/sso.php';
@@ -229,6 +237,24 @@ $GLOBALS['is_admin'] = true;
 check( 'the admin area of WordPress in its own folder', blueworx_bot_path_is_exempt( '/wordpress/wp-admin/index.php' ), true );
 $GLOBALS['is_admin'] = false;
 check( 'a page that merely has wp-admin in it is not the admin area', blueworx_bot_path_is_exempt( '/wordpress/wp-admin/nope' ), false );
+$GLOBALS['site_path'] = '/wp';
+check( 'the admin area of WordPress in its own folder, found by its address', blueworx_bot_path_is_exempt( '/wp/wp-admin/edit.php' ), true );
+check( 'its sign-in too', blueworx_bot_path_is_exempt( '/wp/wp-login.php' ), true );
+check( 'a made-up wp-admin elsewhere is still an ordinary request', blueworx_bot_path_is_exempt( '/other/wp-admin/nope' ), false );
+$GLOBALS['site_path'] = null;
+$GLOBALS['rest_prefix'] = 'api';
+check( 'a REST address the site has renamed', blueworx_bot_path_is_exempt( '/api/wp/v2/posts' ), true );
+$GLOBALS['rest_prefix'] = 'wp-json';
+
+echo "\nAn IPv4 visitor reported as IPv6\n";
+check( 'is the plain IPv4 address', blueworx_normalise_ip( '::ffff:93.184.216.5' ), '93.184.216.5' );
+check( 'and so is the long way of writing it', blueworx_normalise_ip( '0:0:0:0:0:ffff:5db8:d805' ), '93.184.216.5' );
+check( 'a real IPv6 address is untouched', blueworx_normalise_ip( '2a00:1450::1' ), '2a00:1450::1' );
+check( 'and so is something that is not an address', blueworx_normalise_ip( 'nope' ), 'nope' );
+check( 'a mapped address is inside the machine\'s own network', blueworx_ip_in_range( '::ffff:127.0.0.1', '127.0.0.0/8' ), true );
+$_SERVER = array( 'REMOTE_ADDR' => '::ffff:93.184.216.5' );
+check( 'is one visitor, whichever way the server writes it', blueworx_request_ip(), '93.184.216.5' );
+$_SERVER = array();
 
 echo "\nOnly the sign-ins single sign-on really handles are left alone\n";
 $sso_options = array(
