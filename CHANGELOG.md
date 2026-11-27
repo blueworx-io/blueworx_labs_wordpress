@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.5] - 2026-11-27
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A request that asks for a category and a tag together is checked against the
+    slow-log taxonomy list for every taxonomy it names, not just the first, so a
+    tag a site has taken off the list never shows in the log or the report.
+  - The test that stands in for WooCommerce is removed after every test, pass or
+    fail, so a failed set-up never leaves it switched on.
+
 ## [1.104.4] - 2026-11-27
 
 ### Fixed

@@ -166,6 +166,34 @@ function blueworx_main_query_object() {
 }
 
 /**
+ * Gets every taxonomy the original request asks for, not only the first.
+ *
+ * Language plugins add their own taxonomy to requests; those are left out, since
+ * they never put a term in the address.
+ *
+ * @return string[] Taxonomy names.
+ */
+function blueworx_main_query_taxonomies() {
+	global $wp_the_query;
+
+	$names = array();
+
+	if ( blueworx_main_query_is( 'is_category' ) ) {
+		$names[] = 'category';
+	}
+
+	if ( blueworx_main_query_is( 'is_tag' ) ) {
+		$names[] = 'post_tag';
+	}
+
+	if ( is_object( $wp_the_query ) && isset( $wp_the_query->tax_query->queried_terms ) && is_array( $wp_the_query->tax_query->queried_terms ) ) {
+		$names = array_merge( $names, array_map( 'strval', array_keys( $wp_the_query->tax_query->queried_terms ) ) );
+	}
+
+	return array_values( array_diff( array_unique( $names ), array( 'language', 'term_language', 'post_translations' ) ) );
+}
+
+/**
  * The first pieces of an address that are WordPress's or a store's own words.
  *
  * Anything else at the start of an address that WordPress did not answer as the
@@ -501,6 +529,16 @@ function blueworx_request_is_site_content( $segments = array() ) {
 	// (a category of a custom type) and the term is what names the address.
 	if ( blueworx_main_query_is( 'is_category' ) || blueworx_main_query_is( 'is_tag' ) || blueworx_main_query_is( 'is_tax' ) ) {
 		$term = blueworx_main_query_object();
+
+		// The queried object is only the first term the request names. A request can
+		// name a second one (/tag/jane/?cat=1 is a category to WordPress, but its
+		// address holds the tag), so every taxonomy it asks for has to be on the
+		// list, not just the first.
+		foreach ( blueworx_main_query_taxonomies() as $taxonomy ) {
+			if ( ! in_array( $taxonomy, $taxes, true ) ) {
+				return false;
+			}
+		}
 
 		return null !== $term && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
 	}

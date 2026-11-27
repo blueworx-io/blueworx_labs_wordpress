@@ -41,11 +41,40 @@ async function save(page) {
   await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
 }
 
+// The stand-in WooCommerce is a file in the local test site's must-use folder.
+const MU_DIR = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content', 'mu-plugins');
+const FAKE_STORE_FILE = path.join(MU_DIR, 'blueworx-test-fake-woocommerce.php');
+
+// Takes the stand-in away. Safe to call any number of times, so a failed set-up
+// can never leave the site with a pretend store switched on.
+function removeFakeStore() {
+  fs.rmSync(FAKE_STORE_FILE, { force: true });
+}
+
 test.describe('Speed defaults', () => {
   test.skip(
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
+
+  // Whatever happened in a test (a failed login, a timeout, a failed check), the
+  // stand-in does not stay behind.
+  test.afterEach(() => {
+    removeFakeStore();
+  });
+
+  test.afterAll(() => {
+    removeFakeStore();
+  });
+
+  test('the stand-in WooCommerce is always cleaned up', async () => {
+    fs.mkdirSync(MU_DIR, { recursive: true });
+    fs.writeFileSync(FAKE_STORE_FILE, '<?php // left behind');
+    removeFakeStore();
+    expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+    removeFakeStore();
+    expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+  });
 
   test('every speed function has a switch under Performance', async ({ page }) => {
     await login(page);
@@ -156,8 +185,8 @@ test.describe('Speed defaults', () => {
     // its part: a WooCommerce class, sign-in-only checkout, the before_woocommerce_init
     // action fired on init (priority 0) as WooCommerce does, and a cart that is
     // "made" on init (priority 5) and says so in a header.
-    const muDir = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content', 'mu-plugins');
-    const muFile = path.join(muDir, 'blueworx-test-fake-woocommerce.php');
+    const muDir = MU_DIR;
+    const muFile = FAKE_STORE_FILE;
     const route = '/?wc-ajax=get_refreshed_fragments';
     const fake = [
       '<?php',
@@ -248,6 +277,17 @@ test.describe('Speed defaults', () => {
         },
       ],
     ]);
+  });
+
+  test('no stand-in WooCommerce is left on the site after a test', async () => {
+    const api = await request.newContext({ baseURL });
+    try {
+      expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+      const res = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
+      expect(res.headers()['x-test-fake-store']).toBeUndefined();
+    } finally {
+      await api.dispose();
+    }
   });
 
   test('more scanner probes are turned away plainly', async () => {

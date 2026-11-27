@@ -663,6 +663,12 @@ $GLOBALS['wp_the_query'] = new class() {
 	 * @var bool
 	 */
 	public $both = false;
+	/**
+	 * The terms WordPress was asked for, as its tax query holds them.
+	 *
+	 * @var object|null
+	 */
+	public $tax_query = null;
 	public function is_post_type_archive() {
 		return $this->both;
 	}
@@ -687,6 +693,34 @@ $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 check( 'but not when a site takes categories off the list', blueworx_slow_request_label(), '/category/*' );
 $GLOBALS['wp_the_query']->both = true;
 check( 'even when WordPress also calls it a post type archive', blueworx_slow_request_label(), '/category/*' );
+$GLOBALS['wp_the_query']->both = false;
+
+// A request for a category and a tag at once is a category to WordPress, but the
+// address holds the tag, so a site that takes tags off the list keeps it out.
+$GLOBALS['wp_the_query']->tax_query = (object) array(
+	'queried_terms' => array(
+		'category' => array(),
+		'post_tag' => array(),
+	),
+);
+$_SERVER['REQUEST_URI']             = '/tag/jane-doe/';
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'category', 'product_cat' );
+};
+check( 'a category filter does not let an excluded tag slug through', blueworx_slow_request_label(), '/tag/*' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+check( 'tags on the list keep their address', blueworx_slow_request_label(), '/tag/jane-doe/' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'category', 'post_tag' );
+};
+$GLOBALS['wp_the_query']->tax_query = (object) array(
+	'queried_terms' => array(
+		'category' => array(),
+		'post_tag' => array(),
+		'language' => array(),
+	),
+);
+check( 'a language taxonomy is not counted', blueworx_slow_request_label(), '/tag/jane-doe/' );
 unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'], $GLOBALS['wp_the_query'] );
 $GLOBALS['did_wp']      = 0;
 $GLOBALS['did_wp']      = 0;
