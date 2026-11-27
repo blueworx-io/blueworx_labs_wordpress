@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.4] - 2026-11-27
+
+### Changed
+- **Version-only update.** Brings the plugin version up to date for the last
+  follow-up commit on the bot control change. No behaviour changes.
+
 ## [1.104.3] - 2026-11-27
 
 ### Changed
