@@ -66,7 +66,7 @@ function blueworx_is_cart_check_request() {
  * @return bool True for a cookie that says nothing about a cart.
  */
 function blueworx_is_tracking_cookie( $name ) {
-	$prefixes = (array) apply_filters( 'blueworx_tracking_cookie_prefixes', array( 'sbjs_', '_hj', '_ga', '_gid', '_gcl', '_fb', '_clck', '_clsk', '_uet', '__hs', 'hubspot', 'ajs_', '_pk_', '_scid', '_tt_', '_pin_', 'mp_' ) );
+	$prefixes = (array) apply_filters( 'blueworx_tracking_cookie_prefixes', array( 'sbjs_', '_hj', '_ga', '_gid', '_gcl', '_fb', '_clck', '_clsk', '_uet', '__hs', 'hubspot', 'ajs_', '_pk_', '_scid', '_tt_', '_pin_', 'mp_', 'pys_' ) );
 
 	foreach ( $prefixes as $prefix ) {
 		if ( '' !== $prefix && 0 === strpos( $name, strtolower( (string) $prefix ) ) ) {

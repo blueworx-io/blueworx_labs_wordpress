@@ -152,6 +152,13 @@ test.describe('Speed defaults', () => {
   });
 
   test('a guest who cannot buy gets an empty cart before WooCommerce makes one', async ({ page }) => {
+    // The stand-in is written into the local test site's folder, so it can only
+    // work when the requests go to that site.
+    test.skip(
+      !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(String(baseURL)),
+      'Needs the local test site: the stand-in WooCommerce is written to its folder.'
+    );
+
     // WooCommerce is not on the test site, so a small stand-in must-use plugin plays
     // its part: a WooCommerce class, sign-in-only checkout, the before_woocommerce_init
     // action fired on init (priority 0) as WooCommerce does, and a cart that is

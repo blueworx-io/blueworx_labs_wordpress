@@ -322,7 +322,7 @@ try {
 }
 check( 'a session cookie the store named itself is a cart even if it starts like a tracking one', $answered, false );
 unset( $GLOBALS['filters']['woocommerce_cookie'] );
-foreach ( array( 'sbjs_session', 'sbjs_current', '_hjSession_123', '_ga_ABC123', '_fbp' ) as $cookie ) {
+foreach ( array( 'sbjs_session', 'sbjs_current', '_hjSession_123', '_ga_ABC123', '_fbp', 'pys_start_session', 'pys_session_limit' ) as $cookie ) {
 	$_COOKIE  = array( $cookie => '1' );
 	$answered = false;
 	try {
@@ -588,9 +588,88 @@ $_SERVER['REQUEST_URI'] = '/2024/jane-doe/';
 check( 'a name after the year is not kept', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI'] = '/jane-doe/';
 check( 'a profile WordPress calls a date archive is not named', blueworx_slow_request_label(), '/*' );
-unset( $GLOBALS['wp_the_query'] );
-$GLOBALS['did_wp']      = 0;
-$GLOBALS['did_wp']      = 0;
+
+// Dates under the site's own address structure.
+$GLOBALS['wp_rewrite'] = new class() {
+	/**
+	 * The structure to answer with.
+	 *
+	 * @var string
+	 */
+	public $struct = '/archives/date/%year%/%monthnum%/%day%';
+	public function get_date_permastruct() {
+		return $this->struct;
+	}
+};
+$_SERVER['REQUEST_URI'] = '/archives/date/2026/';
+check( 'a year archive under a date word is kept', blueworx_slow_request_label(), '/archives/date/2026/' );
+$_SERVER['REQUEST_URI'] = '/archives/date/2026/05/';
+check( 'and a month', blueworx_slow_request_label(), '/archives/date/2026/05/' );
+$_SERVER['REQUEST_URI'] = '/archives/jane-doe/';
+check( 'but a name under the same word is not', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/2026/';
+check( 'and a bare year is not a date there', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '/%monthnum%/%day%/%year%';
+$_SERVER['REQUEST_URI']        = '/05/12/2026/';
+check( 'a date with the year last is kept', blueworx_slow_request_label(), '/05/12/2026/' );
+$_SERVER['REQUEST_URI'] = '/2026/';
+check( 'and a year on its own', blueworx_slow_request_label(), '/2026/' );
+$_SERVER['REQUEST_URI'] = '/05/12/jane-doe/';
+check( 'a name in the place of the year is not', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '';
+$_SERVER['REQUEST_URI']        = '/2026/05/';
+check( 'plain addresses have no date in the path', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_rewrite'] );
+
+// A folder with letters outside plain ASCII in its name.
+$GLOBALS['wp_the_query']->flags = array( 'is_front_page' => true );
+$GLOBALS['home_base']           = '/caf%C3%A9';
+$_SERVER['REQUEST_URI']         = '/caf%C3%A9/page/2/';
+check( 'the home page of a site in an encoded folder is kept', blueworx_slow_request_label(), '/caf/page/2/' );
+$_SERVER['REQUEST_URI'] = '/caf%C3%A9/jane-doe/';
+check( 'and a name under it is not', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['home_base'] );
+$GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
+
+// A category or tag archive answers to the same list as other term archives.
+$GLOBALS['wp_the_query'] = new class() {
+	public function is_front_page() {
+		return false;
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return false;
+	}
+	public function is_singular() {
+		return false;
+	}
+	public function is_post_type_archive() {
+		return false;
+	}
+	public function is_category() {
+		return true;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get_queried_object() {
+		return (object) array( 'taxonomy' => 'category' );
+	}
+};
+$_SERVER['REQUEST_URI']  = '/category/private-clients/';
+check( 'a category archive is kept by default', blueworx_slow_request_label(), '/category/private-clients/' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'product_cat' );
+};
+check( 'but not when a site takes categories off the list', blueworx_slow_request_label(), '/category/*' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'], $GLOBALS['wp_the_query'] );
+$GLOBALS['did_wp'] = 0;
+$GLOBALS['did_wp'] = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
 check( 'a long number is not kept', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI']                      = '/wp-json/x/v1/lookup/some-person/details';
