@@ -24,8 +24,12 @@ versioning.
     only if it is exactly a home page number (/page/2/) or a year, month, day
     and page number, so /page/jane-doe/ or /2024/jane-doe/ is never named. A
     site kept in a folder is judged by what comes after the folder.
-  - The guest cart answer now runs once WordPress has finished loading
-    (wp_loaded), so a cart cookie name a plugin sets on init is known.
+  - The guest cart answer runs as WooCommerce starts, at the latest priority,
+    before it makes a session or a cart (a later hook would save only the mini
+    cart). WooCommerce reads the cookie name at that moment too.
+  - The posts page keeps its address only at its own address (and its numbered
+    pages), and numbered home pages on a site that shows index.php, or that
+    changed the word "page", keep theirs.
   - Log entries saved by 1.104.0 and 1.104.1 are cut back the same way before
     any screen or report reads them, so a member's name saved earlier is never
     emailed.

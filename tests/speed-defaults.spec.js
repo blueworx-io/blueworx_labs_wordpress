@@ -146,6 +146,21 @@ test.describe('Speed defaults', () => {
     ]);
   });
 
+  test('the cart check shortcut leaves a site without a store alone', async () => {
+    // The test site has no WooCommerce, so the shortcut must stay out of the way:
+    // the cart check address answers like any other page, never with its empty cart.
+    const api = await request.newContext({ baseURL });
+
+    try {
+      const res = await api.get('/?wc-ajax=get_refreshed_fragments', { maxRedirects: 0 });
+
+      expect(res.status()).toBeLessThan(400);
+      expect(await res.text()).not.toContain('"cart_hash":""');
+    } finally {
+      await api.dispose();
+    }
+  });
+
   test('more scanner probes are turned away plainly', async () => {
     const api = await request.newContext({ baseURL });
 

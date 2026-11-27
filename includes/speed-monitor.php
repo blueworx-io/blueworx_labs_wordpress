@@ -228,11 +228,61 @@ function blueworx_slow_segments_below_home( $segments ) {
 	$base = function_exists( 'home_url' ) ? wp_parse_url( home_url(), PHP_URL_PATH ) : '';
 	$base = is_string( $base ) ? array_values( array_filter( explode( '/', $base ), 'strlen' ) ) : array();
 
+	$segments = array_values( $segments );
+
 	if ( $base && array_slice( $segments, 0, count( $base ) ) === $base ) {
-		return array_values( array_slice( $segments, count( $base ) ) );
+		$segments = array_values( array_slice( $segments, count( $base ) ) );
 	}
 
-	return array_values( $segments );
+	// Addresses on a site without rewrite rules in the server start with index.php.
+	if ( isset( $segments[0] ) && 'index.php' === strtolower( $segments[0] ) ) {
+		$segments = array_values( array_slice( $segments, 1 ) );
+	}
+
+	return $segments;
+}
+
+/**
+ * The word WordPress puts in front of a page number ("page" unless changed).
+ *
+ * @return string Pagination base, lower case.
+ */
+function blueworx_pagination_base() {
+	global $wp_rewrite;
+
+	$base = ( is_object( $wp_rewrite ) && ! empty( $wp_rewrite->pagination_base ) ) ? (string) $wp_rewrite->pagination_base : 'page';
+
+	return strtolower( $base );
+}
+
+/**
+ * Whether the pieces of an address are the posts page chosen in Settings, or a numbered page of it.
+ *
+ * @param string[] $segments The pieces of the address, below the site's folder.
+ * @return bool True when the address is exactly the posts page's own address.
+ */
+function blueworx_segments_are_posts_page( $segments ) {
+	$id = (int) get_option( 'page_for_posts' );
+
+	if ( $id <= 0 || ! function_exists( 'get_page_uri' ) ) {
+		return false;
+	}
+
+	$uri = get_page_uri( $id );
+
+	if ( ! is_string( $uri ) || '' === $uri ) {
+		return false;
+	}
+
+	$own  = array_map( 'strtolower', array_values( array_filter( explode( '/', $uri ), 'strlen' ) ) );
+	$have = array_map( 'strtolower', array_map( 'strval', $segments ) );
+	$n    = count( $own );
+
+	if ( array_slice( $have, 0, $n ) !== $own ) {
+		return false;
+	}
+
+	return blueworx_segments_are_page_number( array_slice( $have, $n ) );
 }
 
 /**
@@ -246,7 +296,7 @@ function blueworx_segments_are_page_number( $segments ) {
 		return true;
 	}
 
-	return 2 === count( $segments ) && 'page' === $segments[0] && 1 === preg_match( '/^[0-9]{1,5}$/', (string) $segments[1] );
+	return 2 === count( $segments ) && blueworx_pagination_base() === $segments[0] && 1 === preg_match( '/^[0-9]{1,5}$/', (string) $segments[1] );
 }
 
 /**
@@ -259,7 +309,7 @@ function blueworx_segments_are_date( $segments ) {
 	$segments = array_values( $segments );
 	$count    = count( $segments );
 
-	if ( $count >= 2 && 'page' === $segments[ $count - 2 ] ) {
+	if ( $count >= 2 && blueworx_pagination_base() === $segments[ $count - 2 ] ) {
 		if ( 1 !== preg_match( '/^[0-9]{1,5}$/', (string) $segments[ $count - 1 ] ) ) {
 			return false;
 		}
@@ -313,10 +363,11 @@ function blueworx_request_is_site_content( $segments = array() ) {
 	}
 
 	if ( blueworx_main_query_is( 'is_home' ) ) {
-		// The page chosen to show the latest posts.
+		// The page chosen to show the latest posts, and only at its own address: a
+		// plugin can answer /jane-doe/ through it with a query argument.
 		$page = blueworx_main_query_object();
 
-		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
+		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_posts_page( $segments );
 	}
 
 	if ( blueworx_main_query_is( 'is_date' ) ) {

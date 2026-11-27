@@ -127,10 +127,11 @@ function blueworx_visitor_has_cart_cookie() {
  * the true answer for them is an empty cart. Anybody who has put something in
  * a cart, or who can, is asked as before.
  *
- * Runs once WordPress has finished loading (wp_loaded, early), after every
- * plugin has had its say about the cart cookie's name, and before WooCommerce
- * answers its own ajax calls, builds the mini cart, or reads the cart from the
- * database, which is where the time goes.
+ * Runs as WooCommerce starts (its before_woocommerce_init action) at the latest
+ * priority, so every plugin that renames its cart cookie there has done so, and
+ * before WooCommerce makes its session and cart, which is where the time goes.
+ * WooCommerce reads the cookie's name when it makes the session, straight after
+ * this action, so a name set later would not reach WooCommerce either.
  *
  * @return void
  */
@@ -331,9 +332,9 @@ function blueworx_crawl_delay_filter( $output, $is_public = true ) { // phpcs:ig
  */
 function blueworx_speed_defaults_hooks() {
 	if ( blueworx_feature_enabled( 'guest_cart_checks' ) ) {
-		// Once WordPress has loaded (after every init handler, so a cookie name a
-		// plugin sets late is known), and before WooCommerce answers its ajax calls.
-		add_action( 'wp_loaded', 'blueworx_guest_cart_check_answer', 5 );
+		// As WooCommerce starts, after every plugin that sets its cart cookie name
+		// there, and before it makes a session or a cart.
+		add_action( 'before_woocommerce_init', 'blueworx_guest_cart_check_answer', PHP_INT_MAX );
 	}
 
 	if ( blueworx_feature_enabled( 'surerank_link_checks' ) ) {
