@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.1] - 2026-11-26
+
+### Changed
+- **Page lock updated to the foundation's version 1.0.1.** A fresh copy of the shared page lock; pages lock the same way for client logins.
+- The automatic checks on each change now use Foundation 1.26.0, which also
+  checks that the page lock copy is up to date. Nothing changes on the site.
+
 ## [1.104.0] - 2026-11-26
 
 ### Added
