@@ -129,6 +129,96 @@ function blueworx_segment_is_personal( $segment ) {
 }
 
 /**
+ * Asks WordPress's own request, not a query a theme made later, a question.
+ *
+ * A theme that runs query_posts() for a related-posts list and never resets it
+ * changes what the template tags (is_home(), is_singular()) see. The original
+ * request is kept in $wp_the_query.
+ *
+ * @param string $method WP_Query method, for example is_singular.
+ * @return bool The answer.
+ */
+function blueworx_main_query_is( $method ) {
+	global $wp_the_query;
+
+	if ( is_object( $wp_the_query ) && method_exists( $wp_the_query, $method ) ) {
+		return (bool) $wp_the_query->$method();
+	}
+
+	return function_exists( $method ) && (bool) $method();
+}
+
+/**
+ * Gets the page or term the original request was for.
+ *
+ * @return object|null The queried object.
+ */
+function blueworx_main_query_object() {
+	global $wp_the_query;
+
+	if ( is_object( $wp_the_query ) && method_exists( $wp_the_query, 'get_queried_object' ) ) {
+		$object = $wp_the_query->get_queried_object();
+	} else {
+		$object = function_exists( 'get_queried_object' ) ? get_queried_object() : null;
+	}
+
+	return is_object( $object ) ? $object : null;
+}
+
+/**
+ * The first pieces of an address that are WordPress's or a store's own words.
+ *
+ * Anything else at the start of an address that WordPress did not answer as the
+ * site's content can be a person's name, so it is not kept. A site adds its own
+ * (a members folder, say) with the filter.
+ *
+ * @return string[] Lower case names, or file names.
+ */
+function blueworx_slow_safe_prefixes() {
+	$known = array(
+		'wp-admin',
+		'wp-json',
+		'wp-content',
+		'wp-includes',
+		'wp-login.php',
+		'wp-cron.php',
+		'wp-sitemap.xml',
+		'xmlrpc.php',
+		'index.php',
+		'sitemap.xml',
+		'sitemap_index.xml',
+		'robots.txt',
+		'favicon.ico',
+		'feed',
+		'comments',
+		'author',
+		'category',
+		'tag',
+		'page',
+		'shop',
+		'product',
+		'product-category',
+		'product-tag',
+		'cart',
+		'checkout',
+		'my-account',
+		'wc-api',
+	);
+
+	return array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_safe_prefixes', $known ) ) );
+}
+
+/**
+ * Whether the first piece of an address is one of the known safe ones.
+ *
+ * @param string $segment First piece of the address.
+ * @return bool True when it may be kept.
+ */
+function blueworx_slow_prefix_is_safe( $segment ) {
+	return in_array( strtolower( (string) $segment ), blueworx_slow_safe_prefixes(), true );
+}
+
+/**
  * Whether WordPress resolved this request to the site's own content.
  *
  * @return bool True for the home page, a post, page or product, a post type archive, or a category, tag or product category or tag archive.
@@ -145,33 +235,29 @@ function blueworx_request_is_site_content() {
 	$taxes = (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) );
 
 	foreach ( array( 'is_front_page', 'is_home', 'is_date' ) as $check ) {
-		if ( function_exists( $check ) && $check() ) {
+		if ( blueworx_main_query_is( $check ) ) {
 			return true;
 		}
 	}
 
-	if ( function_exists( 'is_singular' ) && is_singular() ) {
+	if ( blueworx_main_query_is( 'is_singular' ) ) {
 		// The page that was asked for, not whatever post a theme's own loop (related
 		// posts, say) left as the current one.
-		$page = function_exists( 'get_queried_object' ) ? get_queried_object() : null;
+		$page = blueworx_main_query_object();
 
-		return is_object( $page ) && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
+		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
 	}
 
-	if ( function_exists( 'is_post_type_archive' ) && is_post_type_archive() ) {
-		return true;
-	}
-
-	foreach ( array( 'is_category', 'is_tag' ) as $check ) {
-		if ( function_exists( $check ) && $check() ) {
+	foreach ( array( 'is_post_type_archive', 'is_category', 'is_tag' ) as $check ) {
+		if ( blueworx_main_query_is( $check ) ) {
 			return true;
 		}
 	}
 
-	if ( function_exists( 'is_tax' ) && is_tax() ) {
-		$term = function_exists( 'get_queried_object' ) ? get_queried_object() : null;
+	if ( blueworx_main_query_is( 'is_tax' ) ) {
+		$term = blueworx_main_query_object();
 
-		return is_object( $term ) && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
+		return null !== $term && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
 	}
 
 	return false;
@@ -197,11 +283,11 @@ function blueworx_slow_request_label() {
 
 	// What WordPress has worked out is better than reading the address.
 	if ( did_action( 'wp' ) ) {
-		if ( function_exists( 'is_search' ) && is_search() ) {
+		if ( blueworx_main_query_is( 'is_search' ) ) {
 			return '(search)';
 		}
 
-		if ( function_exists( 'is_404' ) && is_404() ) {
+		if ( blueworx_main_query_is( 'is_404' ) ) {
 			return '(page not found)';
 		}
 	}
@@ -220,26 +306,27 @@ function blueworx_slow_request_label() {
 		$segments = array_slice( $segments, 0, 3 );
 	}
 
+	// A pretty search address (/search/whatever/) when WordPress has not said so.
+	if ( isset( $segments[0] ) && 'search' === $segments[0] ) {
+		return '(search)';
+	}
+
 	// On the front of the site only a page that is the site's own content keeps
 	// its whole address: a post, a page, an archive, the home page. Everything else
 	// (a member's profile, an author page, anything a plugin answers) keeps only
 	// its first piece, since the rest can be a person's name. The same goes when
 	// WordPress never got far enough to say.
 	if ( 'front' === blueworx_request_kind() && ! empty( $segments ) && ! blueworx_request_is_site_content() ) {
-		if ( count( $segments ) > 1 ) {
-			$segments = array( $segments[0], '*' );
-			$path     = '/' . $segments[0] . '/*';
-		} elseif ( false === strpos( $segments[0], '.' ) ) {
-			// A single piece at the root can be a person's name (/jane-doe/). A file
-			// name (sitemap.xml, wp-login.php) cannot.
+		// Only a first piece that is known to be WordPress's or a store's own word
+		// stays. Anything else can be a person's name (/jane-doe/, /jane.doe/,
+		// /jane-doe/feed/), whatever shape it has.
+		if ( ! blueworx_slow_prefix_is_safe( $segments[0] ) ) {
 			$segments = array( '*' );
 			$path     = '/*';
+		} elseif ( count( $segments ) > 1 ) {
+			$segments = array( $segments[0], '*' );
+			$path     = '/' . $segments[0] . '/*';
 		}
-	}
-
-	// A pretty search address (/search/whatever/) when WordPress has not said so.
-	if ( isset( $segments[0] ) && 'search' === $segments[0] ) {
-		return '(search)';
 	}
 
 	$label = '/' . implode( '/', $segments );
@@ -322,12 +409,16 @@ function blueworx_slow_generalise_path( $path ) {
 		return '(search)';
 	}
 
+	if ( ! blueworx_slow_prefix_is_safe( $segments[0] ) ) {
+		return '/*';
+	}
+
 	if ( count( $segments ) > 1 ) {
 		return '/' . $segments[0] . '/*';
 	}
 
-	// One piece at the root can be a person's name; a file name cannot.
-	return false === strpos( $segments[0], '.' ) ? '/*' : '/' . $segments[0];
+	// One piece at the root can be a person's name unless it is a known one.
+	return blueworx_slow_prefix_is_safe( $segments[0] ) ? '/' . $segments[0] . ( false === strpos( $segments[0], '.' ) ? '/' : '' ) : '/*';
 }
 
 /**

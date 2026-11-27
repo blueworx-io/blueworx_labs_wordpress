@@ -119,9 +119,14 @@ function is_404() {
 	return $GLOBALS['is_404'];
 }
 $GLOBALS['post_type'] = 'page';
-// What a theme's related-posts loop leaves behind: never the requested page's type.
+/**
+ * What a theme's related-posts loop leaves behind: never the requested page's type.
+ */
 function get_post_type() {
 	return 'post';
+}
+function is_home() {
+	return ! empty( $GLOBALS['is_home'] );
 }
 function get_queried_object() {
 	return (object) array( 'post_type' => $GLOBALS['post_type'] );
@@ -295,6 +300,19 @@ try {
 	$answered = true;
 }
 check( 'a recently viewed list is not a cart', $answered, true );
+define( 'COOKIEHASH', 'abc' );
+$GLOBALS['filters']['woocommerce_cookie'] = function () {
+	return 'mp_store_session';
+};
+$_COOKIE                                  = array( 'mp_store_session' => '1' );
+$answered                                 = false;
+try {
+	blueworx_guest_cart_check_answer();
+} catch ( Stop_Request $e ) {
+	$answered = true;
+}
+check( 'a session cookie the store named itself is a cart even if it starts like a tracking one', $answered, false );
+unset( $GLOBALS['filters']['woocommerce_cookie'] );
 foreach ( array( 'sbjs_session', 'sbjs_current', '_hjSession_123', '_ga_ABC123', '_fbp' ) as $cookie ) {
 	$_COOKIE  = array( $cookie => '1' );
 	$answered = false;
@@ -305,7 +323,6 @@ foreach ( array( 'sbjs_session', 'sbjs_current', '_hjSession_123', '_ga_ABC123',
 	}
 	check( 'the tracking cookie ' . $cookie . ' is not a cart', $answered, true );
 }
-define( 'COOKIEHASH', 'abc' );
 $GLOBALS['filters']['woocommerce_cookie'] = function () {
 	return 'my_store_session';
 };
@@ -388,14 +405,14 @@ $GLOBALS['singular']    = false;
 $_SERVER['REQUEST_URI'] = '/search/jane.doe@example.com/';
 check( 'a pretty search address is not kept', blueworx_slow_request_label(), '(search)' );
 $_SERVER['REQUEST_URI'] = '/members/jane.doe@example.com/profile/';
-check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/members/*' );
+check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/*' );
 $GLOBALS['did_wp']      = 1;
 $GLOBALS['singular']    = true;
 $_SERVER['REQUEST_URI'] = '/members/about-us/';
 check( "the site's own content keeps its address", blueworx_slow_request_label(), '/members/about-us/' );
 $GLOBALS['post_type']   = 'member';
 $_SERVER['REQUEST_URI'] = '/members/jane-doe/';
-check( 'a member post type keeps no name even though WordPress found it', blueworx_slow_request_label(), '/members/*' );
+check( 'a member post type keeps no name even though WordPress found it', blueworx_slow_request_label(), '/*' );
 $GLOBALS['post_type']   = 'product';
 $_SERVER['REQUEST_URI'] = '/shop/blue-shirt/';
 check( 'a product keeps its address', blueworx_slow_request_label(), '/shop/blue-shirt/' );
@@ -412,10 +429,61 @@ check( 'a root address a plugin answers is not named', blueworx_slow_request_lab
 $_SERVER['REQUEST_URI'] = '/sitemap.xml';
 check( 'a file name at the root stays', blueworx_slow_request_label(), '/sitemap.xml' );
 $_SERVER['REQUEST_URI'] = '/members/jane-doe/';
-check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/members/*' );
+check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/jane.doe/';
+check( 'a name with a dot is not mistaken for a file', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/feed/';
+check( 'a name in front of a feed is not kept', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/author/jane-doe/';
+check( 'a known route keeps its first piece', blueworx_slow_request_label(), '/author/*' );
+$_SERVER['REQUEST_URI'] = '/wp-login.php';
+check( 'a known file stays', blueworx_slow_request_label(), '/wp-login.php' );
+$GLOBALS['filters']['blueworx_slow_log_safe_prefixes'] = function ( $list ) {
+	$list[] = 'members';
+	return $list;
+};
+$_SERVER['REQUEST_URI']                                = '/members/jane-doe/';
+check( 'a site can say which first pieces are safe', blueworx_slow_request_label(), '/members/*' );
+unset( $GLOBALS['filters']['blueworx_slow_log_safe_prefixes'] );
+
+// WordPress's own request, not a list a theme made with query_posts().
+$GLOBALS['wp_the_query'] = new class() {
+	public function is_front_page() {
+		return false;
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return false;
+	}
+	public function is_singular() {
+		return true;
+	}
+	public function is_post_type_archive() {
+		return false;
+	}
+	public function is_category() {
+		return false;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get_queried_object() {
+		return (object) array( 'post_type' => 'member' );
+	}
+};
+$GLOBALS['singular']     = false;
+$GLOBALS['is_home']      = true;
+$_SERVER['REQUEST_URI']  = '/jane-doe/';
+check( 'a theme list that changed the page query does not make a member page content', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_the_query'], $GLOBALS['is_home'] );
 $GLOBALS['did_wp']      = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
-check( 'a long number is not kept', blueworx_slow_request_label(), '/orders/*' );
+check( 'a long number is not kept', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI']                      = '/wp-json/x/v1/lookup/some-person/details';
 $GLOBALS['filters']['blueworx_request_kind'] = function () {
 	return 'rest';
@@ -524,12 +592,15 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 	),
 );
 $paths                                   = array_column( blueworx_slow_log_entries(), 'path' );
-check( 'a name in a profile address goes', $paths[0], '/members/*' );
+check( 'a name in a profile address goes', $paths[0], '/*' );
 check( 'a saved search goes', $paths[1], '(search)' );
 check( 'the home page stays', $paths[2], '/' );
-check( 'a name kept by the version before the last is cut back too', $paths[3], '/members/*' );
+check( 'a name kept by the version before the last is cut back too', $paths[3], '/*' );
 check( 'also at the root', $paths[4], '/*' );
 check( 'a current entry is untouched', $paths[5], '/shop/blue-shirt/' );
+check( 'a known first piece survives the cut', blueworx_slow_generalise_path( '/shop/blue-shirt/' ), '/shop/*' );
+check( 'a name with a dot is cut', blueworx_slow_generalise_path( '/jane.doe/' ), '/*' );
+check( 'a name in front of a feed is cut', blueworx_slow_generalise_path( '/jane-doe/feed/' ), '/*' );
 $GLOBALS['options']['blueworx_slow_log'] = array();
 
 echo "\nThe object cache is judged on use, not on being switched on\n";
@@ -557,9 +628,9 @@ check( 'a note rarely found again is not called healthy', false !== strpos( blue
 $s['kept'] = 9;
 $s['lost'] = 1;
 check( 'a note found again means it is shared', false === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
-$s['kept']     = 1;
-$s['lost']     = 2;
-$verdict_text  = blueworx_object_cache_verdict( 'persistent', $s )['text'];
+$s['kept']    = 1;
+$s['lost']    = 2;
+$verdict_text = blueworx_object_cache_verdict( 'persistent', $s )['text'];
 check( 'hits without enough proof the cache is shared are not called working', false === strpos( $verdict_text, 'Working' ) && false !== strpos( $verdict_text, 'whether it is shared' ), true );
 $s['kept']     = 30;
 $s['lost']     = 2;

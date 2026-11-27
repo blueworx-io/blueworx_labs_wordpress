@@ -96,13 +96,19 @@ function blueworx_visitor_has_cart_cookie() {
 		$name = (string) $name;
 		$low  = strtolower( $name );
 
+		// The cookie the store itself is set to use is asked for by its exact name
+		// first: a store may name it like a tracking one (mp_store_session).
+		if ( '' !== $session_cookie && $session_cookie === $name ) {
+			return true;
+		}
+
 		// Tracking cookies say a page was viewed, not that anything is in a cart
 		// (WooCommerce's order attribution sbjs_session, analytics and ad pixels).
 		if ( blueworx_is_tracking_cookie( $low ) ) {
 			continue;
 		}
 
-		if ( ( '' !== $session_cookie && $session_cookie === $name ) || false !== strpos( $low, 'session' ) || false !== strpos( $low, 'cart' ) ) {
+		if ( false !== strpos( $low, 'session' ) || false !== strpos( $low, 'cart' ) ) {
 			return true;
 		}
 

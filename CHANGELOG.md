@@ -12,15 +12,18 @@ versioning.
     a page that belongs to a custom content type such as members or staff, since
     that address can be a person's name. Posts, pages, products, categories and
     tags keep theirs. The type is read from the page that was asked for, so a
-    theme's related-posts loop cannot change it, and a single address piece at
-    the root of the site (/jane-doe/) is hidden the same way.
+    theme's related-posts loop cannot change it (the site's original request is
+    used, not a list a theme made later). On a page that is not the site's own
+    content, only a known first piece (wp-admin, author, shop and the like) is
+    kept; anything else, such as /jane-doe/, /jane.doe/ or /jane-doe/feed/,
+    shows as /*. A site can add its own first pieces with a filter.
   - Log entries saved by 1.104.0 and 1.104.1 are cut back the same way before
     any screen or report reads them, so a member's name saved earlier is never
     emailed.
   - A visitor whose cart cookie was renamed by a plugin that loads late is no
     longer treated as having no cart: any cookie that looks like a cart or a
-    session is kept. Tracking cookies (order attribution, analytics) are not
-    mistaken for carts.
+    session is kept, and the cookie the store is set to use is always kept.
+    Tracking cookies (order attribution, analytics) are not mistaken for carts.
   - A crawler name that is not one plain word can no longer add a line of its
     own to robots.txt.
   - The speed report no longer calls the object cache healthy until enough
