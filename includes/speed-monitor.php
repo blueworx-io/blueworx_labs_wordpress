@@ -219,6 +219,71 @@ function blueworx_slow_prefix_is_safe( $segment ) {
 }
 
 /**
+ * The pieces of an address that come after the folder the site lives in.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return string[] The same pieces without the site's own folder at the front.
+ */
+function blueworx_slow_segments_below_home( $segments ) {
+	$base = function_exists( 'home_url' ) ? wp_parse_url( home_url(), PHP_URL_PATH ) : '';
+	$base = is_string( $base ) ? array_values( array_filter( explode( '/', $base ), 'strlen' ) ) : array();
+
+	if ( $base && array_slice( $segments, 0, count( $base ) ) === $base ) {
+		return array_values( array_slice( $segments, count( $base ) ) );
+	}
+
+	return array_values( $segments );
+}
+
+/**
+ * Whether the pieces of an address are nothing, or "page" and a number.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return bool True for the home page itself or one of its numbered pages.
+ */
+function blueworx_segments_are_page_number( $segments ) {
+	if ( empty( $segments ) ) {
+		return true;
+	}
+
+	return 2 === count( $segments ) && 'page' === $segments[0] && 1 === preg_match( '/^[0-9]{1,5}$/', (string) $segments[1] );
+}
+
+/**
+ * Whether the pieces of an address are only what a date archive is made of.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return bool True for nothing (a ?m= address), or a year, month and day in turn, then optionally "page" and a number.
+ */
+function blueworx_segments_are_date( $segments ) {
+	$segments = array_values( $segments );
+	$count    = count( $segments );
+
+	if ( $count >= 2 && 'page' === $segments[ $count - 2 ] ) {
+		if ( 1 !== preg_match( '/^[0-9]{1,5}$/', (string) $segments[ $count - 1 ] ) ) {
+			return false;
+		}
+
+		$segments = array_slice( $segments, 0, $count - 2 );
+		$count    = count( $segments );
+	}
+
+	if ( $count > 3 ) {
+		return false;
+	}
+
+	$patterns = array( '/^[0-9]{4}$/', '/^[0-9]{1,2}$/', '/^[0-9]{1,2}$/' );
+
+	foreach ( $segments as $index => $segment ) {
+		if ( 1 !== preg_match( $patterns[ $index ], (string) $segment ) ) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
  * Whether WordPress resolved this request to the site's own content.
  *
  * @param string[] $segments The pieces of the address, to check the answer against.
@@ -235,14 +300,16 @@ function blueworx_request_is_site_content( $segments = array() ) {
 	$types = (array) apply_filters( 'blueworx_slow_log_content_types', array( 'post', 'page', 'product' ) );
 	$taxes = (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) );
 
-	// A plugin that answers /jane-doe/ with a query argument of its own can leave
-	// WordPress calling the request the home page or a date archive. So the
-	// address has to look like one too: nothing in it, or a page number for the
-	// home page, a year for a date.
-	$first = isset( $segments[0] ) ? (string) $segments[0] : '';
+	// A plugin that answers /jane-doe/ (or /page/jane-doe/) with a query argument
+	// of its own can leave WordPress calling the request the home page or a date
+	// archive. So the address has to look like one too: nothing in it, or a page
+	// number for the home page; a year, month, day and page number for a date.
+	// A site kept in a folder (example.com/site/) has that folder in front of
+	// every address, so it is set aside first.
+	$segments = blueworx_slow_segments_below_home( $segments );
 
 	if ( blueworx_main_query_is( 'is_front_page' ) ) {
-		return '' === $first || 'page' === $first;
+		return blueworx_segments_are_page_number( $segments );
 	}
 
 	if ( blueworx_main_query_is( 'is_home' ) ) {
@@ -253,7 +320,7 @@ function blueworx_request_is_site_content( $segments = array() ) {
 	}
 
 	if ( blueworx_main_query_is( 'is_date' ) ) {
-		return '' === $first || 1 === preg_match( '/^[0-9]{4}$/', $first );
+		return blueworx_segments_are_date( $segments );
 	}
 
 	if ( blueworx_main_query_is( 'is_singular' ) ) {

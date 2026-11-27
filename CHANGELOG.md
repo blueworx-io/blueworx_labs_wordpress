@@ -20,6 +20,12 @@ versioning.
     A request WordPress calls the home page or a date archive keeps its address
     only if the address looks like one too, and entries saved by earlier builds
     of this fix are cut back again.
+  - A request WordPress calls the home page or a date archive keeps its address
+    only if it is exactly a home page number (/page/2/) or a year, month, day
+    and page number, so /page/jane-doe/ or /2024/jane-doe/ is never named. A
+    site kept in a folder is judged by what comes after the folder.
+  - The guest cart answer now runs once WordPress has finished loading
+    (wp_loaded), so a cart cookie name a plugin sets on init is known.
   - Log entries saved by 1.104.0 and 1.104.1 are cut back the same way before
     any screen or report reads them, so a member's name saved earlier is never
     emailed.

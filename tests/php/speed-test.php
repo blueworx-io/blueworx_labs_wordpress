@@ -60,7 +60,7 @@ function wp_rand( $min, $max ) {
 }
 $GLOBALS['rand'] = 1;
 function home_url( $path = '' ) {
-	return 'https://example.test' . $path;
+	return 'https://example.test' . ( isset( $GLOBALS['home_base'] ) ? $GLOBALS['home_base'] : '' ) . $path;
 }
 function get_bloginfo( $what ) {
 	return 'Example &amp; Co';
@@ -192,9 +192,9 @@ require __DIR__ . '/../../includes/speed-cleanup.php';
 require __DIR__ . '/../../includes/speed-report.php';
 
 echo "Each function has its own switch, and every hook follows it\n";
-check( 'guest cart answer hooked once WooCommerce has taken its settings from other plugins', hooked( 'before_woocommerce_init', 'blueworx_guest_cart_check_answer' ), true );
+check( 'guest cart answer hooked once every plugin has had its say about the cookie name', hooked( 'wp_loaded', 'blueworx_guest_cart_check_answer' ), true );
 check( 'and not earlier, before a late cookie name is known', hooked( 'init', 'blueworx_guest_cart_check_answer' ), false );
-check( 'and as late as that action allows', $GLOBALS['hooks']['before_woocommerce_init'][0][1], PHP_INT_MAX );
+check( 'and before WooCommerce answers its own ajax calls (priority 10)', $GLOBALS['hooks']['wp_loaded'][0][1] < 10, true );
 check( 'the cart script is left alone', hooked( 'wp_enqueue_scripts', 'blueworx_guest_cart_script_off' ), false );
 check( 'SureRank pause hooked', hooked( 'rest_pre_dispatch', 'blueworx_surerank_link_check_pause' ), true );
 check( 'crawl delay hooked', hooked( 'robots_txt', 'blueworx_crawl_delay_filter' ), true );
@@ -527,9 +527,27 @@ $_SERVER['REQUEST_URI'] = '/';
 check( 'the home page is', blueworx_slow_request_label(), '/' );
 $_SERVER['REQUEST_URI'] = '/page/2/';
 check( 'a page of the home page is kept', blueworx_slow_request_label(), '/page/2/' );
+$_SERVER['REQUEST_URI'] = '/page/jane-doe/';
+check( 'a profile under "page" that WordPress calls the home page is not named', blueworx_slow_request_label(), '/page/*' );
+$_SERVER['REQUEST_URI'] = '/page/2/jane-doe/';
+check( 'nor is a name after the page number', blueworx_slow_request_label(), '/page/*' );
+$GLOBALS['home_base']   = '/site';
+$_SERVER['REQUEST_URI'] = '/site/';
+check( 'the home page of a site kept in a folder keeps its address', blueworx_slow_request_label(), '/site/' );
+$_SERVER['REQUEST_URI'] = '/site/page/3/';
+check( 'and so does a numbered page of it', blueworx_slow_request_label(), '/site/page/3/' );
+$_SERVER['REQUEST_URI'] = '/site/jane-doe/';
+check( 'but a name under the folder is not kept', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['home_base'] );
 $GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
 $_SERVER['REQUEST_URI']         = '/2024/05/';
 check( 'a date archive is kept', blueworx_slow_request_label(), '/2024/05/' );
+$_SERVER['REQUEST_URI'] = '/2024/';
+check( 'a year archive is kept', blueworx_slow_request_label(), '/2024/' );
+$_SERVER['REQUEST_URI'] = '/2024/05/12/page/2/';
+check( 'a dated page number is kept', blueworx_slow_request_label(), '/2024/05/12/page/2/' );
+$_SERVER['REQUEST_URI'] = '/2024/jane-doe/';
+check( 'a name after the year is not kept', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI'] = '/jane-doe/';
 check( 'a profile WordPress calls a date archive is not named', blueworx_slow_request_label(), '/*' );
 unset( $GLOBALS['wp_the_query'] );
