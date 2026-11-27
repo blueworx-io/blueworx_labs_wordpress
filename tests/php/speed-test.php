@@ -118,6 +118,10 @@ function is_singular() {
 function is_404() {
 	return $GLOBALS['is_404'];
 }
+$GLOBALS['post_type'] = 'page';
+function get_post_type() {
+	return $GLOBALS['post_type'];
+}
 function wp_dequeue_script( $handle ) {
 	$GLOBALS['dequeued'][] = $handle;
 }
@@ -266,6 +270,27 @@ foreach ( array( 'woocommerce_items_in_cart', 'woocommerce_cart_hash', 'wp_wooco
 	}
 	check( 'a ' . $cookie . ' cookie means a cart: asked as before', $answered, false );
 }
+foreach ( array( 'my_store_session_9f8e7d', 'Store_SESSION', 'shop_cart_items', 'woocommerce_custom_cart', 'wp_woocommerce_session_zz' ) as $cookie ) {
+	$_COOKIE  = array( $cookie => '1' );
+	$answered = false;
+	try {
+		blueworx_guest_cart_check_answer();
+	} catch ( Stop_Request $e ) {
+		$answered = true;
+	}
+	check( 'a cart cookie named ' . $cookie . ' (renamed by a plugin that loaded late) still keeps the cart', $answered, false );
+}
+$_COOKIE  = array(
+	'woocommerce_recently_viewed' => '1',
+	'PHPSESSID'                   => 'x',
+);
+$answered = false;
+try {
+	blueworx_guest_cart_check_answer();
+} catch ( Stop_Request $e ) {
+	$answered = true;
+}
+check( 'a recently viewed list is not a cart', $answered, true );
 define( 'COOKIEHASH', 'abc' );
 $GLOBALS['filters']['woocommerce_cookie'] = function () {
 	return 'my_store_session';
@@ -322,6 +347,14 @@ Disallow: /private/ # keep out
 check( 'a comment after the star does not hide its rules', 2 === substr_count( $out, 'Disallow: /private/' ), true );
 $own = "User-agent: AhrefsBot\nDisallow: /\n\nUser-agent: *\nDisallow: /wp-admin/\n";
 check( 'a crawler with its own group is left to it', substr_count( blueworx_crawl_delay_filter( $own, true ), 'AhrefsBot' ), 1 );
+$GLOBALS['filters']['blueworx_crawl_delay_agents'] = function () {
+	return array( "Evil\nDisallow: /", 'Good Bot', 'FineBot' );
+};
+$out = blueworx_crawl_delay_filter( $base, true );
+check( 'a crawler name with a line break in it is left out', false === strpos( $out, 'Evil' ), true );
+check( 'a crawler name with a space in it is left out', false === strpos( $out, 'Good' ), true );
+check( 'a plain name stays', false !== strpos( $out, "User-agent: FineBot\n" ), true );
+unset( $GLOBALS['filters']['blueworx_crawl_delay_agents'] );
 $GLOBALS['filters']['blueworx_crawl_delay_seconds'] = function () {
 	return 500;
 };
@@ -341,6 +374,13 @@ $GLOBALS['did_wp']      = 1;
 $GLOBALS['singular']    = true;
 $_SERVER['REQUEST_URI'] = '/members/about-us/';
 check( "the site's own content keeps its address", blueworx_slow_request_label(), '/members/about-us/' );
+$GLOBALS['post_type']   = 'member';
+$_SERVER['REQUEST_URI'] = '/members/jane-doe/';
+check( 'a member post type keeps no name even though WordPress found it', blueworx_slow_request_label(), '/members/*' );
+$GLOBALS['post_type']   = 'product';
+$_SERVER['REQUEST_URI'] = '/shop/blue-shirt/';
+check( 'a product keeps its address', blueworx_slow_request_label(), '/shop/blue-shirt/' );
+$GLOBALS['post_type']   = 'page';
 $GLOBALS['singular']    = false;
 $_SERVER['REQUEST_URI'] = '/members/jane-doe/';
 check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/members/*' );
@@ -450,6 +490,8 @@ $s = array(
 	'requests' => 40,
 	'hits'     => 900,
 	'misses'   => 100,
+	'kept'     => 30,
+	'lost'     => 2,
 );
 check( 'well used', blueworx_object_cache_verdict( 'persistent', $s )['rate'], 90 );
 check( 'well used says so', 0 === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'Working' ), true );
@@ -468,6 +510,12 @@ check( 'a note rarely found again is not called healthy', false !== strpos( blue
 $s['kept'] = 9;
 $s['lost'] = 1;
 check( 'a note found again means it is shared', false === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
+$s['kept']     = 1;
+$s['lost']     = 2;
+$verdict_text  = blueworx_object_cache_verdict( 'persistent', $s )['text'];
+check( 'hits without enough proof the cache is shared are not called working', false === strpos( $verdict_text, 'Working' ) && false !== strpos( $verdict_text, 'whether it is shared' ), true );
+$s['kept']     = 30;
+$s['lost']     = 2;
 $s['requests'] = 2;
 check( 'too few pages to say', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'Too few' ), true );
 $s['requests'] = 40;
@@ -651,6 +699,8 @@ $data = array(
 			'requests' => 40,
 			'hits'     => 10,
 			'misses'   => 400,
+			'kept'     => 30,
+			'lost'     => 2,
 		)
 	),
 	'slow'     => array(

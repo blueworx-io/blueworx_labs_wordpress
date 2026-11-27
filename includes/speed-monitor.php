@@ -131,17 +131,41 @@ function blueworx_segment_is_personal( $segment ) {
 /**
  * Whether WordPress resolved this request to the site's own content.
  *
- * @return bool True for the home page, a post or page, or a post type, category, tag or taxonomy archive.
+ * @return bool True for the home page, a post, page or product, a post type archive, or a category, tag or product category or tag archive.
  */
 function blueworx_request_is_site_content() {
 	if ( ! did_action( 'wp' ) ) {
 		return false;
 	}
 
-	foreach ( array( 'is_front_page', 'is_singular', 'is_post_type_archive', 'is_tax', 'is_category', 'is_tag' ) as $check ) {
+	// A post type that holds people (members, staff, students, a directory) names
+	// them in its address, so only the ordinary content types keep theirs. A site
+	// adds its own with the filter.
+	$types = (array) apply_filters( 'blueworx_slow_log_content_types', array( 'post', 'page', 'product' ) );
+	$taxes = (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) );
+
+	if ( function_exists( 'is_front_page' ) && is_front_page() ) {
+		return true;
+	}
+
+	if ( function_exists( 'is_singular' ) && is_singular() ) {
+		return function_exists( 'get_post_type' ) && in_array( get_post_type(), $types, true );
+	}
+
+	if ( function_exists( 'is_post_type_archive' ) && is_post_type_archive() ) {
+		return true;
+	}
+
+	foreach ( array( 'is_category', 'is_tag' ) as $check ) {
 		if ( function_exists( $check ) && $check() ) {
 			return true;
 		}
+	}
+
+	if ( function_exists( 'is_tax' ) && is_tax() ) {
+		$term = function_exists( 'get_queried_object' ) ? get_queried_object() : null;
+
+		return is_object( $term ) && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
 	}
 
 	return false;

@@ -70,10 +70,19 @@ function blueworx_visitor_has_cart_cookie() {
 	// reads it from. Asked for by that name as well as by the usual start of it.
 	$session_cookie = defined( 'COOKIEHASH' ) ? (string) apply_filters( 'woocommerce_cookie', 'wp_woocommerce_session_' . COOKIEHASH ) : '';  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filter, read so a renamed cookie is still found.
 
+	// This runs before most plugins have had their say, so a cookie renamed by a
+	// plugin that registers its filter later is not known by name. Anything that
+	// looks like a cart or a session is kept, which costs a cart check at worst
+	// and never loses a cart.
 	foreach ( array_keys( $_COOKIE ) as $name ) {
 		$name = (string) $name;
+		$low  = strtolower( $name );
 
-		if ( ( '' !== $session_cookie && $session_cookie === $name ) || 'woocommerce_items_in_cart' === $name || 'woocommerce_cart_hash' === $name || 0 === strpos( $name, 'wp_woocommerce_session_' ) ) {
+		if ( ( '' !== $session_cookie && $session_cookie === $name ) || false !== strpos( $low, 'session' ) || false !== strpos( $low, 'cart' ) ) {
+			return true;
+		}
+
+		if ( 0 === strpos( $low, 'woocommerce_' ) && 'woocommerce_recently_viewed' !== $low ) {
 			return true;
 		}
 	}
@@ -175,7 +184,16 @@ function blueworx_crawl_delay_agents() {
 
 	$agents = apply_filters( 'blueworx_crawl_delay_agents', $agents );
 
-	return array_values( array_filter( array_map( 'trim', (array) $agents ), 'strlen' ) );
+	// A name is one word. A line break or a space in one would write a line of
+	// its own into robots.txt, so such a name is left out, not cleaned up.
+	return array_values(
+		array_filter(
+			array_map( 'trim', array_map( 'strval', (array) $agents ) ),
+			static function ( $agent ) {
+				return 1 === preg_match( '/^[A-Za-z0-9._-]+$/', $agent );
+			}
+		)
+	);
 }
 
 /**

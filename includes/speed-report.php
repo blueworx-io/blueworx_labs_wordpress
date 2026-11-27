@@ -144,7 +144,16 @@ function blueworx_object_cache_verdict( $kind, $sample ) {
 	$lost  = isset( $sample['lost'] ) ? max( 0, (int) $sample['lost'] - 1 ) : 0;
 	$tries = $kept + $lost;
 
-	if ( $tries >= 5 && 0 === $kept ) {
+	// A hit rate alone cannot say the cache is shared, so nothing is called healthy
+	// until the note test has had enough tries to speak.
+	if ( $tries < 5 ) {
+		return array(
+			'rate' => $rate,
+			'text' => 'On. Too few checks have been made yet to say whether it is shared between pages, so it is not called healthy.',
+		);
+	}
+
+	if ( 0 === $kept ) {
 		return array(
 			'rate' => $rate,
 			'text' => 'On, but nothing it holds survives from one page to the next, so in practice it is not a shared cache. Check the cache server is running and reachable.',

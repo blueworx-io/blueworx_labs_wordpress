@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.2] - 2026-11-27
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - The slow-page log (and so the speed report) no longer keeps the address of
+    a page that belongs to a custom content type such as members or staff, since
+    that address can be a person's name. Posts, pages, products, categories and
+    tags keep theirs.
+  - A visitor whose cart cookie was renamed by a plugin that loads late is no
+    longer treated as having no cart: any cookie that looks like a cart or a
+    session is kept.
+  - A crawler name that is not one plain word can no longer add a line of its
+    own to robots.txt.
+  - The speed report no longer calls the object cache healthy until enough
+    checks have shown it is shared between pages.
+
 ## [1.104.1] - 2026-11-26
 
 ### Changed
