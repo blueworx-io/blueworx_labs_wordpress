@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.5] - 2026-11-27
+
+### Changed
+- **Version-only update.** The changelog entry for 1.104.4 was added after
+  that version was set, so this release carries the matching plugin version
+  number. No behaviour changes.
+
 ## [1.104.4] - 2026-11-27
 
 ### Changed
