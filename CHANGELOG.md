@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.3] - 2026-11-27
+
+### Fixed
+- **Scanner and crawler controls: the 13 open review findings checked one by one.**
+  Twelve were already fixed by the earlier follow-up changes and each has a
+  check in the bot control tests (unknown proxies never pause everyone, the
+  proxy chain stops at the first address that is not trusted, file-like page
+  addresses wait for WordPress, admin in its own folder and single sign-on
+  requests are never turned away, one visitor address is used for counting and
+  pausing, no database lookup when nobody is paused, the store's own page
+  addresses are used, shared crawler groups are kept, ordinary missing
+  downloads are not counted, checkout addresses with a query are covered, and
+  paths keep their case). The thirteenth, a version bump for every follow-up
+  commit, is not done: the version moves once per change, which is this one.
+
 ## [1.104.2] - 2026-11-27
 
 ### Fixed
