@@ -332,12 +332,14 @@ function blueworx_segments_are_page_number( $segments ) {
 }
 
 /**
- * The shapes a date archive's address can take on this site.
+ * The shapes a date archive's address can take on this site, as patterns.
  *
- * Read from WordPress's own date address structure, so a site with its dates
- * under /archives/date/ or with the year last is recognised, and nothing else is.
+ * Read from WordPress's own date address structure (the way it builds its year
+ * and month structures from it), so a site with its dates under /archives/date/,
+ * a word stuck to the year (/archive-2026/) or the year last is recognised, and
+ * nothing else is.
  *
- * @return array[] Each shape is a list of pieces: a fixed word, or %year%, %monthnum% or %day%.
+ * @return string[][] Each shape is a list of patterns, one for each piece of the address.
  */
 function blueworx_date_archive_shapes() {
 	global $wp_rewrite;
@@ -353,57 +355,51 @@ function blueworx_date_archive_shapes() {
 		}
 	}
 
-	$pieces = array_values( array_filter( explode( '/', strtolower( $struct ) ), 'strlen' ) );
+	$struct = strtolower( $struct );
+	$month  = preg_replace( '#/+#', '/', str_replace( '%day%', '', $struct ) );
+	$year   = preg_replace( '#/+#', '/', str_replace( '%monthnum%', '', $month ) );
+	$shapes = array( array() );
 
-	if ( isset( $pieces[0] ) && 'index.php' === $pieces[0] ) {
-		array_shift( $pieces );
-	}
+	foreach ( array( $year, $month, $struct ) as $form ) {
+		$pieces = array_values( array_filter( explode( '/', $form ), 'strlen' ) );
 
-	$front  = array();
-	$tokens = array();
-
-	foreach ( $pieces as $piece ) {
-		if ( in_array( $piece, array( '%year%', '%monthnum%', '%day%' ), true ) ) {
-			$tokens[] = $piece;
-		} elseif ( empty( $tokens ) ) {
-			$front[] = strtolower( blueworx_slow_clean_segment( rawurldecode( $piece ) ) );
+		if ( isset( $pieces[0] ) && 'index.php' === $pieces[0] ) {
+			array_shift( $pieces );
 		}
+
+		$shape = array();
+
+		foreach ( $pieces as $piece ) {
+			$pattern = '';
+
+			foreach ( (array) preg_split( '/(%year%|%monthnum%|%day%)/', $piece, -1, PREG_SPLIT_DELIM_CAPTURE ) as $part ) {
+				if ( '%year%' === $part ) {
+					$pattern .= '[0-9]{4}';
+				} elseif ( '%monthnum%' === $part || '%day%' === $part ) {
+					$pattern .= '[0-9]{1,2}';
+				} else {
+					// Fixed words are compared the way a request's pieces are kept.
+					$pattern .= preg_quote( strtolower( blueworx_slow_clean_segment( rawurldecode( (string) $part ) ) ), '#' );
+				}
+			}
+
+			$shape[] = '#^' . $pattern . '$#';
+		}
+
+		$shapes[] = $shape;
 	}
 
-	// Nothing (a ?m= address), a year archive, the year and month, and the full
-	// date, each in the order the structure puts them.
-	return array(
-		array(),
-		array_merge( $front, array( '%year%' ) ),
-		array_merge( $front, array_values( array_diff( $tokens, array( '%day%' ) ) ) ),
-		array_merge( $front, $tokens ),
-	);
+	return $shapes;
 }
 
 /**
- * Whether the pieces of an address are only what a date archive is made of.
+ * Whether the pieces of an address are one of the shapes a date archive has.
  *
- * @param string[] $segments The pieces of the address.
- * @return bool True for nothing (a ?m= address), or a date in the order this site's addresses use, then optionally "page" and a number.
+ * @param string[] $segments The pieces of the address, lower case.
+ * @return bool True when each piece fits the shape's pattern.
  */
-function blueworx_segments_are_date( $segments ) {
-	$segments = array_values( array_map( 'strtolower', array_map( 'strval', $segments ) ) );
-	$count    = count( $segments );
-
-	if ( $count >= 2 && blueworx_pagination_base() === $segments[ $count - 2 ] ) {
-		if ( 1 !== preg_match( '/^[0-9]{1,5}$/', $segments[ $count - 1 ] ) ) {
-			return false;
-		}
-
-		$segments = array_slice( $segments, 0, $count - 2 );
-		$count    = count( $segments );
-	}
-
-	$patterns = array(
-		'%year%'     => '/^[0-9]{4}$/',
-		'%monthnum%' => '/^[0-9]{1,2}$/',
-		'%day%'      => '/^[0-9]{1,2}$/',
-	);
+function blueworx_segments_fit_date_shape( $segments ) {
+	$count = count( $segments );
 
 	foreach ( blueworx_date_archive_shapes() as $shape ) {
 		if ( count( $shape ) !== $count ) {
@@ -412,10 +408,8 @@ function blueworx_segments_are_date( $segments ) {
 
 		$match = true;
 
-		foreach ( $shape as $index => $piece ) {
-			$ok = isset( $patterns[ $piece ] ) ? 1 === preg_match( $patterns[ $piece ], $segments[ $index ] ) : $piece === $segments[ $index ];
-
-			if ( ! $ok ) {
+		foreach ( $shape as $index => $pattern ) {
+			if ( 1 !== preg_match( $pattern, $segments[ $index ] ) ) {
 				$match = false;
 				break;
 			}
@@ -424,6 +418,29 @@ function blueworx_segments_are_date( $segments ) {
 		if ( $match ) {
 			return true;
 		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether the pieces of an address are only what a date archive is made of.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return bool True for nothing (a ?m= address), or a date in the form this site's addresses use, then optionally "page" and a number.
+ */
+function blueworx_segments_are_date( $segments ) {
+	$segments = array_values( array_map( 'strtolower', array_map( 'strval', $segments ) ) );
+	$count    = count( $segments );
+
+	// Read as it stands first: a folder called "page" (/archives/page/2026/) is
+	// part of the address, not a page number.
+	if ( blueworx_segments_fit_date_shape( $segments ) ) {
+		return true;
+	}
+
+	if ( $count >= 2 && blueworx_pagination_base() === $segments[ $count - 2 ] && 1 === preg_match( '/^[0-9]{1,5}$/', $segments[ $count - 1 ] ) ) {
+		return blueworx_segments_fit_date_shape( array_slice( $segments, 0, $count - 2 ) );
 	}
 
 	return false;
@@ -478,19 +495,17 @@ function blueworx_request_is_site_content( $segments = array() ) {
 		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
 	}
 
-	if ( blueworx_main_query_is( 'is_post_type_archive' ) ) {
-		return true;
-	}
-
 	// Category, tag and other term archives all name a term, so all answer to the
-	// same list: a site that takes one off it keeps those addresses out.
+	// same list: a site that takes one off it keeps those addresses out. Asked
+	// before the post type archive, since WordPress can call one request both
+	// (a category of a custom type) and the term is what names the address.
 	if ( blueworx_main_query_is( 'is_category' ) || blueworx_main_query_is( 'is_tag' ) || blueworx_main_query_is( 'is_tax' ) ) {
 		$term = blueworx_main_query_object();
 
 		return null !== $term && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
 	}
 
-	return false;
+	return blueworx_main_query_is( 'is_post_type_archive' );
 }
 
 /**
@@ -608,9 +623,9 @@ function blueworx_slow_log_entries() {
 	// to their first piece, so what an earlier version stored never reaches a
 	// screen or a report.
 	foreach ( $log as $index => $entry ) {
-		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 5 ) && isset( $entry['path'] ) ) {
+		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 6 ) && isset( $entry['path'] ) ) {
 			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
-			$log[ $index ]['v']    = 5;
+			$log[ $index ]['v']    = 6;
 		}
 	}
 
@@ -662,7 +677,7 @@ function blueworx_slow_log_entry( $seconds ) {
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
 	return array(
-		'v'      => 5,
+		'v'      => 6,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
 		'path'   => blueworx_slow_request_label(),

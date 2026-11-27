@@ -590,7 +590,7 @@ $_SERVER['REQUEST_URI'] = '/jane-doe/';
 check( 'a profile WordPress calls a date archive is not named', blueworx_slow_request_label(), '/*' );
 
 // Dates under the site's own address structure.
-$GLOBALS['wp_rewrite'] = new class() {
+$GLOBALS['wp_rewrite']  = new class() {
 	/**
 	 * The structure to answer with.
 	 *
@@ -609,6 +609,18 @@ $_SERVER['REQUEST_URI'] = '/archives/jane-doe/';
 check( 'but a name under the same word is not', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI'] = '/2026/';
 check( 'and a bare year is not a date there', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '/archive-%year%/%monthnum%/%day%';
+$_SERVER['REQUEST_URI']        = '/archive-2026/';
+check( 'a word stuck to the year is kept', blueworx_slow_request_label(), '/archive-2026/' );
+$_SERVER['REQUEST_URI'] = '/archive-2026/05/12/page/2/';
+check( 'with its month, day and page number', blueworx_slow_request_label(), '/archive-2026/05/12/page/2/' );
+$_SERVER['REQUEST_URI'] = '/archive-jane-doe/';
+check( 'but not a name in its place', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '/archives/page/%year%/%monthnum%/%day%';
+$_SERVER['REQUEST_URI']        = '/archives/page/2026/';
+check( 'a folder called page is not a page number', blueworx_slow_request_label(), '/archives/page/2026/' );
+$_SERVER['REQUEST_URI'] = '/archives/page/2026/page/2/';
+check( 'and a page number after it still is', blueworx_slow_request_label(), '/archives/page/2026/page/2/' );
 $GLOBALS['wp_rewrite']->struct = '/%monthnum%/%day%/%year%';
 $_SERVER['REQUEST_URI']        = '/05/12/2026/';
 check( 'a date with the year last is kept', blueworx_slow_request_label(), '/05/12/2026/' );
@@ -645,8 +657,14 @@ $GLOBALS['wp_the_query'] = new class() {
 	public function is_singular() {
 		return false;
 	}
+	/**
+	 * Whether WordPress also calls this a post type archive.
+	 *
+	 * @var bool
+	 */
+	public $both = false;
 	public function is_post_type_archive() {
-		return false;
+		return $this->both;
 	}
 	public function is_category() {
 		return true;
@@ -667,9 +685,11 @@ $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 	return array( 'product_cat' );
 };
 check( 'but not when a site takes categories off the list', blueworx_slow_request_label(), '/category/*' );
+$GLOBALS['wp_the_query']->both = true;
+check( 'even when WordPress also calls it a post type archive', blueworx_slow_request_label(), '/category/*' );
 unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'], $GLOBALS['wp_the_query'] );
-$GLOBALS['did_wp'] = 0;
-$GLOBALS['did_wp'] = 0;
+$GLOBALS['did_wp']      = 0;
+$GLOBALS['did_wp']      = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
 check( 'a long number is not kept', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI']                      = '/wp-json/x/v1/lookup/some-person/details';
@@ -731,7 +751,7 @@ $GLOBALS['switches'] = array();
 for ( $i = 0; $i < 250; $i++ ) {
 	blueworx_slow_log_write(
 		array(
-			'v'    => 5,
+			'v'    => 6,
 			't'    => time(),
 			'ms'   => 1000 + $i,
 			'path' => '/p' . ( $i % 5 ) . '/',
@@ -785,10 +805,16 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		'path' => '/members/jane-doe/',
 	),
 	array(
-		'v'    => 5,
+		'v'    => 6,
 		't'    => time(),
 		'ms'   => 3000,
 		'path' => '/shop/blue-shirt/',
+	),
+	array(
+		'v'    => 5,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/category/private-clients/',
 	),
 );
 $paths                                   = array_column( blueworx_slow_log_entries(), 'path' );
@@ -800,6 +826,7 @@ check( 'also at the root', $paths[4], '/*' );
 check( 'a name the last build saved is cut back too', $paths[5], '/*' );
 check( 'an address the build before this one saved is cut back as well', $paths[6], '/*' );
 check( 'a current entry is untouched', $paths[7], '/shop/blue-shirt/' );
+check( 'a category address the last build saved is cut back, in case the site keeps those out', $paths[8], '/category/*' );
 check( 'a known first piece survives the cut', blueworx_slow_generalise_path( '/shop/blue-shirt/' ), '/shop/*' );
 check( 'a name with a dot is cut', blueworx_slow_generalise_path( '/jane.doe/' ), '/*' );
 check( 'a name in front of a feed is cut', blueworx_slow_generalise_path( '/jane-doe/feed/' ), '/*' );

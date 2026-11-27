@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.4] - 2026-11-27
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A category or tag archive that WordPress also calls a post type archive is
+    judged by the site's slow-log taxonomy list too, so excluded slugs stay out.
+  - Log entries saved by the last build are cut back again, so a category or tag
+    address a site now keeps out never shows in the log or the report.
+  - Date archives are recognised from WordPress's own date address structure,
+    including a word stuck to the year (/archive-2026/) and a folder called
+    "page" (/archives/page/2026/).
+  - Tracking cookies from PixelYourSite (pys_) no longer count as a cart.
+  - The test that uses a stand-in store checks the site loaded it, and skips
+    when it did not.
+
 ## [1.104.3] - 2026-11-27
 
 ### Fixed

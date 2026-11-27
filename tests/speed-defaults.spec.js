@@ -152,13 +152,6 @@ test.describe('Speed defaults', () => {
   });
 
   test('a guest who cannot buy gets an empty cart before WooCommerce makes one', async ({ page }) => {
-    // The stand-in is written into the local test site's folder, so it can only
-    // work when the requests go to that site.
-    test.skip(
-      !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(String(baseURL)),
-      'Needs the local test site: the stand-in WooCommerce is written to its folder.'
-    );
-
     // WooCommerce is not on the test site, so a small stand-in must-use plugin plays
     // its part: a WooCommerce class, sign-in-only checkout, the before_woocommerce_init
     // action fired on init (priority 0) as WooCommerce does, and a cart that is
@@ -171,7 +164,7 @@ test.describe('Speed defaults', () => {
       'class WooCommerce {}',
       "add_filter( 'pre_option_woocommerce_enable_guest_checkout', function () { return 'no'; } );",
       "add_filter( 'pre_option_woocommerce_enable_signup_and_login_from_checkout', function () { return 'no'; } );",
-      "add_action( 'init', function () { do_action( 'before_woocommerce_init' ); }, 0 );",
+      "add_action( 'init', function () { header( 'X-Test-Fake-Store: 1' ); do_action( 'before_woocommerce_init' ); }, 0 );",
       "add_action( 'init', function () {",
       "  if ( isset( $_GET['wc-ajax'] ) && 'get_refreshed_fragments' === $_GET['wc-ajax'] ) {",
       "    header( 'X-Test-Cart-Made: 1' );",
@@ -181,18 +174,36 @@ test.describe('Speed defaults', () => {
       '',
     ].join('\n');
 
-    await login(page);
-    await page.goto(SETTINGS_PATH);
-    await openSectionFor(page, 'guest_cart_checks');
-    const was = await featureIsOn(page, 'guest_cart_checks');
+    // The stand-in is a file in the local test site's folder, so it only works if
+    // the site being tested is that one. Write it, ask the site whether it loaded,
+    // and skip (removing it again) when it did not: a staging site, a tunnel or
+    // another local install never loads it.
     const api = await request.newContext({ baseURL });
     const withCart = await request.newContext({
       baseURL,
       extraHTTPHeaders: { Cookie: 'woocommerce_items_in_cart=1; woocommerce_cart_hash=abc' },
     });
+    const contentDir = path.join(muDir, '..');
 
-    fs.mkdirSync(muDir, { recursive: true });
-    fs.writeFileSync(muFile, fake);
+    let loaded = false;
+    if (fs.existsSync(contentDir)) {
+      fs.mkdirSync(muDir, { recursive: true });
+      fs.writeFileSync(muFile, fake);
+      const probe = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
+      loaded = probe.headers()['x-test-fake-store'] === '1';
+    }
+
+    if (!loaded) {
+      fs.rmSync(muFile, { force: true });
+      await api.dispose();
+      await withCart.dispose();
+    }
+    test.skip(!loaded, 'Needs the local test site: the stand-in WooCommerce did not load on this one.');
+
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await openSectionFor(page, 'guest_cart_checks');
+    const was = await featureIsOn(page, 'guest_cart_checks');
 
     await restoreAll([
       [
