@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.2] - 2026-11-27
+
+### Fixed
+- **Scanner and crawler controls: more careful about who is who.** A visitor
+  whose server writes their address as IPv4-inside-IPv6 (::ffff:1.2.3.4) is now
+  counted as one visitor and checked against the trusted proxy networks as the
+  plain IPv4 address, so a proxy is never mistaken for a shopper and a shopper
+  never counts twice.
+- **Sign-in and admin are never turned away or paused**, also when WordPress
+  lives in a folder of its own (its address differs from the site's) or the site
+  has renamed its REST address, including one with several parts (api/rest) or
+  one a theme sets after the site has started loading.
+- A trusted proxy network written as IPv4-in-IPv6 keeps its real size, and a
+  visitor a trusted proxy names that way is no longer mistaken for a shared address.
+- On a site with pretty permalinks and no saved address rules yet, a probe is
+  judged once WordPress has started, so a REST address set by a theme or plugin
+  is known first.
+
 ## [1.104.1] - 2026-11-26
 
 ### Changed
