@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.7] - 2026-11-27
+
+### Fixed
+- **Speed defaults, review fixes.** A post, page or product keeps its address in
+  the slow log and report when it has the extra pieces WordPress and WooCommerce
+  add: a page of a post split in parts (/slug/2/), a named feed (/slug/feed/rss2/),
+  and the store's account and checkout endpoints (/my-account/orders/,
+  /checkout/order-received/123/). A site can add its own endpoint words with the
+  blueworx_slow_log_endpoints filter.
+
 ## [1.104.6] - 2026-11-27
 
 ### Fixed

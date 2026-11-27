@@ -408,12 +408,57 @@ function blueworx_segments_are_object_address( $segments, $post_object ) {
 		return true;
 	}
 
-	// A page number, a comment page or one of WordPress's own endpoints.
-	if ( 1 === count( $rest ) ) {
-		return 1 === preg_match( '/^(comment-page-[0-9]{1,5}|feed|embed|trackback|amp)$/', $rest[0] );
+	// One piece after the address: a page of a post split with <!--nextpage-->
+	// (/slug/2/), a comment page or one of WordPress's own endpoints.
+	if ( 1 === count( $rest ) && 1 === preg_match( '/^([0-9]{1,5}|comment-page-[0-9]{1,5}|feed|embed|trackback|amp)$/', $rest[0] ) ) {
+		return true;
+	}
+
+	// A named feed (/slug/feed/rss2/).
+	if ( 2 === count( $rest ) && 'feed' === $rest[0] && 1 === preg_match( '/^(feed|rss|rss2|rdf|atom)$/', $rest[1] ) ) {
+		return true;
+	}
+
+	// A store's account and checkout endpoints are the page with a word and a
+	// short value after it (/my-account/orders/, /my-account/edit-address/billing/,
+	// /checkout/order-received/*/). Only a word the store knows, and a value that is
+	// a number, billing, shipping or already a star.
+	if ( count( $rest ) <= 3 && in_array( $rest[0], blueworx_store_endpoints(), true ) ) {
+		foreach ( array_slice( $rest, 1 ) as $value ) {
+			if ( 1 !== preg_match( '/^(billing|shipping|[0-9]{1,10}|[*])$/', $value ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	return blueworx_segments_are_page_number( $rest );
+}
+
+/**
+ * The words a store puts after a page's address (WooCommerce's account and checkout endpoints).
+ *
+ * @return string[] Lower case words. A site adds its own with the blueworx_slow_log_endpoints filter.
+ */
+function blueworx_store_endpoints() {
+	$known = array(
+		'orders',
+		'view-order',
+		'downloads',
+		'edit-address',
+		'edit-account',
+		'payment-methods',
+		'add-payment-method',
+		'delete-payment-method',
+		'set-default-payment-method',
+		'lost-password',
+		'customer-logout',
+		'order-received',
+		'order-pay',
+	);
+
+	return array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_endpoints', $known ) ) );
 }
 
 /**
