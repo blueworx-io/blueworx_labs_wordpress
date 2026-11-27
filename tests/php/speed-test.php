@@ -697,13 +697,13 @@ $GLOBALS['wp_the_query']->both = false;
 
 // A request for a category and a tag at once is a category to WordPress, but the
 // address holds the tag, so a site that takes tags off the list keeps it out.
-$GLOBALS['wp_the_query']->tax_query = (object) array(
+$GLOBALS['wp_the_query']->tax_query                 = (object) array(
 	'queried_terms' => array(
 		'category' => array(),
 		'post_tag' => array(),
 	),
 );
-$_SERVER['REQUEST_URI']             = '/tag/jane-doe/';
+$_SERVER['REQUEST_URI']                             = '/tag/jane-doe/';
 $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 	return array( 'category', 'product_cat' );
 };
@@ -713,7 +713,7 @@ check( 'tags on the list keep their address', blueworx_slow_request_label(), '/t
 $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 	return array( 'category', 'post_tag' );
 };
-$GLOBALS['wp_the_query']->tax_query = (object) array(
+$GLOBALS['wp_the_query']->tax_query                 = (object) array(
 	'queried_terms' => array(
 		'category' => array(),
 		'post_tag' => array(),
