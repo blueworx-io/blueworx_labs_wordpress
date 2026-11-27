@@ -221,9 +221,10 @@ function blueworx_slow_prefix_is_safe( $segment ) {
 /**
  * Whether WordPress resolved this request to the site's own content.
  *
+ * @param string[] $segments The pieces of the address, to check the answer against.
  * @return bool True for the home page, a post, page or product, a post type archive, or a category, tag or product category or tag archive.
  */
-function blueworx_request_is_site_content() {
+function blueworx_request_is_site_content( $segments = array() ) {
 	if ( ! did_action( 'wp' ) ) {
 		return false;
 	}
@@ -234,10 +235,25 @@ function blueworx_request_is_site_content() {
 	$types = (array) apply_filters( 'blueworx_slow_log_content_types', array( 'post', 'page', 'product' ) );
 	$taxes = (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) );
 
-	foreach ( array( 'is_front_page', 'is_home', 'is_date' ) as $check ) {
-		if ( blueworx_main_query_is( $check ) ) {
-			return true;
-		}
+	// A plugin that answers /jane-doe/ with a query argument of its own can leave
+	// WordPress calling the request the home page or a date archive. So the
+	// address has to look like one too: nothing in it, or a page number for the
+	// home page, a year for a date.
+	$first = isset( $segments[0] ) ? (string) $segments[0] : '';
+
+	if ( blueworx_main_query_is( 'is_front_page' ) ) {
+		return '' === $first || 'page' === $first;
+	}
+
+	if ( blueworx_main_query_is( 'is_home' ) ) {
+		// The page chosen to show the latest posts.
+		$page = blueworx_main_query_object();
+
+		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true );
+	}
+
+	if ( blueworx_main_query_is( 'is_date' ) ) {
+		return '' === $first || 1 === preg_match( '/^[0-9]{4}$/', $first );
 	}
 
 	if ( blueworx_main_query_is( 'is_singular' ) ) {
@@ -316,7 +332,7 @@ function blueworx_slow_request_label() {
 	// (a member's profile, an author page, anything a plugin answers) keeps only
 	// its first piece, since the rest can be a person's name. The same goes when
 	// WordPress never got far enough to say.
-	if ( 'front' === blueworx_request_kind() && ! empty( $segments ) && ! blueworx_request_is_site_content() ) {
+	if ( 'front' === blueworx_request_kind() && ! empty( $segments ) && ! blueworx_request_is_site_content( $segments ) ) {
 		// Only a first piece that is known to be WordPress's or a store's own word
 		// stays. Anything else can be a person's name (/jane-doe/, /jane.doe/,
 		// /jane-doe/feed/), whatever shape it has.
@@ -378,9 +394,9 @@ function blueworx_slow_log_entries() {
 	// to their first piece, so what an earlier version stored never reaches a
 	// screen or a report.
 	foreach ( $log as $index => $entry ) {
-		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 3 ) && isset( $entry['path'] ) ) {
+		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 4 ) && isset( $entry['path'] ) ) {
 			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
-			$log[ $index ]['v']    = 3;
+			$log[ $index ]['v']    = 4;
 		}
 	}
 
@@ -432,7 +448,7 @@ function blueworx_slow_log_entry( $seconds ) {
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
 	return array(
-		'v'      => 3,
+		'v'      => 4,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
 		'path'   => blueworx_slow_request_label(),

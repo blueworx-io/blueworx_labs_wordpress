@@ -192,10 +192,11 @@ require __DIR__ . '/../../includes/speed-cleanup.php';
 require __DIR__ . '/../../includes/speed-report.php';
 
 echo "Each function has its own switch, and every hook follows it\n";
-check( 'guest cart answer hooked', hooked( 'init', 'blueworx_guest_cart_check_answer' ), true );
+check( 'guest cart answer hooked once WooCommerce has taken its settings from other plugins', hooked( 'before_woocommerce_init', 'blueworx_guest_cart_check_answer' ), true );
+check( 'and not earlier, before a late cookie name is known', hooked( 'init', 'blueworx_guest_cart_check_answer' ), false );
+check( 'and as late as that action allows', $GLOBALS['hooks']['before_woocommerce_init'][0][1], PHP_INT_MAX );
 check( 'the cart script is left alone', hooked( 'wp_enqueue_scripts', 'blueworx_guest_cart_script_off' ), false );
 check( 'SureRank pause hooked', hooked( 'rest_pre_dispatch', 'blueworx_surerank_link_check_pause' ), true );
-check( 'the guest cart answer comes before WooCommerce starts', $GLOBALS['hooks']['init'][0][1] < 0, true );
 check( 'crawl delay hooked', hooked( 'robots_txt', 'blueworx_crawl_delay_filter' ), true );
 check( 'monitor hooked', hooked( 'shutdown', 'blueworx_speed_monitor_shutdown' ), true );
 check( 'cleanup runs on its event', hooked( 'blueworx_weekly_cleanup', 'blueworx_cleanup_cron' ), true );
@@ -481,6 +482,58 @@ $GLOBALS['is_home']      = true;
 $_SERVER['REQUEST_URI']  = '/jane-doe/';
 check( 'a theme list that changed the page query does not make a member page content', blueworx_slow_request_label(), '/*' );
 unset( $GLOBALS['wp_the_query'], $GLOBALS['is_home'] );
+
+// A profile plugin that answers /jane-doe/ with its own query argument can leave
+// WordPress calling the request the home page.
+$GLOBALS['wp_the_query'] = new class() {
+	/**
+	 * Which checks answer yes.
+	 *
+	 * @var array
+	 */
+	public $flags = array( 'is_front_page' => true );
+	public function is_front_page() {
+		return ! empty( $this->flags['is_front_page'] );
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return ! empty( $this->flags['is_date'] );
+	}
+	public function is_singular() {
+		return false;
+	}
+	public function is_post_type_archive() {
+		return false;
+	}
+	public function is_category() {
+		return false;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get_queried_object() {
+		return null;
+	}
+};
+$GLOBALS['did_wp']       = 1;
+$_SERVER['REQUEST_URI']  = '/jane-doe/';
+check( 'a profile WordPress calls the home page is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/';
+check( 'the home page is', blueworx_slow_request_label(), '/' );
+$_SERVER['REQUEST_URI'] = '/page/2/';
+check( 'a page of the home page is kept', blueworx_slow_request_label(), '/page/2/' );
+$GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
+$_SERVER['REQUEST_URI']         = '/2024/05/';
+check( 'a date archive is kept', blueworx_slow_request_label(), '/2024/05/' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a profile WordPress calls a date archive is not named', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_the_query'] );
+$GLOBALS['did_wp']      = 0;
 $GLOBALS['did_wp']      = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
 check( 'a long number is not kept', blueworx_slow_request_label(), '/*' );
@@ -543,7 +596,7 @@ $GLOBALS['switches'] = array();
 for ( $i = 0; $i < 250; $i++ ) {
 	blueworx_slow_log_write(
 		array(
-			'v'    => 3,
+			'v'    => 4,
 			't'    => time(),
 			'ms'   => 1000 + $i,
 			'path' => '/p' . ( $i % 5 ) . '/',
@@ -588,6 +641,12 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		'v'    => 3,
 		't'    => time(),
 		'ms'   => 3000,
+		'path' => '/jane.doe/',
+	),
+	array(
+		'v'    => 4,
+		't'    => time(),
+		'ms'   => 3000,
 		'path' => '/shop/blue-shirt/',
 	),
 );
@@ -597,7 +656,8 @@ check( 'a saved search goes', $paths[1], '(search)' );
 check( 'the home page stays', $paths[2], '/' );
 check( 'a name kept by the version before the last is cut back too', $paths[3], '/*' );
 check( 'also at the root', $paths[4], '/*' );
-check( 'a current entry is untouched', $paths[5], '/shop/blue-shirt/' );
+check( 'a name the last build saved is cut back too', $paths[5], '/*' );
+check( 'a current entry is untouched', $paths[6], '/shop/blue-shirt/' );
 check( 'a known first piece survives the cut', blueworx_slow_generalise_path( '/shop/blue-shirt/' ), '/shop/*' );
 check( 'a name with a dot is cut', blueworx_slow_generalise_path( '/jane.doe/' ), '/*' );
 check( 'a name in front of a feed is cut', blueworx_slow_generalise_path( '/jane-doe/feed/' ), '/*' );

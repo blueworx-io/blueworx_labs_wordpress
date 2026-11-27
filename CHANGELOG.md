@@ -17,12 +17,16 @@ versioning.
     content, only a known first piece (wp-admin, author, shop and the like) is
     kept; anything else, such as /jane-doe/, /jane.doe/ or /jane-doe/feed/,
     shows as /*. A site can add its own first pieces with a filter.
+    A request WordPress calls the home page or a date archive keeps its address
+    only if the address looks like one too, and entries saved by earlier builds
+    of this fix are cut back again.
   - Log entries saved by 1.104.0 and 1.104.1 are cut back the same way before
     any screen or report reads them, so a member's name saved earlier is never
     emailed.
   - A visitor whose cart cookie was renamed by a plugin that loads late is no
     longer treated as having no cart: any cookie that looks like a cart or a
-    session is kept, and the cookie the store is set to use is always kept.
+    session is kept, and the cookie the store is set to use is always kept,
+    including one a plugin names while WooCommerce is starting.
     Tracking cookies (order attribution, analytics) are not mistaken for carts.
   - A crawler name that is not one plain word can no longer add a line of its
     own to robots.txt.
