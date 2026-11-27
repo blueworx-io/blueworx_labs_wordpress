@@ -27,7 +27,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Nothing is assumed beyond WooCommerce's own two settings. A site that gates
  * buying some other way (a membership, say) says so with the
- * `blueworx_guest_can_buy` filter.
+ * `blueworx_guest_can_buy` filter. The answer is given as WooCommerce starts
+ * (on init, priority 0), so that filter has to be added before then (when the
+ * plugin or theme loads, or on plugins_loaded or after_setup_theme), not on a
+ * later init callback.
  *
  * @return bool True for a signed-out visitor who cannot buy.
  */

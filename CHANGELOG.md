@@ -27,6 +27,12 @@ versioning.
   - The guest cart answer runs as WooCommerce starts, at the latest priority,
     before it makes a session or a cart (a later hook would save only the mini
     cart). WooCommerce reads the cookie name at that moment too.
+  - Slow-log entries saved by the previous build (which could still hold a
+    member's address) are cut back as well. A posts page with a name outside
+    plain ASCII, and a capitalised page word (/Paginas/2/), keep their address.
+  - The "guest cannot buy" filter must be added before WooCommerce starts (on
+    plugins_loaded or when the plugin loads); this is noted in the code. A test
+    with a stand-in WooCommerce checks the cart is answered before it is made.
   - The posts page keeps its address only at its own address (and its numbered
     pages), and numbered home pages on a site that shows index.php, or that
     changed the word "page", keep theirs.

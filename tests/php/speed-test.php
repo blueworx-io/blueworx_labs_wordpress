@@ -60,7 +60,8 @@ function wp_rand( $min, $max ) {
 }
 $GLOBALS['rand'] = 1;
 function get_page_uri( $id ) {
-	return 7 === (int) $id ? 'blog' : '';
+	$pages = array( 7 => 'blog', 8 => 'blog-%e3%83%96%e3%83%ad%e3%82%b0' );
+	return isset( $pages[ (int) $id ] ) ? $pages[ (int) $id ] : '';
 }
 function home_url( $path = '' ) {
 	return 'https://example.test' . ( isset( $GLOBALS['home_base'] ) ? $GLOBALS['home_base'] : '' ) . $path;
@@ -558,6 +559,21 @@ check( 'a profile answered through the posts page is not named', blueworx_slow_r
 $_SERVER['REQUEST_URI'] = '/blog/jane-doe/';
 check( 'nor is a name under the posts page', blueworx_slow_request_label(), '/*' );
 unset( $GLOBALS['options']['page_for_posts'] );
+$GLOBALS['options']['page_for_posts'] = 8;
+$_SERVER['REQUEST_URI']               = '/blog-%E3%83%96%E3%83%AD%E3%82%B0/';
+check( 'a posts page with a name outside plain ASCII is kept', blueworx_slow_request_label(), '/blog-/' );
+$_SERVER['REQUEST_URI'] = '/blog-%E3%83%96%E3%83%AD%E3%82%B0/page/2/';
+check( 'and its numbered pages', blueworx_slow_request_label(), '/blog-/page/2/' );
+$_SERVER['REQUEST_URI'] = '/blog-jane-doe/';
+check( 'another address is still not kept', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['options']['page_for_posts'] );
+$GLOBALS['wp_the_query']->flags = array( 'is_front_page' => true );
+$GLOBALS['wp_rewrite']          = (object) array( 'pagination_base' => 'Paginas' );
+$_SERVER['REQUEST_URI']         = '/Paginas/2/';
+check( 'a numbered home page with a capitalised page word is kept', blueworx_slow_request_label(), '/Paginas/2/' );
+$_SERVER['REQUEST_URI'] = '/paginas/jane-doe/';
+check( 'a name after the page word is not', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_rewrite'] );
 $GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
 $_SERVER['REQUEST_URI']         = '/2024/05/';
 check( 'a date archive is kept', blueworx_slow_request_label(), '/2024/05/' );
@@ -633,7 +649,7 @@ $GLOBALS['switches'] = array();
 for ( $i = 0; $i < 250; $i++ ) {
 	blueworx_slow_log_write(
 		array(
-			'v'    => 4,
+			'v'    => 5,
 			't'    => time(),
 			'ms'   => 1000 + $i,
 			'path' => '/p' . ( $i % 5 ) . '/',
@@ -684,6 +700,12 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		'v'    => 4,
 		't'    => time(),
 		'ms'   => 3000,
+		'path' => '/members/jane-doe/',
+	),
+	array(
+		'v'    => 5,
+		't'    => time(),
+		'ms'   => 3000,
 		'path' => '/shop/blue-shirt/',
 	),
 );
@@ -694,7 +716,8 @@ check( 'the home page stays', $paths[2], '/' );
 check( 'a name kept by the version before the last is cut back too', $paths[3], '/*' );
 check( 'also at the root', $paths[4], '/*' );
 check( 'a name the last build saved is cut back too', $paths[5], '/*' );
-check( 'a current entry is untouched', $paths[6], '/shop/blue-shirt/' );
+check( 'an address the build before this one saved is cut back as well', $paths[6], '/*' );
+check( 'a current entry is untouched', $paths[7], '/shop/blue-shirt/' );
 check( 'a known first piece survives the cut', blueworx_slow_generalise_path( '/shop/blue-shirt/' ), '/shop/*' );
 check( 'a name with a dot is cut', blueworx_slow_generalise_path( '/jane.doe/' ), '/*' );
 check( 'a name in front of a feed is cut', blueworx_slow_generalise_path( '/jane-doe/feed/' ), '/*' );

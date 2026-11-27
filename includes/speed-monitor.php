@@ -219,6 +219,17 @@ function blueworx_slow_prefix_is_safe( $segment ) {
 }
 
 /**
+ * One piece of an address as it is kept in a note: plain printable characters
+ * only, and no more than 60 of them.
+ *
+ * @param string $segment Piece of the address, already decoded.
+ * @return string Cleaned piece.
+ */
+function blueworx_slow_clean_segment( $segment ) {
+	return substr( (string) preg_replace( '/[^!-~]/', '', (string) $segment ), 0, 60 );
+}
+
+/**
  * The pieces of an address that come after the folder the site lives in.
  *
  * @param string[] $segments The pieces of the address.
@@ -274,7 +285,11 @@ function blueworx_segments_are_posts_page( $segments ) {
 		return false;
 	}
 
-	$own  = array_map( 'strtolower', array_values( array_filter( explode( '/', $uri ), 'strlen' ) ) );
+	// The page's address is stored encoded, and a request's is cleaned the same
+	// way the label is (letters outside plain ASCII dropped), so both are brought
+	// to that form first.
+	$own  = array_map( 'blueworx_slow_clean_segment', array_values( array_filter( explode( '/', rawurldecode( $uri ) ), 'strlen' ) ) );
+	$own  = array_map( 'strtolower', $own );
 	$have = array_map( 'strtolower', array_map( 'strval', $segments ) );
 	$n    = count( $own );
 
@@ -296,7 +311,7 @@ function blueworx_segments_are_page_number( $segments ) {
 		return true;
 	}
 
-	return 2 === count( $segments ) && blueworx_pagination_base() === $segments[0] && 1 === preg_match( '/^[0-9]{1,5}$/', (string) $segments[1] );
+	return 2 === count( $segments ) && blueworx_pagination_base() === strtolower( (string) $segments[0] ) && 1 === preg_match( '/^[0-9]{1,5}$/', (string) $segments[1] );
 }
 
 /**
@@ -309,7 +324,7 @@ function blueworx_segments_are_date( $segments ) {
 	$segments = array_values( $segments );
 	$count    = count( $segments );
 
-	if ( $count >= 2 && blueworx_pagination_base() === $segments[ $count - 2 ] ) {
+	if ( $count >= 2 && blueworx_pagination_base() === strtolower( (string) $segments[ $count - 2 ] ) ) {
 		if ( 1 !== preg_match( '/^[0-9]{1,5}$/', (string) $segments[ $count - 1 ] ) ) {
 			return false;
 		}
@@ -433,7 +448,7 @@ function blueworx_slow_request_label() {
 			continue;
 		}
 
-		$segments[] = blueworx_segment_is_personal( $segment ) ? '*' : substr( preg_replace( '/[^\x21-\x7E]/', '', $segment ), 0, 60 );
+		$segments[] = blueworx_segment_is_personal( $segment ) ? '*' : blueworx_slow_clean_segment( $segment );
 	}
 
 	if ( in_array( blueworx_request_kind(), array( 'rest', 'ajax' ), true ) || ( isset( $segments[0] ) && 'wp-json' === $segments[0] ) ) {
@@ -512,9 +527,9 @@ function blueworx_slow_log_entries() {
 	// to their first piece, so what an earlier version stored never reaches a
 	// screen or a report.
 	foreach ( $log as $index => $entry ) {
-		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 4 ) && isset( $entry['path'] ) ) {
+		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 5 ) && isset( $entry['path'] ) ) {
 			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
-			$log[ $index ]['v']    = 4;
+			$log[ $index ]['v']    = 5;
 		}
 	}
 
@@ -566,7 +581,7 @@ function blueworx_slow_log_entry( $seconds ) {
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
 	return array(
-		'v'      => 4,
+		'v'      => 5,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
 		'path'   => blueworx_slow_request_label(),

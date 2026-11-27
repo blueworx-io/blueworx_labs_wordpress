@@ -1,10 +1,14 @@
 /**
  * Speed defaults: each function is on by default, can be switched off, and does
  * what it says. The store checks (guests who cannot buy, the weekly clear-out of
- * store jobs) need WooCommerce, which the test site does not have; their logic is
+ * store jobs) need WooCommerce, which the test site does not have (the cart test
+ * uses a small stand-in); their logic is
  * covered by tests/php/speed-test.php.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { request } from '@playwright/test';
 import {
   test,
@@ -20,6 +24,7 @@ import {
   openSectionFor,
 } from './helpers.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
 const SWITCHES = [
@@ -146,19 +151,85 @@ test.describe('Speed defaults', () => {
     ]);
   });
 
-  test('the cart check shortcut leaves a site without a store alone', async () => {
-    // The test site has no WooCommerce, so the shortcut must stay out of the way:
-    // the cart check address answers like any other page, never with its empty cart.
+  test('a guest who cannot buy gets an empty cart before WooCommerce makes one', async ({ page }) => {
+    // WooCommerce is not on the test site, so a small stand-in must-use plugin plays
+    // its part: a WooCommerce class, sign-in-only checkout, the before_woocommerce_init
+    // action fired on init (priority 0) as WooCommerce does, and a cart that is
+    // "made" on init (priority 5) and says so in a header.
+    const muDir = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content', 'mu-plugins');
+    const muFile = path.join(muDir, 'blueworx-test-fake-woocommerce.php');
+    const route = '/?wc-ajax=get_refreshed_fragments';
+    const fake = [
+      '<?php',
+      'class WooCommerce {}',
+      "add_filter( 'pre_option_woocommerce_enable_guest_checkout', function () { return 'no'; } );",
+      "add_filter( 'pre_option_woocommerce_enable_signup_and_login_from_checkout', function () { return 'no'; } );",
+      "add_action( 'init', function () { do_action( 'before_woocommerce_init' ); }, 0 );",
+      "add_action( 'init', function () {",
+      "  if ( isset( $_GET['wc-ajax'] ) && 'get_refreshed_fragments' === $_GET['wc-ajax'] ) {",
+      "    header( 'X-Test-Cart-Made: 1' );",
+      "    wp_send_json( array( 'fragments' => array( 'a' => 'b' ), 'cart_hash' => 'made' ) );",
+      '  }',
+      '}, 5 );',
+      '',
+    ].join('\n');
+
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await openSectionFor(page, 'guest_cart_checks');
+    const was = await featureIsOn(page, 'guest_cart_checks');
     const api = await request.newContext({ baseURL });
+    const withCart = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { Cookie: 'woocommerce_items_in_cart=1; woocommerce_cart_hash=abc' },
+    });
 
-    try {
-      const res = await api.get('/?wc-ajax=get_refreshed_fragments', { maxRedirects: 0 });
+    fs.mkdirSync(muDir, { recursive: true });
+    fs.writeFileSync(muFile, fake);
 
-      expect(res.status()).toBeLessThan(400);
-      expect(await res.text()).not.toContain('"cart_hash":""');
-    } finally {
-      await api.dispose();
-    }
+    await restoreAll([
+      [
+        'on',
+        async () => {
+          await setFeature(page, 'guest_cart_checks', true);
+          await save(page);
+
+          const res = await api.get(route, { maxRedirects: 0 });
+          expect(res.headers()['x-test-cart-made']).toBeUndefined();
+          expect(await res.json()).toMatchObject({ cart_hash: '' });
+
+          const mine = await withCart.get(route, { maxRedirects: 0 });
+          expect(mine.headers()['x-test-cart-made']).toBe('1');
+        },
+      ],
+      [
+        'off',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await setFeature(page, 'guest_cart_checks', false);
+          await save(page);
+
+          const res = await api.get(route, { maxRedirects: 0 });
+          expect(res.headers()['x-test-cart-made']).toBe('1');
+        },
+      ],
+      [
+        'restore',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await setFeature(page, 'guest_cart_checks', was);
+          await save(page);
+        },
+      ],
+      [
+        'remove the stand-in',
+        async () => {
+          fs.rmSync(muFile, { force: true });
+          await api.dispose();
+          await withCart.dispose();
+        },
+      ],
+    ]);
   });
 
   test('more scanner probes are turned away plainly', async () => {
