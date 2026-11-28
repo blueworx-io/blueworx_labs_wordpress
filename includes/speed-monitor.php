@@ -632,6 +632,62 @@ function blueworx_segments_name_unlisted_term( $segments, $listed ) {
 }
 
 /**
+ * Whether a post's address holds a term the post has in a taxonomy not on the list.
+ *
+ * A permalink can carry the post's category (or a parent of it) by itself, with
+ * no word in front (/news/private-clients/post/), so the post's own terms in
+ * every public taxonomy left off the list are looked for in the address.
+ *
+ * @param string[] $segments    The pieces of the address.
+ * @param object   $post_object The post, page or product WordPress answered with.
+ * @param string[] $listed      Taxonomy names the site keeps, lower case.
+ * @return bool True when one of the post's unlisted terms (or a parent) is in the address.
+ */
+function blueworx_post_address_names_unlisted_term( $segments, $post_object, $listed ) {
+	if ( empty( $segments ) || empty( $post_object->ID ) || ! function_exists( 'get_taxonomies' ) || ! function_exists( 'get_the_terms' ) ) {
+		return false;
+	}
+
+	$have = array();
+
+	foreach ( $segments as $segment ) {
+		$have[] = strtolower( rawurldecode( (string) $segment ) );
+	}
+
+	foreach ( (array) get_taxonomies( array( 'public' => true ), 'names' ) as $name ) {
+		if ( in_array( strtolower( (string) $name ), $listed, true ) ) {
+			continue;
+		}
+
+		$terms = get_the_terms( $post_object->ID, $name );
+
+		if ( ! is_array( $terms ) ) {
+			continue;
+		}
+
+		foreach ( $terms as $term ) {
+			$slugs = array( isset( $term->slug ) ? $term->slug : '' );
+
+			if ( isset( $term->term_id ) && function_exists( 'get_ancestors' ) && function_exists( 'get_term' ) ) {
+				foreach ( (array) get_ancestors( $term->term_id, $name, 'taxonomy' ) as $parent_id ) {
+					$parent  = get_term( $parent_id, $name );
+					$slugs[] = is_object( $parent ) && isset( $parent->slug ) ? $parent->slug : '';
+				}
+			}
+
+			foreach ( $slugs as $slug ) {
+				$slug = strtolower( rawurldecode( (string) $slug ) );
+
+				if ( '' !== $slug && in_array( $slug, $have, true ) ) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+/**
  * Whether WordPress resolved this request to the site's own content.
  *
  * @param string[] $segments The pieces of the address, to check the answer against.
@@ -658,10 +714,11 @@ function blueworx_request_is_site_content( $segments = array() ) {
 
 	// Whatever WordPress says about the request, a term of a taxonomy that is not on
 	// the list is never kept: its address word (/tag/) in the address is enough.
-	// A post's own address can hold a category name too (/news/category/x/post/),
-	// so this holds for posts as well. The word on its own, with nothing after it
-	// (/product/brand/), names no term and stays.
-	if ( blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
+	// A post's own address is judged on the post's own terms instead (below): its
+	// address can hold a category name with no word before it (/news/private-clients/
+	// post/), and a page that merely has the word in its address (/about/brand/
+	// history/) is not a term's route.
+	if ( ! blueworx_main_query_is( 'is_singular' ) && blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
 		return false;
 	}
 
@@ -672,6 +729,10 @@ function blueworx_request_is_site_content( $segments = array() ) {
 
 		// A static home page also has its own endpoints (/comment-page-2/).
 		$page = blueworx_main_query_object();
+
+		if ( null !== $page && blueworx_post_address_names_unlisted_term( $segments, $page, $taxes ) ) {
+			return false;
+		}
 
 		return blueworx_main_query_is( 'is_singular' ) && null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $page );
 	}
@@ -692,6 +753,10 @@ function blueworx_request_is_site_content( $segments = array() ) {
 		// The page that was asked for, not whatever post a theme's own loop (related
 		// posts, say) left as the current one.
 		$page = blueworx_main_query_object();
+
+		if ( null !== $page && blueworx_post_address_names_unlisted_term( $segments, $page, $taxes ) ) {
+			return false;
+		}
 
 		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $page );
 	}

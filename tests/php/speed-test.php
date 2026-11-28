@@ -21,6 +21,31 @@ define( 'WEEK_IN_SECONDS', 604800 );
 define( 'ENT_QUOTES_TEST', 1 );
 
 $GLOBALS['taxonomies'] = array();
+$GLOBALS['post_terms'] = array();
+$GLOBALS['ancestors']  = array();
+/**
+ * The terms a post has, from what a test sets: taxonomy => list of terms.
+ *
+ * @param mixed  $post     The post.
+ * @param string $taxonomy The taxonomy.
+ * @return array|false The terms.
+ */
+function get_the_terms( $post, $taxonomy ) {
+	return isset( $GLOBALS['post_terms'][ $taxonomy ] ) ? $GLOBALS['post_terms'][ $taxonomy ] : false;
+}
+function get_ancestors( $id, $taxonomy, $type = '' ) {
+	return isset( $GLOBALS['ancestors'][ $id ] ) ? $GLOBALS['ancestors'][ $id ] : array();
+}
+function get_term( $id, $taxonomy = '' ) {
+	foreach ( $GLOBALS['post_terms'] as $terms ) {
+		foreach ( $terms as $term ) {
+			if ( $term->term_id === $id ) {
+				return $term;
+			}
+		}
+	}
+	return null;
+}
 function get_taxonomies( $args = array(), $output = 'names' ) {
 	return array_keys( $GLOBALS['taxonomies'] );
 }
@@ -901,21 +926,84 @@ check( 'a category archive of an ordinary post type keeps its address', blueworx
 $GLOBALS['taxonomies']           = array( 'brand' => 'brand' );
 $GLOBALS['wp_the_query']         = new Flag_Query();
 $GLOBALS['wp_the_query']->flags  = array( 'is_singular' => true );
-$GLOBALS['wp_the_query']->object = (object) array( 'post_type' => 'product' );
+$GLOBALS['wp_the_query']->object = (object) array(
+	'post_type' => 'product',
+	'ID'        => 5,
+);
 $GLOBALS['permalink']            = '/product/brand/';
 $_SERVER['REQUEST_URI']          = '/product/brand/';
 check( 'a product that happens to be called brand keeps its address', blueworx_slow_request_label(), '/product/brand/' );
 $GLOBALS['permalink']   = '/product/brand/acme/';
 $_SERVER['REQUEST_URI'] = '/product/brand/acme/';
-check( 'but one whose own address names a term of it is not kept', blueworx_slow_request_label(), '/product/*' );
-$GLOBALS['permalink']                               = '/news/category/private-clients/updates/';
-$_SERVER['REQUEST_URI']                             = '/news/category/private-clients/updates/';
+check( 'a product with no term of it keeps an address that holds the word and more', blueworx_slow_request_label(), '/product/brand/acme/' );
+$GLOBALS['permalink']            = '/about/brand/history/';
+$_SERVER['REQUEST_URI']          = '/about/brand/history/';
+$GLOBALS['wp_the_query']->object = (object) array(
+	'post_type' => 'page',
+	'ID'        => 6,
+);
+check( 'an ordinary page called brand keeps its address', blueworx_slow_request_label(), '/about/brand/history/' );
+$GLOBALS['wp_the_query']->object = (object) array(
+	'post_type' => 'product',
+	'ID'        => 5,
+);
+$GLOBALS['permalink']            = '/product/brand/acme/';
+$_SERVER['REQUEST_URI']          = '/product/brand/acme/';
+$GLOBALS['post_terms']           = array(
+	'brand' => array(
+		(object) array(
+			'term_id' => 11,
+			'slug'    => 'acme',
+		),
+	),
+);
+check( 'but one that has a term of it named in its address is not kept', blueworx_slow_request_label(), '/product/*' );
+$GLOBALS['post_terms']                              = array();
+$GLOBALS['wp_the_query']->object                    = (object) array(
+	'post_type' => 'post',
+	'ID'        => 7,
+);
+$GLOBALS['permalink']                               = '/news/private-clients/updates/';
+$_SERVER['REQUEST_URI']                             = '/news/private-clients/updates/';
 $GLOBALS['taxonomies']                              = array( 'category' => 'category' );
+$GLOBALS['post_terms']                              = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 21,
+			'slug'    => 'private-clients',
+		),
+	),
+);
 $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 	return array( 'post_tag' );
 };
 check( 'a post whose own address holds an excluded category name is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']               = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 22,
+			'slug'    => 'child',
+		),
+	),
+);
+$GLOBALS['ancestors']                = array( 22 => array( 21 ) );
+$GLOBALS['post_terms']['category'][] = (object) array(
+	'term_id' => 21,
+	'slug'    => 'private-clients',
+);
+check( 'also when the name is a parent of the post category', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms'] = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 23,
+			'slug'    => 'other',
+		),
+	),
+);
+check( 'but not when none of its terms is in the address', blueworx_slow_request_label(), '/news/private-clients/updates/' );
+$GLOBALS['post_terms'] = array();
 unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+$GLOBALS['ancestors']            = array();
 $GLOBALS['taxonomies']           = array( 'brand' => 'brand' );
 $GLOBALS['wp_the_query']         = new Flag_Query();
 $GLOBALS['wp_the_query']->flags  = array( 'is_tax' => true );

@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.11] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A post, page or product at its own address is judged on its own terms: when the
+    address holds the name of a term the post has (or a parent of it) in a taxonomy
+    the site left off the slow-log list, even with no word in front of it
+    (/news/private-clients/post/), it is not kept.
+  - An ordinary page that merely has a taxonomy's word in its address
+    (/about/brand/history/) keeps its address, so its timings are not lumped under
+    a star. The word still hides term archives.
+
 ## [1.104.10] - 2026-11-28
 
 ### Fixed
