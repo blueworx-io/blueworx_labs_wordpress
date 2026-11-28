@@ -4,9 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
-## [1.104.11] - 2026-11-28
+## [1.104.7] - 2026-11-28
 
 ### Fixed
+- **Speed defaults, review fixes.** The review fixes made on the speed defaults
+  while main moved on, joined under one version. Each round's notes are kept below.
+
+#### Review fixes first numbered 1.104.11
+
 - **Speed defaults, review fixes.**
   - A post, page or product at its own address is judged on its own terms: when the
     address holds the name of a term the post has (or a parent of it) in a taxonomy
@@ -16,9 +21,8 @@ versioning.
     (/about/brand/history/) keeps its address, so its timings are not lumped under
     a star. The word still hides term archives.
 
-## [1.104.10] - 2026-11-28
+#### Review fixes first numbered 1.104.10
 
-### Fixed
 - **Speed defaults, review fixes.**
   - A category, tag or other term archive narrowed to a post type the site does not
     keep (members, say) shows no term name in the slow log or weekly report, even
@@ -31,9 +35,8 @@ versioning.
     a request that asks for it, and stops after ten minutes. The mixed author
     archive test works again.
 
-## [1.104.9] - 2026-11-28
+#### Review fixes first numbered 1.104.9
 
-### Fixed
 - **Speed defaults, review fixes.**
   - A members (or other excluded post type) archive filtered by a category on the
     list no longer shows in the slow log and weekly report with the category's name:
@@ -47,9 +50,8 @@ versioning.
     tests check the class is absent, and that a cart cookie a store renamed while
     WooCommerce starts still reaches the cart.
 
-## [1.104.8] - 2026-11-28
+#### Review fixes first numbered 1.104.8
 
-### Fixed
 - **Speed defaults, review fixes.**
   - An address that carries the address word of a taxonomy the site left off the
     slow-log list (/tag/ when tags are off) is never kept in the slow log or the
@@ -60,9 +62,8 @@ versioning.
     any left-over copy before it starts, so a failed or killed run can never leave
     a pretend store switched on.
 
-## [1.104.7] - 2026-11-27
+#### Review fixes first numbered 1.104.7
 
-### Fixed
 - **Speed defaults, review fixes.** A post, page or product keeps its address in
   the slow log and report when it has the extra pieces WordPress and WooCommerce
   add: a page of a post split in parts (/slug/2/), a named feed (/slug/feed/rss2/),
@@ -70,9 +71,8 @@ versioning.
   /checkout/order-received/123/). A site can add its own endpoint words with the
   blueworx_slow_log_endpoints filter.
 
-## [1.104.6] - 2026-11-27
+#### Review fixes first numbered 1.104.6
 
-### Fixed
 - **Speed defaults, review fixes.**
   - A post, page or product keeps its address in the slow log and report only when
     the address is that post's own (with a page number, comment page or feed). A
@@ -83,9 +83,8 @@ versioning.
   - A post type archive is kept only for the types on the site's
     blueworx_slow_log_content_types list, so a members or staff archive stays out.
 
-## [1.104.5] - 2026-11-27
+#### Review fixes first numbered 1.104.5
 
-### Fixed
 - **Speed defaults, review fixes.**
   - A request that asks for a category and a tag together is checked against the
     slow-log taxonomy list for every taxonomy it names, not just the first, so a
@@ -93,9 +92,8 @@ versioning.
   - The test that stands in for WooCommerce is removed after every test, pass or
     fail, so a failed set-up never leaves it switched on.
 
-## [1.104.4] - 2026-11-27
+#### Review fixes first numbered 1.104.4
 
-### Fixed
 - **Speed defaults, review fixes.**
   - A category or tag archive that WordPress also calls a post type archive is
     judged by the site's slow-log taxonomy list too, so excluded slugs stay out.
@@ -108,9 +106,8 @@ versioning.
   - The test that uses a stand-in store checks the site loaded it, and skips
     when it did not.
 
-## [1.104.3] - 2026-11-27
+#### Review fixes first numbered 1.104.3
 
-### Fixed
 - **Speed defaults, review fixes.**
   - The slow-page log (and so the speed report) no longer keeps the address of
     a page that belongs to a custom content type such as members or staff, since
@@ -152,6 +149,34 @@ versioning.
     own to robots.txt.
   - The speed report no longer calls the object cache healthy until enough
     checks have shown it is shared between pages.
+
+## [1.104.6] - 2026-11-28
+
+### Changed
+- **Version-only update.** Changelog edits now go in the same commit as the
+  plugin version bump, so the changelog entry and the plugin header version
+  always agree. No behaviour changes.
+
+## [1.104.5] - 2026-11-27
+
+### Changed
+- **Version-only update.** The changelog entry for 1.104.4 was added after
+  that version was set, so this release carries the matching plugin version
+  number. No behaviour changes.
+
+## [1.104.4] - 2026-11-27
+
+### Changed
+- **Version-only update.** Brings the plugin version up to date for the last
+  follow-up commit on the bot control change. No behaviour changes.
+
+## [1.104.3] - 2026-11-27
+
+### Changed
+- **Version-only update.** The scanner and crawler fixes from the 13 review
+  findings on the bot control change are already in the plugin (earlier releases, up to
+  1.104.2); each has a check in the bot control tests. This release changes no
+  behaviour and releases that work under a fresh version number.
 
 ## [1.104.2] - 2026-11-27
 
