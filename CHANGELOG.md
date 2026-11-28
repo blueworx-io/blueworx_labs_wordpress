@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.8] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - An address that carries the address word of a taxonomy the site left off the
+    slow-log list (/tag/ when tags are off) is never kept in the slow log or the
+    weekly report, whatever the request's own flags say or how the filter is
+    written (capital letters in the names are fine).
+  - The stand-in WooCommerce the speed tests use does nothing unless a request
+    sends its test header, stops by itself after ten minutes, and the suite removes
+    any left-over copy before it starts, so a failed or killed run can never leave
+    a pretend store switched on.
+
 ## [1.104.7] - 2026-11-27
 
 ### Fixed

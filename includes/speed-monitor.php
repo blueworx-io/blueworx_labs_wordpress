@@ -591,6 +591,44 @@ function blueworx_segments_are_date( $segments ) {
 }
 
 /**
+ * Whether an address carries the address word of a taxonomy that is not on the list.
+ *
+ * The request's own flags can miss a second term (a tag asked for next to a
+ * category), so the address is also read for the word each public taxonomy puts
+ * before its terms (/tag/, /category/, /product-tag/).
+ *
+ * @param string[] $segments The pieces of the address.
+ * @param string[] $listed   Taxonomy names the site keeps, lower case.
+ * @return bool True when a taxonomy left off the list has its word in the address.
+ */
+function blueworx_segments_name_unlisted_term( $segments, $listed ) {
+	if ( empty( $segments ) || ! function_exists( 'get_taxonomies' ) || ! function_exists( 'get_taxonomy' ) ) {
+		return false;
+	}
+
+	$segments = array_map( 'strtolower', array_map( 'strval', array_values( $segments ) ) );
+	$total    = count( $segments );
+
+	foreach ( (array) get_taxonomies( array( 'public' => true ), 'names' ) as $name ) {
+		if ( in_array( strtolower( (string) $name ), $listed, true ) ) {
+			continue;
+		}
+
+		$taxonomy = get_taxonomy( $name );
+		$slug     = is_object( $taxonomy ) && is_array( $taxonomy->rewrite ) && ! empty( $taxonomy->rewrite['slug'] ) ? strtolower( trim( (string) $taxonomy->rewrite['slug'], '/' ) ) : '';
+		$words    = '' === $slug ? array() : explode( '/', $slug );
+		$length   = count( $words );
+
+		for ( $start = 0; $length > 0 && $start + $length <= $total; ++$start ) {
+			if ( array_slice( $segments, $start, $length ) === $words ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+/**
  * Whether WordPress resolved this request to the site's own content.
  *
  * @param string[] $segments The pieces of the address, to check the answer against.
@@ -605,7 +643,7 @@ function blueworx_request_is_site_content( $segments = array() ) {
 	// them in its address, so only the ordinary content types keep theirs. A site
 	// adds its own with the filter.
 	$types = (array) apply_filters( 'blueworx_slow_log_content_types', array( 'post', 'page', 'product' ) );
-	$taxes = (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) );
+	$taxes = array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) ) ) );
 
 	// A plugin that answers /jane-doe/ (or /page/jane-doe/) with a query argument
 	// of its own can leave WordPress calling the request the home page or a date
@@ -614,6 +652,12 @@ function blueworx_request_is_site_content( $segments = array() ) {
 	// A site kept in a folder (example.com/site/) has that folder in front of
 	// every address, so it is set aside first.
 	$segments = blueworx_slow_segments_below_home( $segments );
+
+	// Whatever WordPress says about the request, a term of a taxonomy that is not on
+	// the list is never kept: its address word (/tag/) in the address is enough.
+	if ( blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
+		return false;
+	}
 
 	if ( blueworx_main_query_is( 'is_front_page' ) ) {
 		return blueworx_segments_are_page_number( $segments );

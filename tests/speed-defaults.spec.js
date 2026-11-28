@@ -7,8 +7,6 @@
  */
 
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { request } from '@playwright/test';
 import {
   test,
@@ -23,8 +21,14 @@ import {
   featureIsOn,
   openSectionFor,
 } from './helpers.js';
+import {
+  MU_DIR,
+  FAKE_STORE_FILE,
+  FAKE_STORE_HEADER,
+  removeFakeStore,
+  writeFakeStore,
+} from './fake-store.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
 const SWITCHES = [
@@ -39,16 +43,6 @@ const SWITCHES = [
 async function save(page) {
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.locator('.bw-notice--success').first()).toContainText('Settings saved');
-}
-
-// The stand-in WooCommerce is a file in the local test site's must-use folder.
-const MU_DIR = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content', 'mu-plugins');
-const FAKE_STORE_FILE = path.join(MU_DIR, 'blueworx-test-fake-woocommerce.php');
-
-// Takes the stand-in away. Safe to call any number of times, so a failed set-up
-// can never leave the site with a pretend store switched on.
-function removeFakeStore() {
-  fs.rmSync(FAKE_STORE_FILE, { force: true });
 }
 
 test.describe('Speed defaults', () => {
@@ -74,6 +68,33 @@ test.describe('Speed defaults', () => {
     expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
     removeFakeStore();
     expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+  });
+
+  test('a stand-in left behind does nothing unless asked, and nothing once expired', async () => {
+    const api = await request.newContext({ baseURL });
+    const asked = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1' } });
+
+    try {
+      const probe = '/?bw_fake_store_probe=1';
+
+      // A fresh stand-in answers only the request that carries its header.
+      if (!writeFakeStore()) {
+        test.skip(true, 'Needs the local test site: its folder is not on this machine.');
+      }
+      const ordinary = await api.get(probe, { maxRedirects: 0 });
+      expect(ordinary.headers()['x-test-fake-store']).toBeUndefined();
+      const marked = await asked.get(probe, { maxRedirects: 0 });
+      test.skip(marked.headers()['x-test-fake-store'] !== '1', 'The stand-in did not load on this site.');
+
+      // One that is past its time answers nothing, header or not.
+      writeFakeStore(Date.now() / 1000 - 5);
+      const expired = await asked.get(probe, { maxRedirects: 0 });
+      expect(expired.headers()['x-test-fake-store']).toBeUndefined();
+    } finally {
+      removeFakeStore();
+      await api.dispose();
+      await asked.dispose();
+    }
   });
 
   test('every speed function has a switch under Performance', async ({ page }) => {
@@ -182,50 +203,37 @@ test.describe('Speed defaults', () => {
 
   test('a guest who cannot buy gets an empty cart before WooCommerce makes one', async ({ page }) => {
     // WooCommerce is not on the test site, so a small stand-in must-use plugin plays
-    // its part: a WooCommerce class, sign-in-only checkout, the before_woocommerce_init
-    // action fired on init (priority 0) as WooCommerce does, and a cart that is
-    // "made" on init (priority 5) and says so in a header.
-    const muDir = MU_DIR;
-    const muFile = FAKE_STORE_FILE;
+    // its part (see tests/fake-store.js). It only answers requests that send its
+    // header, and stops by itself after ten minutes.
     const route = '/?wc-ajax=get_refreshed_fragments';
-    const fake = [
-      '<?php',
-      'class WooCommerce {}',
-      "add_filter( 'pre_option_woocommerce_enable_guest_checkout', function () { return 'no'; } );",
-      "add_filter( 'pre_option_woocommerce_enable_signup_and_login_from_checkout', function () { return 'no'; } );",
-      "add_action( 'init', function () { header( 'X-Test-Fake-Store: 1' ); do_action( 'before_woocommerce_init' ); }, 0 );",
-      "add_action( 'init', function () {",
-      "  if ( isset( $_GET['wc-ajax'] ) && 'get_refreshed_fragments' === $_GET['wc-ajax'] ) {",
-      "    header( 'X-Test-Cart-Made: 1' );",
-      "    wp_send_json( array( 'fragments' => array( 'a' => 'b' ), 'cart_hash' => 'made' ) );",
-      '  }',
-      '}, 5 );',
-      '',
-    ].join('\n');
 
     // The stand-in is a file in the local test site's folder, so it only works if
     // the site being tested is that one. Write it, ask the site whether it loaded,
     // and skip (removing it again) when it did not: a staging site, a tunnel or
     // another local install never loads it.
-    const api = await request.newContext({ baseURL });
+    const api = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1' } });
     const withCart = await request.newContext({
       baseURL,
-      extraHTTPHeaders: { Cookie: 'woocommerce_items_in_cart=1; woocommerce_cart_hash=abc' },
+      extraHTTPHeaders: {
+        [FAKE_STORE_HEADER]: '1',
+        Cookie: 'woocommerce_items_in_cart=1; woocommerce_cart_hash=abc',
+      },
     });
-    const contentDir = path.join(muDir, '..');
 
+    // Write it, ask the site whether it loaded, and skip (removing it again) when
+    // it did not: a staging site, a tunnel or another local install never loads it.
     let loaded = false;
-    if (fs.existsSync(contentDir)) {
-      fs.mkdirSync(muDir, { recursive: true });
-      fs.writeFileSync(muFile, fake);
-      const probe = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
-      loaded = probe.headers()['x-test-fake-store'] === '1';
-    }
-
-    if (!loaded) {
-      fs.rmSync(muFile, { force: true });
-      await api.dispose();
-      await withCart.dispose();
+    try {
+      if (writeFakeStore()) {
+        const probe = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
+        loaded = probe.headers()['x-test-fake-store'] === '1';
+      }
+    } finally {
+      if (!loaded) {
+        removeFakeStore();
+        await api.dispose();
+        await withCart.dispose();
+      }
     }
     test.skip(!loaded, 'Needs the local test site: the stand-in WooCommerce did not load on this one.');
 
@@ -271,7 +279,7 @@ test.describe('Speed defaults', () => {
       [
         'remove the stand-in',
         async () => {
-          fs.rmSync(muFile, { force: true });
+          removeFakeStore();
           await api.dispose();
           await withCart.dispose();
         },
@@ -280,7 +288,7 @@ test.describe('Speed defaults', () => {
   });
 
   test('no stand-in WooCommerce is left on the site after a test', async () => {
-    const api = await request.newContext({ baseURL });
+    const api = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1' } });
     try {
       expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
       const res = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });

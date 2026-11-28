@@ -20,6 +20,14 @@ require __DIR__ . '/stubs.php';
 define( 'WEEK_IN_SECONDS', 604800 );
 define( 'ENT_QUOTES_TEST', 1 );
 
+$GLOBALS['taxonomies'] = array();
+function get_taxonomies( $args = array(), $output = 'names' ) {
+	return array_keys( $GLOBALS['taxonomies'] );
+}
+function get_taxonomy( $name ) {
+	return isset( $GLOBALS['taxonomies'][ $name ] ) ? (object) array( 'rewrite' => array( 'slug' => $GLOBALS['taxonomies'][ $name ] ) ) : false;
+}
+
 $GLOBALS['switches'] = array();
 function blueworx_feature_enabled( $key ) {
 	return ! isset( $GLOBALS['switches'][ $key ] ) || $GLOBALS['switches'][ $key ];
@@ -776,6 +784,29 @@ $GLOBALS['wp_the_query']->tax_query                 = (object) array(
 );
 check( 'a language taxonomy is not counted', blueworx_slow_request_label(), '/tag/jane-doe/' );
 unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+
+// Whatever the request's flags say, a taxonomy that is not on the list never
+// shows its term in the address: the address itself is checked against the
+// address word of each public taxonomy left off the list.
+$GLOBALS['wp_the_query']->tax_query                 = null;
+$GLOBALS['taxonomies']                              = array(
+	'category' => 'category',
+	'post_tag' => 'tag',
+);
+$_SERVER['REQUEST_URI']                             = '/tag/jane-doe/';
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'category' );
+};
+check( 'a tag word in the address is kept out even when the request does not flag a tag', blueworx_slow_request_label(), '/tag/*' );
+$_SERVER['REQUEST_URI'] = '/category/news/tag/jane-doe/';
+check( 'and so is a tag after a category', blueworx_slow_request_label(), '/category/*' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'Category', 'POST_TAG' );
+};
+$_SERVER['REQUEST_URI']                             = '/tag/jane-doe/';
+check( 'names on the list are matched whatever their case', blueworx_slow_request_label(), '/tag/jane-doe/' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+$GLOBALS['taxonomies'] = array();
 
 // An author's archive filtered by a category or tag is still the author's.
 $GLOBALS['wp_the_query']->tax_query = null;

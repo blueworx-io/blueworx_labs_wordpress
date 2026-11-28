@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { removeFakeStore } from './fake-store.js';
 import { baseURL, isHarness } from './test-target.js';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -83,6 +84,9 @@ add_filter( 'blueworx_store_dashboard_url', static function ( $url ) {
 `;
 
 export default async function globalSetup() {
+  // A stand-in store a crashed earlier run left behind does not outlive it.
+  removeFakeStore();
+
   if (!isHarness) {
     return;
   }
