@@ -9,6 +9,17 @@ versioning.
 ### Fixed
 - **Speed defaults, review fixes.** The review fixes made on the speed defaults
   while main moved on, joined under one version. Each round's notes are kept below.
+  The last round:
+  - Entries saved by the previous build are cut back again (the log format is now
+    version 8), so addresses it kept can no longer reach the weekly email.
+  - A post's address is checked against the names of its own terms (and parents)
+    in the taxonomies the site keeps out: also when a number or a dash joins the
+    name to other words, when the letters the log drops are part of the name, and
+    when the post has no category and WordPress uses the default one. Such an
+    address shows as /* whole, even if the name is a word the log otherwise keeps.
+  - The posts page keeps its address even when it holds a taxonomy's word.
+  - Only taxonomies the post's type uses are looked up, and the page's database
+    query count and cache counts are read before the log's own lookups.
 
 #### Review fixes first numbered 1.104.11
 
