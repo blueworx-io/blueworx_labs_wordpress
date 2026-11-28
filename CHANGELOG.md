@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.6] - 2026-11-28
+
+### Changed
+- **Version-only update.** Changelog edits now go in the same commit as the
+  plugin version bump, so the changelog entry and the plugin header version
+  always agree. No behaviour changes.
+
+## [1.104.5] - 2026-11-27
+
+### Changed
+- **Version-only update.** The changelog entry for 1.104.4 was added after
+  that version was set, so this release carries the matching plugin version
+  number. No behaviour changes.
+
+## [1.104.4] - 2026-11-27
+
+### Changed
+- **Version-only update.** Brings the plugin version up to date for the last
+  follow-up commit on the bot control change. No behaviour changes.
+
+## [1.104.3] - 2026-11-27
+
+### Changed
+- **Version-only update.** The scanner and crawler fixes from the 13 review
+  findings on the bot control change are already in the plugin (earlier releases, up to
+  1.104.2); each has a check in the bot control tests. This release changes no
+  behaviour and releases that work under a fresh version number.
+
 ## [1.104.2] - 2026-11-27
 
 ### Fixed
