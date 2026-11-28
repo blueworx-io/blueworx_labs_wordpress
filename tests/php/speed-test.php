@@ -20,6 +20,63 @@ require __DIR__ . '/stubs.php';
 define( 'WEEK_IN_SECONDS', 604800 );
 define( 'ENT_QUOTES_TEST', 1 );
 
+$GLOBALS['taxonomies']        = array();
+$GLOBALS['post_terms']        = array();
+$GLOBALS['ancestors']         = array();
+$GLOBALS['term_lookup']       = array();
+$GLOBALS['term_calls']        = array();
+$GLOBALS['object_taxonomies'] = null;
+/**
+ * The terms a post has, from what a test sets: taxonomy => list of terms.
+ *
+ * @param mixed  $post     The post.
+ * @param string $taxonomy The taxonomy.
+ * @return array|false The terms.
+ */
+function get_the_terms( $post, $taxonomy ) {
+	$GLOBALS['term_calls'][] = $taxonomy;
+	return isset( $GLOBALS['post_terms'][ $taxonomy ] ) ? $GLOBALS['post_terms'][ $taxonomy ] : false;
+}
+function get_ancestors( $id, $taxonomy, $type = '' ) {
+	return isset( $GLOBALS['ancestors'][ $id ] ) ? $GLOBALS['ancestors'][ $id ] : array();
+}
+function get_object_taxonomies( $type, $output = 'names' ) {
+	return null === $GLOBALS['object_taxonomies'] ? array_keys( $GLOBALS['taxonomies'] ) : $GLOBALS['object_taxonomies'];
+}
+function get_term( $id, $taxonomy = '' ) {
+	if ( isset( $GLOBALS['term_lookup'][ $id ] ) ) {
+		return $GLOBALS['term_lookup'][ $id ];
+	}
+	foreach ( $GLOBALS['post_terms'] as $terms ) {
+		foreach ( $terms as $term ) {
+			if ( $term->term_id === $id ) {
+				return $term;
+			}
+		}
+	}
+	return null;
+}
+/**
+ * WooCommerce's own handle, with the endpoint names a test sets.
+ */
+function WC() { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid -- WooCommerce's own function name.
+	return isset( $GLOBALS['wc_endpoints'] ) ? (object) array( 'query' => new Endpoint_Names() ) : null;
+}
+/**
+ * The query part of that handle.
+ */
+class Endpoint_Names {
+	public function get_query_vars() {
+		return $GLOBALS['wc_endpoints'];
+	}
+}
+function get_taxonomies( $args = array(), $output = 'names' ) {
+	return array_keys( $GLOBALS['taxonomies'] );
+}
+function get_taxonomy( $name ) {
+	return isset( $GLOBALS['taxonomies'][ $name ] ) ? (object) array( 'rewrite' => array( 'slug' => $GLOBALS['taxonomies'][ $name ] ) ) : false;
+}
+
 $GLOBALS['switches'] = array();
 function blueworx_feature_enabled( $key ) {
 	return ! isset( $GLOBALS['switches'][ $key ] ) || $GLOBALS['switches'][ $key ];
@@ -59,8 +116,16 @@ function wp_rand( $min, $max ) {
 	return $GLOBALS['rand'];
 }
 $GLOBALS['rand'] = 1;
+function get_page_uri( $id ) {
+	$pages = array(
+		7 => 'blog',
+		8 => 'blog-%e3%83%96%e3%83%ad%e3%82%b0',
+		9 => 'about/brand/history',
+	);
+	return isset( $pages[ (int) $id ] ) ? $pages[ (int) $id ] : '';
+}
 function home_url( $path = '' ) {
-	return 'https://example.test' . $path;
+	return 'https://example.test' . ( isset( $GLOBALS['home_base'] ) ? $GLOBALS['home_base'] : '' ) . $path;
 }
 function get_bloginfo( $what ) {
 	return 'Example &amp; Co';
@@ -85,7 +150,7 @@ function wp_using_ext_object_cache() {
 }
 $GLOBALS['ext_cache'] = true;
 function get_num_queries() {
-	return 42;
+	return 42 + count( $GLOBALS['term_calls'] );
 }
 $GLOBALS['logged_in'] = false;
 function is_user_logged_in() {
@@ -117,6 +182,28 @@ function is_singular() {
 }
 function is_404() {
 	return $GLOBALS['is_404'];
+}
+$GLOBALS['post_type'] = 'page';
+/**
+ * What a theme's related-posts loop leaves behind: never the requested page's type.
+ */
+function get_post_type() {
+	return 'post';
+}
+function is_home() {
+	return ! empty( $GLOBALS['is_home'] );
+}
+function get_queried_object() {
+	return (object) array( 'post_type' => $GLOBALS['post_type'] );
+}
+/**
+ * The address of the post WordPress answered with.
+ *
+ * @param mixed $post The post.
+ * @return string|false The address.
+ */
+function get_permalink( $post = 0 ) {
+	return isset( $GLOBALS['permalink'] ) ? 'https://example.test' . $GLOBALS['permalink'] : false;
 }
 function wp_dequeue_script( $handle ) {
 	$GLOBALS['dequeued'][] = $handle;
@@ -179,10 +266,12 @@ require __DIR__ . '/../../includes/speed-cleanup.php';
 require __DIR__ . '/../../includes/speed-report.php';
 
 echo "Each function has its own switch, and every hook follows it\n";
-check( 'guest cart answer hooked', hooked( 'init', 'blueworx_guest_cart_check_answer' ), true );
+check( 'guest cart answer hooked as WooCommerce starts, before it makes a session or cart', hooked( 'before_woocommerce_init', 'blueworx_guest_cart_check_answer' ), true );
+check( 'and not earlier, before a late cookie name is known', hooked( 'init', 'blueworx_guest_cart_check_answer' ), false );
+check( 'and as late as that action allows', $GLOBALS['hooks']['before_woocommerce_init'][0][1], PHP_INT_MAX );
+check( 'not after WooCommerce has made its cart', hooked( 'wp_loaded', 'blueworx_guest_cart_check_answer' ), false );
 check( 'the cart script is left alone', hooked( 'wp_enqueue_scripts', 'blueworx_guest_cart_script_off' ), false );
 check( 'SureRank pause hooked', hooked( 'rest_pre_dispatch', 'blueworx_surerank_link_check_pause' ), true );
-check( 'the guest cart answer comes before WooCommerce starts', $GLOBALS['hooks']['init'][0][1] < 0, true );
 check( 'crawl delay hooked', hooked( 'robots_txt', 'blueworx_crawl_delay_filter' ), true );
 check( 'monitor hooked', hooked( 'shutdown', 'blueworx_speed_monitor_shutdown' ), true );
 check( 'cleanup runs on its event', hooked( 'blueworx_weekly_cleanup', 'blueworx_cleanup_cron' ), true );
@@ -266,7 +355,50 @@ foreach ( array( 'woocommerce_items_in_cart', 'woocommerce_cart_hash', 'wp_wooco
 	}
 	check( 'a ' . $cookie . ' cookie means a cart: asked as before', $answered, false );
 }
+foreach ( array( 'my_store_session_9f8e7d', 'Store_SESSION', 'shop_cart_items', 'woocommerce_custom_cart', 'wp_woocommerce_session_zz' ) as $cookie ) {
+	$_COOKIE  = array( $cookie => '1' );
+	$answered = false;
+	try {
+		blueworx_guest_cart_check_answer();
+	} catch ( Stop_Request $e ) {
+		$answered = true;
+	}
+	check( 'a cart cookie named ' . $cookie . ' (renamed by a plugin that loaded late) still keeps the cart', $answered, false );
+}
+$_COOKIE  = array(
+	'woocommerce_recently_viewed' => '1',
+	'PHPSESSID'                   => 'x',
+);
+$answered = false;
+try {
+	blueworx_guest_cart_check_answer();
+} catch ( Stop_Request $e ) {
+	$answered = true;
+}
+check( 'a recently viewed list is not a cart', $answered, true );
 define( 'COOKIEHASH', 'abc' );
+$GLOBALS['filters']['woocommerce_cookie'] = function () {
+	return 'mp_store_session';
+};
+$_COOKIE                                  = array( 'mp_store_session' => '1' );
+$answered                                 = false;
+try {
+	blueworx_guest_cart_check_answer();
+} catch ( Stop_Request $e ) {
+	$answered = true;
+}
+check( 'a session cookie the store named itself is a cart even if it starts like a tracking one', $answered, false );
+unset( $GLOBALS['filters']['woocommerce_cookie'] );
+foreach ( array( 'sbjs_session', 'sbjs_current', '_hjSession_123', '_ga_ABC123', '_fbp', 'pys_start_session', 'pys_session_limit' ) as $cookie ) {
+	$_COOKIE  = array( $cookie => '1' );
+	$answered = false;
+	try {
+		blueworx_guest_cart_check_answer();
+	} catch ( Stop_Request $e ) {
+		$answered = true;
+	}
+	check( 'the tracking cookie ' . $cookie . ' is not a cart', $answered, true );
+}
 $GLOBALS['filters']['woocommerce_cookie'] = function () {
 	return 'my_store_session';
 };
@@ -322,6 +454,14 @@ Disallow: /private/ # keep out
 check( 'a comment after the star does not hide its rules', 2 === substr_count( $out, 'Disallow: /private/' ), true );
 $own = "User-agent: AhrefsBot\nDisallow: /\n\nUser-agent: *\nDisallow: /wp-admin/\n";
 check( 'a crawler with its own group is left to it', substr_count( blueworx_crawl_delay_filter( $own, true ), 'AhrefsBot' ), 1 );
+$GLOBALS['filters']['blueworx_crawl_delay_agents'] = function () {
+	return array( "Evil\nDisallow: /", 'Good Bot', 'FineBot' );
+};
+$out = blueworx_crawl_delay_filter( $base, true );
+check( 'a crawler name with a line break in it is left out', false === strpos( $out, 'Evil' ), true );
+check( 'a crawler name with a space in it is left out', false === strpos( $out, 'Good' ), true );
+check( 'a plain name stays', false !== strpos( $out, "User-agent: FineBot\n" ), true );
+unset( $GLOBALS['filters']['blueworx_crawl_delay_agents'] );
 $GLOBALS['filters']['blueworx_crawl_delay_seconds'] = function () {
 	return 500;
 };
@@ -331,22 +471,834 @@ unset( $GLOBALS['filters']['blueworx_crawl_delay_seconds'] );
 echo "\nThe slow-page log keeps no secrets\n";
 $_SERVER['REQUEST_URI'] = '/shop/?token=abc123&s=my+secret&utm_source=x';
 check( 'a search made the old way keeps nothing', blueworx_slow_request_label(), '(search)' );
+$GLOBALS['did_wp']      = 1;
+$GLOBALS['singular']    = true;
+$GLOBALS['post_type']   = 'page';
+$GLOBALS['permalink']   = '/shop/';
 $_SERVER['REQUEST_URI'] = '/shop/?token=abc123&utm_source=x';
 check( 'values are never kept', blueworx_slow_request_label(), '/shop/?token&utm_source' );
+$GLOBALS['did_wp']      = 0;
+$GLOBALS['singular']    = false;
 $_SERVER['REQUEST_URI'] = '/search/jane.doe@example.com/';
 check( 'a pretty search address is not kept', blueworx_slow_request_label(), '(search)' );
 $_SERVER['REQUEST_URI'] = '/members/jane.doe@example.com/profile/';
-check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/members/*' );
+check( 'an email address in a path is not kept', blueworx_slow_request_label(), '/*' );
 $GLOBALS['did_wp']      = 1;
 $GLOBALS['singular']    = true;
+$GLOBALS['permalink']   = '/members/about-us/';
 $_SERVER['REQUEST_URI'] = '/members/about-us/';
 check( "the site's own content keeps its address", blueworx_slow_request_label(), '/members/about-us/' );
-$GLOBALS['singular']    = false;
+$_SERVER['REQUEST_URI'] = '/members/about-us/page/2/';
+check( 'and its numbered pages', blueworx_slow_request_label(), '/members/about-us/page/2/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/comment-page-3/';
+check( 'and its comment pages', blueworx_slow_request_label(), '/members/about-us/comment-page-3/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/2/';
+check( 'a page of a post split in parts is kept', blueworx_slow_request_label(), '/members/about-us/2/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/feed/rss2/';
+check( 'a named feed is kept', blueworx_slow_request_label(), '/members/about-us/feed/rss2/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/atom/';
+check( 'a short feed name is kept', blueworx_slow_request_label(), '/members/about-us/atom/' );
+$GLOBALS['wp_rewrite']  = (object) array( 'feeds' => array( 'feed', 'rdf', 'rss', 'rss2', 'atom', 'podcast' ) );
+$_SERVER['REQUEST_URI'] = '/members/about-us/podcast/';
+check( 'and so is a feed a site registered', blueworx_slow_request_label(), '/members/about-us/podcast/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/feed/podcast/';
+check( 'in its long form too', blueworx_slow_request_label(), '/members/about-us/feed/podcast/' );
+unset( $GLOBALS['wp_rewrite'] );
+$_SERVER['REQUEST_URI'] = '/members/about-us/jane-doe/';
+check( 'but not any word', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/pedidos/';
+check( 'an endpoint the store has not got is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wc_endpoints'] = array( 'orders' => 'pedidos' );
+check( 'one the store renamed in its settings is', blueworx_slow_request_label(), '/members/about-us/pedidos/' );
+unset( $GLOBALS['wc_endpoints'] );
+$_SERVER['REQUEST_URI'] = '/members/about-us/orders/';
+check( 'a store endpoint is kept', blueworx_slow_request_label(), '/members/about-us/orders/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/edit-address/billing/';
+check( 'with its value', blueworx_slow_request_label(), '/members/about-us/edit-address/billing/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/order-received/123/';
+check( 'and an order number', blueworx_slow_request_label(), '/members/about-us/order-received/123/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/order-received/4400123987/';
+check( 'a long order number is already a star', blueworx_slow_request_label(), '/members/about-us/order-received/*/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/orders/jane-doe/';
+check( 'a name after an endpoint is not', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/jane/billing/';
+check( 'nor is a word that is not an endpoint', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI'] = '/members/jane-doe/';
-check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/members/*' );
+check( 'a profile a plugin answers with a real page is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/jane-doe/';
+check( 'nor is a name after the page address', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/author/jane-doe/?p=123';
+$GLOBALS['permalink']   = '/2024/05/a-post/';
+check( 'a post answered at an author address is not named', blueworx_slow_request_label(), '/author/*?p' );
+$GLOBALS['permalink'] = '/members/about-us/';
+unset( $GLOBALS['permalink'] );
+$_SERVER['REQUEST_URI'] = '/members/about-us/';
+check( 'a post whose address WordPress cannot give is not named', blueworx_slow_request_label(), '/*' );
+$GLOBALS['permalink']   = '/members/about-us/';
+$GLOBALS['post_type']   = 'member';
+$_SERVER['REQUEST_URI'] = '/members/jane-doe/';
+check( 'a member post type keeps no name even though WordPress found it', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_type']   = 'product';
+$GLOBALS['permalink']   = '/shop/blue-shirt/';
+$_SERVER['REQUEST_URI'] = '/shop/blue-shirt/';
+check( 'a product keeps its address', blueworx_slow_request_label(), '/shop/blue-shirt/' );
+$GLOBALS['post_type']   = 'page';
+$GLOBALS['post_type']   = 'member';
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a member at the root of the site is not named either', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_type']   = 'page';
+$GLOBALS['permalink']   = '/about/';
+$_SERVER['REQUEST_URI'] = '/about/';
+check( 'a page at the root keeps its name', blueworx_slow_request_label(), '/about/' );
+$GLOBALS['singular']    = false;
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a root address a plugin answers is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/sitemap.xml';
+check( 'a file name at the root stays', blueworx_slow_request_label(), '/sitemap.xml' );
+$_SERVER['REQUEST_URI'] = '/members/jane-doe/';
+check( 'but a profile a plugin answers does not', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/jane.doe/';
+check( 'a name with a dot is not mistaken for a file', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/feed/';
+check( 'a name in front of a feed is not kept', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/author/jane-doe/';
+check( 'a known route keeps its first piece', blueworx_slow_request_label(), '/author/*' );
+$_SERVER['REQUEST_URI'] = '/wp-login.php';
+check( 'a known file stays', blueworx_slow_request_label(), '/wp-login.php' );
+$GLOBALS['filters']['blueworx_slow_log_safe_prefixes'] = function ( $list ) {
+	$list[] = 'members';
+	return $list;
+};
+$_SERVER['REQUEST_URI']                                = '/members/jane-doe/';
+check( 'a site can say which first pieces are safe', blueworx_slow_request_label(), '/members/*' );
+unset( $GLOBALS['filters']['blueworx_slow_log_safe_prefixes'] );
+
+// WordPress's own request, not a list a theme made with query_posts().
+$GLOBALS['wp_the_query'] = new class() {
+	public function is_front_page() {
+		return false;
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return false;
+	}
+	public function is_singular() {
+		return true;
+	}
+	public function is_post_type_archive() {
+		return false;
+	}
+	public function is_category() {
+		return false;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get_queried_object() {
+		return (object) array( 'post_type' => 'member' );
+	}
+};
+$GLOBALS['singular']     = false;
+$GLOBALS['is_home']      = true;
+$_SERVER['REQUEST_URI']  = '/jane-doe/';
+check( 'a theme list that changed the page query does not make a member page content', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_the_query'], $GLOBALS['is_home'] );
+
+// A profile plugin that answers /jane-doe/ with its own query argument can leave
+// WordPress calling the request the home page.
+$GLOBALS['wp_the_query'] = new class() {
+	/**
+	 * Which checks answer yes.
+	 *
+	 * @var array
+	 */
+	public $flags = array( 'is_front_page' => true );
+	public function is_front_page() {
+		return ! empty( $this->flags['is_front_page'] );
+	}
+	public function is_home() {
+		return ! empty( $this->flags['is_home'] );
+	}
+	public function is_date() {
+		return ! empty( $this->flags['is_date'] );
+	}
+	public function is_singular() {
+		return false;
+	}
+	public function is_post_type_archive() {
+		return false;
+	}
+	public function is_category() {
+		return false;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get_queried_object() {
+		return ! empty( $this->flags['is_home'] ) ? (object) array( 'post_type' => 'page' ) : null;
+	}
+};
+$GLOBALS['did_wp']       = 1;
+$_SERVER['REQUEST_URI']  = '/jane-doe/';
+check( 'a profile WordPress calls the home page is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/';
+check( 'the home page is', blueworx_slow_request_label(), '/' );
+$_SERVER['REQUEST_URI'] = '/page/2/';
+check( 'a page of the home page is kept', blueworx_slow_request_label(), '/page/2/' );
+$_SERVER['REQUEST_URI'] = '/page/jane-doe/';
+check( 'a profile under "page" that WordPress calls the home page is not named', blueworx_slow_request_label(), '/page/*' );
+$_SERVER['REQUEST_URI'] = '/page/2/jane-doe/';
+check( 'nor is a name after the page number', blueworx_slow_request_label(), '/page/*' );
+$GLOBALS['home_base']   = '/site';
+$_SERVER['REQUEST_URI'] = '/site/';
+check( 'the home page of a site kept in a folder keeps its address', blueworx_slow_request_label(), '/site/' );
+$_SERVER['REQUEST_URI'] = '/site/page/3/';
+check( 'and so does a numbered page of it', blueworx_slow_request_label(), '/site/page/3/' );
+$_SERVER['REQUEST_URI'] = '/site/jane-doe/';
+check( 'but a name under the folder is not kept', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['home_base'] );
+$_SERVER['REQUEST_URI'] = '/index.php/page/2/';
+check( 'a numbered home page on a site that shows index.php is kept', blueworx_slow_request_label(), '/index.php/page/2/' );
+$_SERVER['REQUEST_URI'] = '/index.php/jane-doe/';
+check( 'but a name after index.php is not', blueworx_slow_request_label(), '/index.php/*' );
+$GLOBALS['wp_the_query']->flags       = array( 'is_home' => true );
+$GLOBALS['options']['page_for_posts'] = 7;
+$_SERVER['REQUEST_URI']               = '/blog/';
+check( 'the posts page is kept at its own address', blueworx_slow_request_label(), '/blog/' );
+$_SERVER['REQUEST_URI'] = '/blog/page/2/';
+check( 'and its numbered pages', blueworx_slow_request_label(), '/blog/page/2/' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a profile answered through the posts page is not named', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/blog/jane-doe/';
+check( 'nor is a name under the posts page', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['options']['page_for_posts'] );
+$GLOBALS['options']['page_for_posts'] = 8;
+$_SERVER['REQUEST_URI']               = '/blog-%E3%83%96%E3%83%AD%E3%82%B0/';
+check( 'a posts page with a name outside plain ASCII is kept', blueworx_slow_request_label(), '/blog-/' );
+$_SERVER['REQUEST_URI'] = '/blog-%E3%83%96%E3%83%AD%E3%82%B0/page/2/';
+check( 'and its numbered pages', blueworx_slow_request_label(), '/blog-/page/2/' );
+$_SERVER['REQUEST_URI'] = '/blog-jane-doe/';
+check( 'another address is still not kept', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['options']['page_for_posts'] );
+$GLOBALS['wp_the_query']->flags = array( 'is_front_page' => true );
+$GLOBALS['wp_rewrite']          = (object) array( 'pagination_base' => 'Paginas' );
+$_SERVER['REQUEST_URI']         = '/Paginas/2/';
+check( 'a numbered home page with a capitalised page word is kept', blueworx_slow_request_label(), '/Paginas/2/' );
+$_SERVER['REQUEST_URI'] = '/paginas/jane-doe/';
+check( 'a name after the page word is not', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_rewrite'] );
+$GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
+$_SERVER['REQUEST_URI']         = '/2024/05/';
+check( 'a date archive is kept', blueworx_slow_request_label(), '/2024/05/' );
+$_SERVER['REQUEST_URI'] = '/2024/';
+check( 'a year archive is kept', blueworx_slow_request_label(), '/2024/' );
+$_SERVER['REQUEST_URI'] = '/2024/05/12/page/2/';
+check( 'a dated page number is kept', blueworx_slow_request_label(), '/2024/05/12/page/2/' );
+$_SERVER['REQUEST_URI'] = '/2024/jane-doe/';
+check( 'a name after the year is not kept', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'a profile WordPress calls a date archive is not named', blueworx_slow_request_label(), '/*' );
+
+// Dates under the site's own address structure.
+$GLOBALS['wp_rewrite']  = new class() {
+	/**
+	 * The structure to answer with.
+	 *
+	 * @var string
+	 */
+	public $struct = '/archives/date/%year%/%monthnum%/%day%';
+	public function get_date_permastruct() {
+		return $this->struct;
+	}
+};
+$_SERVER['REQUEST_URI'] = '/archives/date/2026/';
+check( 'a year archive under a date word is kept', blueworx_slow_request_label(), '/archives/date/2026/' );
+$_SERVER['REQUEST_URI'] = '/archives/date/2026/05/';
+check( 'and a month', blueworx_slow_request_label(), '/archives/date/2026/05/' );
+$_SERVER['REQUEST_URI'] = '/archives/jane-doe/';
+check( 'but a name under the same word is not', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/2026/';
+check( 'and a bare year is not a date there', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '/archive-%year%/%monthnum%/%day%';
+$_SERVER['REQUEST_URI']        = '/archive-2026/';
+check( 'a word stuck to the year is kept', blueworx_slow_request_label(), '/archive-2026/' );
+$_SERVER['REQUEST_URI'] = '/archive-2026/05/12/page/2/';
+check( 'with its month, day and page number', blueworx_slow_request_label(), '/archive-2026/05/12/page/2/' );
+$_SERVER['REQUEST_URI'] = '/archive-jane-doe/';
+check( 'but not a name in its place', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '/archives/page/%year%/%monthnum%/%day%';
+$_SERVER['REQUEST_URI']        = '/archives/page/2026/';
+check( 'a folder called page is not a page number', blueworx_slow_request_label(), '/archives/page/2026/' );
+$_SERVER['REQUEST_URI'] = '/archives/page/2026/page/2/';
+check( 'and a page number after it still is', blueworx_slow_request_label(), '/archives/page/2026/page/2/' );
+$GLOBALS['wp_rewrite']->struct = '/%monthnum%/%day%/%year%';
+$_SERVER['REQUEST_URI']        = '/05/12/2026/';
+check( 'a date with the year last is kept', blueworx_slow_request_label(), '/05/12/2026/' );
+$_SERVER['REQUEST_URI'] = '/2026/';
+check( 'and a year on its own', blueworx_slow_request_label(), '/2026/' );
+$_SERVER['REQUEST_URI'] = '/05/12/jane-doe/';
+check( 'a name in the place of the year is not', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_rewrite']->struct = '';
+$_SERVER['REQUEST_URI']        = '/2026/05/';
+check( 'plain addresses have no date in the path', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['wp_rewrite'] );
+
+// A folder with letters outside plain ASCII in its name.
+$GLOBALS['wp_the_query']->flags = array( 'is_front_page' => true );
+$GLOBALS['home_base']           = '/caf%C3%A9';
+$_SERVER['REQUEST_URI']         = '/caf%C3%A9/page/2/';
+check( 'the home page of a site in an encoded folder is kept', blueworx_slow_request_label(), '/caf/page/2/' );
+$_SERVER['REQUEST_URI'] = '/caf%C3%A9/jane-doe/';
+check( 'and a name under it is not', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['home_base'] );
+$GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
+
+// A category or tag archive answers to the same list as other term archives.
+$GLOBALS['wp_the_query'] = new class() {
+	public function is_front_page() {
+		return false;
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return false;
+	}
+	public function is_singular() {
+		return false;
+	}
+	/**
+	 * Whether WordPress also calls this a post type archive.
+	 *
+	 * @var bool
+	 */
+	public $both = false;
+	/**
+	 * The terms WordPress was asked for, as its tax query holds them.
+	 *
+	 * @var object|null
+	 */
+	public $tax_query = null;
+	/**
+	 * Whether WordPress also calls this an author archive.
+	 *
+	 * @var bool
+	 */
+	public $author = false;
+	public function is_author() {
+		return $this->author;
+	}
+	public function is_post_type_archive() {
+		return $this->both;
+	}
+	public function is_category() {
+		return true;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get_queried_object() {
+		return (object) array( 'taxonomy' => 'category' );
+	}
+};
+$_SERVER['REQUEST_URI']  = '/category/private-clients/';
+check( 'a category archive is kept by default', blueworx_slow_request_label(), '/category/private-clients/' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'product_cat' );
+};
+check( 'but not when a site takes categories off the list', blueworx_slow_request_label(), '/category/*' );
+$GLOBALS['wp_the_query']->both = true;
+check( 'even when WordPress also calls it a post type archive', blueworx_slow_request_label(), '/category/*' );
+$GLOBALS['wp_the_query']->both = false;
+
+// A request for a category and a tag at once is a category to WordPress, but the
+// address holds the tag, so a site that takes tags off the list keeps it out.
+$GLOBALS['wp_the_query']->tax_query                 = (object) array(
+	'queried_terms' => array(
+		'category' => array(),
+		'post_tag' => array(),
+	),
+);
+$_SERVER['REQUEST_URI']                             = '/tag/jane-doe/';
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'category', 'product_cat' );
+};
+check( 'a category filter does not let an excluded tag slug through', blueworx_slow_request_label(), '/tag/*' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+check( 'tags on the list keep their address', blueworx_slow_request_label(), '/tag/jane-doe/' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'category', 'post_tag' );
+};
+$GLOBALS['wp_the_query']->tax_query                 = (object) array(
+	'queried_terms' => array(
+		'category' => array(),
+		'post_tag' => array(),
+		'language' => array(),
+	),
+);
+check( 'a language taxonomy is not counted', blueworx_slow_request_label(), '/tag/jane-doe/' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+
+// Whatever the request's flags say, a taxonomy that is not on the list never
+// shows its term in the address: the address itself is checked against the
+// address word of each public taxonomy left off the list.
+$GLOBALS['wp_the_query']->tax_query                 = null;
+$GLOBALS['taxonomies']                              = array(
+	'category' => 'category',
+	'post_tag' => 'tag',
+);
+$_SERVER['REQUEST_URI']                             = '/tag/jane-doe/';
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'category' );
+};
+check( 'a tag word in the address is kept out even when the request does not flag a tag', blueworx_slow_request_label(), '/tag/*' );
+$_SERVER['REQUEST_URI'] = '/category/news/tag/jane-doe/';
+check( 'a tag word further along a category address is that category\'s own path', blueworx_slow_request_label(), '/category/news/tag/jane-doe/' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'Category', 'POST_TAG' );
+};
+$_SERVER['REQUEST_URI']                             = '/tag/jane-doe/';
+check( 'names on the list are matched whatever their case', blueworx_slow_request_label(), '/tag/jane-doe/' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+$GLOBALS['taxonomies'] = array();
+
+/**
+ * A request WordPress flags in a few ways at once: each flag is answered.
+ */
+class Flag_Query {
+	/**
+	 * Which checks answer yes.
+	 *
+	 * @var array
+	 */
+	public $flags = array();
+	/**
+	 * The page or term WordPress answered with.
+	 *
+	 * @var object|null
+	 */
+	public $object = null;
+	/**
+	 * The post types the request asks for.
+	 *
+	 * @var string[]
+	 */
+	public $types = array();
+	/**
+	 * The terms WordPress was asked for.
+	 *
+	 * @var object|null
+	 */
+	public $tax_query = null;
+	public function is_front_page() {
+		return ! empty( $this->flags['is_front_page'] );
+	}
+	public function is_home() {
+		return ! empty( $this->flags['is_home'] );
+	}
+	public function is_date() {
+		return ! empty( $this->flags['is_date'] );
+	}
+	public function is_singular() {
+		return ! empty( $this->flags['is_singular'] );
+	}
+	public function is_author() {
+		return ! empty( $this->flags['is_author'] );
+	}
+	public function is_category() {
+		return ! empty( $this->flags['is_category'] );
+	}
+	public function is_tag() {
+		return ! empty( $this->flags['is_tag'] );
+	}
+	public function is_tax() {
+		return ! empty( $this->flags['is_tax'] );
+	}
+	public function is_post_type_archive() {
+		return ! empty( $this->flags['is_post_type_archive'] );
+	}
+	public function get( $key ) {
+		return 'post_type' === $key ? $this->types : '';
+	}
+	public function get_queried_object() {
+		return $this->object;
+	}
+}
+
+// A members archive filtered by a category on the list is still the members'.
+$saved_query                     = $GLOBALS['wp_the_query'];
+$saved_permalink                 = isset( $GLOBALS['permalink'] ) ? $GLOBALS['permalink'] : null;
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array(
+	'is_category'          => true,
+	'is_post_type_archive' => true,
+);
+$GLOBALS['wp_the_query']->object = (object) array(
+	'taxonomy' => 'category',
+	'name'     => 'Private clients',
+);
+$GLOBALS['wp_the_query']->types  = array( 'member' );
+$_SERVER['REQUEST_URI']          = '/category/private-clients/?post_type=member';
+check( 'a category archive of an excluded post type keeps no term name', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->flags = array( 'is_category' => true );
+check( 'even when WordPress sets no archive flag for the type', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->types = array( 'post', 'member' );
+check( 'or the request names several types', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->flags = array(
+	'is_category'          => true,
+	'is_post_type_archive' => true,
+);
+$GLOBALS['wp_the_query']->types = array( 'post' );
+check( 'a category archive of an ordinary post type keeps its address', blueworx_slow_request_label(), '/category/private-clients/?post_type' );
+
+// An excluded taxonomy's word is only a route when a term follows it.
+$GLOBALS['taxonomies']           = array( 'brand' => 'brand' );
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array( 'is_singular' => true );
+$GLOBALS['wp_the_query']->object = (object) array(
+	'post_type' => 'product',
+	'ID'        => 5,
+);
+$GLOBALS['permalink']            = '/product/brand/';
+$_SERVER['REQUEST_URI']          = '/product/brand/';
+check( 'a product that happens to be called brand keeps its address', blueworx_slow_request_label(), '/product/brand/' );
+$GLOBALS['permalink']   = '/product/brand/acme/';
+$_SERVER['REQUEST_URI'] = '/product/brand/acme/';
+check( 'a product with no term of it keeps an address that holds the word and more', blueworx_slow_request_label(), '/product/brand/acme/' );
+$GLOBALS['permalink']            = '/about/brand/history/';
+$_SERVER['REQUEST_URI']          = '/about/brand/history/';
+$GLOBALS['wp_the_query']->object = (object) array(
+	'post_type' => 'page',
+	'ID'        => 6,
+);
+check( 'an ordinary page called brand keeps its address', blueworx_slow_request_label(), '/about/brand/history/' );
+$GLOBALS['wp_the_query']->object = (object) array(
+	'post_type' => 'product',
+	'ID'        => 5,
+);
+$GLOBALS['permalink']            = '/product/brand/acme/';
+$_SERVER['REQUEST_URI']          = '/product/brand/acme/';
+$GLOBALS['post_terms']           = array(
+	'brand' => array(
+		(object) array(
+			'term_id' => 11,
+			'slug'    => 'acme',
+		),
+	),
+);
+check( 'but one that has a term of it named in its address is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']                              = array();
+$GLOBALS['wp_the_query']->object                    = (object) array(
+	'post_type' => 'post',
+	'ID'        => 7,
+);
+$GLOBALS['permalink']                               = '/news/private-clients/updates/';
+$_SERVER['REQUEST_URI']                             = '/news/private-clients/updates/';
+$GLOBALS['taxonomies']                              = array( 'category' => 'category' );
+$GLOBALS['post_terms']                              = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 21,
+			'slug'    => 'private-clients',
+		),
+	),
+);
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'post_tag' );
+};
+check( 'a post whose own address holds an excluded category name is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']  = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 22,
+			'slug'    => 'child',
+		),
+	),
+);
+$GLOBALS['ancestors']   = array( 22 => array( 21 ) );
+$GLOBALS['term_lookup'] = array(
+	21 => (object) array(
+		'term_id' => 21,
+		'slug'    => 'private-clients',
+	),
+);
+check( 'also when the name is a parent of the post category', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms'] = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 23,
+			'slug'    => 'other',
+		),
+	),
+);
+check( 'but not when none of its terms is in the address', blueworx_slow_request_label(), '/news/private-clients/updates/' );
+$GLOBALS['post_terms']  = array();
+$GLOBALS['term_lookup'] = array();
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+$GLOBALS['ancestors']            = array();
+$GLOBALS['taxonomies']           = array( 'brand' => 'brand' );
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array( 'is_tax' => true );
+$GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'brand' );
+$_SERVER['REQUEST_URI']          = '/brand/acme/';
+check( 'but a term of the excluded taxonomy is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['taxonomies'] = array();
+
+// A static front page keeps its comment pages.
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array(
+	'is_front_page' => true,
+	'is_singular'   => true,
+);
+$GLOBALS['wp_the_query']->object = (object) array( 'post_type' => 'page' );
+$GLOBALS['permalink']            = '/';
+$_SERVER['REQUEST_URI']          = '/comment-page-2/';
+check( 'a static home page keeps its comment page', blueworx_slow_request_label(), '/comment-page-2/' );
+$_SERVER['REQUEST_URI'] = '/';
+check( 'and its own address', blueworx_slow_request_label(), '/' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'but a name WordPress called the home page is not kept', blueworx_slow_request_label(), '/*' );
+
+// More ways an excluded category name can reach an address.
+$GLOBALS['wp_the_query']                            = new Flag_Query();
+$GLOBALS['wp_the_query']->flags                     = array( 'is_singular' => true );
+$GLOBALS['wp_the_query']->object                    = (object) array(
+	'post_type' => 'post',
+	'ID'        => 7,
+);
+$GLOBALS['taxonomies']                              = array( 'category' => 'category' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'post_tag' );
+};
+$GLOBALS['post_terms']                              = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 21,
+			'slug'    => 'private-clients',
+		),
+	),
+);
+$GLOBALS['permalink']                               = '/news/private-clients-123/updates/';
+$_SERVER['REQUEST_URI']                             = '/news/private-clients-123/updates/';
+check( 'a category name sharing a piece of the address with a number is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']['category'][0]->slug = 'caf' . "\xC3\xA9" . '-clients';
+$GLOBALS['permalink']                       = '/news/caf%C3%A9-clients/updates/';
+$_SERVER['REQUEST_URI']                     = '/news/caf%C3%A9-clients/updates/';
+check( 'a name with letters the log strips is still matched', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']['category'][0]->slug = 'private';
+$GLOBALS['permalink']                       = '/news/privately-owned/updates/';
+$_SERVER['REQUEST_URI']                     = '/news/privately-owned/updates/';
+check( 'a name inside a longer word is not mistaken for it', blueworx_slow_request_label(), '/news/privately-owned/updates/' );
+
+// A post with no category of its own gets the default one in its address.
+$GLOBALS['post_terms']                  = array();
+$GLOBALS['options']['default_category'] = 24;
+$GLOBALS['term_lookup']                 = array(
+	24 => (object) array(
+		'term_id' => 24,
+		'slug'    => 'private-clients',
+	),
+);
+$GLOBALS['permalink']                   = '/news/private-clients/updates/';
+$_SERVER['REQUEST_URI']                 = '/news/private-clients/updates/';
+check( 'the default category in a post address is not kept either', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['options']['default_category'] );
+$GLOBALS['term_lookup'] = array();
+
+// A category name in the first piece hides the whole address, even when that word is a safe one.
+$GLOBALS['post_terms']  = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 25,
+			'slug'    => 'shop',
+		),
+	),
+);
+$GLOBALS['permalink']   = '/shop/updates/';
+$_SERVER['REQUEST_URI'] = '/shop/updates/';
+check( 'an excluded category in the first piece is not left as /shop/*', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms'] = array();
+
+// Only taxonomies the post type uses are looked up.
+$GLOBALS['taxonomies']        = array(
+	'category' => 'category',
+	'brand'    => 'brand',
+);
+$GLOBALS['object_taxonomies'] = array( 'category' );
+$GLOBALS['term_calls']        = array();
+$GLOBALS['permalink']         = '/news/updates/';
+$_SERVER['REQUEST_URI']       = '/news/updates/';
+blueworx_slow_request_label();
+check( 'a taxonomy the post type does not use is not looked up', in_array( 'brand', $GLOBALS['term_calls'], true ), false );
+check( 'one it does use is', in_array( 'category', $GLOBALS['term_calls'], true ), true );
+$GLOBALS['object_taxonomies'] = null;
+$GLOBALS['term_calls']        = array();
+
+// The query count in a log entry leaves out the label's own lookups.
+$GLOBALS['taxonomies'] = array( 'category' => 'category' );
+$entry                 = blueworx_slow_log_entry( 2.0 );
+check( 'term lookups for the label are not counted against the page', $entry['db'], 42 );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+$GLOBALS['taxonomies'] = array();
+$GLOBALS['term_calls'] = array();
+
+// The posts page keeps its address even when it holds a taxonomy word.
+$GLOBALS['taxonomies']                = array( 'brand' => 'brand' );
+$GLOBALS['wp_the_query']              = new Flag_Query();
+$GLOBALS['wp_the_query']->flags       = array( 'is_home' => true );
+$GLOBALS['wp_the_query']->object      = (object) array(
+	'post_type' => 'page',
+	'ID'        => 9,
+);
+$GLOBALS['options']['page_for_posts'] = 9;
+$_SERVER['REQUEST_URI']               = '/about/brand/history/';
+check( 'a posts page that holds a taxonomy word keeps its address', blueworx_slow_request_label(), '/about/brand/history/' );
+unset( $GLOBALS['options']['page_for_posts'] );
+$GLOBALS['taxonomies'] = array();
+
+// Short names, names joined to numbers, and routes that are only a word.
+$GLOBALS['wp_the_query']                            = new Flag_Query();
+$GLOBALS['wp_the_query']->flags                     = array( 'is_singular' => true );
+$GLOBALS['wp_the_query']->object                    = (object) array(
+	'post_type' => 'post',
+	'ID'        => 7,
+);
+$GLOBALS['taxonomies']                              = array( 'category' => 'category' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'post_tag' );
+};
+$GLOBALS['post_terms']                              = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 31,
+			'slug'    => 'uk',
+		),
+	),
+);
+$GLOBALS['permalink']                               = '/news/uk-updates/';
+$_SERVER['REQUEST_URI']                             = '/news/uk-updates/';
+check( 'a short category name joined to other words is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']['category'][0]->slug = 'private-clients';
+$GLOBALS['permalink']                       = '/news/private-clients123/updates/';
+$_SERVER['REQUEST_URI']                     = '/news/private-clients123/updates/';
+check( 'a name with a number stuck to it is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']['category'][0]->slug = "\xC3\xA9x";
+$GLOBALS['permalink']                       = '/news/xray-report/';
+$_SERVER['REQUEST_URI']                     = '/news/xray-report/';
+check( 'what is left of a name once letters are dropped has to be a whole piece', blueworx_slow_request_label(), '/news/xray-report/' );
+$GLOBALS['post_terms'] = array();
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+
+// WordPress's post format base is not a route in the middle of a category.
+$GLOBALS['taxonomies']           = array(
+	'category'    => 'category',
+	'post_format' => 'type',
+);
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array( 'is_category' => true );
+$GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'category' );
+$_SERVER['REQUEST_URI']          = '/category/type/shoes/';
+check( 'a category called type keeps its address', blueworx_slow_request_label(), '/category/type/shoes/' );
+$_SERVER['REQUEST_URI']         = '/type/gallery/';
+$GLOBALS['wp_the_query']->flags = array( 'is_tax' => true );
+check( 'but the post format route at the start is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['taxonomies'] = array();
+
+// A year in the query string does not turn a category archive into a date.
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array(
+	'is_date'     => true,
+	'is_category' => true,
+);
+$GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'category' );
+$_SERVER['REQUEST_URI']          = '/category/news/?year=2026';
+check( 'a category archive filtered by year keeps its address', blueworx_slow_request_label(), '/category/news/?year' );
+$_SERVER['REQUEST_URI']         = '/2026/jane-doe/';
+$GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
+check( 'a date that is not an address of dates is still not named', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_the_query'] = $saved_query;
+$GLOBALS['permalink']    = $saved_permalink;
+
+// An author's archive filtered by a category or tag is still the author's.
+$GLOBALS['wp_the_query']->tax_query = null;
+$GLOBALS['wp_the_query']->author    = true;
+$_SERVER['REQUEST_URI']             = '/author/jane-doe/?cat=1';
+check( 'an author archive filtered by a category does not keep the name', blueworx_slow_request_label(), '/author/*?cat' );
+$GLOBALS['wp_the_query']->author = false;
+
+// A post type archive answers to the list of content types.
+$GLOBALS['wp_the_query'] = new class() {
+	public function is_front_page() {
+		return false;
+	}
+	public function is_home() {
+		return false;
+	}
+	public function is_date() {
+		return false;
+	}
+	public function is_singular() {
+		return false;
+	}
+	/**
+	 * Whether WordPress also calls this an author archive.
+	 *
+	 * @var bool
+	 */
+	public $author = false;
+	/**
+	 * The post type the request asks for.
+	 *
+	 * @var string
+	 */
+	public $type = 'product';
+	public function is_author() {
+		return $this->author;
+	}
+	public function is_post_type_archive() {
+		return true;
+	}
+	public function is_category() {
+		return false;
+	}
+	public function is_tag() {
+		return false;
+	}
+	public function is_tax() {
+		return false;
+	}
+	public function get( $name ) {
+		return 'post_type' === $name ? $this->type : '';
+	}
+	public function get_queried_object() {
+		return (object) array( 'name' => $this->type );
+	}
+};
+$_SERVER['REQUEST_URI']  = '/shop/';
+check( 'a product archive is kept', blueworx_slow_request_label(), '/shop/' );
+$GLOBALS['wp_the_query']->type = 'member';
+$_SERVER['REQUEST_URI']        = '/members/';
+check( 'a members archive is not site content', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wp_the_query']->type   = 'product';
+$GLOBALS['wp_the_query']->author = true;
+$_SERVER['REQUEST_URI']          = '/author/jane-doe/?post_type=product';
+check( 'an author archive of a post type does not keep the name', blueworx_slow_request_label(), '/author/*?post_type' );
+unset( $GLOBALS['wp_the_query'] );
+$GLOBALS['did_wp']      = 0;
 $GLOBALS['did_wp']      = 0;
 $_SERVER['REQUEST_URI'] = '/orders/4400123987/';
-check( 'a long number is not kept', blueworx_slow_request_label(), '/orders/*' );
+check( 'a long number is not kept', blueworx_slow_request_label(), '/*' );
 $_SERVER['REQUEST_URI']                      = '/wp-json/x/v1/lookup/some-person/details';
 $GLOBALS['filters']['blueworx_request_kind'] = function () {
 	return 'rest';
@@ -386,6 +1338,10 @@ update_option( 'blueworx_slow_threshold', '1.5' );
 check( 'a chosen threshold is used', blueworx_slow_threshold(), 1.5 );
 
 $_SERVER['REQUEST_URI']        = '/slow/';
+$GLOBALS['did_wp']             = 1;
+$GLOBALS['singular']           = true;
+$GLOBALS['post_type']          = 'page';
+$GLOBALS['permalink']          = '/slow/';
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime( true ) - 3;
 blueworx_speed_monitor_shutdown();
 check( 'a slow page is logged', count( blueworx_slow_log_entries() ), 1 );
@@ -403,6 +1359,7 @@ $GLOBALS['switches'] = array();
 for ( $i = 0; $i < 250; $i++ ) {
 	blueworx_slow_log_write(
 		array(
+			'v'    => 8,
 			't'    => time(),
 			'ms'   => 1000 + $i,
 			'path' => '/p' . ( $i % 5 ) . '/',
@@ -435,14 +1392,66 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		'v'    => 2,
 		't'    => time(),
 		'ms'   => 3000,
+		'path' => '/members/john-smith/',
+	),
+	array(
+		'v'    => 2,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/john-smith/',
+	),
+	array(
+		'v'    => 3,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/jane.doe/',
+	),
+	array(
+		'v'    => 4,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/members/jane-doe/',
+	),
+	array(
+		'v'    => 8,
+		't'    => time(),
+		'ms'   => 3000,
 		'path' => '/shop/blue-shirt/',
+	),
+	array(
+		'v'    => 5,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/category/private-clients/',
+	),
+	array(
+		'v'    => 6,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/news/category/private-clients/updates/',
+	),
+	array(
+		'v'    => 7,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/category/private-clients/updates/',
 	),
 );
 $paths                                   = array_column( blueworx_slow_log_entries(), 'path' );
-check( 'a name in a profile address goes', $paths[0], '/members/*' );
+check( 'a name in a profile address goes', $paths[0], '/*' );
 check( 'a saved search goes', $paths[1], '(search)' );
 check( 'the home page stays', $paths[2], '/' );
-check( 'a current entry is untouched', $paths[3], '/shop/blue-shirt/' );
+check( 'a name kept by the version before the last is cut back too', $paths[3], '/*' );
+check( 'also at the root', $paths[4], '/*' );
+check( 'a name the last build saved is cut back too', $paths[5], '/*' );
+check( 'an address the build before this one saved is cut back as well', $paths[6], '/*' );
+check( 'a current entry is untouched', $paths[7], '/shop/blue-shirt/' );
+check( 'a category address the last build saved is cut back, in case the site keeps those out', $paths[8], '/category/*' );
+check( 'a full address the previous build saved is cut back', $paths[9], '/*' );
+check( 'and one the build before this saved', $paths[10], '/category/*' );
+check( 'a known first piece survives the cut', blueworx_slow_generalise_path( '/shop/blue-shirt/' ), '/shop/*' );
+check( 'a name with a dot is cut', blueworx_slow_generalise_path( '/jane.doe/' ), '/*' );
+check( 'a name in front of a feed is cut', blueworx_slow_generalise_path( '/jane-doe/feed/' ), '/*' );
 $GLOBALS['options']['blueworx_slow_log'] = array();
 
 echo "\nThe object cache is judged on use, not on being switched on\n";
@@ -450,6 +1459,8 @@ $s = array(
 	'requests' => 40,
 	'hits'     => 900,
 	'misses'   => 100,
+	'kept'     => 30,
+	'lost'     => 2,
 );
 check( 'well used', blueworx_object_cache_verdict( 'persistent', $s )['rate'], 90 );
 check( 'well used says so', 0 === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'Working' ), true );
@@ -468,6 +1479,12 @@ check( 'a note rarely found again is not called healthy', false !== strpos( blue
 $s['kept'] = 9;
 $s['lost'] = 1;
 check( 'a note found again means it is shared', false === strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'survives from one page' ), true );
+$s['kept']    = 1;
+$s['lost']    = 2;
+$verdict_text = blueworx_object_cache_verdict( 'persistent', $s )['text'];
+check( 'hits without enough proof the cache is shared are not called working', false === strpos( $verdict_text, 'Working' ) && false !== strpos( $verdict_text, 'whether it is shared' ), true );
+$s['kept']     = 30;
+$s['lost']     = 2;
 $s['requests'] = 2;
 check( 'too few pages to say', false !== strpos( blueworx_object_cache_verdict( 'persistent', $s )['text'], 'Too few' ), true );
 $s['requests'] = 40;
@@ -651,6 +1668,8 @@ $data = array(
 			'requests' => 40,
 			'hits'     => 10,
 			'misses'   => 400,
+			'kept'     => 30,
+			'lost'     => 2,
 		)
 	),
 	'slow'     => array(

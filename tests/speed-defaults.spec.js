@@ -1,10 +1,12 @@
 /**
  * Speed defaults: each function is on by default, can be switched off, and does
  * what it says. The store checks (guests who cannot buy, the weekly clear-out of
- * store jobs) need WooCommerce, which the test site does not have; their logic is
+ * store jobs) need WooCommerce, which the test site does not have (the cart test
+ * uses a small stand-in); their logic is
  * covered by tests/php/speed-test.php.
  */
 
+import fs from 'node:fs';
 import { request } from '@playwright/test';
 import {
   test,
@@ -19,6 +21,16 @@ import {
   featureIsOn,
   openSectionFor,
 } from './helpers.js';
+import {
+  MU_DIR,
+  FAKE_STORE_FILE,
+  FAKE_STORE_HEADER,
+  FAKE_PROBE_HEADER,
+  RENAMED_SESSION_COOKIE,
+  removeFakeStore,
+  standInMustLoad,
+  writeFakeStore,
+} from './fake-store.js';
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=blueworx-labs-wordpress';
 
@@ -41,6 +53,76 @@ test.describe('Speed defaults', () => {
     isPlaceholder || !ADMIN_USER || !ADMIN_PASS,
     'No real staging/preview URL and/or WP_ADMIN_USER / WP_ADMIN_PASS configured yet.'
   );
+
+  // Whatever happened in a test (a failed login, a timeout, a failed check), the
+  // stand-in does not stay behind.
+  test.afterEach(() => {
+    removeFakeStore();
+  });
+
+  test.afterAll(() => {
+    removeFakeStore();
+  });
+
+  test('the stand-in WooCommerce is always cleaned up', async () => {
+    fs.mkdirSync(MU_DIR, { recursive: true });
+    fs.writeFileSync(FAKE_STORE_FILE, '<?php // left behind');
+    removeFakeStore();
+    expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+    removeFakeStore();
+    expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+  });
+
+  test('a stand-in left behind does nothing unless asked, and nothing once expired', async () => {
+    // Both ask the probe to report; only the second also asks for the stand-in.
+    const api = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_PROBE_HEADER]: '1' } });
+    const asked = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1', [FAKE_PROBE_HEADER]: '1' },
+    });
+    const plain = await request.newContext({ baseURL });
+
+    try {
+      const probe = '/?bw_fake_store_probe=1';
+
+      // A fresh stand-in answers only the request that carries its header.
+      if (!writeFakeStore(undefined, true)) {
+        test.skip(true, 'Needs the local test site: its folder is not on this machine.');
+      }
+      const ordinary = await api.get(probe, { maxRedirects: 0 });
+      expect(ordinary.headers()['x-test-fake-store']).toBeUndefined();
+      const marked = await asked.get(probe, { maxRedirects: 0 });
+      if (standInMustLoad()) {
+        expect(marked.headers()['x-test-fake-store'], 'the stand-in did not load on the local test site').toBe('1');
+      } else {
+        test.skip(marked.headers()['x-test-fake-store'] !== '1', 'The stand-in did not load on this site.');
+      }
+      expect(marked.headers()['x-test-woo-class']).toBe('1');
+      // The pretend WooCommerce class is not even declared for an ordinary request.
+      expect(ordinary.headers()['x-test-woo-class']).toBe('0');
+
+      // One that is past its time answers nothing, header or not.
+      writeFakeStore(Date.now() / 1000 - 5, true);
+      const expired = await asked.get(probe, { maxRedirects: 0 });
+      expect(expired.headers()['x-test-fake-store']).toBeUndefined();
+      expect(expired.headers()['x-test-woo-class']).toBe('0');
+
+      // Even before it expires, the probe adds nothing to a request that did not ask.
+      writeFakeStore(undefined, true);
+      const unasked = await plain.get(probe, { maxRedirects: 0 });
+      expect(unasked.headers()['x-test-woo-class']).toBeUndefined();
+
+      // And once it has expired, not even to one that did.
+      writeFakeStore(undefined, Date.now() / 1000 - 5);
+      const late = await api.get(probe, { maxRedirects: 0 });
+      expect(late.headers()['x-test-woo-class']).toBeUndefined();
+    } finally {
+      removeFakeStore();
+      await api.dispose();
+      await asked.dispose();
+      await plain.dispose();
+    }
+  });
 
   test('every speed function has a switch under Performance', async ({ page }) => {
     await login(page);
@@ -144,6 +226,129 @@ test.describe('Speed defaults', () => {
         },
       ],
     ]);
+  });
+
+  test('a guest who cannot buy gets an empty cart before WooCommerce makes one', async ({ page }) => {
+    // WooCommerce is not on the test site, so a small stand-in must-use plugin plays
+    // its part (see tests/fake-store.js). It only answers requests that send its
+    // header, and stops by itself after ten minutes.
+    const route = '/?wc-ajax=get_refreshed_fragments';
+
+    // The stand-in is a file in the local test site's folder, so it only works if
+    // the site being tested is that one. Write it, ask the site whether it loaded,
+    // and skip (removing it again) when it did not: a staging site, a tunnel or
+    // another local install never loads it.
+    const api = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1' } });
+    const withCart = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: {
+        [FAKE_STORE_HEADER]: '1',
+        Cookie: 'woocommerce_items_in_cart=1; woocommerce_cart_hash=abc',
+      },
+    });
+
+    // Write it, ask the site whether it loaded, and skip (removing it again) when
+    // it did not: a staging site, a tunnel or another local install never loads it.
+    // A visitor whose only cookie is the session cookie the store renamed as WooCommerce started.
+    const renamed = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: {
+        [FAKE_STORE_HEADER]: '1',
+        Cookie: `${RENAMED_SESSION_COOKIE}=abc`,
+      },
+    });
+
+    let loaded = false;
+    try {
+      if (writeFakeStore()) {
+        const probe = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
+        loaded = probe.headers()['x-test-fake-store'] === '1';
+      }
+    } finally {
+      if (!loaded) {
+        removeFakeStore();
+        await api.dispose();
+        await withCart.dispose();
+        await renamed.dispose();
+      }
+    }
+    if (standInMustLoad()) {
+      // On the local test site the stand-in has to load. Skipping here would let the
+      // run pass without ever checking that the cart is bypassed.
+      expect(loaded, 'the stand-in WooCommerce did not load on the local test site').toBe(true);
+    } else {
+      test.skip(!loaded, 'Needs the local test site: the stand-in WooCommerce did not load on this one.');
+    }
+
+    await login(page);
+    await page.goto(SETTINGS_PATH);
+    await openSectionFor(page, 'guest_cart_checks');
+    const was = await featureIsOn(page, 'guest_cart_checks');
+
+    await restoreAll([
+      [
+        'on',
+        async () => {
+          await setFeature(page, 'guest_cart_checks', true);
+          await save(page);
+
+          const res = await api.get(route, { maxRedirects: 0 });
+          expect(res.headers()['x-test-cart-made']).toBeUndefined();
+          expect(await res.json()).toMatchObject({ cart_hash: '' });
+
+          const mine = await withCart.get(route, { maxRedirects: 0 });
+          expect(mine.headers()['x-test-cart-made']).toBe('1');
+
+          // A cart cookie the store renamed during WooCommerce's own start-up still
+          // reaches WooCommerce: the check runs after every plugin has renamed it.
+          const theirs = await renamed.get(route, { maxRedirects: 0 });
+          expect(theirs.headers()['x-test-cart-made']).toBe('1');
+        },
+      ],
+      [
+        'off',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await setFeature(page, 'guest_cart_checks', false);
+          await save(page);
+
+          const res = await api.get(route, { maxRedirects: 0 });
+          expect(res.headers()['x-test-cart-made']).toBe('1');
+        },
+      ],
+      [
+        'restore',
+        async () => {
+          await page.goto(SETTINGS_PATH);
+          await setFeature(page, 'guest_cart_checks', was);
+          await save(page);
+        },
+      ],
+      [
+        'remove the stand-in',
+        async () => {
+          removeFakeStore();
+          await api.dispose();
+          await withCart.dispose();
+          await renamed.dispose();
+        },
+      ],
+    ]);
+  });
+
+  test('no stand-in WooCommerce is left on the site after a test', async () => {
+    const api = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1', [FAKE_PROBE_HEADER]: '1' },
+    });
+    try {
+      expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
+      const res = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
+      expect(res.headers()['x-test-fake-store']).toBeUndefined();
+      expect(res.headers()['x-test-woo-class']).toBeUndefined();
+    } finally {
+      await api.dispose();
+    }
   });
 
   test('more scanner probes are turned away plainly', async () => {

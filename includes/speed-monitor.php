@@ -129,22 +129,853 @@ function blueworx_segment_is_personal( $segment ) {
 }
 
 /**
- * Whether WordPress resolved this request to the site's own content.
+ * Asks WordPress's own request, not a query a theme made later, a question.
  *
- * @return bool True for the home page, a post or page, or a post type, category, tag or taxonomy archive.
+ * A theme that runs query_posts() for a related-posts list and never resets it
+ * changes what the template tags (is_home(), is_singular()) see. The original
+ * request is kept in $wp_the_query.
+ *
+ * @param string $method WP_Query method, for example is_singular.
+ * @return bool The answer.
  */
-function blueworx_request_is_site_content() {
-	if ( ! did_action( 'wp' ) ) {
+function blueworx_main_query_is( $method ) {
+	global $wp_the_query;
+
+	if ( is_object( $wp_the_query ) && method_exists( $wp_the_query, $method ) ) {
+		return (bool) $wp_the_query->$method();
+	}
+
+	return function_exists( $method ) && (bool) $method();
+}
+
+/**
+ * Gets the page or term the original request was for.
+ *
+ * @return object|null The queried object.
+ */
+function blueworx_main_query_object() {
+	global $wp_the_query;
+
+	if ( is_object( $wp_the_query ) && method_exists( $wp_the_query, 'get_queried_object' ) ) {
+		$object = $wp_the_query->get_queried_object();
+	} else {
+		$object = function_exists( 'get_queried_object' ) ? get_queried_object() : null;
+	}
+
+	return is_object( $object ) ? $object : null;
+}
+
+/**
+ * Gets every taxonomy the original request asks for, not only the first.
+ *
+ * Language plugins add their own taxonomy to requests; those are left out, since
+ * they never put a term in the address.
+ *
+ * @return string[] Taxonomy names.
+ */
+function blueworx_main_query_taxonomies() {
+	global $wp_the_query;
+
+	$names = array();
+
+	if ( blueworx_main_query_is( 'is_category' ) ) {
+		$names[] = 'category';
+	}
+
+	if ( blueworx_main_query_is( 'is_tag' ) ) {
+		$names[] = 'post_tag';
+	}
+
+	if ( is_object( $wp_the_query ) && isset( $wp_the_query->tax_query->queried_terms ) && is_array( $wp_the_query->tax_query->queried_terms ) ) {
+		$names = array_merge( $names, array_map( 'strval', array_keys( $wp_the_query->tax_query->queried_terms ) ) );
+	}
+
+	return array_values( array_diff( array_unique( $names ), array( 'language', 'term_language', 'post_translations' ) ) );
+}
+
+/**
+ * Gets every post type the original request asks for.
+ *
+ * @param bool $with_object Whether the queried object's own name counts as a type (not for a term, whose name is its title).
+ * @return string[] Post type names; empty when the request does not say.
+ */
+function blueworx_main_query_post_types( $with_object = true ) {
+	global $wp_the_query;
+
+	$types = array();
+
+	if ( is_object( $wp_the_query ) && method_exists( $wp_the_query, 'get' ) ) {
+		$types = array_merge( $types, (array) $wp_the_query->get( 'post_type' ) );
+	}
+
+	$object = $with_object ? blueworx_main_query_object() : null;
+
+	if ( null !== $object && isset( $object->name ) ) {
+		$types[] = $object->name;
+	}
+
+	return array_values( array_unique( array_filter( array_map( 'strval', $types ), 'strlen' ) ) );
+}
+
+/**
+ * The first pieces of an address that are WordPress's or a store's own words.
+ *
+ * Anything else at the start of an address that WordPress did not answer as the
+ * site's content can be a person's name, so it is not kept. A site adds its own
+ * (a members folder, say) with the filter.
+ *
+ * @return string[] Lower case names, or file names.
+ */
+function blueworx_slow_safe_prefixes() {
+	$known = array(
+		'wp-admin',
+		'wp-json',
+		'wp-content',
+		'wp-includes',
+		'wp-login.php',
+		'wp-cron.php',
+		'wp-sitemap.xml',
+		'xmlrpc.php',
+		'index.php',
+		'sitemap.xml',
+		'sitemap_index.xml',
+		'robots.txt',
+		'favicon.ico',
+		'feed',
+		'comments',
+		'author',
+		'category',
+		'tag',
+		'page',
+		'shop',
+		'product',
+		'product-category',
+		'product-tag',
+		'cart',
+		'checkout',
+		'my-account',
+		'wc-api',
+	);
+
+	return array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_safe_prefixes', $known ) ) );
+}
+
+/**
+ * Whether the first piece of an address is one of the known safe ones.
+ *
+ * @param string $segment First piece of the address.
+ * @return bool True when it may be kept.
+ */
+function blueworx_slow_prefix_is_safe( $segment ) {
+	return in_array( strtolower( (string) $segment ), blueworx_slow_safe_prefixes(), true );
+}
+
+/**
+ * One piece of an address as it is kept in a note: plain printable characters
+ * only, and no more than 60 of them.
+ *
+ * @param string $segment Piece of the address, already decoded.
+ * @return string Cleaned piece.
+ */
+function blueworx_slow_clean_segment( $segment ) {
+	return substr( (string) preg_replace( '/[^!-~]/', '', (string) $segment ), 0, 60 );
+}
+
+/**
+ * One piece of an address in the form the notes keep it: decoded, a personal
+ * looking piece turned into a star, anything else cleaned.
+ *
+ * @param string $segment Piece of the address, as sent (possibly encoded).
+ * @return string Piece as kept.
+ */
+function blueworx_slow_normalise_segment( $segment ) {
+	$segment = rawurldecode( (string) $segment );
+
+	return blueworx_segment_is_personal( $segment ) ? '*' : blueworx_slow_clean_segment( $segment );
+}
+
+/**
+ * The pieces of an address that come after the folder the site lives in.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return string[] The same pieces without the site's own folder at the front.
+ */
+function blueworx_slow_segments_below_home( $segments ) {
+	$base = function_exists( 'home_url' ) ? wp_parse_url( home_url(), PHP_URL_PATH ) : '';
+	$base = is_string( $base ) ? array_values( array_filter( explode( '/', $base ), 'strlen' ) ) : array();
+
+	// The request's pieces are decoded and cleaned before they get here, so the
+	// folder's are brought to the same form (a folder named caf%C3%A9).
+	$base = array_map( 'blueworx_slow_normalise_segment', $base );
+
+	$segments = array_values( $segments );
+
+	if ( $base && array_slice( $segments, 0, count( $base ) ) === $base ) {
+		$segments = array_values( array_slice( $segments, count( $base ) ) );
+	}
+
+	// Addresses on a site without rewrite rules in the server start with index.php.
+	if ( isset( $segments[0] ) && 'index.php' === strtolower( $segments[0] ) ) {
+		$segments = array_values( array_slice( $segments, 1 ) );
+	}
+
+	return $segments;
+}
+
+/**
+ * The word WordPress puts in front of a page number ("page" unless changed).
+ *
+ * @return string Pagination base, lower case.
+ */
+function blueworx_pagination_base() {
+	global $wp_rewrite;
+
+	$base = ( is_object( $wp_rewrite ) && ! empty( $wp_rewrite->pagination_base ) ) ? (string) $wp_rewrite->pagination_base : 'page';
+
+	return strtolower( $base );
+}
+
+/**
+ * Whether the pieces of an address are the posts page chosen in Settings, or a numbered page of it.
+ *
+ * @param string[] $segments The pieces of the address, below the site's folder.
+ * @return bool True when the address is exactly the posts page's own address.
+ */
+function blueworx_segments_are_posts_page( $segments ) {
+	$id = (int) get_option( 'page_for_posts' );
+
+	if ( $id <= 0 || ! function_exists( 'get_page_uri' ) ) {
 		return false;
 	}
 
-	foreach ( array( 'is_front_page', 'is_singular', 'is_post_type_archive', 'is_tax', 'is_category', 'is_tag' ) as $check ) {
-		if ( function_exists( $check ) && $check() ) {
+	$uri = get_page_uri( $id );
+
+	if ( ! is_string( $uri ) || '' === $uri ) {
+		return false;
+	}
+
+	// The page's address is stored encoded, and a request's is cleaned the same
+	// way the label is (letters outside plain ASCII dropped), so both are brought
+	// to that form first.
+	$own  = array_map( 'blueworx_slow_clean_segment', array_values( array_filter( explode( '/', rawurldecode( $uri ) ), 'strlen' ) ) );
+	$own  = array_map( 'strtolower', $own );
+	$have = array_map( 'strtolower', array_map( 'strval', $segments ) );
+	$n    = count( $own );
+
+	if ( array_slice( $have, 0, $n ) !== $own ) {
+		return false;
+	}
+
+	return blueworx_segments_are_page_number( array_slice( $have, $n ) );
+}
+
+/**
+ * Whether the pieces of an address are the address of the post, page or product that was asked for.
+ *
+ * A plugin can answer /members/jane-doe/ or /author/jane-doe/?p=123 with a real
+ * page or post, so WordPress finding a post is not enough: the address has to be
+ * that post's own, optionally followed by a page number, comment page or feed.
+ *
+ * @param string[] $segments The pieces of the address, below the site's folder.
+ * @param object   $post_object The post WordPress answered with.
+ * @return bool True when the address is the object's own.
+ */
+function blueworx_segments_are_object_address( $segments, $post_object ) {
+	if ( ! function_exists( 'get_permalink' ) ) {
+		return false;
+	}
+
+	$link = get_permalink( $post_object );
+	$path = is_string( $link ) ? wp_parse_url( $link, PHP_URL_PATH ) : '';
+
+	if ( ! is_string( $path ) ) {
+		return false;
+	}
+
+	$own = array_values( array_filter( explode( '/', $path ), 'strlen' ) );
+	$own = blueworx_slow_segments_below_home( array_map( 'blueworx_slow_normalise_segment', $own ) );
+	$own = array_map( 'strtolower', $own );
+
+	$have = array_map( 'strtolower', array_map( 'strval', $segments ) );
+	$n    = count( $own );
+
+	if ( array_slice( $have, 0, $n ) !== $own ) {
+		return false;
+	}
+
+	$rest = array_slice( $have, $n );
+
+	if ( empty( $rest ) ) {
+		return true;
+	}
+
+	// One piece after the address: a page of a post split with <!--nextpage-->
+	// (/slug/2/), a comment page or one of WordPress's own endpoints.
+	if ( 1 === count( $rest ) && 1 === preg_match( '/^([0-9]{1,5}|comment-page-[0-9]{1,5}|feed|embed|trackback|amp)$/', $rest[0] ) ) {
+		return true;
+	}
+
+	// A named feed, in both forms WordPress answers: /slug/feed/rss2/ and /slug/rss2/.
+	$feeds = blueworx_feed_names();
+
+	if ( 1 === count( $rest ) && in_array( $rest[0], $feeds, true ) ) {
+		return true;
+	}
+
+	if ( 2 === count( $rest ) && 'feed' === $rest[0] && in_array( $rest[1], $feeds, true ) ) {
+		return true;
+	}
+
+	// A store's account and checkout endpoints are the page with a word and a
+	// short value after it (/my-account/orders/, /my-account/edit-address/billing/,
+	// /checkout/order-received/*/). Only a word the store knows, and a value that is
+	// a number, billing, shipping or already a star.
+	if ( count( $rest ) <= 3 && in_array( $rest[0], blueworx_store_endpoints(), true ) ) {
+		foreach ( array_slice( $rest, 1 ) as $value ) {
+			if ( 1 !== preg_match( '/^(billing|shipping|[0-9]{1,10}|[*])$/', $value ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	return blueworx_segments_are_page_number( $rest );
+}
+
+/**
+ * The names of the feeds WordPress answers on this site.
+ *
+ * @return string[] Lower case names (feed, rdf, rss, rss2, atom and any a plugin registered).
+ */
+function blueworx_feed_names() {
+	global $wp_rewrite;
+
+	$names = array( 'feed', 'rdf', 'rss', 'rss2', 'atom' );
+
+	if ( is_object( $wp_rewrite ) && isset( $wp_rewrite->feeds ) && is_array( $wp_rewrite->feeds ) ) {
+		$names = array_merge( $names, $wp_rewrite->feeds );
+	}
+
+	return array_values( array_unique( array_map( 'strtolower', array_map( 'strval', $names ) ) ) );
+}
+
+/**
+ * The words a store puts after a page's address (WooCommerce's account and checkout endpoints).
+ *
+ * @return string[] Lower case words. A site adds its own with the blueworx_slow_log_endpoints filter.
+ */
+function blueworx_store_endpoints() {
+	$known = array(
+		'orders',
+		'view-order',
+		'downloads',
+		'edit-address',
+		'edit-account',
+		'payment-methods',
+		'add-payment-method',
+		'delete-payment-method',
+		'set-default-payment-method',
+		'lost-password',
+		'customer-logout',
+		'order-received',
+		'order-pay',
+	);
+
+	// A store can rename them in WooCommerce's settings (orders to pedidos), and
+	// WooCommerce holds the names it is really using.
+	if ( function_exists( 'WC' ) ) {
+		$store = WC();
+
+		if ( is_object( $store ) && isset( $store->query ) && is_object( $store->query ) && method_exists( $store->query, 'get_query_vars' ) ) {
+			$known = array_merge( $known, array_values( array_filter( array_map( 'strval', (array) $store->query->get_query_vars() ), 'strlen' ) ) );
+		}
+	}
+
+	return array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_endpoints', $known ) ) );
+}
+
+/**
+ * Whether the pieces of an address are nothing, or "page" and a number.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return bool True for the home page itself or one of its numbered pages.
+ */
+function blueworx_segments_are_page_number( $segments ) {
+	if ( empty( $segments ) ) {
+		return true;
+	}
+
+	return 2 === count( $segments ) && blueworx_pagination_base() === strtolower( (string) $segments[0] ) && 1 === preg_match( '/^[0-9]{1,5}$/', (string) $segments[1] );
+}
+
+/**
+ * The shapes a date archive's address can take on this site, as patterns.
+ *
+ * Read from WordPress's own date address structure (the way it builds its year
+ * and month structures from it), so a site with its dates under /archives/date/,
+ * a word stuck to the year (/archive-2026/) or the year last is recognised, and
+ * nothing else is.
+ *
+ * @return string[][] Each shape is a list of patterns, one for each piece of the address.
+ */
+function blueworx_date_archive_shapes() {
+	global $wp_rewrite;
+
+	$struct = '%year%/%monthnum%/%day%';
+
+	if ( is_object( $wp_rewrite ) && method_exists( $wp_rewrite, 'get_date_permastruct' ) ) {
+		$struct = $wp_rewrite->get_date_permastruct();
+
+		// Plain addresses (?m=202405): nothing in the path.
+		if ( ! is_string( $struct ) || '' === $struct ) {
+			return array( array() );
+		}
+	}
+
+	$struct = strtolower( $struct );
+	$month  = preg_replace( '#/+#', '/', str_replace( '%day%', '', $struct ) );
+	$year   = preg_replace( '#/+#', '/', str_replace( '%monthnum%', '', $month ) );
+	$shapes = array( array() );
+
+	foreach ( array( $year, $month, $struct ) as $form ) {
+		$pieces = array_values( array_filter( explode( '/', $form ), 'strlen' ) );
+
+		if ( isset( $pieces[0] ) && 'index.php' === $pieces[0] ) {
+			array_shift( $pieces );
+		}
+
+		$shape = array();
+
+		foreach ( $pieces as $piece ) {
+			$pattern = '';
+
+			foreach ( (array) preg_split( '/(%year%|%monthnum%|%day%)/', $piece, -1, PREG_SPLIT_DELIM_CAPTURE ) as $part ) {
+				if ( '%year%' === $part ) {
+					$pattern .= '[0-9]{4}';
+				} elseif ( '%monthnum%' === $part || '%day%' === $part ) {
+					$pattern .= '[0-9]{1,2}';
+				} else {
+					// Fixed words are compared the way a request's pieces are kept.
+					$pattern .= preg_quote( strtolower( blueworx_slow_clean_segment( rawurldecode( (string) $part ) ) ), '#' );
+				}
+			}
+
+			$shape[] = '#^' . $pattern . '$#';
+		}
+
+		$shapes[] = $shape;
+	}
+
+	return $shapes;
+}
+
+/**
+ * Whether the pieces of an address are one of the shapes a date archive has.
+ *
+ * @param string[] $segments The pieces of the address, lower case.
+ * @return bool True when each piece fits the shape's pattern.
+ */
+function blueworx_segments_fit_date_shape( $segments ) {
+	$count = count( $segments );
+
+	foreach ( blueworx_date_archive_shapes() as $shape ) {
+		if ( count( $shape ) !== $count ) {
+			continue;
+		}
+
+		$match = true;
+
+		foreach ( $shape as $index => $pattern ) {
+			if ( 1 !== preg_match( $pattern, $segments[ $index ] ) ) {
+				$match = false;
+				break;
+			}
+		}
+
+		if ( $match ) {
 			return true;
 		}
 	}
 
 	return false;
+}
+
+/**
+ * Whether the pieces of an address are only what a date archive is made of.
+ *
+ * @param string[] $segments The pieces of the address.
+ * @return bool True for nothing (a ?m= address), or a date in the form this site's addresses use, then optionally "page" and a number.
+ */
+function blueworx_segments_are_date( $segments ) {
+	$segments = array_values( array_map( 'strtolower', array_map( 'strval', $segments ) ) );
+	$count    = count( $segments );
+
+	// Read as it stands first: a folder called "page" (/archives/page/2026/) is
+	// part of the address, not a page number.
+	if ( blueworx_segments_fit_date_shape( $segments ) ) {
+		return true;
+	}
+
+	if ( $count >= 2 && blueworx_pagination_base() === $segments[ $count - 2 ] && 1 === preg_match( '/^[0-9]{1,5}$/', $segments[ $count - 1 ] ) ) {
+		return blueworx_segments_fit_date_shape( array_slice( $segments, 0, $count - 2 ) );
+	}
+
+	return false;
+}
+
+/**
+ * Where in an address a taxonomy's route can start.
+ *
+ * @param string[] $segments The pieces of the address, lower case.
+ * @param object   $taxonomy  The taxonomy.
+ * @return int[] Positions: the start, after index.php, and after the front WordPress puts before it.
+ */
+function blueworx_route_starts( $segments, $taxonomy ) {
+	global $wp_rewrite;
+
+	$starts = array( 0 );
+
+	if ( isset( $segments[0] ) && 'index.php' === $segments[0] ) {
+		$starts[] = 1;
+	}
+
+	$with_front = ! is_array( $taxonomy->rewrite ) || ! isset( $taxonomy->rewrite['with_front'] ) || $taxonomy->rewrite['with_front'];
+
+	if ( $with_front && is_object( $wp_rewrite ) && isset( $wp_rewrite->front ) && is_string( $wp_rewrite->front ) ) {
+		$front = array_values( array_filter( explode( '/', strtolower( $wp_rewrite->front ) ), 'strlen' ) );
+
+		if ( ! empty( $front ) ) {
+			$starts[] = count( $front );
+			$starts[] = count( $front ) + ( isset( $segments[0] ) && 'index.php' === $segments[0] ? 1 : 0 );
+		}
+	}
+
+	return array_values( array_unique( $starts ) );
+}
+
+/**
+ * Whether an address carries the address word of a taxonomy that is not on the list.
+ *
+ * The request's own flags can miss a second term (a tag asked for next to a
+ * category), so the address is also read for the word each public taxonomy puts
+ * before its terms (/tag/, /category/, /product-tag/).
+ *
+ * @param string[] $segments The pieces of the address.
+ * @param string[] $listed   Taxonomy names the site keeps, lower case.
+ * @return bool True when a taxonomy left off the list has its word, and a term after it, in the address.
+ */
+function blueworx_segments_name_unlisted_term( $segments, $listed ) {
+	if ( empty( $segments ) || ! function_exists( 'get_taxonomies' ) || ! function_exists( 'get_taxonomy' ) ) {
+		return false;
+	}
+
+	$segments = array_map( 'strtolower', array_map( 'strval', array_values( $segments ) ) );
+	$total    = count( $segments );
+
+	foreach ( (array) get_taxonomies( array( 'public' => true ), 'names' ) as $name ) {
+		if ( in_array( strtolower( (string) $name ), $listed, true ) ) {
+			continue;
+		}
+
+		$taxonomy = get_taxonomy( $name );
+
+		if ( ! is_object( $taxonomy ) ) {
+			continue;
+		}
+
+		$slug   = is_array( $taxonomy->rewrite ) && ! empty( $taxonomy->rewrite['slug'] ) ? strtolower( trim( (string) $taxonomy->rewrite['slug'], '/' ) ) : '';
+		$words  = '' === $slug ? array() : explode( '/', $slug );
+		$length = count( $words );
+
+		// The word is a route only where WordPress puts it (at the start of the
+		// address, after index.php or the site's front), and only when something (the
+		// term) comes after it. The same word further along is an ordinary path
+		// (/category/type/shoes/ is a category called type).
+		foreach ( blueworx_route_starts( $segments, $taxonomy ) as $start ) {
+			if ( $length > 0 && $start + $length < $total && array_slice( $segments, $start, $length ) === $words ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * The taxonomies whose terms the slow log may keep in an address.
+ *
+ * @return string[] Taxonomy names, lower case.
+ */
+function blueworx_slow_listed_taxonomies() {
+	return array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_taxonomies', array( 'category', 'post_tag', 'product_cat', 'product_tag' ) ) ) );
+}
+
+/**
+ * Whether a term's name appears in the pieces of an address.
+ *
+ * The name is looked for as it is and as the log would keep it (letters outside
+ * plain ASCII are dropped from a piece), and has to stand on its own or be joined
+ * to other words by dashes, underscores, dots or numbers (private-clients-123),
+ * never inside a longer word.
+ *
+ * @param string   $slug The term's name as WordPress stores it.
+ * @param string[] $have The pieces of the address, lower case.
+ * @return bool True when a piece holds the name.
+ */
+function blueworx_slug_is_in_segments( $slug, $have ) {
+	$plain   = strtolower( rawurldecode( (string) $slug ) );
+	$kept    = strtolower( blueworx_slow_clean_segment( $plain ) );
+	$choices = array();
+
+	if ( '' !== $plain ) {
+		$choices[] = $plain;
+	}
+
+	// What is left after the log drops letters can be too short to say anything,
+	// so then only a whole piece counts. A name that lost nothing is looked for
+	// however short it is.
+	$kept_is_short = '' !== $kept && $kept !== $plain && strlen( $kept ) < 3;
+
+	if ( '' !== $kept && $kept !== $plain ) {
+		$choices[] = $kept;
+	}
+
+	foreach ( $choices as $choice ) {
+		foreach ( $have as $piece ) {
+			if ( $piece === $choice ) {
+				return true;
+			}
+
+			if ( $choice === $kept && $kept_is_short ) {
+				continue;
+			}
+
+			// Letters on either side make it a longer word; a number or a dash does not.
+			if ( 1 === preg_match( '#(?<![a-z])' . preg_quote( $choice, '#' ) . '(?![a-z])#', $piece ) ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether a post's address holds a term the post has in a taxonomy not on the list.
+ *
+ * A permalink can carry the post's category (or a parent of it) by itself, with
+ * no word in front (/news/private-clients/post/), so the post's own terms in
+ * every public taxonomy left off the list are looked for in the address. Only the
+ * taxonomies the post's type uses are asked about, so a page costs no lookups
+ * for taxonomies it cannot have.
+ *
+ * @param string[] $segments    The pieces of the address.
+ * @param object   $post_object The post, page or product WordPress answered with.
+ * @param string[] $listed      Taxonomy names the site keeps, lower case.
+ * @return bool True when one of the post's unlisted terms (or a parent) is in the address.
+ */
+function blueworx_post_address_names_unlisted_term( $segments, $post_object, $listed ) {
+	if ( empty( $segments ) || empty( $post_object->ID ) || empty( $post_object->post_type ) || ! function_exists( 'get_taxonomies' ) || ! function_exists( 'get_object_taxonomies' ) || ! function_exists( 'get_the_terms' ) ) {
+		return false;
+	}
+
+	$have = array();
+
+	foreach ( $segments as $segment ) {
+		$have[] = strtolower( rawurldecode( (string) $segment ) );
+	}
+
+	$public = array_map( 'strtolower', array_map( 'strval', (array) get_taxonomies( array( 'public' => true ), 'names' ) ) );
+	$names  = array_map( 'strval', (array) get_object_taxonomies( $post_object->post_type, 'names' ) );
+
+	foreach ( $names as $name ) {
+		if ( in_array( strtolower( $name ), $listed, true ) || ! in_array( strtolower( $name ), $public, true ) ) {
+			continue;
+		}
+
+		$terms = get_the_terms( $post_object->ID, $name );
+
+		// A post with no category of its own gets the site's default one in an address.
+		if ( ( ! is_array( $terms ) || empty( $terms ) ) && 'category' === $name && function_exists( 'get_term' ) ) {
+			$default = get_term( (int) get_option( 'default_category' ), 'category' );
+			$terms   = is_object( $default ) ? array( $default ) : array();
+		}
+
+		if ( ! is_array( $terms ) ) {
+			continue;
+		}
+
+		foreach ( $terms as $term ) {
+			$slugs = array( isset( $term->slug ) ? $term->slug : '' );
+
+			if ( isset( $term->term_id ) && function_exists( 'get_ancestors' ) && function_exists( 'get_term' ) ) {
+				foreach ( (array) get_ancestors( $term->term_id, $name, 'taxonomy' ) as $parent_id ) {
+					$parent  = get_term( $parent_id, $name );
+					$slugs[] = is_object( $parent ) && isset( $parent->slug ) ? $parent->slug : '';
+				}
+			}
+
+			foreach ( $slugs as $slug ) {
+				if ( blueworx_slug_is_in_segments( $slug, $have ) ) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether the post this request answered holds an excluded term's name in its address.
+ *
+ * @param string[] $segments The pieces of the address (below the site's own folder).
+ * @return bool True for a post, page or product whose address names a term the site keeps out.
+ */
+function blueworx_request_post_names_excluded_term( $segments ) {
+	if ( ! did_action( 'wp' ) || ! blueworx_main_query_is( 'is_singular' ) ) {
+		return false;
+	}
+
+	$post_object = blueworx_main_query_object();
+
+	return null !== $post_object && blueworx_post_address_names_unlisted_term( blueworx_slow_segments_below_home( $segments ), $post_object, blueworx_slow_listed_taxonomies() );
+}
+/**
+ * Whether WordPress resolved this request to the site's own content.
+ *
+ * @param string[] $segments The pieces of the address, to check the answer against.
+ * @return bool True for the home page, a post, page or product, a post type archive, or a category, tag or product category or tag archive.
+ */
+function blueworx_request_is_site_content( $segments = array() ) {
+	if ( ! did_action( 'wp' ) ) {
+		return false;
+	}
+
+	// A post type that holds people (members, staff, students, a directory) names
+	// them in its address, so only the ordinary content types keep theirs. A site
+	// adds its own with the filter.
+	$types = (array) apply_filters( 'blueworx_slow_log_content_types', array( 'post', 'page', 'product' ) );
+	$taxes = blueworx_slow_listed_taxonomies();
+
+	// A plugin that answers /jane-doe/ (or /page/jane-doe/) with a query argument
+	// of its own can leave WordPress calling the request the home page or a date
+	// archive. So the address has to look like one too: nothing in it, or a page
+	// number for the home page; a year, month, day and page number for a date.
+	// A site kept in a folder (example.com/site/) has that folder in front of
+	// every address, so it is set aside first.
+	$segments = blueworx_slow_segments_below_home( $segments );
+
+	// Whatever WordPress says about the request, a term of a taxonomy that is not on
+	// the list is never kept: its address word (/tag/) in the address is enough.
+	// A post's own address is judged on the post's own terms instead (below): its
+	// address can hold a category name with no word before it (/news/private-clients/
+	// post/), and a page that merely has the word in its address (/about/brand/
+	// history/) is not a term's route.
+	if ( ! blueworx_main_query_is( 'is_singular' ) && ! blueworx_main_query_is( 'is_home' ) && blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
+		return false;
+	}
+
+	if ( blueworx_main_query_is( 'is_front_page' ) ) {
+		if ( blueworx_segments_are_page_number( $segments ) ) {
+			return true;
+		}
+
+		// A static home page also has its own endpoints (/comment-page-2/).
+		$page = blueworx_main_query_object();
+
+		if ( null !== $page && blueworx_post_address_names_unlisted_term( $segments, $page, $taxes ) ) {
+			return false;
+		}
+
+		return blueworx_main_query_is( 'is_singular' ) && null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $page );
+	}
+
+	if ( blueworx_main_query_is( 'is_home' ) ) {
+		// The page chosen to show the latest posts, and only at its own address: a
+		// plugin can answer /jane-doe/ through it with a query argument.
+		$page = blueworx_main_query_object();
+
+		if ( null !== $page && blueworx_post_address_names_unlisted_term( $segments, $page, $taxes ) ) {
+			return false;
+		}
+
+		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_posts_page( $segments );
+	}
+
+	// A year or month in the query string (/category/news/?year=2026) makes WordPress
+	// call a category archive a date one too. Only an address of dates ends the
+	// matter here; anything else is judged by what else it is.
+	if ( blueworx_main_query_is( 'is_date' ) && blueworx_segments_are_date( $segments ) ) {
+		return true;
+	}
+
+	if ( blueworx_main_query_is( 'is_singular' ) ) {
+		// The page that was asked for, not whatever post a theme's own loop (related
+		// posts, say) left as the current one.
+		$page = blueworx_main_query_object();
+
+		if ( null !== $page && blueworx_post_address_names_unlisted_term( $segments, $page, $taxes ) ) {
+			return false;
+		}
+
+		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $page );
+	}
+
+	// An author's archive can also be a category, tag or post type archive
+	// (/author/jane-doe/?cat=1), and the author's name is in the address.
+	if ( blueworx_main_query_is( 'is_author' ) ) {
+		return false;
+	}
+
+	// Category, tag and other term archives all name a term, so all answer to the
+	// same list: a site that takes one off it keeps those addresses out. Asked
+	// before the post type archive, since WordPress can call one request both
+	// (a category of a custom type) and the term is what names the address.
+	if ( blueworx_main_query_is( 'is_category' ) || blueworx_main_query_is( 'is_tag' ) || blueworx_main_query_is( 'is_tax' ) ) {
+		$term = blueworx_main_query_object();
+
+		// The queried object is only the first term the request names. A request can
+		// name a second one (/tag/jane/?cat=1 is a category to WordPress, but its
+		// address holds the tag), so every taxonomy it asks for has to be on the
+		// list, not just the first.
+		foreach ( blueworx_main_query_taxonomies() as $taxonomy ) {
+			if ( ! in_array( $taxonomy, $taxes, true ) ) {
+				return false;
+			}
+		}
+
+		if ( null === $term || ! isset( $term->taxonomy ) || ! in_array( $term->taxonomy, $taxes, true ) ) {
+			return false;
+		}
+
+		// A term archive can also be narrowed to a post type (/category/news/?post_type=member).
+		// WordPress does not always flag that as a post type archive (a type with no
+		// archive, or several types at once), so any type the request names has to be
+		// one the site keeps too.
+		foreach ( blueworx_main_query_post_types( false ) as $type ) {
+			if ( ! in_array( $type, $types, true ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	if ( ! blueworx_main_query_is( 'is_post_type_archive' ) ) {
+		return false;
+	}
+
+	// A post type that holds people has an archive that lists them, so the type
+	// has to be one the site counts as its own content, like single posts are.
+	foreach ( blueworx_main_query_post_types() as $type ) {
+		if ( ! in_array( $type, $types, true ) ) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /**
@@ -167,11 +998,11 @@ function blueworx_slow_request_label() {
 
 	// What WordPress has worked out is better than reading the address.
 	if ( did_action( 'wp' ) ) {
-		if ( function_exists( 'is_search' ) && is_search() ) {
+		if ( blueworx_main_query_is( 'is_search' ) ) {
 			return '(search)';
 		}
 
-		if ( function_exists( 'is_404' ) && is_404() ) {
+		if ( blueworx_main_query_is( 'is_404' ) ) {
 			return '(page not found)';
 		}
 	}
@@ -183,11 +1014,16 @@ function blueworx_slow_request_label() {
 			continue;
 		}
 
-		$segments[] = blueworx_segment_is_personal( $segment ) ? '*' : substr( preg_replace( '/[^\x21-\x7E]/', '', $segment ), 0, 60 );
+		$segments[] = blueworx_segment_is_personal( $segment ) ? '*' : blueworx_slow_clean_segment( $segment );
 	}
 
 	if ( in_array( blueworx_request_kind(), array( 'rest', 'ajax' ), true ) || ( isset( $segments[0] ) && 'wp-json' === $segments[0] ) ) {
 		$segments = array_slice( $segments, 0, 3 );
+	}
+
+	// A pretty search address (/search/whatever/) when WordPress has not said so.
+	if ( isset( $segments[0] ) && 'search' === $segments[0] ) {
+		return '(search)';
 	}
 
 	// On the front of the site only a page that is the site's own content keeps
@@ -195,14 +1031,22 @@ function blueworx_slow_request_label() {
 	// (a member's profile, an author page, anything a plugin answers) keeps only
 	// its first piece, since the rest can be a person's name. The same goes when
 	// WordPress never got far enough to say.
-	if ( 'front' === blueworx_request_kind() && count( $segments ) > 1 && ! blueworx_request_is_site_content() ) {
-		$segments = array( $segments[0], '*' );
-		$path     = '/' . $segments[0] . '/*';
-	}
-
-	// A pretty search address (/search/whatever/) when WordPress has not said so.
-	if ( isset( $segments[0] ) && 'search' === $segments[0] ) {
-		return '(search)';
+	if ( 'front' === blueworx_request_kind() && ! empty( $segments ) && blueworx_request_post_names_excluded_term( $segments ) ) {
+		// The name of a term the site keeps out can be the first piece itself, and a
+		// first piece that is a safe word (/shop/) would be left standing.
+		$segments = array( '*' );
+		$path     = '/*';
+	} elseif ( 'front' === blueworx_request_kind() && ! empty( $segments ) && ! blueworx_request_is_site_content( $segments ) ) {
+		// Only a first piece that is known to be WordPress's or a store's own word
+		// stays. Anything else can be a person's name (/jane-doe/, /jane.doe/,
+		// /jane-doe/feed/), whatever shape it has.
+		if ( ! blueworx_slow_prefix_is_safe( $segments[0] ) ) {
+			$segments = array( '*' );
+			$path     = '/*';
+		} elseif ( count( $segments ) > 1 ) {
+			$segments = array( $segments[0], '*' );
+			$path     = '/' . $segments[0] . '/*';
+		}
 	}
 
 	$label = '/' . implode( '/', $segments );
@@ -254,9 +1098,9 @@ function blueworx_slow_log_entries() {
 	// to their first piece, so what an earlier version stored never reaches a
 	// screen or a report.
 	foreach ( $log as $index => $entry ) {
-		if ( is_array( $entry ) && empty( $entry['v'] ) && isset( $entry['path'] ) ) {
+		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 8 ) && isset( $entry['path'] ) ) {
 			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
-			$log[ $index ]['v']    = 2;
+			$log[ $index ]['v']    = 8;
 		}
 	}
 
@@ -285,27 +1129,46 @@ function blueworx_slow_generalise_path( $path ) {
 		return '(search)';
 	}
 
-	return count( $segments ) > 1 ? '/' . $segments[0] . '/*' : '/' . $segments[0] . '/';
+	if ( ! blueworx_slow_prefix_is_safe( $segments[0] ) ) {
+		return '/*';
+	}
+
+	if ( count( $segments ) > 1 ) {
+		return '/' . $segments[0] . '/*';
+	}
+
+	// One piece at the root can be a person's name unless it is a known one.
+	return blueworx_slow_prefix_is_safe( $segments[0] ) ? '/' . $segments[0] . ( false === strpos( $segments[0], '.' ) ? '/' : '' ) : '/*';
 }
 
 /**
  * Builds one log entry for the request that has just finished.
  *
- * @param float $seconds How long the request took.
+ * @param float      $seconds How long the request took.
+ * @param int|null   $queries Database queries the page made, when counted already.
+ * @param array|null $counts  Object cache counts, when read already.
  * @return array Log entry.
  */
-function blueworx_slow_log_entry( $seconds ) {
-	$counts = blueworx_object_cache_counts();
+function blueworx_slow_log_entry( $seconds, $queries = null, $counts = null ) {
+	$counts = null === $counts ? blueworx_object_cache_counts() : $counts;
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
+	// Counted before the address is worked out: looking a post's terms up can cost
+	// queries of its own, and they are not the page's.
+	if ( null === $queries ) {
+		$queries = function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0;
+	}
+
+	$path = blueworx_slow_request_label();
+
 	return array(
-		'v'      => 2,
+		'v'      => 8,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
-		'path'   => blueworx_slow_request_label(),
+		'path'   => $path,
 		'kind'   => blueworx_request_kind(),
 		'status' => blueworx_response_status(),
-		'db'     => function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0,
+		'db'     => $queries,
 		'mem'    => (int) round( memory_get_peak_usage() / 1048576 ),
 		'in'     => function_exists( 'is_user_logged_in' ) && is_user_logged_in(),
 		'hit'    => $total > 0 ? (int) round( 100 * $counts['hits'] / $total ) : null,
@@ -358,12 +1221,14 @@ function blueworx_speed_sample() {
 /**
  * Adds one uncached page to the object cache sample.
  *
- * @param float $seconds How long the page took.
+ * @param float      $seconds How long the page took.
+ * @param int|null   $queries Database queries the page made, when counted already.
+ * @param array|null $counts  Object cache counts, when read already.
  * @return void
  */
-function blueworx_speed_sample_add( $seconds ) {
+function blueworx_speed_sample_add( $seconds, $queries = null, $counts = null ) {
 	$sample = blueworx_speed_sample();
-	$counts = blueworx_object_cache_counts();
+	$counts = null === $counts ? blueworx_object_cache_counts() : $counts;
 
 	if ( ! $sample['since'] ) {
 		$sample['since'] = time();
@@ -371,7 +1236,7 @@ function blueworx_speed_sample_add( $seconds ) {
 
 	++$sample['requests'];
 	$sample['ms']      += (int) round( $seconds * 1000 );
-	$sample['queries'] += function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0;
+	$sample['queries'] += null !== $queries ? $queries : ( function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0 );
 
 	// Hits are not proof the cache is shared between pages: some drop-ins count
 	// what they remember within one request as well. So a note is left in the
@@ -441,15 +1306,26 @@ function blueworx_speed_monitor_shutdown() {
 	// the first time the admin is opened (see blueworx_speed_seed_options()).
 	// Until then a site without a persistent cache pays one lookup, and only on a
 	// request that was already slow.
-	if ( $seconds >= 0.2 && blueworx_feature_enabled( 'slow_log' ) && $seconds >= blueworx_slow_threshold() ) {
-		blueworx_slow_log_write( blueworx_slow_log_entry( $seconds ) );
+	$log_it    = $seconds >= 0.2 && blueworx_feature_enabled( 'slow_log' ) && $seconds >= blueworx_slow_threshold();
+	$sample_it = blueworx_feature_enabled( 'speed_report' ) && blueworx_speed_sample_wanted();
+
+	if ( ! $log_it && ! $sample_it ) {
+		return;
 	}
 
-	if ( blueworx_feature_enabled( 'speed_report' ) && blueworx_speed_sample_wanted() ) {
-		blueworx_speed_sample_add( $seconds );
+	// What the page itself cost, read before the log's own work (the address's term
+	// lookups, saving the entry) adds to it.
+	$queries = function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0;
+	$counts  = blueworx_object_cache_counts();
+
+	if ( $log_it ) {
+		blueworx_slow_log_write( blueworx_slow_log_entry( $seconds, $queries, $counts ) );
+	}
+
+	if ( $sample_it ) {
+		blueworx_speed_sample_add( $seconds, $queries, $counts );
 	}
 }
-
 /**
  * Summarises the log by page: how often, how slow, for the last so many days.
  *

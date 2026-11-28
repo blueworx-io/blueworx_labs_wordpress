@@ -27,7 +27,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Nothing is assumed beyond WooCommerce's own two settings. A site that gates
  * buying some other way (a membership, say) says so with the
- * `blueworx_guest_can_buy` filter.
+ * `blueworx_guest_can_buy` filter. The answer is given as WooCommerce starts
+ * (on init, priority 0), so that filter has to be added before then (when the
+ * plugin or theme loads, or on plugins_loaded or after_setup_theme), not on a
+ * later init callback.
  *
  * @return bool True for a signed-out visitor who cannot buy.
  */
@@ -57,6 +60,24 @@ function blueworx_is_cart_check_request() {
 }
 
 /**
+ * Whether a cookie name belongs to a tracking or analytics tool.
+ *
+ * @param string $name Cookie name, lower case.
+ * @return bool True for a cookie that says nothing about a cart.
+ */
+function blueworx_is_tracking_cookie( $name ) {
+	$prefixes = (array) apply_filters( 'blueworx_tracking_cookie_prefixes', array( 'sbjs_', '_hj', '_ga', '_gid', '_gcl', '_fb', '_clck', '_clsk', '_uet', '__hs', 'hubspot', 'ajs_', '_pk_', '_scid', '_tt_', '_pin_', 'mp_', 'pys_' ) );
+
+	foreach ( $prefixes as $prefix ) {
+		if ( '' !== $prefix && 0 === strpos( $name, strtolower( (string) $prefix ) ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Whether this visitor has a cart in progress.
  *
  * WooCommerce marks a visitor who has put something in a cart with a cookie for
@@ -70,10 +91,31 @@ function blueworx_visitor_has_cart_cookie() {
 	// reads it from. Asked for by that name as well as by the usual start of it.
 	$session_cookie = defined( 'COOKIEHASH' ) ? (string) apply_filters( 'woocommerce_cookie', 'wp_woocommerce_session_' . COOKIEHASH ) : '';  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filter, read so a renamed cookie is still found.
 
+	// This runs before most plugins have had their say, so a cookie renamed by a
+	// plugin that registers its filter later is not known by name. Anything that
+	// looks like a cart or a session is kept, which costs a cart check at worst
+	// and never loses a cart.
 	foreach ( array_keys( $_COOKIE ) as $name ) {
 		$name = (string) $name;
+		$low  = strtolower( $name );
 
-		if ( ( '' !== $session_cookie && $session_cookie === $name ) || 'woocommerce_items_in_cart' === $name || 'woocommerce_cart_hash' === $name || 0 === strpos( $name, 'wp_woocommerce_session_' ) ) {
+		// The cookie the store itself is set to use is asked for by its exact name
+		// first: a store may name it like a tracking one (mp_store_session).
+		if ( '' !== $session_cookie && $session_cookie === $name ) {
+			return true;
+		}
+
+		// Tracking cookies say a page was viewed, not that anything is in a cart
+		// (WooCommerce's order attribution sbjs_session, analytics and ad pixels).
+		if ( blueworx_is_tracking_cookie( $low ) ) {
+			continue;
+		}
+
+		if ( false !== strpos( $low, 'session' ) || false !== strpos( $low, 'cart' ) ) {
+			return true;
+		}
+
+		if ( 0 === strpos( $low, 'woocommerce_' ) && 'woocommerce_recently_viewed' !== $low ) {
 			return true;
 		}
 	}
@@ -88,8 +130,11 @@ function blueworx_visitor_has_cart_cookie() {
  * the true answer for them is an empty cart. Anybody who has put something in
  * a cart, or who can, is asked as before.
  *
- * Runs early on init, ahead of WooCommerce's own start-up, so no cart, session
- * or mini cart is built, which is where the time goes.
+ * Runs as WooCommerce starts (its before_woocommerce_init action) at the latest
+ * priority, so every plugin that renames its cart cookie there has done so, and
+ * before WooCommerce makes its session and cart, which is where the time goes.
+ * WooCommerce reads the cookie's name when it makes the session, straight after
+ * this action, so a name set later would not reach WooCommerce either.
  *
  * @return void
  */
@@ -175,7 +220,16 @@ function blueworx_crawl_delay_agents() {
 
 	$agents = apply_filters( 'blueworx_crawl_delay_agents', $agents );
 
-	return array_values( array_filter( array_map( 'trim', (array) $agents ), 'strlen' ) );
+	// A name is one word. A line break or a space in one would write a line of
+	// its own into robots.txt, so such a name is left out, not cleaned up.
+	return array_values(
+		array_filter(
+			array_map( 'trim', array_map( 'strval', (array) $agents ) ),
+			static function ( $agent ) {
+				return 1 === preg_match( '/^[A-Za-z0-9._-]+$/', $agent );
+			}
+		)
+	);
 }
 
 /**
@@ -281,8 +335,9 @@ function blueworx_crawl_delay_filter( $output, $is_public = true ) { // phpcs:ig
  */
 function blueworx_speed_defaults_hooks() {
 	if ( blueworx_feature_enabled( 'guest_cart_checks' ) ) {
-		// Before WooCommerce starts its cart and session on init (priority 0).
-		add_action( 'init', 'blueworx_guest_cart_check_answer', -1 );
+		// As WooCommerce starts, after every plugin that sets its cart cookie name
+		// there, and before it makes a session or a cart.
+		add_action( 'before_woocommerce_init', 'blueworx_guest_cart_check_answer', PHP_INT_MAX );
 	}
 
 	if ( blueworx_feature_enabled( 'surerank_link_checks' ) ) {

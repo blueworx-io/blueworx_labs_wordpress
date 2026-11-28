@@ -4,6 +4,181 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.8] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A category name the site keeps out of the slow log stays out when it is a short
+    word joined to others (/uk-updates/) or has a number stuck to it
+    (/private-clients123/).
+  - A taxonomy's address word only hides an address where WordPress puts the route
+    (the start, after index.php or the site's front), so a category called "type"
+    (/category/type/shoes/) keeps its address.
+  - A category archive filtered by year (/category/news/?year=2026) keeps its address.
+  - A store's own names for its account and checkout pages are read from
+    WooCommerce, so a renamed Orders page (/my-account/pedidos/) keeps its address.
+  - A post's short feed address (/post/atom/) is kept, using the feed names WordPress
+    has registered.
+  - On the local test site the cart test now fails, instead of skipping, when its
+    stand-in store does not load.
+
+## [1.104.7] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.** The review fixes made on the speed defaults
+  while main moved on, joined under one version. Each round's notes are kept below.
+  The last round:
+  - Entries saved by the previous build are cut back again (the log format is now
+    version 8), so addresses it kept can no longer reach the weekly email.
+  - A post's address is checked against the names of its own terms (and parents)
+    in the taxonomies the site keeps out: also when a number or a dash joins the
+    name to other words, when the letters the log drops are part of the name, and
+    when the post has no category and WordPress uses the default one. Such an
+    address shows as /* whole, even if the name is a word the log otherwise keeps.
+  - The posts page keeps its address even when it holds a taxonomy's word.
+  - Only taxonomies the post's type uses are looked up, and the page's database
+    query count and cache counts are read before the log's own lookups.
+
+#### Review fixes first numbered 1.104.11
+
+- **Speed defaults, review fixes.**
+  - A post, page or product at its own address is judged on its own terms: when the
+    address holds the name of a term the post has (or a parent of it) in a taxonomy
+    the site left off the slow-log list, even with no word in front of it
+    (/news/private-clients/post/), it is not kept.
+  - An ordinary page that merely has a taxonomy's word in its address
+    (/about/brand/history/) keeps its address, so its timings are not lumped under
+    a star. The word still hides term archives.
+
+#### Review fixes first numbered 1.104.10
+
+- **Speed defaults, review fixes.**
+  - A category, tag or other term archive narrowed to a post type the site does not
+    keep (members, say) shows no term name in the slow log or weekly report, even
+    when WordPress sets no archive flag for it or the request names several types.
+  - A post's own address that holds a term of a taxonomy the site left off the
+    list (/news/category/private-clients/post/) is no longer kept.
+  - Entries the previous build saved are cut back to their first piece again, so
+    full addresses it kept no longer show in the slow log or weekly email.
+  - The test probe that reports whether a WooCommerce class exists speaks only to
+    a request that asks for it, and stops after ten minutes. The mixed author
+    archive test works again.
+
+#### Review fixes first numbered 1.104.9
+
+- **Speed defaults, review fixes.**
+  - A members (or other excluded post type) archive filtered by a category on the
+    list no longer shows in the slow log and weekly report with the category's name:
+    both the term and the post type have to be kept.
+  - A post, page or product at its own address keeps it even when the address holds
+    the word of a taxonomy the site left off the list (/product/brand/). The word
+    only hides an address when a term follows it.
+  - A static home page keeps its comment pages (/comment-page-2/).
+  - The stand-in store the tests use declares its pretend WooCommerce class only
+    when switched on, so a left-over file cannot make a site look like a store. New
+    tests check the class is absent, and that a cart cookie a store renamed while
+    WooCommerce starts still reaches the cart.
+
+#### Review fixes first numbered 1.104.8
+
+- **Speed defaults, review fixes.**
+  - An address that carries the address word of a taxonomy the site left off the
+    slow-log list (/tag/ when tags are off) is never kept in the slow log or the
+    weekly report, whatever the request's own flags say or how the filter is
+    written (capital letters in the names are fine).
+  - The stand-in WooCommerce the speed tests use does nothing unless a request
+    sends its test header, stops by itself after ten minutes, and the suite removes
+    any left-over copy before it starts, so a failed or killed run can never leave
+    a pretend store switched on.
+
+#### Review fixes first numbered 1.104.7
+
+- **Speed defaults, review fixes.** A post, page or product keeps its address in
+  the slow log and report when it has the extra pieces WordPress and WooCommerce
+  add: a page of a post split in parts (/slug/2/), a named feed (/slug/feed/rss2/),
+  and the store's account and checkout endpoints (/my-account/orders/,
+  /checkout/order-received/123/). A site can add its own endpoint words with the
+  blueworx_slow_log_endpoints filter.
+
+#### Review fixes first numbered 1.104.6
+
+- **Speed defaults, review fixes.**
+  - A post, page or product keeps its address in the slow log and report only when
+    the address is that post's own (with a page number, comment page or feed). A
+    profile a plugin answers through a real page, or /author/jane-doe/?p=123, now
+    shows as a starred address.
+  - An author archive filtered by a category, tag or post type no longer keeps the
+    author's name.
+  - A post type archive is kept only for the types on the site's
+    blueworx_slow_log_content_types list, so a members or staff archive stays out.
+
+#### Review fixes first numbered 1.104.5
+
+- **Speed defaults, review fixes.**
+  - A request that asks for a category and a tag together is checked against the
+    slow-log taxonomy list for every taxonomy it names, not just the first, so a
+    tag a site has taken off the list never shows in the log or the report.
+  - The test that stands in for WooCommerce is removed after every test, pass or
+    fail, so a failed set-up never leaves it switched on.
+
+#### Review fixes first numbered 1.104.4
+
+- **Speed defaults, review fixes.**
+  - A category or tag archive that WordPress also calls a post type archive is
+    judged by the site's slow-log taxonomy list too, so excluded slugs stay out.
+  - Log entries saved by the last build are cut back again, so a category or tag
+    address a site now keeps out never shows in the log or the report.
+  - Date archives are recognised from WordPress's own date address structure,
+    including a word stuck to the year (/archive-2026/) and a folder called
+    "page" (/archives/page/2026/).
+  - Tracking cookies from PixelYourSite (pys_) no longer count as a cart.
+  - The test that uses a stand-in store checks the site loaded it, and skips
+    when it did not.
+
+#### Review fixes first numbered 1.104.3
+
+- **Speed defaults, review fixes.**
+  - The slow-page log (and so the speed report) no longer keeps the address of
+    a page that belongs to a custom content type such as members or staff, since
+    that address can be a person's name. Posts, pages, products, categories and
+    tags keep theirs. The type is read from the page that was asked for, so a
+    theme's related-posts loop cannot change it (the site's original request is
+    used, not a list a theme made later). On a page that is not the site's own
+    content, only a known first piece (wp-admin, author, shop and the like) is
+    kept; anything else, such as /jane-doe/, /jane.doe/ or /jane-doe/feed/,
+    shows as /*. A site can add its own first pieces with a filter.
+    A request WordPress calls the home page or a date archive keeps its address
+    only if the address looks like one too, and entries saved by earlier builds
+    of this fix are cut back again.
+  - A request WordPress calls the home page or a date archive keeps its address
+    only if it is exactly a home page number (/page/2/) or a year, month, day
+    and page number, so /page/jane-doe/ or /2024/jane-doe/ is never named. A
+    site kept in a folder is judged by what comes after the folder.
+  - The guest cart answer runs as WooCommerce starts, at the latest priority,
+    before it makes a session or a cart (a later hook would save only the mini
+    cart). WooCommerce reads the cookie name at that moment too.
+  - Slow-log entries saved by the previous build (which could still hold a
+    member's address) are cut back as well. A posts page with a name outside
+    plain ASCII, and a capitalised page word (/Paginas/2/), keep their address.
+  - The "guest cannot buy" filter must be added before WooCommerce starts (on
+    plugins_loaded or when the plugin loads); this is noted in the code. A test
+    with a stand-in WooCommerce checks the cart is answered before it is made.
+  - The posts page keeps its address only at its own address (and its numbered
+    pages), and numbered home pages on a site that shows index.php, or that
+    changed the word "page", keep theirs.
+  - Log entries saved by 1.104.0 and 1.104.1 are cut back the same way before
+    any screen or report reads them, so a member's name saved earlier is never
+    emailed.
+  - A visitor whose cart cookie was renamed by a plugin that loads late is no
+    longer treated as having no cart: any cookie that looks like a cart or a
+    session is kept, and the cookie the store is set to use is always kept,
+    including one a plugin names while WooCommerce is starting.
+    Tracking cookies (order attribution, analytics) are not mistaken for carts.
+  - A crawler name that is not one plain word can no longer add a line of its
+    own to robots.txt.
+  - The speed report no longer calls the object cache healthy until enough
+    checks have shown it is shared between pages.
+
 ## [1.104.6] - 2026-11-28
 
 ### Changed
