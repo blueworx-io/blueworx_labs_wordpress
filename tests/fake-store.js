@@ -17,6 +17,9 @@ export const MU_DIR = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content',
 export const FAKE_STORE_FILE = path.join(MU_DIR, 'blueworx-test-fake-woocommerce.php');
 export const FAKE_STORE_PROBE_FILE = path.join(MU_DIR, 'blueworx-test-fake-woocommerce-probe.php');
 
+/** The header a test request sends to ask the probe file to report. */
+export const FAKE_PROBE_HEADER = 'X-Bw-Fake-Probe';
+
 /** The session cookie name the stand-in gives itself as WooCommerce starts. */
 export const RENAMED_SESSION_COOKIE = 'mp_store_basket';
 
@@ -71,12 +74,16 @@ export function fakeStoreSource(expires) {
  * WooCommerce exists. It is how a test sees that a stand-in is really inert. It
  * sorts after the stand-in, so the stand-in has loaded (or not) by then.
  *
- * @return string The file's contents.
+ * @param {number} expires When it stops working, in seconds since 1970.
+ * @return {string} The file's contents.
  */
-export function fakeStoreProbeSource() {
+export function fakeStoreProbeSource(expires) {
+  // Like the stand-in, it speaks only to a request that asks, and only until it expires.
   return [
     '<?php',
-    "add_action( 'init', function () { header( 'X-Test-Woo-Class: ' . ( class_exists( 'WooCommerce', false ) ? '1' : '0' ) ); }, -1 );",
+    `if ( time() <= ${Math.floor(expires)} && isset( $_SERVER['HTTP_X_BW_FAKE_PROBE'] ) ) {`,
+    "  add_action( 'init', function () { header( 'X-Test-Woo-Class: ' . ( class_exists( 'WooCommerce', false ) ? '1' : '0' ) ); }, -1 );",
+    '}',
     '',
   ].join('\n');
 }
@@ -85,7 +92,7 @@ export function fakeStoreProbeSource() {
  * Writes the stand-in into the local test site's folder.
  *
  * @param {number} expires When it stops working, in seconds since 1970.
- * @param {boolean} withProbe Also write the file that reports whether a WooCommerce class exists.
+ * @param {boolean|number} withProbe Also write the file that reports whether a WooCommerce class exists: true for the usual lifetime, or its own expiry time.
  * @return {boolean} False when the site's folder is not on this machine.
  */
 export function writeFakeStore(expires = Date.now() / 1000 + FAKE_STORE_LIFETIME, withProbe = false) {
@@ -97,7 +104,8 @@ export function writeFakeStore(expires = Date.now() / 1000 + FAKE_STORE_LIFETIME
   fs.writeFileSync(FAKE_STORE_FILE, fakeStoreSource(expires));
 
   if (withProbe) {
-    fs.writeFileSync(FAKE_STORE_PROBE_FILE, fakeStoreProbeSource());
+    const probeExpires = withProbe === true ? Date.now() / 1000 + FAKE_STORE_LIFETIME : withProbe;
+    fs.writeFileSync(FAKE_STORE_PROBE_FILE, fakeStoreProbeSource(probeExpires));
   }
 
   return true;

@@ -658,16 +658,10 @@ function blueworx_request_is_site_content( $segments = array() ) {
 
 	// Whatever WordPress says about the request, a term of a taxonomy that is not on
 	// the list is never kept: its address word (/tag/) in the address is enough.
-	// A post, page or product at its own address is not a term's route, even when
-	// its address holds the word (/product/brand/).
-	$own = null;
-
-	if ( blueworx_main_query_is( 'is_singular' ) ) {
-		$own = blueworx_main_query_object();
-		$own = null !== $own && isset( $own->post_type ) && in_array( $own->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $own );
-	}
-
-	if ( ! $own && blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
+	// A post's own address can hold a category name too (/news/category/x/post/),
+	// so this holds for posts as well. The word on its own, with nothing after it
+	// (/product/brand/), names no term and stays.
+	if ( blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
 		return false;
 	}
 
@@ -729,13 +723,13 @@ function blueworx_request_is_site_content( $segments = array() ) {
 			return false;
 		}
 
-		// WordPress can call one request a term archive and a post type archive
-		// (/category/news/?post_type=member): the type has to be one the site keeps too.
-		if ( blueworx_main_query_is( 'is_post_type_archive' ) ) {
-			foreach ( blueworx_main_query_post_types( false ) as $type ) {
-				if ( ! in_array( $type, $types, true ) ) {
-					return false;
-				}
+		// A term archive can also be narrowed to a post type (/category/news/?post_type=member).
+		// WordPress does not always flag that as a post type archive (a type with no
+		// archive, or several types at once), so any type the request names has to be
+		// one the site keeps too.
+		foreach ( blueworx_main_query_post_types( false ) as $type ) {
+			if ( ! in_array( $type, $types, true ) ) {
+				return false;
 			}
 		}
 
@@ -872,9 +866,9 @@ function blueworx_slow_log_entries() {
 	// to their first piece, so what an earlier version stored never reaches a
 	// screen or a report.
 	foreach ( $log as $index => $entry ) {
-		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 6 ) && isset( $entry['path'] ) ) {
+		if ( is_array( $entry ) && ( empty( $entry['v'] ) || (int) $entry['v'] < 7 ) && isset( $entry['path'] ) ) {
 			$log[ $index ]['path'] = blueworx_slow_generalise_path( (string) $entry['path'] );
-			$log[ $index ]['v']    = 6;
+			$log[ $index ]['v']    = 7;
 		}
 	}
 
@@ -926,7 +920,7 @@ function blueworx_slow_log_entry( $seconds ) {
 	$total  = $counts ? $counts['hits'] + $counts['misses'] : 0;
 
 	return array(
-		'v'      => 6,
+		'v'      => 7,
 		't'      => time(),
 		'ms'     => (int) round( $seconds * 1000 ),
 		'path'   => blueworx_slow_request_label(),

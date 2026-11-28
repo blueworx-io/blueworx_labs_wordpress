@@ -886,6 +886,14 @@ $GLOBALS['wp_the_query']->object = (object) array(
 $GLOBALS['wp_the_query']->types  = array( 'member' );
 $_SERVER['REQUEST_URI']          = '/category/private-clients/?post_type=member';
 check( 'a category archive of an excluded post type keeps no term name', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->flags = array( 'is_category' => true );
+check( 'even when WordPress sets no archive flag for the type', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->types = array( 'post', 'member' );
+check( 'or the request names several types', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->flags = array(
+	'is_category'          => true,
+	'is_post_type_archive' => true,
+);
 $GLOBALS['wp_the_query']->types = array( 'post' );
 check( 'a category archive of an ordinary post type keeps its address', blueworx_slow_request_label(), '/category/private-clients/?post_type' );
 
@@ -899,7 +907,16 @@ $_SERVER['REQUEST_URI']          = '/product/brand/';
 check( 'a product that happens to be called brand keeps its address', blueworx_slow_request_label(), '/product/brand/' );
 $GLOBALS['permalink']   = '/product/brand/acme/';
 $_SERVER['REQUEST_URI'] = '/product/brand/acme/';
-check( 'and so does a product page whose own address holds the word and more', blueworx_slow_request_label(), '/product/brand/acme/' );
+check( 'but one whose own address names a term of it is not kept', blueworx_slow_request_label(), '/product/*' );
+$GLOBALS['permalink']                               = '/news/category/private-clients/updates/';
+$_SERVER['REQUEST_URI']                             = '/news/category/private-clients/updates/';
+$GLOBALS['taxonomies']                              = array( 'category' => 'category' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'post_tag' );
+};
+check( 'a post whose own address holds an excluded category name is not kept', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+$GLOBALS['taxonomies']           = array( 'brand' => 'brand' );
 $GLOBALS['wp_the_query']         = new Flag_Query();
 $GLOBALS['wp_the_query']->flags  = array( 'is_tax' => true );
 $GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'brand' );
@@ -921,7 +938,9 @@ $_SERVER['REQUEST_URI'] = '/';
 check( 'and its own address', blueworx_slow_request_label(), '/' );
 $_SERVER['REQUEST_URI'] = '/jane-doe/';
 check( 'but a name WordPress called the home page is not kept', blueworx_slow_request_label(), '/*' );
-unset( $GLOBALS['permalink'] );
+$GLOBALS['wp_the_query'] = $saved_query;
+$GLOBALS['permalink']    = $saved_permalink;
+
 // An author's archive filtered by a category or tag is still the author's.
 $GLOBALS['wp_the_query']->tax_query = null;
 $GLOBALS['wp_the_query']->author    = true;
@@ -1051,7 +1070,7 @@ $GLOBALS['switches'] = array();
 for ( $i = 0; $i < 250; $i++ ) {
 	blueworx_slow_log_write(
 		array(
-			'v'    => 6,
+			'v'    => 7,
 			't'    => time(),
 			'ms'   => 1000 + $i,
 			'path' => '/p' . ( $i % 5 ) . '/',
@@ -1105,7 +1124,7 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		'path' => '/members/jane-doe/',
 	),
 	array(
-		'v'    => 6,
+		'v'    => 7,
 		't'    => time(),
 		'ms'   => 3000,
 		'path' => '/shop/blue-shirt/',
@@ -1115,6 +1134,12 @@ $GLOBALS['options']['blueworx_slow_log'] = array(
 		't'    => time(),
 		'ms'   => 3000,
 		'path' => '/category/private-clients/',
+	),
+	array(
+		'v'    => 6,
+		't'    => time(),
+		'ms'   => 3000,
+		'path' => '/news/category/private-clients/updates/',
 	),
 );
 $paths                                   = array_column( blueworx_slow_log_entries(), 'path' );
@@ -1127,6 +1152,7 @@ check( 'a name the last build saved is cut back too', $paths[5], '/*' );
 check( 'an address the build before this one saved is cut back as well', $paths[6], '/*' );
 check( 'a current entry is untouched', $paths[7], '/shop/blue-shirt/' );
 check( 'a category address the last build saved is cut back, in case the site keeps those out', $paths[8], '/category/*' );
+check( 'a full address the previous build saved is cut back', $paths[9], '/*' );
 check( 'a known first piece survives the cut', blueworx_slow_generalise_path( '/shop/blue-shirt/' ), '/shop/*' );
 check( 'a name with a dot is cut', blueworx_slow_generalise_path( '/jane.doe/' ), '/*' );
 check( 'a name in front of a feed is cut', blueworx_slow_generalise_path( '/jane-doe/feed/' ), '/*' );

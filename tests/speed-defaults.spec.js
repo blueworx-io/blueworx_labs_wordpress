@@ -25,6 +25,7 @@ import {
   MU_DIR,
   FAKE_STORE_FILE,
   FAKE_STORE_HEADER,
+  FAKE_PROBE_HEADER,
   RENAMED_SESSION_COOKIE,
   removeFakeStore,
   writeFakeStore,
@@ -72,8 +73,13 @@ test.describe('Speed defaults', () => {
   });
 
   test('a stand-in left behind does nothing unless asked, and nothing once expired', async () => {
-    const api = await request.newContext({ baseURL });
-    const asked = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1' } });
+    // Both ask the probe to report; only the second also asks for the stand-in.
+    const api = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_PROBE_HEADER]: '1' } });
+    const asked = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1', [FAKE_PROBE_HEADER]: '1' },
+    });
+    const plain = await request.newContext({ baseURL });
 
     try {
       const probe = '/?bw_fake_store_probe=1';
@@ -95,10 +101,21 @@ test.describe('Speed defaults', () => {
       const expired = await asked.get(probe, { maxRedirects: 0 });
       expect(expired.headers()['x-test-fake-store']).toBeUndefined();
       expect(expired.headers()['x-test-woo-class']).toBe('0');
+
+      // Even before it expires, the probe adds nothing to a request that did not ask.
+      writeFakeStore(undefined, true);
+      const unasked = await plain.get(probe, { maxRedirects: 0 });
+      expect(unasked.headers()['x-test-woo-class']).toBeUndefined();
+
+      // And once it has expired, not even to one that did.
+      writeFakeStore(undefined, Date.now() / 1000 - 5);
+      const late = await api.get(probe, { maxRedirects: 0 });
+      expect(late.headers()['x-test-woo-class']).toBeUndefined();
     } finally {
       removeFakeStore();
       await api.dispose();
       await asked.dispose();
+      await plain.dispose();
     }
   });
 
@@ -309,7 +326,10 @@ test.describe('Speed defaults', () => {
   });
 
   test('no stand-in WooCommerce is left on the site after a test', async () => {
-    const api = await request.newContext({ baseURL, extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1' } });
+    const api = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { [FAKE_STORE_HEADER]: '1', [FAKE_PROBE_HEADER]: '1' },
+    });
     try {
       expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
       const res = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });

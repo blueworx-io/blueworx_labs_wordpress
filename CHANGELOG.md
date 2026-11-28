@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.10] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A category, tag or other term archive narrowed to a post type the site does not
+    keep (members, say) shows no term name in the slow log or weekly report, even
+    when WordPress sets no archive flag for it or the request names several types.
+  - A post's own address that holds a term of a taxonomy the site left off the
+    list (/news/category/private-clients/post/) is no longer kept.
+  - Entries the previous build saved are cut back to their first piece again, so
+    full addresses it kept no longer show in the slow log or weekly email.
+  - The test probe that reports whether a WooCommerce class exists speaks only to
+    a request that asks for it, and stops after ten minutes. The mixed author
+    archive test works again.
+
 ## [1.104.9] - 2026-11-28
 
 ### Fixed
