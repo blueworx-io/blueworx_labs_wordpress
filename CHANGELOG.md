@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.9] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A members (or other excluded post type) archive filtered by a category on the
+    list no longer shows in the slow log and weekly report with the category's name:
+    both the term and the post type have to be kept.
+  - A post, page or product at its own address keeps it even when the address holds
+    the word of a taxonomy the site left off the list (/product/brand/). The word
+    only hides an address when a term follows it.
+  - A static home page keeps its comment pages (/comment-page-2/).
+  - The stand-in store the tests use declares its pretend WooCommerce class only
+    when switched on, so a left-over file cannot make a site look like a store. New
+    tests check the class is absent, and that a cart cookie a store renamed while
+    WooCommerce starts still reaches the cart.
+
 ## [1.104.8] - 2026-11-28
 
 ### Fixed

@@ -25,6 +25,7 @@ import {
   MU_DIR,
   FAKE_STORE_FILE,
   FAKE_STORE_HEADER,
+  RENAMED_SESSION_COOKIE,
   removeFakeStore,
   writeFakeStore,
 } from './fake-store.js';
@@ -78,18 +79,22 @@ test.describe('Speed defaults', () => {
       const probe = '/?bw_fake_store_probe=1';
 
       // A fresh stand-in answers only the request that carries its header.
-      if (!writeFakeStore()) {
+      if (!writeFakeStore(undefined, true)) {
         test.skip(true, 'Needs the local test site: its folder is not on this machine.');
       }
       const ordinary = await api.get(probe, { maxRedirects: 0 });
       expect(ordinary.headers()['x-test-fake-store']).toBeUndefined();
       const marked = await asked.get(probe, { maxRedirects: 0 });
       test.skip(marked.headers()['x-test-fake-store'] !== '1', 'The stand-in did not load on this site.');
+      expect(marked.headers()['x-test-woo-class']).toBe('1');
+      // The pretend WooCommerce class is not even declared for an ordinary request.
+      expect(ordinary.headers()['x-test-woo-class']).toBe('0');
 
       // One that is past its time answers nothing, header or not.
-      writeFakeStore(Date.now() / 1000 - 5);
+      writeFakeStore(Date.now() / 1000 - 5, true);
       const expired = await asked.get(probe, { maxRedirects: 0 });
       expect(expired.headers()['x-test-fake-store']).toBeUndefined();
+      expect(expired.headers()['x-test-woo-class']).toBe('0');
     } finally {
       removeFakeStore();
       await api.dispose();
@@ -222,6 +227,15 @@ test.describe('Speed defaults', () => {
 
     // Write it, ask the site whether it loaded, and skip (removing it again) when
     // it did not: a staging site, a tunnel or another local install never loads it.
+    // A visitor whose only cookie is the session cookie the store renamed as WooCommerce started.
+    const renamed = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: {
+        [FAKE_STORE_HEADER]: '1',
+        Cookie: `${RENAMED_SESSION_COOKIE}=abc`,
+      },
+    });
+
     let loaded = false;
     try {
       if (writeFakeStore()) {
@@ -233,6 +247,7 @@ test.describe('Speed defaults', () => {
         removeFakeStore();
         await api.dispose();
         await withCart.dispose();
+        await renamed.dispose();
       }
     }
     test.skip(!loaded, 'Needs the local test site: the stand-in WooCommerce did not load on this one.');
@@ -255,6 +270,11 @@ test.describe('Speed defaults', () => {
 
           const mine = await withCart.get(route, { maxRedirects: 0 });
           expect(mine.headers()['x-test-cart-made']).toBe('1');
+
+          // A cart cookie the store renamed during WooCommerce's own start-up still
+          // reaches WooCommerce: the check runs after every plugin has renamed it.
+          const theirs = await renamed.get(route, { maxRedirects: 0 });
+          expect(theirs.headers()['x-test-cart-made']).toBe('1');
         },
       ],
       [
@@ -282,6 +302,7 @@ test.describe('Speed defaults', () => {
           removeFakeStore();
           await api.dispose();
           await withCart.dispose();
+          await renamed.dispose();
         },
       ],
     ]);
@@ -293,6 +314,7 @@ test.describe('Speed defaults', () => {
       expect(fs.existsSync(FAKE_STORE_FILE)).toBe(false);
       const res = await api.get('/?bw_fake_store_probe=1', { maxRedirects: 0 });
       expect(res.headers()['x-test-fake-store']).toBeUndefined();
+      expect(res.headers()['x-test-woo-class']).toBeUndefined();
     } finally {
       await api.dispose();
     }

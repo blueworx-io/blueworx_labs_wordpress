@@ -808,6 +808,120 @@ check( 'names on the list are matched whatever their case', blueworx_slow_reques
 unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
 $GLOBALS['taxonomies'] = array();
 
+/**
+ * A request WordPress flags in a few ways at once: each flag is answered.
+ */
+class Flag_Query {
+	/**
+	 * Which checks answer yes.
+	 *
+	 * @var array
+	 */
+	public $flags = array();
+	/**
+	 * The page or term WordPress answered with.
+	 *
+	 * @var object|null
+	 */
+	public $object = null;
+	/**
+	 * The post types the request asks for.
+	 *
+	 * @var string[]
+	 */
+	public $types = array();
+	/**
+	 * The terms WordPress was asked for.
+	 *
+	 * @var object|null
+	 */
+	public $tax_query = null;
+	public function is_front_page() {
+		return ! empty( $this->flags['is_front_page'] );
+	}
+	public function is_home() {
+		return ! empty( $this->flags['is_home'] );
+	}
+	public function is_date() {
+		return ! empty( $this->flags['is_date'] );
+	}
+	public function is_singular() {
+		return ! empty( $this->flags['is_singular'] );
+	}
+	public function is_author() {
+		return ! empty( $this->flags['is_author'] );
+	}
+	public function is_category() {
+		return ! empty( $this->flags['is_category'] );
+	}
+	public function is_tag() {
+		return ! empty( $this->flags['is_tag'] );
+	}
+	public function is_tax() {
+		return ! empty( $this->flags['is_tax'] );
+	}
+	public function is_post_type_archive() {
+		return ! empty( $this->flags['is_post_type_archive'] );
+	}
+	public function get( $key ) {
+		return 'post_type' === $key ? $this->types : '';
+	}
+	public function get_queried_object() {
+		return $this->object;
+	}
+}
+
+// A members archive filtered by a category on the list is still the members'.
+$saved_query                     = $GLOBALS['wp_the_query'];
+$saved_permalink                 = isset( $GLOBALS['permalink'] ) ? $GLOBALS['permalink'] : null;
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array(
+	'is_category'          => true,
+	'is_post_type_archive' => true,
+);
+$GLOBALS['wp_the_query']->object = (object) array(
+	'taxonomy' => 'category',
+	'name'     => 'Private clients',
+);
+$GLOBALS['wp_the_query']->types  = array( 'member' );
+$_SERVER['REQUEST_URI']          = '/category/private-clients/?post_type=member';
+check( 'a category archive of an excluded post type keeps no term name', blueworx_slow_request_label(), '/category/*?post_type' );
+$GLOBALS['wp_the_query']->types = array( 'post' );
+check( 'a category archive of an ordinary post type keeps its address', blueworx_slow_request_label(), '/category/private-clients/?post_type' );
+
+// An excluded taxonomy's word is only a route when a term follows it.
+$GLOBALS['taxonomies']           = array( 'brand' => 'brand' );
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array( 'is_singular' => true );
+$GLOBALS['wp_the_query']->object = (object) array( 'post_type' => 'product' );
+$GLOBALS['permalink']            = '/product/brand/';
+$_SERVER['REQUEST_URI']          = '/product/brand/';
+check( 'a product that happens to be called brand keeps its address', blueworx_slow_request_label(), '/product/brand/' );
+$GLOBALS['permalink']   = '/product/brand/acme/';
+$_SERVER['REQUEST_URI'] = '/product/brand/acme/';
+check( 'and so does a product page whose own address holds the word and more', blueworx_slow_request_label(), '/product/brand/acme/' );
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array( 'is_tax' => true );
+$GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'brand' );
+$_SERVER['REQUEST_URI']          = '/brand/acme/';
+check( 'but a term of the excluded taxonomy is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['taxonomies'] = array();
+
+// A static front page keeps its comment pages.
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array(
+	'is_front_page' => true,
+	'is_singular'   => true,
+);
+$GLOBALS['wp_the_query']->object = (object) array( 'post_type' => 'page' );
+$GLOBALS['permalink']            = '/';
+$_SERVER['REQUEST_URI']          = '/comment-page-2/';
+check( 'a static home page keeps its comment page', blueworx_slow_request_label(), '/comment-page-2/' );
+$_SERVER['REQUEST_URI'] = '/';
+check( 'and its own address', blueworx_slow_request_label(), '/' );
+$_SERVER['REQUEST_URI'] = '/jane-doe/';
+check( 'but a name WordPress called the home page is not kept', blueworx_slow_request_label(), '/*' );
+unset( $GLOBALS['permalink'] );
 // An author's archive filtered by a category or tag is still the author's.
 $GLOBALS['wp_the_query']->tax_query = null;
 $GLOBALS['wp_the_query']->author    = true;

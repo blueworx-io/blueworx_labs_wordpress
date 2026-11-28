@@ -196,9 +196,10 @@ function blueworx_main_query_taxonomies() {
 /**
  * Gets every post type the original request asks for.
  *
+ * @param bool $with_object Whether the queried object's own name counts as a type (not for a term, whose name is its title).
  * @return string[] Post type names; empty when the request does not say.
  */
-function blueworx_main_query_post_types() {
+function blueworx_main_query_post_types( $with_object = true ) {
 	global $wp_the_query;
 
 	$types = array();
@@ -207,7 +208,7 @@ function blueworx_main_query_post_types() {
 		$types = array_merge( $types, (array) $wp_the_query->get( 'post_type' ) );
 	}
 
-	$object = blueworx_main_query_object();
+	$object = $with_object ? blueworx_main_query_object() : null;
 
 	if ( null !== $object && isset( $object->name ) ) {
 		$types[] = $object->name;
@@ -599,7 +600,7 @@ function blueworx_segments_are_date( $segments ) {
  *
  * @param string[] $segments The pieces of the address.
  * @param string[] $listed   Taxonomy names the site keeps, lower case.
- * @return bool True when a taxonomy left off the list has its word in the address.
+ * @return bool True when a taxonomy left off the list has its word, and a term after it, in the address.
  */
 function blueworx_segments_name_unlisted_term( $segments, $listed ) {
 	if ( empty( $segments ) || ! function_exists( 'get_taxonomies' ) || ! function_exists( 'get_taxonomy' ) ) {
@@ -619,7 +620,8 @@ function blueworx_segments_name_unlisted_term( $segments, $listed ) {
 		$words    = '' === $slug ? array() : explode( '/', $slug );
 		$length   = count( $words );
 
-		for ( $start = 0; $length > 0 && $start + $length <= $total; ++$start ) {
+		// The word is a route only when something (the term) comes after it.
+		for ( $start = 0; $length > 0 && $start + $length < $total; ++$start ) {
 			if ( array_slice( $segments, $start, $length ) === $words ) {
 				return true;
 			}
@@ -628,6 +630,7 @@ function blueworx_segments_name_unlisted_term( $segments, $listed ) {
 
 	return false;
 }
+
 /**
  * Whether WordPress resolved this request to the site's own content.
  *
@@ -655,12 +658,28 @@ function blueworx_request_is_site_content( $segments = array() ) {
 
 	// Whatever WordPress says about the request, a term of a taxonomy that is not on
 	// the list is never kept: its address word (/tag/) in the address is enough.
-	if ( blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
+	// A post, page or product at its own address is not a term's route, even when
+	// its address holds the word (/product/brand/).
+	$own = null;
+
+	if ( blueworx_main_query_is( 'is_singular' ) ) {
+		$own = blueworx_main_query_object();
+		$own = null !== $own && isset( $own->post_type ) && in_array( $own->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $own );
+	}
+
+	if ( ! $own && blueworx_segments_name_unlisted_term( $segments, $taxes ) ) {
 		return false;
 	}
 
 	if ( blueworx_main_query_is( 'is_front_page' ) ) {
-		return blueworx_segments_are_page_number( $segments );
+		if ( blueworx_segments_are_page_number( $segments ) ) {
+			return true;
+		}
+
+		// A static home page also has its own endpoints (/comment-page-2/).
+		$page = blueworx_main_query_object();
+
+		return blueworx_main_query_is( 'is_singular' ) && null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_object_address( $segments, $page );
 	}
 
 	if ( blueworx_main_query_is( 'is_home' ) ) {
@@ -706,7 +725,21 @@ function blueworx_request_is_site_content( $segments = array() ) {
 			}
 		}
 
-		return null !== $term && isset( $term->taxonomy ) && in_array( $term->taxonomy, $taxes, true );
+		if ( null === $term || ! isset( $term->taxonomy ) || ! in_array( $term->taxonomy, $taxes, true ) ) {
+			return false;
+		}
+
+		// WordPress can call one request a term archive and a post type archive
+		// (/category/news/?post_type=member): the type has to be one the site keeps too.
+		if ( blueworx_main_query_is( 'is_post_type_archive' ) ) {
+			foreach ( blueworx_main_query_post_types( false ) as $type ) {
+				if ( ! in_array( $type, $types, true ) ) {
+					return false;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	if ( ! blueworx_main_query_is( 'is_post_type_archive' ) ) {

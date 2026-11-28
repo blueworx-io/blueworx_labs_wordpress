@@ -15,6 +15,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const MU_DIR = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content', 'mu-plugins');
 export const FAKE_STORE_FILE = path.join(MU_DIR, 'blueworx-test-fake-woocommerce.php');
+export const FAKE_STORE_PROBE_FILE = path.join(MU_DIR, 'blueworx-test-fake-woocommerce-probe.php');
+
+/** The session cookie name the stand-in gives itself as WooCommerce starts. */
+export const RENAMED_SESSION_COOKIE = 'mp_store_basket';
 
 /** The header a test request sends to switch the stand-in on. */
 export const FAKE_STORE_HEADER = 'X-Bw-Fake-Store';
@@ -27,6 +31,7 @@ export const FAKE_STORE_LIFETIME = 600;
  */
 export function removeFakeStore() {
   fs.rmSync(FAKE_STORE_FILE, { force: true });
+  fs.rmSync(FAKE_STORE_PROBE_FILE, { force: true });
 }
 
 /**
@@ -38,19 +43,40 @@ export function removeFakeStore() {
  * @return {string} The file's contents.
  */
 export function fakeStoreSource(expires) {
+  // Everything, the class included, sits inside the guard: PHP declares a class
+  // at the top of a file even after an early return, so a guard that only returns
+  // would still make the site look like it has WooCommerce.
   return [
     '<?php',
-    `if ( time() > ${Math.floor(expires)} || ! isset( $_SERVER['HTTP_X_BW_FAKE_STORE'] ) ) { return; }`,
-    'class WooCommerce {}',
-    "add_filter( 'pre_option_woocommerce_enable_guest_checkout', function () { return 'no'; } );",
-    "add_filter( 'pre_option_woocommerce_enable_signup_and_login_from_checkout', function () { return 'no'; } );",
-    "add_action( 'init', function () { header( 'X-Test-Fake-Store: 1' ); do_action( 'before_woocommerce_init' ); }, 0 );",
-    "add_action( 'init', function () {",
-    "  if ( isset( $_GET['wc-ajax'] ) && 'get_refreshed_fragments' === $_GET['wc-ajax'] ) {",
-    "    header( 'X-Test-Cart-Made: 1' );",
-    "    wp_send_json( array( 'fragments' => array( 'a' => 'b' ), 'cart_hash' => 'made' ) );",
-    '  }',
-    '}, 5 );',
+    `if ( time() <= ${Math.floor(expires)} && isset( $_SERVER['HTTP_X_BW_FAKE_STORE'] ) ) {`,
+    '  class WooCommerce {}',
+    "  add_filter( 'pre_option_woocommerce_enable_guest_checkout', function () { return 'no'; } );",
+    "  add_filter( 'pre_option_woocommerce_enable_signup_and_login_from_checkout', function () { return 'no'; } );",
+    "  add_action( 'init', function () { header( 'X-Test-Fake-Store: 1' ); do_action( 'before_woocommerce_init' ); }, 0 );",
+    '  // A store that renames its session cookie as WooCommerce starts (as a plugin does).',
+    `  add_action( 'before_woocommerce_init', function () { add_filter( 'woocommerce_cookie', function () { return '${RENAMED_SESSION_COOKIE}'; } ); } );`,
+    "  add_action( 'init', function () {",
+    "    if ( isset( $_GET['wc-ajax'] ) && 'get_refreshed_fragments' === $_GET['wc-ajax'] ) {",
+    "      header( 'X-Test-Cart-Made: 1' );",
+    "      wp_send_json( array( 'fragments' => array( 'a' => 'b' ), 'cart_hash' => 'made' ) );",
+    '    }',
+    '  }, 5 );',
+    '}',
+    '',
+  ].join('\n');
+}
+
+/**
+ * A second small file that reports, for every request, whether a class called
+ * WooCommerce exists. It is how a test sees that a stand-in is really inert. It
+ * sorts after the stand-in, so the stand-in has loaded (or not) by then.
+ *
+ * @return string The file's contents.
+ */
+export function fakeStoreProbeSource() {
+  return [
+    '<?php',
+    "add_action( 'init', function () { header( 'X-Test-Woo-Class: ' . ( class_exists( 'WooCommerce', false ) ? '1' : '0' ) ); }, -1 );",
     '',
   ].join('\n');
 }
@@ -59,14 +85,20 @@ export function fakeStoreSource(expires) {
  * Writes the stand-in into the local test site's folder.
  *
  * @param {number} expires When it stops working, in seconds since 1970.
+ * @param {boolean} withProbe Also write the file that reports whether a WooCommerce class exists.
  * @return {boolean} False when the site's folder is not on this machine.
  */
-export function writeFakeStore(expires = Date.now() / 1000 + FAKE_STORE_LIFETIME) {
+export function writeFakeStore(expires = Date.now() / 1000 + FAKE_STORE_LIFETIME, withProbe = false) {
   if (!fs.existsSync(path.join(MU_DIR, '..'))) {
     return false;
   }
 
   fs.mkdirSync(MU_DIR, { recursive: true });
   fs.writeFileSync(FAKE_STORE_FILE, fakeStoreSource(expires));
+
+  if (withProbe) {
+    fs.writeFileSync(FAKE_STORE_PROBE_FILE, fakeStoreProbeSource());
+  }
+
   return true;
 }
