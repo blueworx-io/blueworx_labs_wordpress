@@ -28,6 +28,7 @@ import {
   FAKE_PROBE_HEADER,
   RENAMED_SESSION_COOKIE,
   removeFakeStore,
+  standInMustLoad,
   writeFakeStore,
 } from './fake-store.js';
 
@@ -91,7 +92,11 @@ test.describe('Speed defaults', () => {
       const ordinary = await api.get(probe, { maxRedirects: 0 });
       expect(ordinary.headers()['x-test-fake-store']).toBeUndefined();
       const marked = await asked.get(probe, { maxRedirects: 0 });
-      test.skip(marked.headers()['x-test-fake-store'] !== '1', 'The stand-in did not load on this site.');
+      if (standInMustLoad()) {
+        expect(marked.headers()['x-test-fake-store'], 'the stand-in did not load on the local test site').toBe('1');
+      } else {
+        test.skip(marked.headers()['x-test-fake-store'] !== '1', 'The stand-in did not load on this site.');
+      }
       expect(marked.headers()['x-test-woo-class']).toBe('1');
       // The pretend WooCommerce class is not even declared for an ordinary request.
       expect(ordinary.headers()['x-test-woo-class']).toBe('0');
@@ -267,7 +272,13 @@ test.describe('Speed defaults', () => {
         await renamed.dispose();
       }
     }
-    test.skip(!loaded, 'Needs the local test site: the stand-in WooCommerce did not load on this one.');
+    if (standInMustLoad()) {
+      // On the local test site the stand-in has to load. Skipping here would let the
+      // run pass without ever checking that the cart is bypassed.
+      expect(loaded, 'the stand-in WooCommerce did not load on the local test site').toBe(true);
+    } else {
+      test.skip(!loaded, 'Needs the local test site: the stand-in WooCommerce did not load on this one.');
+    }
 
     await login(page);
     await page.goto(SETTINGS_PATH);

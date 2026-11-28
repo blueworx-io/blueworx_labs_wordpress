@@ -415,8 +415,14 @@ function blueworx_segments_are_object_address( $segments, $post_object ) {
 		return true;
 	}
 
-	// A named feed (/slug/feed/rss2/).
-	if ( 2 === count( $rest ) && 'feed' === $rest[0] && 1 === preg_match( '/^(feed|rss|rss2|rdf|atom)$/', $rest[1] ) ) {
+	// A named feed, in both forms WordPress answers: /slug/feed/rss2/ and /slug/rss2/.
+	$feeds = blueworx_feed_names();
+
+	if ( 1 === count( $rest ) && in_array( $rest[0], $feeds, true ) ) {
+		return true;
+	}
+
+	if ( 2 === count( $rest ) && 'feed' === $rest[0] && in_array( $rest[1], $feeds, true ) ) {
 		return true;
 	}
 
@@ -435,6 +441,23 @@ function blueworx_segments_are_object_address( $segments, $post_object ) {
 	}
 
 	return blueworx_segments_are_page_number( $rest );
+}
+
+/**
+ * The names of the feeds WordPress answers on this site.
+ *
+ * @return string[] Lower case names (feed, rdf, rss, rss2, atom and any a plugin registered).
+ */
+function blueworx_feed_names() {
+	global $wp_rewrite;
+
+	$names = array( 'feed', 'rdf', 'rss', 'rss2', 'atom' );
+
+	if ( is_object( $wp_rewrite ) && isset( $wp_rewrite->feeds ) && is_array( $wp_rewrite->feeds ) ) {
+		$names = array_merge( $names, $wp_rewrite->feeds );
+	}
+
+	return array_values( array_unique( array_map( 'strtolower', array_map( 'strval', $names ) ) ) );
 }
 
 /**
@@ -458,6 +481,16 @@ function blueworx_store_endpoints() {
 		'order-received',
 		'order-pay',
 	);
+
+	// A store can rename them in WooCommerce's settings (orders to pedidos), and
+	// WooCommerce holds the names it is really using.
+	if ( function_exists( 'WC' ) ) {
+		$store = WC();
+
+		if ( is_object( $store ) && isset( $store->query ) && is_object( $store->query ) && method_exists( $store->query, 'get_query_vars' ) ) {
+			$known = array_merge( $known, array_values( array_filter( array_map( 'strval', (array) $store->query->get_query_vars() ), 'strlen' ) ) );
+		}
+	}
 
 	return array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'blueworx_slow_log_endpoints', $known ) ) );
 }
@@ -592,6 +625,36 @@ function blueworx_segments_are_date( $segments ) {
 }
 
 /**
+ * Where in an address a taxonomy's route can start.
+ *
+ * @param string[] $segments The pieces of the address, lower case.
+ * @param object   $taxonomy  The taxonomy.
+ * @return int[] Positions: the start, after index.php, and after the front WordPress puts before it.
+ */
+function blueworx_route_starts( $segments, $taxonomy ) {
+	global $wp_rewrite;
+
+	$starts = array( 0 );
+
+	if ( isset( $segments[0] ) && 'index.php' === $segments[0] ) {
+		$starts[] = 1;
+	}
+
+	$with_front = ! is_array( $taxonomy->rewrite ) || ! isset( $taxonomy->rewrite['with_front'] ) || $taxonomy->rewrite['with_front'];
+
+	if ( $with_front && is_object( $wp_rewrite ) && isset( $wp_rewrite->front ) && is_string( $wp_rewrite->front ) ) {
+		$front = array_values( array_filter( explode( '/', strtolower( $wp_rewrite->front ) ), 'strlen' ) );
+
+		if ( ! empty( $front ) ) {
+			$starts[] = count( $front );
+			$starts[] = count( $front ) + ( isset( $segments[0] ) && 'index.php' === $segments[0] ? 1 : 0 );
+		}
+	}
+
+	return array_values( array_unique( $starts ) );
+}
+
+/**
  * Whether an address carries the address word of a taxonomy that is not on the list.
  *
  * The request's own flags can miss a second term (a tag asked for next to a
@@ -616,13 +679,21 @@ function blueworx_segments_name_unlisted_term( $segments, $listed ) {
 		}
 
 		$taxonomy = get_taxonomy( $name );
-		$slug     = is_object( $taxonomy ) && is_array( $taxonomy->rewrite ) && ! empty( $taxonomy->rewrite['slug'] ) ? strtolower( trim( (string) $taxonomy->rewrite['slug'], '/' ) ) : '';
-		$words    = '' === $slug ? array() : explode( '/', $slug );
-		$length   = count( $words );
 
-		// The word is a route only when something (the term) comes after it.
-		for ( $start = 0; $length > 0 && $start + $length < $total; ++$start ) {
-			if ( array_slice( $segments, $start, $length ) === $words ) {
+		if ( ! is_object( $taxonomy ) ) {
+			continue;
+		}
+
+		$slug   = is_array( $taxonomy->rewrite ) && ! empty( $taxonomy->rewrite['slug'] ) ? strtolower( trim( (string) $taxonomy->rewrite['slug'], '/' ) ) : '';
+		$words  = '' === $slug ? array() : explode( '/', $slug );
+		$length = count( $words );
+
+		// The word is a route only where WordPress puts it (at the start of the
+		// address, after index.php or the site's front), and only when something (the
+		// term) comes after it. The same word further along is an ordinary path
+		// (/category/type/shoes/ is a category called type).
+		foreach ( blueworx_route_starts( $segments, $taxonomy ) as $start ) {
+			if ( $length > 0 && $start + $length < $total && array_slice( $segments, $start, $length ) === $words ) {
 				return true;
 			}
 		}
@@ -662,8 +733,9 @@ function blueworx_slug_is_in_segments( $slug, $have ) {
 	}
 
 	// What is left after the log drops letters can be too short to say anything,
-	// so then only a whole piece counts.
-	$kept_is_short = strlen( $kept ) < 3;
+	// so then only a whole piece counts. A name that lost nothing is looked for
+	// however short it is.
+	$kept_is_short = '' !== $kept && $kept !== $plain && strlen( $kept ) < 3;
 
 	if ( '' !== $kept && $kept !== $plain ) {
 		$choices[] = $kept;
@@ -679,7 +751,8 @@ function blueworx_slug_is_in_segments( $slug, $have ) {
 				continue;
 			}
 
-			if ( 1 === preg_match( '#(?<![a-z0-9])' . preg_quote( $choice, '#' ) . '(?![a-z0-9])#', $piece ) ) {
+			// Letters on either side make it a longer word; a number or a dash does not.
+			if ( 1 === preg_match( '#(?<![a-z])' . preg_quote( $choice, '#' ) . '(?![a-z])#', $piece ) ) {
 				return true;
 			}
 		}
@@ -831,8 +904,11 @@ function blueworx_request_is_site_content( $segments = array() ) {
 		return null !== $page && isset( $page->post_type ) && in_array( $page->post_type, $types, true ) && blueworx_segments_are_posts_page( $segments );
 	}
 
-	if ( blueworx_main_query_is( 'is_date' ) ) {
-		return blueworx_segments_are_date( $segments );
+	// A year or month in the query string (/category/news/?year=2026) makes WordPress
+	// call a category archive a date one too. Only an address of dates ends the
+	// matter here; anything else is judged by what else it is.
+	if ( blueworx_main_query_is( 'is_date' ) && blueworx_segments_are_date( $segments ) ) {
+		return true;
 	}
 
 	if ( blueworx_main_query_is( 'is_singular' ) ) {

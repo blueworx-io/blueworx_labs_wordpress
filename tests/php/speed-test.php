@@ -56,6 +56,20 @@ function get_term( $id, $taxonomy = '' ) {
 	}
 	return null;
 }
+/**
+ * WooCommerce's own handle, with the endpoint names a test sets.
+ */
+function WC() { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid -- WooCommerce's own function name.
+	return isset( $GLOBALS['wc_endpoints'] ) ? (object) array( 'query' => new Endpoint_Names() ) : null;
+}
+/**
+ * The query part of that handle.
+ */
+class Endpoint_Names {
+	public function get_query_vars() {
+		return $GLOBALS['wc_endpoints'];
+	}
+}
 function get_taxonomies( $args = array(), $output = 'names' ) {
 	return array_keys( $GLOBALS['taxonomies'] );
 }
@@ -482,6 +496,21 @@ $_SERVER['REQUEST_URI'] = '/members/about-us/2/';
 check( 'a page of a post split in parts is kept', blueworx_slow_request_label(), '/members/about-us/2/' );
 $_SERVER['REQUEST_URI'] = '/members/about-us/feed/rss2/';
 check( 'a named feed is kept', blueworx_slow_request_label(), '/members/about-us/feed/rss2/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/atom/';
+check( 'a short feed name is kept', blueworx_slow_request_label(), '/members/about-us/atom/' );
+$GLOBALS['wp_rewrite']  = (object) array( 'feeds' => array( 'feed', 'rdf', 'rss', 'rss2', 'atom', 'podcast' ) );
+$_SERVER['REQUEST_URI'] = '/members/about-us/podcast/';
+check( 'and so is a feed a site registered', blueworx_slow_request_label(), '/members/about-us/podcast/' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/feed/podcast/';
+check( 'in its long form too', blueworx_slow_request_label(), '/members/about-us/feed/podcast/' );
+unset( $GLOBALS['wp_rewrite'] );
+$_SERVER['REQUEST_URI'] = '/members/about-us/jane-doe/';
+check( 'but not any word', blueworx_slow_request_label(), '/*' );
+$_SERVER['REQUEST_URI'] = '/members/about-us/pedidos/';
+check( 'an endpoint the store has not got is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['wc_endpoints'] = array( 'orders' => 'pedidos' );
+check( 'one the store renamed in its settings is', blueworx_slow_request_label(), '/members/about-us/pedidos/' );
+unset( $GLOBALS['wc_endpoints'] );
 $_SERVER['REQUEST_URI'] = '/members/about-us/orders/';
 check( 'a store endpoint is kept', blueworx_slow_request_label(), '/members/about-us/orders/' );
 $_SERVER['REQUEST_URI'] = '/members/about-us/edit-address/billing/';
@@ -835,7 +864,7 @@ $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 };
 check( 'a tag word in the address is kept out even when the request does not flag a tag', blueworx_slow_request_label(), '/tag/*' );
 $_SERVER['REQUEST_URI'] = '/category/news/tag/jane-doe/';
-check( 'and so is a tag after a category', blueworx_slow_request_label(), '/category/*' );
+check( 'a tag word further along a category address is that category\'s own path', blueworx_slow_request_label(), '/category/news/tag/jane-doe/' );
 $GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
 	return array( 'Category', 'POST_TAG' );
 };
@@ -1136,7 +1165,68 @@ $GLOBALS['options']['page_for_posts'] = 9;
 $_SERVER['REQUEST_URI']               = '/about/brand/history/';
 check( 'a posts page that holds a taxonomy word keeps its address', blueworx_slow_request_label(), '/about/brand/history/' );
 unset( $GLOBALS['options']['page_for_posts'] );
-$GLOBALS['taxonomies']   = array();
+$GLOBALS['taxonomies'] = array();
+
+// Short names, names joined to numbers, and routes that are only a word.
+$GLOBALS['wp_the_query']                            = new Flag_Query();
+$GLOBALS['wp_the_query']->flags                     = array( 'is_singular' => true );
+$GLOBALS['wp_the_query']->object                    = (object) array(
+	'post_type' => 'post',
+	'ID'        => 7,
+);
+$GLOBALS['taxonomies']                              = array( 'category' => 'category' );
+$GLOBALS['filters']['blueworx_slow_log_taxonomies'] = function () {
+	return array( 'post_tag' );
+};
+$GLOBALS['post_terms']                              = array(
+	'category' => array(
+		(object) array(
+			'term_id' => 31,
+			'slug'    => 'uk',
+		),
+	),
+);
+$GLOBALS['permalink']                               = '/news/uk-updates/';
+$_SERVER['REQUEST_URI']                             = '/news/uk-updates/';
+check( 'a short category name joined to other words is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']['category'][0]->slug = 'private-clients';
+$GLOBALS['permalink']                       = '/news/private-clients123/updates/';
+$_SERVER['REQUEST_URI']                     = '/news/private-clients123/updates/';
+check( 'a name with a number stuck to it is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['post_terms']['category'][0]->slug = "\xC3\xA9x";
+$GLOBALS['permalink']                       = '/news/xray-report/';
+$_SERVER['REQUEST_URI']                     = '/news/xray-report/';
+check( 'what is left of a name once letters are dropped has to be a whole piece', blueworx_slow_request_label(), '/news/xray-report/' );
+$GLOBALS['post_terms'] = array();
+unset( $GLOBALS['filters']['blueworx_slow_log_taxonomies'] );
+
+// WordPress's post format base is not a route in the middle of a category.
+$GLOBALS['taxonomies']           = array(
+	'category'    => 'category',
+	'post_format' => 'type',
+);
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array( 'is_category' => true );
+$GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'category' );
+$_SERVER['REQUEST_URI']          = '/category/type/shoes/';
+check( 'a category called type keeps its address', blueworx_slow_request_label(), '/category/type/shoes/' );
+$_SERVER['REQUEST_URI']         = '/type/gallery/';
+$GLOBALS['wp_the_query']->flags = array( 'is_tax' => true );
+check( 'but the post format route at the start is not kept', blueworx_slow_request_label(), '/*' );
+$GLOBALS['taxonomies'] = array();
+
+// A year in the query string does not turn a category archive into a date.
+$GLOBALS['wp_the_query']         = new Flag_Query();
+$GLOBALS['wp_the_query']->flags  = array(
+	'is_date'     => true,
+	'is_category' => true,
+);
+$GLOBALS['wp_the_query']->object = (object) array( 'taxonomy' => 'category' );
+$_SERVER['REQUEST_URI']          = '/category/news/?year=2026';
+check( 'a category archive filtered by year keeps its address', blueworx_slow_request_label(), '/category/news/?year' );
+$_SERVER['REQUEST_URI']         = '/2026/jane-doe/';
+$GLOBALS['wp_the_query']->flags = array( 'is_date' => true );
+check( 'a date that is not an address of dates is still not named', blueworx_slow_request_label(), '/*' );
 $GLOBALS['wp_the_query'] = $saved_query;
 $GLOBALS['permalink']    = $saved_permalink;
 

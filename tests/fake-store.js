@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isHarness } from './test-target.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const MU_DIR = path.join(__dirname, '..', '.wp-test', 'wp', 'wp-content', 'mu-plugins');
@@ -28,6 +30,20 @@ export const FAKE_STORE_HEADER = 'X-Bw-Fake-Store';
 
 /** How long a stand-in lives, in seconds. */
 export const FAKE_STORE_LIFETIME = 600;
+
+/**
+ * Whether the stand-in has to load on the site being tested.
+ *
+ * True for the local test site when its folder is on this machine: there the
+ * stand-in must load, and a test that sees it did not (a PHP error in it, say)
+ * has to fail rather than skip. A remote site (staging, a tunnel) can never load
+ * a file written here, so a test may skip there.
+ *
+ * @return {boolean} Whether a stand-in that does not load is a failure.
+ */
+export function standInMustLoad() {
+  return isHarness && fs.existsSync(path.join(MU_DIR, '..'));
+}
 
 /**
  * Takes the stand-in away. Safe to call any number of times.

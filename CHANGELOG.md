@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); this project uses semantic
 versioning.
 
+## [1.104.8] - 2026-11-28
+
+### Fixed
+- **Speed defaults, review fixes.**
+  - A category name the site keeps out of the slow log stays out when it is a short
+    word joined to others (/uk-updates/) or has a number stuck to it
+    (/private-clients123/).
+  - A taxonomy's address word only hides an address where WordPress puts the route
+    (the start, after index.php or the site's front), so a category called "type"
+    (/category/type/shoes/) keeps its address.
+  - A category archive filtered by year (/category/news/?year=2026) keeps its address.
+  - A store's own names for its account and checkout pages are read from
+    WooCommerce, so a renamed Orders page (/my-account/pedidos/) keeps its address.
+  - A post's short feed address (/post/atom/) is kept, using the feed names WordPress
+    has registered.
+  - On the local test site the cart test now fails, instead of skipping, when its
+    stand-in store does not load.
+
 ## [1.104.7] - 2026-11-28
 
 ### Fixed
